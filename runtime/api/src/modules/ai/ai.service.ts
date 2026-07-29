@@ -57,13 +57,16 @@ export class AIService {
       : provider === 'deepseek'
         ? 'https://api.deepseek.com/v1'
         : 'https://dashscope.aliyuncs.com/api/v1';
-    const openRouterHeaders = provider === 'openrouter' ? {
-      'HTTP-Referer': this.configService.get(
-        'OPENROUTER_SITE_URL',
-        'https://contentflow.invalid',
-      ),
-      'X-Title': 'ContentFlow',
-    } : {};
+    const openRouterHeaders: Record<string, string> =
+      provider === 'openrouter'
+        ? {
+            'HTTP-Referer': this.configService.get<string>(
+              'OPENROUTER_SITE_URL',
+              'https://contentflow.invalid',
+            ),
+            'X-Title': 'ContentFlow',
+          }
+        : {};
     const openRouterRouting = provider === 'openrouter' ? {
       models: configuredModels,
       provider: {
