@@ -27,5 +27,7 @@ label { display:grid; gap:8px; color:#c9d9d5; font-size:13px; font-weight:700; }
 input,textarea,select { width:100%; color:var(--ink); background:#081a16; border:1px solid var(--line); border-radius:13px; padding:14px; font:inherit; }
 textarea { min-height:160px; resize:vertical; }
 .stack { display:grid; gap:18px; }.status { display:inline-flex; padding:6px 10px; border-radius:99px; background:rgba(112,225,187,.12); color:var(--mint); font-size:12px; font-weight:800; }
+.notice { padding:16px; border-radius:14px; border:1px solid var(--line); }.notice.error{border-color:#a85555;background:#321817}.notice .button{margin-top:10px}
+.meta-panel{margin-top:24px;padding-top:20px;border-top:1px solid var(--line)}.meta-panel a{color:var(--mint);font-size:13px}.score-row{display:grid;grid-template-columns:120px 1fr 48px;gap:10px;align-items:center;margin-top:9px;color:var(--muted);font-size:12px}.score-row progress{width:100%;accent-color:var(--mint)}
 footer { border-top:1px solid var(--line); color:#78908a; padding:30px clamp(20px,5vw,72px); font-size:13px; }
 @media(max-width:800px){nav{display:none}.hero,.grid,.grid.two{grid-template-columns:1fr}.shell{padding-top:40px}.topbar{gap:12px}}

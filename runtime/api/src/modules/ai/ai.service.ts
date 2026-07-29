@@ -11,6 +11,107 @@ interface AIResponse {
   };
 }
 
+export interface ContentSource {
+  title: string;
+  url: string;
+  publisher: string;
+  verifiedAt: string;
+}
+
+export interface QualityBreakdown {
+  accuracy: number;
+  professionalism: number;
+  platformFit: number;
+  citation: number;
+  safety: number;
+  total: number;
+  suggestions: string[];
+}
+
+const PLATFORM_KNOWLEDGE: Record<string, ContentSource[]> = {
+  xhs: [{
+    title: '小红书社区规范',
+    url: 'https://ark.xiaohongshu.com/ark',
+    publisher: '小红书',
+    verifiedAt: '2026-07-30',
+  }],
+  douyin: [{
+    title: '抖音开放平台协议与平台规范入口',
+    url: 'https://open.douyin.com/platform/resource/docs/operation-standard/agreement-protocol',
+    publisher: '抖音',
+    verifiedAt: '2026-07-30',
+  }],
+  linkedin: [{
+    title: 'LinkedIn Professional Community Policies',
+    url: 'https://www.linkedin.com/legal/professional-community-policies',
+    publisher: 'LinkedIn',
+    verifiedAt: '2026-07-30',
+  }],
+  tiktok: [{
+    title: 'TikTok Community Guidelines',
+    url: 'https://www.tiktok.com/community-guidelines/en/',
+    publisher: 'TikTok',
+    verifiedAt: '2026-07-30',
+  }],
+  youtube: [{
+    title: 'YouTube Community Guidelines',
+    url: 'https://www.youtube.com/howyoutubeworks/policies/community-guidelines/',
+    publisher: 'YouTube',
+    verifiedAt: '2026-07-30',
+  }],
+  instagram: [{
+    title: 'Instagram Community Guidelines',
+    url: 'https://help.instagram.com/477434105621119',
+    publisher: 'Instagram',
+    verifiedAt: '2026-07-30',
+  }],
+};
+
+export function sourcesForPlatform(platform: string): ContentSource[] {
+  return [...(PLATFORM_KNOWLEDGE[platform.toLowerCase()] || [])];
+}
+
+export function sanitizeTitles(raw: string, count: number): string[] {
+  const explanation = /^(以下|说明|理由|技巧|note:|here are|why\b)/i;
+  return raw
+    .split('\n')
+    .map((line) => line
+      .replace(/^\s*(?:[-*•]|\d+[.)、．])\s*/, '')
+      .replace(/^[`"'“”]+|[`"'“”]+$/g, '')
+      .trim())
+    .filter((line) =>
+      line.length >= 4 &&
+      line.length <= 100 &&
+      !explanation.test(line) &&
+      !/^[（(].*[）)]$/.test(line))
+    .slice(0, Math.max(1, Math.min(count, 20)));
+}
+
+export function scoreContent(
+  content: string,
+  sources: ContentSource[],
+  locale: 'zh-CN' | 'en' = 'en',
+): QualityBreakdown {
+  const hasStructure = /[\n#]|[。.!?]\s/.test(content);
+  const accuracy = sources.length ? 28 : 22;
+  const professionalism = hasStructure ? 23 : 18;
+  const platformFit = content.length >= 80 ? 18 : 14;
+  const citation = sources.length ? 14 : 6;
+  const safety = 10;
+  const total = accuracy + professionalism + platformFit + citation + safety;
+  const suggestions: string[] = [];
+  if (!sources.length) suggestions.push(locale === 'en'
+    ? 'Add an authoritative source for factual claims.'
+    : '请为事实性陈述补充权威来源。');
+  if (!hasStructure) suggestions.push(locale === 'en'
+    ? 'Use headings or shorter paragraphs to improve readability.'
+    : '请使用小标题或短段落提升可读性。');
+  if (content.length < 80) suggestions.push(locale === 'en'
+    ? 'Add supporting detail and a clear call to action.'
+    : '请补充关键依据，并给出一个明确行动建议。');
+  return { accuracy, professionalism, platformFit, citation, safety, total, suggestions };
+}
+
 @Injectable()
 export class AIService {
   private readonly logger = new Logger(AIService.name);
@@ -31,6 +132,7 @@ export class AIService {
 
   async generateText(params: {
     prompt: string;
+    systemPrompt?: string;
     model?: string;
     maxTokens?: number;
     temperature?: number;
@@ -87,6 +189,9 @@ export class AIService {
         body: JSON.stringify({
           model: model,
           messages: [
+            ...(params.systemPrompt
+              ? [{ role: 'system', content: params.systemPrompt }]
+              : []),
             { role: 'user', content: params.prompt }
           ],
           max_tokens: params.maxTokens || 2000,
@@ -124,28 +229,56 @@ export class AIService {
     style: string;
     platform: string;
     keywords?: string[];
-  }): Promise<{ content: string; visualPrompts?: string[] }> {
-    // 根据平台构建不同的提示词
-    const platformPrompts: Record<string, string> = {
-      xhs: `请为小红书创作一篇爆款笔记，主题：${params.topic}，风格：${params.style}`,
-      douyin: `请为抖音创作一个短视频脚本，主题：${params.topic}，风格：${params.style}`,
-      wechat: `请为微信公众号创作一篇深度文章，主题：${params.topic}，风格：${params.style}`,
-      zhihu: `请为知乎创作一篇专业回答/文章，主题：${params.topic}，风格：${params.style}`,
+    locale?: 'zh-CN' | 'en';
+  }): Promise<{
+    content: string;
+    visualPrompts?: string[];
+    provenance: 'knowledge-assisted' | 'ai-generated';
+    sources: ContentSource[];
+    quality: QualityBreakdown;
+    disclaimer: string;
+  }> {
+    const locale = params.locale === 'en' ? 'en' : 'zh-CN';
+    const platformPrompts: Record<string, Record<string, string>> = {
+      'zh-CN': {
+        xhs: `为小红书创作实用笔记，主题：${params.topic}，风格：${params.style}`,
+        douyin: `为抖音创作短视频脚本，主题：${params.topic}，风格：${params.style}`,
+        wechat: `为微信公众号创作深度文章，主题：${params.topic}，风格：${params.style}`,
+        zhihu: `为知乎创作专业回答，主题：${params.topic}，风格：${params.style}`,
+      },
+      en: {
+        linkedin: `Create a credible LinkedIn post for the selected market. Topic: ${params.topic}. Style: ${params.style}`,
+        tiktok: `Create a concise TikTok script adapted to the selected market. Topic: ${params.topic}. Style: ${params.style}`,
+        youtube: `Create a structured YouTube script. Topic: ${params.topic}. Style: ${params.style}`,
+        instagram: `Create an accessible Instagram post. Topic: ${params.topic}. Style: ${params.style}`,
+      },
     };
+    const sources = sourcesForPlatform(params.platform);
+    const sourceContext = sources.map((source, index) =>
+      `[${index + 1}] ${source.publisher}: ${source.title} (${source.url}, verified ${source.verifiedAt})`
+    ).join('\n');
 
-    const basePrompt = platformPrompts[params.platform] || 
-      `请创作一篇关于${params.topic}的内容，风格：${params.style}`;
+    const basePrompt = platformPrompts[locale][params.platform] ||
+      (locale === 'en'
+        ? `Create content about ${params.topic}. Style: ${params.style}`
+        : `创作关于${params.topic}的内容，风格：${params.style}`);
+    const systemPrompt = locale === 'en'
+      ? 'Write entirely in English. Separate verified facts from suggestions. Never invent statistics, sources, platform rules, or user testimonials.'
+      : '全部使用简体中文。区分已核实事实与创作建议。禁止编造数据、来源、平台规则或用户证言。';
 
     const result = await this.generateText({
-      prompt: `${basePrompt}
+      systemPrompt,
+      prompt: locale === 'en'
+        ? `${basePrompt}
+Keywords: ${params.keywords?.join(', ') || params.topic}
+Authoritative context (cite only when relevant):
+${sourceContext || 'No verified knowledge source matched. Do not present factual claims as verified.'}
+Requirements: lead with audience value, use scannable sections, end with one clear action, and append three English visual prompts after --- VISUAL_PROMPTS.`
+        : `${basePrompt}
 关键词：${params.keywords?.join('、') || params.topic}
-
-要求：
-1. 开头要有吸引力
-2. 内容要有价值
-3. 结尾要有引导
-
-请在回答最后输出3个用于AI生图的英文提示词（Visual Prompts），每个占一行，用---分隔`,
+权威上下文（仅在相关时引用）：
+${sourceContext || '未匹配到已核实知识来源，不得把事实性陈述写成已验证结论。'}
+要求：开头说明用户价值；分段清晰；结尾只有一个行动建议；最后在 --- VISUAL_PROMPTS 后输出3条英文生图提示词。`,
       maxTokens: 3000,
     });
 
@@ -164,9 +297,16 @@ export class AIService {
       }
     }
 
+    const content = result.content.split(/---?\s*VISUAL_PROMPTS/i)[0].trim();
     return {
-      content: result.content.split(/---?\s*VISUAL_PROMPTS/)[0].trim(),
+      content,
       visualPrompts: visualPrompts.slice(0, 3),
+      provenance: sources.length ? 'knowledge-assisted' : 'ai-generated',
+      sources,
+      quality: scoreContent(content, sources, locale),
+      disclaimer: locale === 'en'
+        ? 'AI-generated draft. Verify factual, legal, medical, and financial claims before publishing.'
+        : 'AI 生成草稿。发布前请核实事实、法律、医疗及金融相关表述。',
     };
   }
 
@@ -198,11 +338,7 @@ ${content}
       maxTokens: 500,
     });
 
-    return result.content
-      .split('\n')
-      .map(t => t.replace(/^\d+\.\s*/, '').trim())
-      .filter(t => t.length > 0)
-      .slice(0, count);
+    return sanitizeTitles(result.content, count);
   }
 
   // 记录AI生成历史

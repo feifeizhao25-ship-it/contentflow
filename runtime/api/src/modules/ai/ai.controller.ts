@@ -13,19 +13,24 @@ export class AIController {
   @ApiBearerAuth()
   @ApiOperation({ summary: 'AI文章生成' })
   async generateArticle(@Request() req: any, @Body() body: any) {
-    const { topic, style, platform, keywords } = body;
+    const { topic, style, platform, keywords, locale } = body;
+    const requestedLocale = locale === 'en' ||
+      String(req.headers['accept-language'] || '').toLowerCase().startsWith('en')
+      ? 'en'
+      : 'zh-CN';
     
     const result = await this.aiService.generateArticle({
       topic,
       style: style || 'professional',
       platform: platform || 'xhs',
       keywords,
+      locale: requestedLocale,
     });
 
     // 记录使用
     await this.aiService.recordGeneration(req.user.tenantId, req.user.sub, {
       generationType: 'article',
-      inputParams: { topic, style, platform, keywords },
+      inputParams: { topic, style, platform, keywords, locale: requestedLocale },
       outputContent: result.content,
       status: 'success',
     });

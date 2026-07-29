@@ -11,6 +11,8 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
 import clsx from 'clsx';
+import { ApiClientError } from '@/lib/api-client';
+import type { AIGenerationResult } from '@/lib/ai-service';
 
 dayjs.extend(relativeTime);
 
@@ -42,6 +44,10 @@ export default function CreateCenterPage() {
     const [script, setScript] = useState('');
     const [coverUrl, setCoverUrl] = useState('');
     const [titles, setTitles] = useState<string[]>([]);
+    const [generationMeta, setGenerationMeta] = useState<Pick<
+        AIGenerationResult,
+        'provenance' | 'sources' | 'quality' | 'disclaimer'
+    > | null>(null);
 
     // UI state
     const [isLoading, setIsLoading] = useState(false);
@@ -74,6 +80,7 @@ export default function CreateCenterPage() {
             });
 
             setScript(res.content);
+            setGenerationMeta(res);
             setMainTitle(topic);
 
             const titlesRes = await aiService.generateTitles(topic);
@@ -83,7 +90,17 @@ export default function CreateCenterPage() {
             spendPoints(5, 'content_generation', `生成关于 ${topic} 的内容`);
             message.success('创作成功，已扣除 5 积分');
         } catch (e: any) {
-            message.error(e.message || '生成内容失败');
+            if (e instanceof ApiClientError && e.status === 429) {
+                Modal.confirm({
+                    title: '今日生成额度已用完',
+                    content: e.details.reason || '升级专业版可获得更多生成次数和高级能力。',
+                    okText: '查看套餐',
+                    cancelText: '稍后再说',
+                    onOk: () => router.push(e.details.upgrade_url || '/billing/plans'),
+                });
+            } else {
+                message.error(e.message || '生成内容失败，请稍后重试');
+            }
         } finally {
             setIsLoading(false);
         }
@@ -332,6 +349,51 @@ export default function CreateCenterPage() {
                 </div>
 
                 {/* AI Suggestions */}
+                {generationMeta?.quality && (
+                    <div className="glass-card p-4" data-testid="quality-breakdown">
+                        <div className="flex items-center justify-between mb-3">
+                            <span className="font-bold text-sm">质量评分</span>
+                            <span className="text-2xl font-black text-indigo-600">{generationMeta.quality.total}/100</span>
+                        </div>
+                        {[
+                            ['准确性', generationMeta.quality.accuracy, 30],
+                            ['专业性', generationMeta.quality.professionalism, 25],
+                            ['平台适配', generationMeta.quality.platformFit, 20],
+                            ['引用', generationMeta.quality.citation, 15],
+                            ['安全合规', generationMeta.quality.safety, 10],
+                        ].map(([label, value, max]) => (
+                            <div key={String(label)} className="mb-2">
+                                <div className="flex justify-between text-xs mb-1">
+                                    <span>{label}</span><span>{value}/{max}</span>
+                                </div>
+                                <div className="h-1.5 rounded bg-zinc-200 overflow-hidden">
+                                    <div className="h-full bg-indigo-500" style={{ width: `${Number(value) / Number(max) * 100}%` }} />
+                                </div>
+                            </div>
+                        ))}
+                        {generationMeta.quality.suggestions.length > 0 && (
+                            <ul className="mt-3 text-xs text-amber-700 list-disc pl-4">
+                                {generationMeta.quality.suggestions.map(item => <li key={item}>{item}</li>)}
+                            </ul>
+                        )}
+                    </div>
+                )}
+
+                {generationMeta && (
+                    <div className="glass-card p-4" data-testid="provenance-panel">
+                        <Tag color={generationMeta.provenance === 'knowledge-assisted' ? 'blue' : 'gold'}>
+                            {generationMeta.provenance === 'knowledge-assisted' ? '知识库辅助生成' : 'AI 生成内容'}
+                        </Tag>
+                        <p className="text-xs text-zinc-500 mt-3">{generationMeta.disclaimer}</p>
+                        {(generationMeta.sources || []).map(source => (
+                            <a key={source.url} href={source.url} target="_blank" rel="noreferrer"
+                                className="block mt-2 text-xs text-indigo-600 hover:underline">
+                                {source.publisher} · {source.title} · 核验于 {source.verifiedAt}
+                            </a>
+                        ))}
+                    </div>
+                )}
+
                 {titles.length > 0 && (
                     <div className="glass-card p-4">
                         <div className="font-bold text-sm mb-4 flex items-center gap-2">

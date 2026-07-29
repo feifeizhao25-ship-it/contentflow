@@ -11,6 +11,23 @@ export interface AIGenerationParams {
 export interface AIGenerationResult {
     content: string;
     model?: string;
+    provenance?: 'knowledge-assisted' | 'ai-generated';
+    sources?: Array<{
+        title: string;
+        url: string;
+        publisher: string;
+        verifiedAt: string;
+    }>;
+    quality?: {
+        accuracy: number;
+        professionalism: number;
+        platformFit: number;
+        citation: number;
+        safety: number;
+        total: number;
+        suggestions: string[];
+    };
+    disclaimer?: string;
     usage?: {
         promptTokens: number;
         completionTokens: number;
@@ -241,6 +258,10 @@ export class AIService {
             content: result.content ?? '',
             model: result.model ?? 'server-managed',
             usage: result.usage,
+            provenance: result.provenance,
+            sources: result.sources ?? [],
+            quality: result.quality,
+            disclaimer: result.disclaimer,
         };
     }
 

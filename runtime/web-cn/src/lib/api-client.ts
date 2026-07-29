@@ -12,6 +12,17 @@ export interface ApiResponse<T = any> {
     message?: string;
 }
 
+export class ApiClientError extends Error {
+    constructor(
+        message: string,
+        public readonly status: number,
+        public readonly details: Record<string, any> = {},
+    ) {
+        super(message);
+        this.name = 'ApiClientError';
+    }
+}
+
 class ApiClient {
     private getHeaders() {
         const headers: Record<string, string> = {
@@ -79,7 +90,11 @@ class ApiClient {
         const data = await response.json().catch(() => ({}));
 
         if (!response.ok) {
-            throw new Error(data.message || 'API request failed');
+            throw new ApiClientError(
+                data.message || data.error || '请求失败，请稍后重试',
+                response.status,
+                data,
+            );
         }
 
         // The NestJS backend uses a TransformInterceptor that wraps data in { data, success, message }
