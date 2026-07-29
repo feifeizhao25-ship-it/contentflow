@@ -20,8 +20,8 @@ jobs:
       run:
         working-directory: runtime/api
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: 20
           cache: npm
@@ -41,8 +41,8 @@ jobs:
       run:
         working-directory: runtime/${{ matrix.app }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: 22
           cache: npm
@@ -56,7 +56,7 @@ jobs:
   deployment-config:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - run: cp runtime/.env.production.example runtime/.env.production
       - run: docker compose --env-file runtime/.env.production -f runtime/docker-compose.production.yml config --quiet
       - run: python3 scripts/verify_language_contracts.py
