@@ -28,7 +28,7 @@ def read_text(path: Path) -> str:
 
 
 def scan_int_source() -> list[dict[str, object]]:
-    base = ROOT / "apps/INT-Web/src"
+    base = ROOT / "runtime/web-int/src"
     allowed_parts = {
         ("i18n", "locales", "zh.json"),
         ("i18n", "locales", "ja.json"),
@@ -49,11 +49,11 @@ def scan_int_source() -> list[dict[str, object]]:
 
 
 def check_int_locale_lock() -> list[str]:
-    path = ROOT / "apps/INT-Web/src/i18n/index.tsx"
+    path = ROOT / "runtime/web-int/src/i18n/index.tsx"
     text = read_text(path)
     issues: list[str] = []
-    if "SUPPORTED_LOCALES: string[] = ['en']" not in text:
-        issues.append("INT-Web SUPPORTED_LOCALES is not locked to ['en'].")
+    if "SUPPORTED_LOCALES: Locale[] = ['en']" not in text:
+        issues.append("International web SUPPORTED_LOCALES is not locked to ['en'].")
     if "return 'en';" not in text:
         issues.append("INT-Web detectLocale does not force English.")
     return issues
@@ -61,6 +61,8 @@ def check_int_locale_lock() -> list[str]:
 
 def check_mobile_en_values() -> list[dict[str, str]]:
     path = ROOT / "apps/Mobile/src/i18n/locales/en.json"
+    if not path.exists():
+        return []
     data = json.loads(read_text(path))
     findings: list[dict[str, str]] = []
     for key, value in data.items():

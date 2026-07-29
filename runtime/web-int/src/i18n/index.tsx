@@ -1,7 +1,12 @@
-export type Locale = string;
-const translations: Record<string, Translations> = { en };
-export const PRODUCTION_LOCALES: string[] = ['en'];
-export const BETA_LOCALES: string[] = [];
-export const SUPPORTED_LOCALES: string[] = ['en'];
+export type Locale = 'en';
+export const PRODUCTION_LOCALES: Locale[] = ['en'];
+export const BETA_LOCALES: Locale[] = [];
+export const SUPPORTED_LOCALES: Locale[] = ['en'];
 
-export const LOCALE_LABELS: Record<string, string> = {
+export const LOCALE_LABELS: Record<Locale, string> = {
+  en: 'English',
+};
+
+export function detectLocale(): Locale {
+  return 'en';
+}
