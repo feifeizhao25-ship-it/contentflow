@@ -16,6 +16,7 @@ export class AIService {
   private readonly logger = new Logger(AIService.name);
   private readonly qwenApiKey: string;
   private readonly deepseekApiKey: string;
+  private readonly openrouterApiKey: string;
   private readonly falApiKey: string;
 
   constructor(
@@ -24,6 +25,7 @@ export class AIService {
   ) {
     this.qwenApiKey = this.configService.get('QWEN_API_KEY', '');
     this.deepseekApiKey = this.configService.get('DEEPSEEK_API_KEY', '');
+    this.openrouterApiKey = this.configService.get('OPENROUTER_API_KEY', '');
     this.falApiKey = this.configService.get('FAL_API_KEY', '');
   }
 
@@ -33,13 +35,43 @@ export class AIService {
     maxTokens?: number;
     temperature?: number;
   }): Promise<AIResponse> {
-    const model = params.model || 'qwen-turbo';
-    const provider = model.includes('deepseek') ? 'deepseek' : 'qwen';
-    const apiKey = provider === 'deepseek' ? this.deepseekApiKey : this.qwenApiKey;
+    const configuredModels = this.configService
+      .get('OPENROUTER_MODELS', 'x-ai/grok-4.5')
+      .split(',')
+      .map((value: string) => value.trim())
+      .filter(Boolean);
+    const model = params.model || configuredModels[0] || 'x-ai/grok-4.5';
+    const useOpenRouter = model.includes('/') || configuredModels.includes(model);
+    const provider = useOpenRouter
+      ? 'openrouter'
+      : model.includes('deepseek') ? 'deepseek' : 'qwen';
+    const apiKey = provider === 'openrouter'
+      ? this.openrouterApiKey
+      : provider === 'deepseek' ? this.deepseekApiKey : this.qwenApiKey;
+    if (!apiKey) {
+      throw new Error(`${provider.toUpperCase()} API key not configured`);
+    }
 
-    const baseUrl = provider === 'deepseek' 
-      ? 'https://api.deepseek.com/v1' 
-      : 'https://dashscope.aliyuncs.com/api/v1';
+    const baseUrl = provider === 'openrouter'
+      ? this.configService.get('OPENROUTER_BASE_URL', 'https://openrouter.ai/api/v1')
+      : provider === 'deepseek'
+        ? 'https://api.deepseek.com/v1'
+        : 'https://dashscope.aliyuncs.com/api/v1';
+    const openRouterHeaders = provider === 'openrouter' ? {
+      'HTTP-Referer': this.configService.get(
+        'OPENROUTER_SITE_URL',
+        'https://contentflow.invalid',
+      ),
+      'X-Title': 'ContentFlow',
+    } : {};
+    const openRouterRouting = provider === 'openrouter' ? {
+      models: configuredModels,
+      provider: {
+        data_collection: 'deny',
+        zdr: true,
+        allow_fallbacks: configuredModels.length > 1,
+      },
+    } : {};
 
     try {
       const response = await fetch(`${baseUrl}/chat/completions`, {
@@ -47,6 +79,7 @@ export class AIService {
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${apiKey}`,
+          ...openRouterHeaders,
         },
         body: JSON.stringify({
           model: model,
@@ -55,6 +88,7 @@ export class AIService {
           ],
           max_tokens: params.maxTokens || 2000,
           temperature: params.temperature || 0.7,
+          ...openRouterRouting,
         }),
       });
 
