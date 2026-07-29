@@ -69,7 +69,17 @@ export default function CreateCenterPage() {
 
     const handleGenerateContent = async () => {
         if (!topic) return message.warning('请输入您的选题灵感');
-        if (balance < 5) return message.error('积分不足，建议生成需要 5 积分');
+        if (balance < 5) {
+            Modal.confirm({
+                title: '生成积分不足',
+                content: `本次生成需要 5 积分，当前剩余 ${balance} 积分。可先完成签到任务，或查看会员套餐。`,
+                okText: '去获取积分',
+                cancelText: '查看套餐',
+                onOk: () => router.push('/points'),
+                onCancel: () => router.push('/billing/plans'),
+            });
+            return;
+        }
 
         setIsLoading(true);
         try {
