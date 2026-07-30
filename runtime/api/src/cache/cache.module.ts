@@ -72,6 +72,10 @@ class MockRedis {
   async publish(channel: string, message: string): Promise<number> {
     return 0;
   }
+
+  async ping(): Promise<string> {
+    return 'PONG';
+  }
   
   async eval(script: string, numKeys: number, ...args: string[]): Promise<any> {
     return 0;
