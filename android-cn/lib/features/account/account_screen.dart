@@ -14,7 +14,7 @@ class AccountScreen extends ConsumerWidget {
       backgroundColor: const Color(0xFFF8F9FA),
       body: SafeArea(
         child: userAsync.when(
-          data: (user) => _buildContent(context, user),
+          data: (user) => _buildContent(context, ref, user),
           loading: () => const Center(child: CircularProgressIndicator()),
           error: (e, _) => Center(child: Text('加载失败: $e')),
         ),
@@ -22,7 +22,7 @@ class AccountScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildContent(BuildContext context, User user) {
+  Widget _buildContent(BuildContext context, WidgetRef ref, User user) {
     return CustomScrollView(
       slivers: [
         // Header
@@ -37,14 +37,24 @@ class AccountScreen extends ConsumerWidget {
 
         // Menu Items
         SliverToBoxAdapter(child: _buildSectionTitle('功能')),
-        SliverToBoxAdapter(child: _buildMenuItem(context, Icons.people, '团队管理', '管理团队成员')),
-        SliverToBoxAdapter(child: _buildMenuItem(context, Icons.key, 'API 配置', '管理 API 密钥')),
-        
+        SliverToBoxAdapter(
+          child: _buildMenuItem(context, Icons.people, '团队管理', '管理团队成员'),
+        ),
+        SliverToBoxAdapter(
+          child: _buildMenuItem(context, Icons.key, 'API 配置', '管理 API 密钥'),
+        ),
+
         SliverToBoxAdapter(child: _buildSectionTitle('设置')),
-        SliverToBoxAdapter(child: _buildMenuItem(context, Icons.settings, '应用设置', '')),
-        SliverToBoxAdapter(child: _buildMenuItem(context, Icons.help_outline, '帮助文档', '')),
-        SliverToBoxAdapter(child: _buildMenuItem(context, Icons.info_outline, '关于我们', '')),
-        
+        SliverToBoxAdapter(
+          child: _buildMenuItem(context, Icons.settings, '应用设置', ''),
+        ),
+        SliverToBoxAdapter(
+          child: _buildMenuItem(context, Icons.help_outline, '帮助文档', ''),
+        ),
+        SliverToBoxAdapter(
+          child: _buildMenuItem(context, Icons.info_outline, '关于我们', ''),
+        ),
+
         SliverToBoxAdapter(child: _buildLogoutButton(context, ref)),
 
         const SliverToBoxAdapter(child: SizedBox(height: 100)),
@@ -62,8 +72,12 @@ class AccountScreen extends ConsumerWidget {
           // Avatar
           CircleAvatar(
             radius: 50,
-            backgroundColor: Theme.of(context).primaryColor.withValues(alpha: 0.1),
-            backgroundImage: user.avatar != null ? NetworkImage(user.avatar!) : null,
+            backgroundColor: Theme.of(
+              context,
+            ).primaryColor.withValues(alpha: 0.1),
+            backgroundImage: user.avatar != null
+                ? NetworkImage(user.avatar!)
+                : null,
             child: user.avatar == null
                 ? Text(
                     user.name.substring(0, 1),
@@ -77,10 +91,7 @@ class AccountScreen extends ConsumerWidget {
           const SizedBox(height: 12),
           Text(
             user.name,
-            style: const TextStyle(
-              fontSize: 22,
-              fontWeight: FontWeight.bold,
-            ),
+            style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 4),
           Container(
@@ -263,7 +274,12 @@ class AccountScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildMenuItem(BuildContext context, IconData icon, String title, String subtitle) {
+  Widget _buildMenuItem(
+    BuildContext context,
+    IconData icon,
+    String title,
+    String subtitle,
+  ) {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
       decoration: BoxDecoration(
@@ -312,12 +328,15 @@ class AccountScreen extends ConsumerWidget {
                       await ref.read(apiClientProvider).clearToken();
                       ref.invalidate(authStateProvider);
                       if (context.mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('已退出登录')),
-                        );
+                        ScaffoldMessenger.of(
+                          context,
+                        ).showSnackBar(const SnackBar(content: Text('已退出登录')));
                       }
                     },
-                    child: const Text('确定', style: TextStyle(color: Colors.red)),
+                    child: const Text(
+                      '确定',
+                      style: TextStyle(color: Colors.red),
+                    ),
                   ),
                 ],
               ),

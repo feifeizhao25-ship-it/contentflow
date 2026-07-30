@@ -1,5 +1,5 @@
-name: contentflow_mobile
-description: ContentFlow Mobile - 内容增长助手
+name: contentflow_global
+description: ContentFlow Mobile — Global content growth assistant
 publish_to: 'none'
 version: 1.0.0+1
 
@@ -46,6 +46,3 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
-  
-  assets:
-    - assets/images/

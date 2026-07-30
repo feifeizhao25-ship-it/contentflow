@@ -23,14 +23,10 @@ class TodayScreen extends ConsumerWidget {
           child: CustomScrollView(
             slivers: [
               // Header
-              SliverToBoxAdapter(
-                child: _buildHeader(context),
-              ),
+              SliverToBoxAdapter(child: _buildHeader(context)),
 
               // Today's Date
-              SliverToBoxAdapter(
-                child: _buildDateHeader(context),
-              ),
+              SliverToBoxAdapter(child: _buildDateHeader(context)),
 
               // Schedule Tasks
               SliverToBoxAdapter(
@@ -38,7 +34,8 @@ class TodayScreen extends ConsumerWidget {
               ),
 
               schedulesAsync.when(
-                data: (schedules) => _buildScheduleList(context, ref, schedules),
+                data: (schedules) =>
+                    _buildScheduleList(context, ref, schedules),
                 loading: () => const SliverToBoxAdapter(
                   child: Center(child: CircularProgressIndicator()),
                 ),
@@ -57,14 +54,11 @@ class TodayScreen extends ConsumerWidget {
                 loading: () => const SliverToBoxAdapter(
                   child: Center(child: CircularProgressIndicator()),
                 ),
-                error: (e, _) => const SliverToBoxAdapter(
-                  child: SizedBox.shrink(),
-                ),
+                error: (e, _) =>
+                    const SliverToBoxAdapter(child: SizedBox.shrink()),
               ),
 
-              const SliverToBoxAdapter(
-                child: SizedBox(height: 100),
-              ),
+              const SliverToBoxAdapter(child: SizedBox(height: 100)),
             ],
           ),
         ),
@@ -77,10 +71,7 @@ class TodayScreen extends ConsumerWidget {
       padding: const EdgeInsets.all(20),
       child: Row(
         children: [
-          const Text(
-            '📅',
-            style: TextStyle(fontSize: 28),
-          ),
+          const Text('📅', style: TextStyle(fontSize: 28)),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
@@ -96,10 +87,7 @@ class TodayScreen extends ConsumerWidget {
                 ),
                 const Text(
                   'Content growth assistant',
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Colors.grey,
-                  ),
+                  style: TextStyle(fontSize: 14, color: Colors.grey),
                 ),
               ],
             ),
@@ -111,7 +99,15 @@ class TodayScreen extends ConsumerWidget {
 
   Widget _buildDateHeader(BuildContext context) {
     final now = DateTime.now();
-    final weekdays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+    final weekdays = [
+      'Monday',
+      'Tuesday',
+      'Wednesday',
+      'Thursday',
+      'Friday',
+      'Saturday',
+      'Sunday',
+    ];
 
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 20),
@@ -140,10 +136,7 @@ class TodayScreen extends ConsumerWidget {
               ),
               Text(
                 weekdays[now.weekday - 1],
-                style: const TextStyle(
-                  fontSize: 16,
-                  color: Colors.white70,
-                ),
+                style: const TextStyle(fontSize: 16, color: Colors.white70),
               ),
             ],
           ),
@@ -178,15 +171,16 @@ class TodayScreen extends ConsumerWidget {
       padding: const EdgeInsets.fromLTRB(20, 24, 20, 12),
       child: Text(
         title,
-        style: const TextStyle(
-          fontSize: 18,
-          fontWeight: FontWeight.bold,
-        ),
+        style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
       ),
     );
   }
 
-  Widget _buildScheduleList(BuildContext context, WidgetRef ref, List<Schedule> schedules) {
+  Widget _buildScheduleList(
+    BuildContext context,
+    WidgetRef ref,
+    List<Schedule> schedules,
+  ) {
     if (schedules.isEmpty) {
       return SliverToBoxAdapter(
         child: Container(
@@ -214,7 +208,11 @@ class TodayScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildScheduleCard(BuildContext context, WidgetRef ref, Schedule schedule) {
+  Widget _buildScheduleCard(
+    BuildContext context,
+    WidgetRef ref,
+    Schedule schedule,
+  ) {
     final isFailed = schedule.status == ScheduleStatus.failed;
     final isPending = [
       ScheduleStatus.pending,
@@ -241,7 +239,9 @@ class TodayScreen extends ConsumerWidget {
               padding: const EdgeInsets.symmetric(vertical: 8),
               decoration: BoxDecoration(
                 color: Colors.red.shade50,
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(10)),
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(10),
+                ),
               ),
               child: const Row(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -307,10 +307,7 @@ class TodayScreen extends ConsumerWidget {
                   const SizedBox(height: 8),
                   Text(
                     'Reason: ${schedule.errorMessage}',
-                    style: TextStyle(
-                      color: Colors.red.shade400,
-                      fontSize: 13,
-                    ),
+                    style: TextStyle(color: Colors.red.shade400, fontSize: 13),
                   ),
                 ],
 
@@ -498,7 +495,10 @@ class TodayScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildAnalyticsSummary(BuildContext context, AnalyticsSummary summary) {
+  Widget _buildAnalyticsSummary(
+    BuildContext context,
+    AnalyticsSummary summary,
+  ) {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 20),
       padding: const EdgeInsets.all(20),
@@ -532,25 +532,21 @@ class TodayScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildStatItem(BuildContext context, String label, String value, IconData icon) {
+  Widget _buildStatItem(
+    BuildContext context,
+    String label,
+    String value,
+    IconData icon,
+  ) {
     return Column(
       children: [
         Icon(icon, color: Theme.of(context).primaryColor, size: 28),
         const SizedBox(height: 8),
         Text(
           value,
-          style: const TextStyle(
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-          ),
+          style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
         ),
-        Text(
-          label,
-          style: const TextStyle(
-            color: Colors.grey,
-            fontSize: 12,
-          ),
-        ),
+        Text(label, style: const TextStyle(color: Colors.grey, fontSize: 12)),
       ],
     );
   }

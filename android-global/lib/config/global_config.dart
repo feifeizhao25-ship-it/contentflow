@@ -6,7 +6,7 @@ class AppConfig {
     'API_BASE_URL',
     defaultValue: 'https://api.fenfa.ai/v1',
   );
-  
+
   // Platforms
   static const platforms = [
     {'id': 'twitter', 'name': 'Twitter'},
@@ -14,7 +14,7 @@ class AppConfig {
     {'id': 'instagram', 'name': 'Instagram'},
     {'id': 'tiktok', 'name': 'TikTok'},
   ];
-  
+
   // Payment
   static const currency = 'USD';
   static const paymentMethods = ['stripe', 'paypal'];

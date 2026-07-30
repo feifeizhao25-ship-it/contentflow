@@ -9,27 +9,28 @@ class ApiClient {
   final TokenStorage _tokenStorage;
 
   ApiClient(this._tokenStorage)
-      : _dio = Dio(BaseOptions(
+    : _dio = Dio(
+        BaseOptions(
           baseUrl: AppConfig.apiBaseUrl,
           connectTimeout: const Duration(seconds: 10),
           receiveTimeout: const Duration(seconds: 30),
-          headers: {
-            'Content-Type': 'application/json',
-            'X-Client': 'mobile',
-          },
-        )) {
-    _dio.interceptors.add(InterceptorsWrapper(
-      onRequest: (options, handler) async {
-        final token = await _tokenStorage.readToken();
-        if (token != null && token.isNotEmpty) {
-          options.headers['Authorization'] = 'Bearer $token';
-        }
-        return handler.next(options);
-      },
-      onError: (error, handler) {
-        return handler.next(error);
-      },
-    ));
+          headers: {'Content-Type': 'application/json', 'X-Client': 'mobile'},
+        ),
+      ) {
+    _dio.interceptors.add(
+      InterceptorsWrapper(
+        onRequest: (options, handler) async {
+          final token = await _tokenStorage.readToken();
+          if (token != null && token.isNotEmpty) {
+            options.headers['Authorization'] = 'Bearer $token';
+          }
+          return handler.next(options);
+        },
+        onError: (error, handler) {
+          return handler.next(error);
+        },
+      ),
+    );
   }
 
   Future<T> _handle<T>(
@@ -77,10 +78,7 @@ class ApiClient {
     return _handle(
       () => _dio.post(
         '/content-pack/generate',
-        data: {
-          'topic': topic,
-          'count': titleCount,
-        },
+        data: {'topic': topic, 'count': titleCount},
       ),
       (payload) => ContentPack.fromJson(_extractMap(payload)),
     );
@@ -96,9 +94,9 @@ class ApiClient {
   Future<List<ContentPack>> getContentPacks() async {
     return _handle(
       () => _dio.get('/content-pack/list'),
-      (payload) => _extractList(payload)
-          .map((e) => ContentPack.fromJson(Map<String, dynamic>.from(e)))
-          .toList(),
+      (payload) => _extractList(
+        payload,
+      ).map((e) => ContentPack.fromJson(Map<String, dynamic>.from(e))).toList(),
     );
   }
 
@@ -107,9 +105,9 @@ class ApiClient {
   Future<List<Schedule>> getTodaySchedules() async {
     return _handle(
       () => _dio.get('/schedule/today'),
-      (payload) => _extractList(payload)
-          .map((e) => Schedule.fromJson(Map<String, dynamic>.from(e)))
-          .toList(),
+      (payload) => _extractList(
+        payload,
+      ).map((e) => Schedule.fromJson(Map<String, dynamic>.from(e))).toList(),
     );
   }
 
@@ -135,23 +133,20 @@ class ApiClient {
         '/assets/list',
         queryParameters: type != null ? {'type': type.name} : null,
       ),
-      (payload) => _extractList(payload)
-          .map((e) => Asset.fromJson(Map<String, dynamic>.from(e)))
-          .toList(),
+      (payload) => _extractList(
+        payload,
+      ).map((e) => Asset.fromJson(Map<String, dynamic>.from(e))).toList(),
     );
   }
 
   Future<Asset> uploadAsset(String filePath, AssetType type) async {
-    return _handle(
-      () async {
-        final formData = FormData.fromMap({
-          'file': await MultipartFile.fromFile(filePath),
-          'type': type.name,
-        });
-        return _dio.post('/assets/upload', data: formData);
-      },
-      (payload) => Asset.fromJson(_extractMap(payload)),
-    );
+    return _handle(() async {
+      final formData = FormData.fromMap({
+        'file': await MultipartFile.fromFile(filePath),
+        'type': type.name,
+      });
+      return _dio.post('/assets/upload', data: formData);
+    }, (payload) => Asset.fromJson(_extractMap(payload)));
   }
 
   // ============== Analytics ==============
@@ -200,7 +195,8 @@ class ApiClient {
         data: {
           'email': email,
           'password': password,
-          if (tenantSlug != null && tenantSlug.isNotEmpty) 'tenant_slug': tenantSlug,
+          if (tenantSlug != null && tenantSlug.isNotEmpty)
+            'tenant_slug': tenantSlug,
         },
       ),
       (data) => data,

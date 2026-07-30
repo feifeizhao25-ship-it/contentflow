@@ -53,6 +53,48 @@ jobs:
           API_INTERNAL_URL: http://127.0.0.1:4000
       - run: npm audit --omit=dev --audit-level=high
 
+  mobile:
+    strategy:
+      fail-fast: false
+      matrix:
+        app: [android-cn, android-global, ios-cn, ios-global]
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ${{ matrix.app }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: 3.38.5
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - run: dart format --output=none --set-exit-if-changed lib test
+      - run: flutter analyze
+      - run: flutter test
+      - if: startsWith(matrix.app, 'android-')
+        run: flutter build apk --release
+
+  mobile-ios-build:
+    strategy:
+      fail-fast: false
+      matrix:
+        app: [ios-cn, ios-global]
+    runs-on: macos-15
+    defaults:
+      run:
+        working-directory: ${{ matrix.app }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: 3.38.5
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - run: flutter build ios --release --no-codesign
+
   deployment-config:
     runs-on: ubuntu-latest
     steps:

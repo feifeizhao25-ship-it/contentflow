@@ -6,7 +6,7 @@ class AppConfig {
     'API_BASE_URL',
     defaultValue: 'https://api.fenfa.cn/v1',
   );
-  
+
   // 平台
   static const platforms = [
     {'id': 'douyin', 'name': '抖音'},
@@ -14,7 +14,7 @@ class AppConfig {
     {'id': 'wechat', 'name': '微信'},
     {'id': 'weibo', 'name': '微博'},
   ];
-  
+
   // 支付
   static const currency = 'CNY';
   static const paymentMethods = ['alipay', 'wechat_pay'];

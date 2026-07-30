@@ -31,9 +31,11 @@ class ContentPack {
       script: json['script'] ?? '',
       hashtags: List<String>.from(json['hashtags'] ?? []),
       platformPayloads: json['platform_payloads'] != null
-          ? Map<String, PlatformPayload>.from(json['platform_payloads'].map(
-              (k, v) => MapEntry(k, PlatformPayload.fromJson(v)),
-            ))
+          ? Map<String, PlatformPayload>.from(
+              json['platform_payloads'].map(
+                (k, v) => MapEntry(k, PlatformPayload.fromJson(v)),
+              ),
+            )
           : null,
       createdAt: DateTime.tryParse(json['created_at'] ?? '') ?? DateTime.now(),
     );
@@ -47,7 +49,9 @@ class ContentPack {
       'hooks': hooks,
       'script': script,
       'hashtags': hashtags,
-      'platform_payloads': platformPayloads?.map((k, v) => MapEntry(k, v.toJson())),
+      'platform_payloads': platformPayloads?.map(
+        (k, v) => MapEntry(k, v.toJson()),
+      ),
       'created_at': createdAt.toIso8601String(),
     };
   }
@@ -127,7 +131,8 @@ class Schedule {
       contentPackId: json['content_pack_id'] ?? '',
       title: json['title'],
       platform: json['platform'] ?? '',
-      publishTime: DateTime.tryParse(json['publish_time'] ?? '') ?? DateTime.now(),
+      publishTime:
+          DateTime.tryParse(json['publish_time'] ?? '') ?? DateTime.now(),
       status: ScheduleStatus.values.firstWhere(
         (e) => e.name == json['status'],
         orElse: () => ScheduleStatus.pending,
@@ -169,11 +174,7 @@ class Schedule {
 }
 
 // ============== Asset ==============
-enum AssetType {
-  image,
-  video,
-  script,
-}
+enum AssetType { image, video, script }
 
 class Asset {
   final String id;
@@ -202,7 +203,8 @@ class Asset {
       url: json['url'] ?? '',
       thumbnail: json['thumbnail'],
       name: json['name'],
-      uploadedAt: DateTime.tryParse(json['uploaded_at'] ?? '') ?? DateTime.now(),
+      uploadedAt:
+          DateTime.tryParse(json['uploaded_at'] ?? '') ?? DateTime.now(),
     );
   }
 }
@@ -240,7 +242,7 @@ class ContentAnalytics {
   }
 
   int get totalEngagement => likes + comments + shares;
-  
+
   double get engagementRate => views > 0 ? totalEngagement / views : 0;
 }
 
@@ -262,7 +264,8 @@ class AnalyticsSummary {
       totalViews: json['total_views'] ?? 0,
       totalEngagement: json['total_engagement'] ?? 0,
       totalContent: json['total_content'] ?? 0,
-      topContent: (json['top_content'] as List?)
+      topContent:
+          (json['top_content'] as List?)
               ?.map((e) => ContentAnalytics.fromJson(e))
               .toList() ??
           [],

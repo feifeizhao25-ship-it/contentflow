@@ -23,9 +23,9 @@ class _CreateScreenState extends ConsumerState<CreateScreen> {
 
   Future<void> _generateContentPack() async {
     if (_topicController.text.trim().isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please enter a topic')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Please enter a topic')));
       return;
     }
 
@@ -35,15 +35,17 @@ class _CreateScreenState extends ConsumerState<CreateScreen> {
 
     try {
       final api = ref.read(apiClientProvider);
-      final pack = await api.generateContentPack(topic: _topicController.text.trim());
+      final pack = await api.generateContentPack(
+        topic: _topicController.text.trim(),
+      );
       setState(() {
         _generatedPack = pack;
       });
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Generation failed: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Generation failed: $e')));
       }
     } finally {
       if (mounted) {
@@ -62,25 +64,17 @@ class _CreateScreenState extends ConsumerState<CreateScreen> {
         child: CustomScrollView(
           slivers: [
             // Header
-            SliverToBoxAdapter(
-              child: _buildHeader(context),
-            ),
+            SliverToBoxAdapter(child: _buildHeader(context)),
 
             // Input Section
-            SliverToBoxAdapter(
-              child: _buildInputSection(context),
-            ),
+            SliverToBoxAdapter(child: _buildInputSection(context)),
 
             // Generated Content
             if (_generatedPack != null) ...[
-              SliverToBoxAdapter(
-                child: _buildGeneratedContent(context),
-              ),
+              SliverToBoxAdapter(child: _buildGeneratedContent(context)),
             ],
 
-            const SliverToBoxAdapter(
-              child: SizedBox(height: 100),
-            ),
+            const SliverToBoxAdapter(child: SizedBox(height: 100)),
           ],
         ),
       ),
@@ -92,10 +86,7 @@ class _CreateScreenState extends ConsumerState<CreateScreen> {
       padding: const EdgeInsets.all(20),
       child: Row(
         children: [
-          const Text(
-            '✨',
-            style: TextStyle(fontSize: 28),
-          ),
+          const Text('✨', style: TextStyle(fontSize: 28)),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
@@ -111,10 +102,7 @@ class _CreateScreenState extends ConsumerState<CreateScreen> {
                 ),
                 const Text(
                   'AI helps you create content',
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Colors.grey,
-                  ),
+                  style: TextStyle(fontSize: 14, color: Colors.grey),
                 ),
               ],
             ),
@@ -137,10 +125,7 @@ class _CreateScreenState extends ConsumerState<CreateScreen> {
         children: [
           const Text(
             'Enter topic',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-            ),
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 12),
           TextField(
@@ -186,7 +171,10 @@ class _CreateScreenState extends ConsumerState<CreateScreen> {
                     )
                   : const Text(
                       'Generate content pack',
-                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
             ),
           ),
@@ -218,7 +206,9 @@ class _CreateScreenState extends ConsumerState<CreateScreen> {
                         width: 24,
                         height: 24,
                         decoration: BoxDecoration(
-                          color: Theme.of(context).primaryColor.withValues(alpha: 0.1),
+                          color: Theme.of(
+                            context,
+                          ).primaryColor.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: Center(
@@ -269,10 +259,7 @@ class _CreateScreenState extends ConsumerState<CreateScreen> {
           _buildContentCard(
             context,
             '📜 Script',
-            Text(
-              pack.script,
-              style: const TextStyle(height: 1.6),
-            ),
+            Text(pack.script, style: const TextStyle(height: 1.6)),
           ),
 
           const SizedBox(height: 16),
@@ -286,16 +273,19 @@ class _CreateScreenState extends ConsumerState<CreateScreen> {
               runSpacing: 8,
               children: pack.hashtags.map((tag) {
                 return Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 6,
+                  ),
                   decoration: BoxDecoration(
-                    color: Theme.of(context).primaryColor.withValues(alpha: 0.1),
+                    color: Theme.of(
+                      context,
+                    ).primaryColor.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(16),
                   ),
                   child: Text(
                     tag,
-                    style: TextStyle(
-                      color: Theme.of(context).primaryColor,
-                    ),
+                    style: TextStyle(color: Theme.of(context).primaryColor),
                   ),
                 );
               }).toList(),
@@ -329,7 +319,9 @@ class _CreateScreenState extends ConsumerState<CreateScreen> {
                   onPressed: () {
                     // TODO: Navigate to platform adapter
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Opening platform adaptation...')),
+                      const SnackBar(
+                        content: Text('Opening platform adaptation...'),
+                      ),
                     );
                   },
                   icon: const Icon(Icons.adjust),
@@ -360,10 +352,7 @@ class _CreateScreenState extends ConsumerState<CreateScreen> {
         children: [
           Text(
             title,
-            style: const TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-            ),
+            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 12),
           content,
