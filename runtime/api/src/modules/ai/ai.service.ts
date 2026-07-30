@@ -201,9 +201,19 @@ export class AIService {
         allow_fallbacks: configuredModels.length > 1,
       },
     } : {};
+    const requestTimeoutMs = Math.max(
+      5_000,
+      Math.min(
+        this.configService.get<number>('AI_REQUEST_TIMEOUT_MS', 60_000),
+        120_000,
+      ),
+    );
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), requestTimeoutMs);
 
     try {
       const response = await fetch(`${baseUrl}/chat/completions`, {
+        signal: controller.signal,
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -218,8 +228,8 @@ export class AIService {
               : []),
             { role: 'user', content: params.prompt }
           ],
-          max_tokens: params.maxTokens || 2000,
-          temperature: params.temperature || 0.7,
+          max_tokens: params.maxTokens ?? 2000,
+          temperature: params.temperature ?? 0.7,
           ...openRouterRouting,
         }),
       });
@@ -245,6 +255,8 @@ export class AIService {
     } catch (error) {
       this.logger.error('AI generation failed:', error);
       throw error;
+    } finally {
+      clearTimeout(timeout);
     }
   }
 
