@@ -10,7 +10,7 @@ describe('AI content contract', () => {
 
   it('scores sourced content higher and returns actionable dimensions', () => {
     const unsourced = scoreContent('Short draft', []);
-    const sourced = scoreContent('A structured draft.\nWith evidence and action.', [{
+    const sourced = scoreContent('A structured draft.\nEvidence from Official publisher [1].', [{
       title: 'Policy',
       url: 'https://example.test',
       publisher: 'Official publisher',
@@ -27,8 +27,29 @@ describe('AI content contract', () => {
   });
 
   it('keeps domestic and international platform sources isolated', () => {
-    expect(sourcesForPlatform('douyin')[0].publisher).toBe('抖音');
-    expect(sourcesForPlatform('linkedin')[0].publisher).toBe('LinkedIn');
+    const now = new Date('2026-07-30T12:00:00Z');
+    expect(sourcesForPlatform('douyin', now)[0].publisher).toBe('抖音');
+    expect(sourcesForPlatform('linkedin', now)[0].publisher).toBe('LinkedIn');
     expect(sourcesForPlatform('unknown')).toEqual([]);
+  });
+
+  it('fails closed when platform guidance is overdue for review', () => {
+    expect(sourcesForPlatform(
+      'tiktok',
+      new Date('2026-09-01T00:00:00Z'),
+      30,
+    )).toEqual([]);
+  });
+
+  it('does not award full citation points for an uncited source list', () => {
+    const source = [{
+      title: 'Policy',
+      url: 'https://example.test',
+      publisher: 'Official publisher',
+      verifiedAt: '2026-07-30',
+    }];
+    expect(scoreContent('A claim without a reference.', source).citation).toBeLessThan(
+      scoreContent('A claim supported by Official publisher [1].', source).citation,
+    );
   });
 });

@@ -140,7 +140,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
                 initial={false}
                 animate={{ width: sidebarWidth }}
                 className={clsx(
-                    "fixed left-0 top-0 bottom-0 z-50 h-screen transition-all duration-300 flex flex-col",
+                    "app-sidebar fixed left-0 top-0 bottom-0 z-50 h-screen transition-all duration-300 flex flex-col",
                     isDarkMode 
                         ? "bg-zinc-900/95 backdrop-blur-xl border-r border-zinc-800" 
                         : "bg-white/95 backdrop-blur-xl border-r border-slate-100"
@@ -239,13 +239,13 @@ export default function MainLayout({ children }: MainLayoutProps) {
 
             {/* 主内容区 */}
             <main
-                className="flex-1 transition-all duration-300 flex flex-col min-h-screen relative"
-                style={{ marginLeft: sidebarWidth }}
+                className="app-main flex-1 transition-all duration-300 flex flex-col min-h-screen relative min-w-0"
+                style={{ '--sidebar-width': `${sidebarWidth}px` } as React.CSSProperties}
             >
                 {/* 顶部栏 */}
                 <header
                     className={clsx(
-                        "sticky top-0 z-40 transition-all duration-300 px-6 h-16 flex items-center justify-between",
+                        "app-topbar sticky top-0 z-40 transition-all duration-300 px-6 h-16 flex items-center justify-between",
                         scrolled 
                             ? isDarkMode 
                                 ? "bg-zinc-900/60 border-b border-zinc-800 backdrop-blur-xl" 
@@ -386,7 +386,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
 
                 {/* 内容区 */}
                 <div className={clsx(
-                    "flex-1 p-6 overflow-x-hidden",
+                    "app-content flex-1 p-6 overflow-x-hidden",
                     isDarkMode ? "bg-zinc-950" : "bg-background"
                 )}>
                     {/* 背景光效 */}

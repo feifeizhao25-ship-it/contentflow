@@ -12,6 +12,7 @@ const links = [
   ['Create', '/create'],
   ['Content Packs', '/content-packs'],
   ['Data Network', '/data-network'],
+  ['7-day experience', '/experience-week'],
 ];
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {

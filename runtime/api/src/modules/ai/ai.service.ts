@@ -16,6 +16,7 @@ export interface ContentSource {
   url: string;
   publisher: string;
   verifiedAt: string;
+  freshnessStatus?: 'current' | 'review-required';
 }
 
 export interface QualityBreakdown {
@@ -67,8 +68,23 @@ const PLATFORM_KNOWLEDGE: Record<string, ContentSource[]> = {
   }],
 };
 
-export function sourcesForPlatform(platform: string): ContentSource[] {
-  return [...(PLATFORM_KNOWLEDGE[platform.toLowerCase()] || [])];
+export function sourcesForPlatform(
+  platform: string,
+  now: Date = new Date(),
+  maxAgeDays = 30,
+): ContentSource[] {
+  return (PLATFORM_KNOWLEDGE[platform.toLowerCase()] || [])
+    .map((source) => {
+      const ageMs = now.getTime() - new Date(`${source.verifiedAt}T00:00:00Z`).getTime();
+      const current = Number.isFinite(ageMs) &&
+        ageMs >= 0 &&
+        ageMs <= maxAgeDays * 24 * 60 * 60 * 1000;
+      return {
+        ...source,
+        freshnessStatus: current ? 'current' as const : 'review-required' as const,
+      };
+    })
+    .filter((source) => source.freshnessStatus === 'current');
 }
 
 export function sanitizeTitles(raw: string, count: number): string[] {
@@ -93,16 +109,24 @@ export function scoreContent(
   locale: 'zh-CN' | 'en' = 'en',
 ): QualityBreakdown {
   const hasStructure = /[\n#]|[。.!?]\s/.test(content);
-  const accuracy = sources.length ? 28 : 22;
+  const hasInlineCitation = sources.some((source, index) =>
+    content.includes(`[${index + 1}]`) ||
+    content.includes(source.publisher) ||
+    content.includes(source.url)
+  );
+  const accuracy = sources.length ? 26 : 20;
   const professionalism = hasStructure ? 23 : 18;
   const platformFit = content.length >= 80 ? 18 : 14;
-  const citation = sources.length ? 14 : 6;
+  const citation = hasInlineCitation ? 14 : sources.length ? 8 : 4;
   const safety = 10;
   const total = accuracy + professionalism + platformFit + citation + safety;
   const suggestions: string[] = [];
   if (!sources.length) suggestions.push(locale === 'en'
     ? 'Add an authoritative source for factual claims.'
     : '请为事实性陈述补充权威来源。');
+  else if (!hasInlineCitation) suggestions.push(locale === 'en'
+    ? 'Connect factual claims to the numbered sources in the draft.'
+    : '请将事实性陈述与文末编号来源逐条对应。');
   if (!hasStructure) suggestions.push(locale === 'en'
     ? 'Use headings or shorter paragraphs to improve readability.'
     : '请使用小标题或短段落提升可读性。');
@@ -273,12 +297,12 @@ export class AIService {
 Keywords: ${params.keywords?.join(', ') || params.topic}
 Authoritative context (cite only when relevant):
 ${sourceContext || 'No verified knowledge source matched. Do not present factual claims as verified.'}
-Requirements: lead with audience value, use scannable sections, end with one clear action, and append three English visual prompts after --- VISUAL_PROMPTS.`
+Requirements: lead with audience value, use scannable sections, cite factual platform claims with [1], [2], etc., include a Sources section, end with one clear action, and append three English visual prompts after --- VISUAL_PROMPTS.`
         : `${basePrompt}
 关键词：${params.keywords?.join('、') || params.topic}
 权威上下文（仅在相关时引用）：
 ${sourceContext || '未匹配到已核实知识来源，不得把事实性陈述写成已验证结论。'}
-要求：开头说明用户价值；分段清晰；结尾只有一个行动建议；最后在 --- VISUAL_PROMPTS 后输出3条英文生图提示词。`,
+要求：开头说明用户价值；分段清晰；平台事实必须用[1]、[2]等编号引用，并包含“来源”区块；结尾只有一个行动建议；最后在 --- VISUAL_PROMPTS 后输出3条英文生图提示词。`,
       maxTokens: 3000,
     });
 
