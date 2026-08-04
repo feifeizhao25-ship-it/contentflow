@@ -1,6 +1,11 @@
 // 测试 fal.ai nano-banana-pro 图片生成
-const FAL_API_KEY = process.env.FAL_API_KEY || 'b4694091-bbfc-4c3d-92fd-37187e74bc58:29f281ced5b472e8880779f1b651e9e8';
+const FAL_API_KEY = process.env.FAL_API_KEY;
 const FAL_API_URL = 'https://fal.run/fal-ai/nano-banana-pro';
+
+if (!FAL_API_KEY) {
+    console.error('FAL_API_KEY is required. No embedded fallback credential is allowed.');
+    process.exit(2);
+}
 
 async function testFalAI() {
     console.log('Testing fal.ai nano-banana-pro image generation...\n');

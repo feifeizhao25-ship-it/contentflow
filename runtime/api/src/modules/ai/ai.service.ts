@@ -142,7 +142,9 @@ export class AIService {
   private readonly qwenApiKey: string;
   private readonly deepseekApiKey: string;
   private readonly openrouterApiKey: string;
+  private readonly openrouterApiKeyBackup: string;
   private readonly falApiKey: string;
+  private readonly falApiKeyBackup: string;
 
   constructor(
     private readonly prisma: PrismaService,
@@ -151,7 +153,9 @@ export class AIService {
     this.qwenApiKey = this.configService.get('QWEN_API_KEY', '');
     this.deepseekApiKey = this.configService.get('DEEPSEEK_API_KEY', '');
     this.openrouterApiKey = this.configService.get('OPENROUTER_API_KEY', '');
+    this.openrouterApiKeyBackup = this.configService.get('OPENROUTER_API_KEY_BACKUP', '');
     this.falApiKey = this.configService.get('FAL_API_KEY', '');
+    this.falApiKeyBackup = this.configService.get('FAL_API_KEY_BACKUP', '');
   }
 
   async generateText(params: {
@@ -208,56 +212,62 @@ export class AIService {
         120_000,
       ),
     );
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), requestTimeoutMs);
+    const apiKeys = provider === 'openrouter'
+      ? [...new Set([this.openrouterApiKey, this.openrouterApiKeyBackup].filter(Boolean))]
+      : [apiKey];
+    let lastError: Error | undefined;
 
-    try {
-      const response = await fetch(`${baseUrl}/chat/completions`, {
-        signal: controller.signal,
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${apiKey}`,
-          ...openRouterHeaders,
-        },
-        body: JSON.stringify({
-          model: model,
-          messages: [
-            ...(params.systemPrompt
-              ? [{ role: 'system', content: params.systemPrompt }]
-              : []),
-            { role: 'user', content: params.prompt }
-          ],
-          max_tokens: params.maxTokens ?? 2000,
-          temperature: params.temperature ?? 0.7,
-          ...openRouterRouting,
-        }),
-      });
+    for (const [keyIndex, candidateKey] of apiKeys.entries()) {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), requestTimeoutMs);
+      try {
+        const response = await fetch(`${baseUrl}/chat/completions`, {
+          signal: controller.signal,
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${candidateKey}`,
+            ...openRouterHeaders,
+          },
+          body: JSON.stringify({
+            model,
+            messages: [
+              ...(params.systemPrompt
+                ? [{ role: 'system', content: params.systemPrompt }]
+                : []),
+              { role: 'user', content: params.prompt },
+            ],
+            max_tokens: params.maxTokens ?? 2000,
+            temperature: params.temperature ?? 0.7,
+            ...openRouterRouting,
+          }),
+        });
 
-      if (!response.ok) {
-        const error = await response.text();
-        throw new Error(`AI API error: ${error}`);
+        if (!response.ok) {
+          const error = await response.text();
+          throw new Error(`AI API error (${response.status}): ${error.slice(0, 300)}`);
+        }
+
+        const data = await response.json();
+        const content = data.choices[0]?.message?.content || '';
+        const usage = {
+          prompt_tokens: data.usage?.prompt_tokens || 0,
+          completion_tokens: data.usage?.completion_tokens || 0,
+          total_tokens: data.usage?.total_tokens || 0,
+        };
+        this.logger.log(`AI generation completed: ${usage.total_tokens} tokens`);
+        return { content, usage };
+      } catch (error) {
+        lastError = error instanceof Error ? error : new Error(String(error));
+        if (keyIndex + 1 < apiKeys.length) {
+          this.logger.warn('Primary AI credential failed; retrying with configured backup.');
+        }
+      } finally {
+        clearTimeout(timeout);
       }
-
-      const data = await response.json();
-      const content = data.choices[0]?.message?.content || '';
-
-      // 记录使用量
-      const usage = {
-        prompt_tokens: data.usage?.prompt_tokens || 0,
-        completion_tokens: data.usage?.completion_tokens || 0,
-        total_tokens: data.usage?.total_tokens || 0,
-      };
-
-      this.logger.log(`AI generation completed: ${usage.total_tokens} tokens`);
-
-      return { content, usage };
-    } catch (error) {
-      this.logger.error('AI generation failed:', error);
-      throw error;
-    } finally {
-      clearTimeout(timeout);
     }
+    this.logger.error('AI generation failed after all configured credentials.');
+    throw lastError ?? new Error('AI generation failed');
   }
 
   async generateArticle(params: {
@@ -445,27 +455,38 @@ ${content}
     try {
       this.logger.log('Generating image with fal.ai nano-banana-pro...');
 
-      // fal.ai 使用异步队列模式，先提交任务
-      const submitResponse = await fetch('https://fal.run/fal-ai/nano-banana-pro', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Key ${this.falApiKey}`,
-        },
-        body: JSON.stringify({
-          prompt: enhancedPrompt,
-          image_size: { width, height },
-          seed: params.seed || Math.floor(Math.random() * 1000000),
-          num_images: 1,
-        }),
-      });
-
-      if (!submitResponse.ok) {
+      const falKeys = [...new Set([this.falApiKey, this.falApiKeyBackup].filter(Boolean))];
+      let activeFalKey = falKeys[0];
+      let submitData: any;
+      let submitError: Error | undefined;
+      for (const [keyIndex, candidateKey] of falKeys.entries()) {
+        const submitResponse = await fetch('https://fal.run/fal-ai/nano-banana-pro', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Key ${candidateKey}`,
+          },
+          body: JSON.stringify({
+            prompt: enhancedPrompt,
+            image_size: { width, height },
+            seed: params.seed || Math.floor(Math.random() * 1000000),
+            num_images: 1,
+          }),
+        });
+        if (submitResponse.ok) {
+          activeFalKey = candidateKey;
+          submitData = await submitResponse.json();
+          break;
+        }
         const error = await submitResponse.text();
-        throw new Error(`fal.ai submit error: ${error}`);
+        submitError = new Error(`fal.ai submit error (${submitResponse.status}): ${error.slice(0, 300)}`);
+        if (keyIndex + 1 < falKeys.length) {
+          this.logger.warn('Primary Fal credential failed; retrying with configured backup.');
+        }
       }
-
-      const submitData = await submitResponse.json();
+      if (!submitData) {
+        throw submitError ?? new Error('fal.ai submit failed');
+      }
       const requestId = submitData.request_id;
 
       this.logger.log(`fal.ai request submitted: ${requestId}`);
@@ -478,7 +499,7 @@ ${content}
 
         const statusResponse = await fetch(`https://fal.run/fal-ai/nano-banana-pro/requests/${requestId}`, {
           headers: {
-            'Authorization': `Key ${this.falApiKey}`,
+            'Authorization': `Key ${activeFalKey}`,
           },
         });
 

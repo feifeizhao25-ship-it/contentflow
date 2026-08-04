@@ -25,7 +25,12 @@ HAN_RE = re.compile(r"[\u4e00-\u9fff]")
 TEXT_EXTS = {".ts", ".tsx", ".js", ".jsx", ".json", ".md", ".mdx", ".css", ".html"}
 SKIP_PARTS = {"node_modules", ".next", "coverage", "test-results", "playwright-report"}
 
-REQUIRED_ENVS = ["DEEPSEEK_API_KEY", "OPENROUTER_API_KEY", "FAL_API_KEY"]
+REQUIRED_ENVS = [
+    "OPENROUTER_API_KEY",
+    "OPENROUTER_API_KEY_BACKUP",
+    "FAL_API_KEY",
+    "FAL_API_KEY_BACKUP",
+]
 LIVE_ONLY_ENVS = ["POSTIZ_BASE_URL", "POSTIZ_API_KEY"]
 
 COMMANDS = ["aws", "openclaw", "docker", "gh", "vultr", "vultr-cli"]

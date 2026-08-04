@@ -48,7 +48,12 @@ services:
       CORS_ORIGIN: ${CORS_ORIGIN:-}
       QWEN_API_KEY: ${QWEN_API_KEY:-}
       DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY:-}
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
+      OPENROUTER_API_KEY_BACKUP: ${OPENROUTER_API_KEY_BACKUP:-}
+      OPENROUTER_MODELS: ${OPENROUTER_MODELS:-x-ai/grok-4.5}
+      OPENROUTER_SITE_URL: ${OPENROUTER_SITE_URL:-}
       FAL_API_KEY: ${FAL_API_KEY:-}
+      FAL_API_KEY_BACKUP: ${FAL_API_KEY_BACKUP:-}
     depends_on:
       postgres: { condition: service_healthy }
       redis: { condition: service_healthy }
