@@ -25,17 +25,17 @@ export class PublishService {
     });
 
     if (!content) {
-      throw new NotFoundException('内容不存在');
+      throw new NotFoundException('Content not found');
     }
 
     if (content.status !== 'approved' && content.status !== 'published') {
-      throw new BadRequestException('内容未通过审核');
+      throw new BadRequestException('Content has not been approved');
     }
 
     // 检查配额
     const canPublish = await this.tenantService.checkQuota(tenantId, 'publish');
     if (!canPublish) {
-      throw new BadRequestException('发布次数已达上限，请升级套餐');
+      throw new BadRequestException('Publishing quota reached; upgrade the plan to continue');
     }
 
     // 创建发布任务
@@ -47,7 +47,7 @@ export class PublishService {
         });
 
         if (!account || account.status !== 'active') {
-          throw new NotFoundException(`平台账号不存在或已禁用: ${accountId}`);
+          throw new NotFoundException(`Platform account not found or inactive: ${accountId}`);
         }
 
         const scheduledTime = data.publishType === 'scheduled' && data.scheduledAt
@@ -122,11 +122,11 @@ export class PublishService {
     });
 
     if (!task) {
-      throw new NotFoundException('任务不存在');
+      throw new NotFoundException('Publish task not found');
     }
 
     if (task.status !== 'failed') {
-      throw new BadRequestException('只有失败的任务可以重试');
+      throw new BadRequestException('Only failed publish tasks can be retried');
     }
 
     // 更新任务状态并重新加入队列
@@ -141,7 +141,7 @@ export class PublishService {
     });
 
     if (!task.platform_account_id) {
-      throw new BadRequestException('发布任务缺少平台账号');
+      throw new BadRequestException('Publish task is missing a platform account');
     }
 
     await this.publishQueue.addPublishTask({
@@ -151,7 +151,48 @@ export class PublishService {
       platform: '',
     });
 
-    return { success: true, message: '任务已重新加入队列' };
+    return { success: true, message: 'Publish task queued for retry' };
+  }
+
+  async recordRemoteOutcome(taskId: string, outcome: {
+    state: string;
+    remotePostId?: string;
+    remotePostUrl?: string;
+    errorCode?: string;
+    failureReason?: string;
+    details?: Record<string, unknown>;
+  }) {
+    const normalizedState = outcome.state.trim().toUpperCase();
+    const confirmed = new Set(['PUBLISHED', 'POSTED', 'COMPLETED']);
+    const failed = new Set(['FAILED', 'REJECTED', 'CANCELLED']);
+    const status = confirmed.has(normalizedState)
+      ? 'published'
+      : failed.has(normalizedState)
+        ? 'failed'
+        : 'submitted_unconfirmed';
+
+    if (status === 'published' && !outcome.remotePostId) {
+      throw new BadRequestException('A confirmed remote post ID is required for published state');
+    }
+    if (status === 'failed' && !outcome.failureReason) {
+      throw new BadRequestException('A failure reason is required for failed state');
+    }
+
+    return this.prisma.publishTask.update({
+      where: { id: taskId },
+      data: {
+        status,
+        platform_post_id: outcome.remotePostId ?? null,
+        platform_post_url: outcome.remotePostUrl ?? null,
+        error_code: outcome.errorCode ?? null,
+        error_message: outcome.failureReason ?? null,
+        error_details: {
+          remote_state: normalizedState,
+          ...(outcome.details ?? {}),
+        },
+        completed_at: status === 'submitted_unconfirmed' ? null : new Date(),
+      },
+    });
   }
 
   async cancelTask(taskId: string, tenantId: string) {
@@ -160,11 +201,11 @@ export class PublishService {
     });
 
     if (!task) {
-      throw new NotFoundException('任务不存在');
+      throw new NotFoundException('Publish task not found');
     }
 
     if (!['pending', 'queued'].includes(task.status)) {
-      throw new BadRequestException('当前状态无法取消');
+      throw new BadRequestException('The current publish task state cannot be cancelled');
     }
 
     return this.prisma.publishTask.update({

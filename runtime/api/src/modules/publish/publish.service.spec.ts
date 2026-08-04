@@ -80,4 +80,44 @@ describe('PublishService', () => {
       }),
     ).rejects.toBeInstanceOf(BadRequestException);
   });
+
+  it('persists confirmed remote publish identity and state', async () => {
+    prisma.publishTask.update.mockResolvedValue({ id: 'task_1', status: 'published' });
+
+    await service.recordRemoteOutcome('task_1', {
+      state: 'POSTED',
+      remotePostId: 'remote_42',
+      remotePostUrl: 'https://social.example/posts/remote_42',
+    });
+
+    expect(prisma.publishTask.update).toHaveBeenCalledWith(expect.objectContaining({
+      where: { id: 'task_1' },
+      data: expect.objectContaining({
+        status: 'published',
+        platform_post_id: 'remote_42',
+        error_details: { remote_state: 'POSTED' },
+        completed_at: expect.any(Date),
+      }),
+    }));
+  });
+
+  it('fails closed when the remote state is not confirmed', async () => {
+    prisma.publishTask.update.mockResolvedValue({ id: 'task_1', status: 'submitted_unconfirmed' });
+
+    await service.recordRemoteOutcome('task_1', { state: 'processing' });
+
+    expect(prisma.publishTask.update).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({
+        status: 'submitted_unconfirmed',
+        error_details: { remote_state: 'PROCESSING' },
+        completed_at: null,
+      }),
+    }));
+  });
+
+  it('requires a failure reason for failed remote states', async () => {
+    await expect(
+      service.recordRemoteOutcome('task_1', { state: 'FAILED' }),
+    ).rejects.toThrow('A failure reason is required for failed state');
+  });
 });
