@@ -50,6 +50,8 @@ jobs:
           cache: npm
           cache-dependency-path: runtime/${{ matrix.app }}/package-lock.json
       - run: npm ci
+      - run: npm test -- --runInBand
+        if: matrix.app == 'web-int'
       - run: npm run build
         env:
           API_INTERNAL_URL: http://127.0.0.1:4000
