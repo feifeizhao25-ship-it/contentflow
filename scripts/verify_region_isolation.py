@@ -23,6 +23,7 @@ REQUIRED_ENV = (
     "CN_JWT_SECRET=", "INT_JWT_SECRET=",
     "CN_CORS_ORIGIN=", "INT_CORS_ORIGIN=",
 )
+API_MODULE_SOURCE = (ROOT / "runtime" / "api" / "src" / "app.module.ts").read_text()
 FORBIDDEN_SHARED = (
     "API_INTERNAL_URL: http://api:4000",
     "DATABASE_URL: postgresql://contentflow:${POSTGRES_PASSWORD",
@@ -33,6 +34,10 @@ def main() -> int:
     failures = [f"missing compose contract: {token}" for token in REQUIRED_COMPOSE if token not in COMPOSE]
     failures += [f"missing environment contract: {token}" for token in REQUIRED_ENV if token not in ENV_EXAMPLE]
     failures += [f"shared production state is forbidden: {token}" for token in FORBIDDEN_SHARED if token in COMPOSE]
+    if "...marketModulesFor(process.env.MARKET_REGION)" not in API_MODULE_SOURCE:
+        failures.append("API modules are not selected by MARKET_REGION")
+    if "region === 'global' ? [] : DOMESTIC_ONLY_MODULES" not in API_MODULE_SOURCE:
+        failures.append("Global API does not fail closed against domestic-only modules")
     if COMPOSE.count("networks: [cn-backend]") < 4:
         failures.append("CN database, cache, API and web must all stay on cn-backend")
     if COMPOSE.count("networks: [int-backend]") < 4:

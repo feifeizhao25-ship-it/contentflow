@@ -70,6 +70,20 @@ import { QuestModule } from './modules/quest/quest.module';
 import { AchievementModule } from './modules/achievement/achievement.module';
 import { SystemModule } from './modules/system/system.module';
 
+const DOMESTIC_ONLY_MODULES = [
+  HotModule,
+  CompetitorModule,
+  GrowthModule,
+  PointsModule,
+  RewardsModule,
+  QuestModule,
+  AchievementModule,
+];
+
+export function marketModulesFor(region: string | undefined) {
+  return region === 'global' ? [] : DOMESTIC_ONLY_MODULES;
+}
+
 @Module({
   imports: [
     // 配置模块
@@ -123,19 +137,9 @@ import { SystemModule } from './modules/system/system.module';
     BillingModule,
     AIModule,
     AnalyticsModule,
-    HotModule,
-    CompetitorModule,
     TeamModule,
     MaterialsModule,
-    GrowthModule,
-    // Points Module (V1)
-    PointsModule,
-    // Rewards Module (V1)
-    RewardsModule,
-    // Quest Module (V1)
-    QuestModule,
-    // Achievement Module (V1)
-    AchievementModule,
+    ...marketModulesFor(process.env.MARKET_REGION),
     SystemModule,
   ],
   providers: [
