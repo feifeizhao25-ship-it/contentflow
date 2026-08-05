@@ -78,7 +78,7 @@ import { SystemModule } from './modules/system/system.module';
       envFilePath: ['.env.local', '.env'],
       validate: (config: Record<string, unknown>) => {
         if (config.NODE_ENV === 'production') {
-          const required = ['DATABASE_URL', 'REDIS_HOST', 'JWT_SECRET', 'JWT_REFRESH_SECRET'];
+          const required = ['DATABASE_URL', 'REDIS_HOST', 'JWT_SECRET', 'JWT_REFRESH_SECRET', 'MARKET_REGION'];
           const missing = required.filter((key) => !config[key]);
           if (missing.length > 0) {
             throw new Error(`Missing required production environment variables: ${missing.join(', ')}`);
@@ -87,6 +87,9 @@ import { SystemModule } from './modules/system/system.module';
             if (String(config[key]).length < 32) {
               throw new Error(`${key} must contain at least 32 characters`);
             }
+          }
+          if (!['cn', 'global'].includes(String(config.MARKET_REGION))) {
+            throw new Error('MARKET_REGION must be either cn or global');
           }
         }
         return config;

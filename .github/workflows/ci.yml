@@ -105,6 +105,7 @@ jobs:
       - uses: actions/checkout@v5
       - run: cp runtime/.env.production.example runtime/.env.production
       - run: docker compose --env-file runtime/.env.production -f runtime/docker-compose.production.yml config --quiet
+      - run: python3 scripts/verify_region_isolation.py
       - run: python3 scripts/verify_language_contracts.py
       - run: python3 scripts/verify_mobile_release.py
       - run: python3 scripts/verify_revenue_operations.py
