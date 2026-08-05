@@ -56,6 +56,7 @@ async function bootstrap() {
   
   // Swagger文档
   const globalMarket = marketRegion === 'global';
+  const docsEnabled = !production || (!globalMarket && configService.get<string>('ENABLE_API_DOCS') === 'true');
   const swaggerConfig = new DocumentBuilder()
     .setTitle(globalMarket ? 'ContentFlow API' : '分发侠 API')
     .setDescription(globalMarket ? 'Omnichannel content operations API' : '全渠道内容分发 SaaS 平台 API 文档')
@@ -73,7 +74,7 @@ async function bootstrap() {
     .addTag('team', globalMarket ? 'Team collaboration' : '团队协作')
     .build();
   
-  if (!production || configService.get<string>('ENABLE_API_DOCS') === 'true') {
+  if (docsEnabled) {
     const document = SwaggerModule.createDocument(app, swaggerConfig);
     SwaggerModule.setup('docs', app, document);
   }
@@ -84,7 +85,7 @@ async function bootstrap() {
   await app.listen(port, host);
   
   logger.log(`Application is running on: http://${host}:${port}`);
-  if (!production || configService.get<string>('ENABLE_API_DOCS') === 'true') {
+  if (docsEnabled) {
     logger.log(`Swagger documentation: http://${host}:${port}/docs`);
   }
 }

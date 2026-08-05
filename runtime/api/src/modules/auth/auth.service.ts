@@ -34,6 +34,10 @@ export class AuthService {
     private readonly configService: ConfigService,
   ) {}
 
+  private get globalMarket(): boolean {
+    return this.configService.get<string>('MARKET_REGION') === 'global';
+  }
+
   async register(dto: RegisterDto): Promise<AuthResponse> {
     const { email, password, name, tenantName } = dto;
 
@@ -43,7 +47,7 @@ export class AuthService {
     });
 
     if (existingUser) {
-      throw new ConflictException('邮箱已被注册');
+      throw new ConflictException(this.globalMarket ? 'Email is already registered' : '邮箱已被注册');
     }
 
     // 密码加密
@@ -52,7 +56,7 @@ export class AuthService {
     // 创建租户
     const tenant = await this.prisma.tenant.create({
       data: {
-        name: tenantName || `${name}的工作室`,
+        name: tenantName || (this.globalMarket ? `${name}'s workspace` : `${name}的工作室`),
         slug: email.split('@')[0] + '_' + Date.now().toString(36),
         limits: {
           max_accounts: 2,
@@ -113,7 +117,7 @@ export class AuthService {
     }) as any;
 
     if (!user) {
-      throw new UnauthorizedException('邮箱或密码错误');
+      throw new UnauthorizedException(this.globalMarket ? 'Email or password is incorrect' : '邮箱或密码错误');
     }
 
     // 获取租户信息
@@ -125,7 +129,7 @@ export class AuthService {
     const isPasswordValid = await bcrypt.compare(password, user.password_hash || '');
 
     if (!isPasswordValid) {
-      throw new UnauthorizedException('邮箱或密码错误');
+      throw new UnauthorizedException(this.globalMarket ? 'Email or password is incorrect' : '邮箱或密码错误');
     }
 
     // 将租户信息添加到用户对象（用于 token 生成）
@@ -169,14 +173,14 @@ export class AuthService {
       });
 
       if (!user || user.status !== 'active') {
-        throw new UnauthorizedException('无效的刷新令牌');
+        throw new UnauthorizedException(this.globalMarket ? 'Invalid refresh token' : '无效的刷新令牌');
       }
 
       const newToken = this.generateToken(user);
 
       return { token: newToken };
     } catch {
-      throw new UnauthorizedException('无效的刷新令牌');
+      throw new UnauthorizedException(this.globalMarket ? 'Invalid refresh token' : '无效的刷新令牌');
     }
   }
 
