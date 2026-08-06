@@ -1,0 +1,152 @@
+name: contentflow
+
+services:
+  postgres-cn:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: contentflow_cn
+      POSTGRES_USER: contentflow_cn
+      POSTGRES_PASSWORD: ${CN_POSTGRES_PASSWORD:?CN_POSTGRES_PASSWORD is required}
+    volumes: [postgres_cn_data:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U contentflow_cn -d contentflow_cn"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks: [cn-backend]
+
+  postgres-int:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: contentflow_global
+      POSTGRES_USER: contentflow_global
+      POSTGRES_PASSWORD: ${INT_POSTGRES_PASSWORD:?INT_POSTGRES_PASSWORD is required}
+    volumes: [postgres_int_data:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U contentflow_global -d contentflow_global"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks: [int-backend]
+
+  redis-cn:
+    image: redis:7.4-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes", "--requirepass", "${CN_REDIS_PASSWORD:?CN_REDIS_PASSWORD is required}"]
+    volumes: [redis_cn_data:/data]
+    environment:
+      REDIS_PASSWORD: ${CN_REDIS_PASSWORD:?CN_REDIS_PASSWORD is required}
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -a \"$${REDIS_PASSWORD}\" ping | grep PONG"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks: [cn-backend]
+
+  redis-int:
+    image: redis:7.4-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes", "--requirepass", "${INT_REDIS_PASSWORD:?INT_REDIS_PASSWORD is required}"]
+    volumes: [redis_int_data:/data]
+    environment:
+      REDIS_PASSWORD: ${INT_REDIS_PASSWORD:?INT_REDIS_PASSWORD is required}
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -a \"$${REDIS_PASSWORD}\" ping | grep PONG"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks: [int-backend]
+
+  api-cn:
+    build: ./api
+    image: ${CONTENTFLOW_IMAGE_PREFIX:-contentflow}-api:${IMAGE_TAG:-local}
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      MARKET_REGION: cn
+      PORT: 4000
+      DATABASE_URL: postgresql://contentflow_cn:${CN_POSTGRES_PASSWORD:?CN_POSTGRES_PASSWORD is required}@postgres-cn:5432/contentflow_cn
+      REDIS_HOST: redis-cn
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${CN_REDIS_PASSWORD:?CN_REDIS_PASSWORD is required}
+      JWT_SECRET: ${CN_JWT_SECRET:?CN_JWT_SECRET is required}
+      JWT_REFRESH_SECRET: ${CN_JWT_REFRESH_SECRET:?CN_JWT_REFRESH_SECRET is required}
+      CORS_ORIGIN: ${CN_CORS_ORIGIN:-}
+      QWEN_API_KEY: ${QWEN_API_KEY:-}
+      DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY:-}
+    depends_on:
+      postgres-cn: { condition: service_healthy }
+      redis-cn: { condition: service_healthy }
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:4000/health/ready"]
+      interval: 15s
+      timeout: 5s
+      start_period: 30s
+      retries: 5
+    networks: [cn-backend]
+
+  api-int:
+    build: ./api
+    image: ${CONTENTFLOW_IMAGE_PREFIX:-contentflow}-api:${IMAGE_TAG:-local}
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      MARKET_REGION: global
+      PORT: 4000
+      DATABASE_URL: postgresql://contentflow_global:${INT_POSTGRES_PASSWORD:?INT_POSTGRES_PASSWORD is required}@postgres-int:5432/contentflow_global
+      REDIS_HOST: redis-int
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${INT_REDIS_PASSWORD:?INT_REDIS_PASSWORD is required}
+      JWT_SECRET: ${INT_JWT_SECRET:?INT_JWT_SECRET is required}
+      JWT_REFRESH_SECRET: ${INT_JWT_REFRESH_SECRET:?INT_JWT_REFRESH_SECRET is required}
+      CORS_ORIGIN: ${INT_CORS_ORIGIN:-}
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
+      OPENROUTER_API_KEY_BACKUP: ${OPENROUTER_API_KEY_BACKUP:-}
+      OPENROUTER_MODELS: ${OPENROUTER_MODELS:-x-ai/grok-4.5}
+      OPENROUTER_SITE_URL: ${OPENROUTER_SITE_URL:-}
+      FAL_API_KEY: ${FAL_API_KEY:-}
+      FAL_API_KEY_BACKUP: ${FAL_API_KEY_BACKUP:-}
+    depends_on:
+      postgres-int: { condition: service_healthy }
+      redis-int: { condition: service_healthy }
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:4000/health/ready"]
+      interval: 15s
+      timeout: 5s
+      start_period: 30s
+      retries: 5
+    networks: [int-backend]
+
+  web-cn:
+    build: ./web-cn
+    image: ${CONTENTFLOW_IMAGE_PREFIX:-contentflow}-web-cn:${IMAGE_TAG:-local}
+    restart: unless-stopped
+    environment:
+      API_INTERNAL_URL: http://api-cn:4000
+    ports: ["${CN_WEB_PORT:-3100}:3000"]
+    depends_on:
+      api-cn: { condition: service_healthy }
+    networks: [cn-backend]
+
+  web-int:
+    build: ./web-int
+    image: ${CONTENTFLOW_IMAGE_PREFIX:-contentflow}-web-int:${IMAGE_TAG:-local}
+    restart: unless-stopped
+    environment:
+      API_INTERNAL_URL: http://api-int:4000
+    ports: ["${INT_WEB_PORT:-3200}:3000"]
+    depends_on:
+      api-int: { condition: service_healthy }
+    networks: [int-backend]
+
+volumes:
+  postgres_cn_data:
+  postgres_int_data:
+  redis_cn_data:
+  redis_int_data:
+
+networks:
+  cn-backend:
+  int-backend:

@@ -24,12 +24,18 @@ final todaySchedulesProvider = FutureProvider<List<Schedule>>((ref) async {
   return api.getTodaySchedules();
 });
 
-final confirmPublishProvider = FutureProvider.family<bool, String>((ref, scheduleId) async {
+final confirmPublishProvider = FutureProvider.family<bool, String>((
+  ref,
+  scheduleId,
+) async {
   final api = ref.read(apiClientProvider);
   return api.confirmPublish(scheduleId);
 });
 
-final retryPublishProvider = FutureProvider.family<bool, String>((ref, scheduleId) async {
+final retryPublishProvider = FutureProvider.family<bool, String>((
+  ref,
+  scheduleId,
+) async {
   final api = ref.read(apiClientProvider);
   return api.retryPublish(scheduleId);
 });
@@ -39,7 +45,10 @@ final contentPackTopicProvider = StateProvider<String>((ref) => '');
 
 final generatedContentPackProvider = StateProvider<ContentPack?>((ref) => null);
 
-final generateContentPackProvider = FutureProvider.family<ContentPack, String>((ref, topic) async {
+final generateContentPackProvider = FutureProvider.family<ContentPack, String>((
+  ref,
+  topic,
+) async {
   final api = ref.read(apiClientProvider);
   return api.generateContentPack(topic: topic);
 });
@@ -59,7 +68,9 @@ final analyticsSummaryProvider = FutureProvider<AnalyticsSummary>((ref) async {
   return api.getAnalyticsSummary();
 });
 
-final contentAnalyticsProvider = FutureProvider<List<ContentAnalytics>>((ref) async {
+final contentAnalyticsProvider = FutureProvider<List<ContentAnalytics>>((
+  ref,
+) async {
   final api = ref.read(apiClientProvider);
   return api.getContentAnalytics();
 });

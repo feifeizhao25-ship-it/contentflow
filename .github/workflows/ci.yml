@@ -1,0 +1,115 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+      - 'codex/**'
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: contentflow-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  api:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: runtime/api
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: runtime/api/package-lock.json
+      - run: npm ci
+      - run: npm test -- --runInBand
+      - run: npm run build
+      - run: npm audit --omit=dev --audit-level=high
+
+  web:
+    strategy:
+      fail-fast: false
+      matrix:
+        app: [web-cn, web-int]
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: runtime/${{ matrix.app }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: runtime/${{ matrix.app }}/package-lock.json
+      - run: npm ci
+      - run: npm test -- --runInBand
+        if: matrix.app == 'web-int'
+      - run: npm run build
+        env:
+          API_INTERNAL_URL: http://127.0.0.1:4000
+      - run: npm audit --omit=dev --audit-level=high
+
+  mobile:
+    strategy:
+      fail-fast: false
+      matrix:
+        app: [android-cn, android-global, ios-cn, ios-global]
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ${{ matrix.app }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: 3.38.5
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - run: dart format --output=none --set-exit-if-changed lib test
+      - run: flutter analyze
+      - run: flutter test
+      - if: startsWith(matrix.app, 'android-')
+        run: flutter build apk --release
+        env:
+          ALLOW_DEBUG_RELEASE_SIGNING: "true"
+
+  mobile-ios-build:
+    strategy:
+      fail-fast: false
+      matrix:
+        app: [ios-cn, ios-global]
+    runs-on: macos-15
+    defaults:
+      run:
+        working-directory: ${{ matrix.app }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: 3.38.5
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - run: flutter build ios --release --no-codesign
+
+  deployment-config:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - run: cp runtime/.env.production.example runtime/.env.production
+      - run: docker compose --env-file runtime/.env.production -f runtime/docker-compose.production.yml config --quiet
+      - run: python3 scripts/verify_region_isolation.py
+      - run: python3 scripts/verify_language_contracts.py
+      - run: python3 scripts/verify_mobile_release.py
+      - run: python3 scripts/verify_revenue_operations.py
+      - run: python3 scripts/validate_rag_freshness.py
+      - run: python3 scripts/ops/international_readiness.py

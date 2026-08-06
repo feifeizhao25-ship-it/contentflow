@@ -1,5 +1,5 @@
-name: contentflow_mobile
-description: ContentFlow Mobile - 内容增长助手
+name: contentflow_cn
+description: 分发侠移动端——国内版内容增长助手
 publish_to: 'none'
 version: 1.0.0+1
 
@@ -46,6 +46,3 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
-  
-  assets:
-    - assets/images/

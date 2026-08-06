@@ -18,22 +18,42 @@ class ApiException implements Exception {
 
     switch (error.type) {
       case DioExceptionType.connectionTimeout:
-        return ApiException('Connection timed out. Check your network.', statusCode: statusCode);
+        return ApiException(
+          'Connection timed out. Check your network.',
+          statusCode: statusCode,
+        );
       case DioExceptionType.sendTimeout:
-        return ApiException('Request timed out while sending.', statusCode: statusCode);
+        return ApiException(
+          'Request timed out while sending.',
+          statusCode: statusCode,
+        );
       case DioExceptionType.receiveTimeout:
-        return ApiException('Response timed out. Please retry.', statusCode: statusCode);
+        return ApiException(
+          'Response timed out. Please retry.',
+          statusCode: statusCode,
+        );
       case DioExceptionType.badResponse:
-        return ApiException('Unexpected server response.', statusCode: statusCode);
+        return ApiException(
+          'Unexpected server response.',
+          statusCode: statusCode,
+        );
       case DioExceptionType.cancel:
         return ApiException('Request cancelled.', statusCode: statusCode);
       case DioExceptionType.badCertificate:
-        return ApiException('Certificate validation failed.', statusCode: statusCode);
+        return ApiException(
+          'Certificate validation failed.',
+          statusCode: statusCode,
+        );
       case DioExceptionType.connectionError:
-        return ApiException('Network connection failed.', statusCode: statusCode);
+        return ApiException(
+          'Network connection failed.',
+          statusCode: statusCode,
+        );
       case DioExceptionType.unknown:
-      default:
-        return ApiException('Request failed. Please try again.', statusCode: statusCode);
+        return ApiException(
+          'Request failed. Please try again.',
+          statusCode: statusCode,
+        );
     }
   }
 

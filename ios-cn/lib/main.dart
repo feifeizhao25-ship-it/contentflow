@@ -12,15 +12,13 @@ import 'features/auth/login_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  
+
   // Initialize SharedPreferences
   final prefs = await SharedPreferences.getInstance();
-  
+
   runApp(
     ProviderScope(
-      overrides: [
-        sharedPreferencesProvider.overrideWithValue(prefs),
-      ],
+      overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
       child: const ContentFlowApp(),
     ),
   );
@@ -61,12 +59,9 @@ class AuthGate extends ConsumerWidget {
 
     return authAsync.when(
       data: (isAuthed) => isAuthed ? const MainScreen() : const LoginScreen(),
-      loading: () => const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
-      ),
-      error: (error, _) => Scaffold(
-        body: Center(child: Text('认证失败: $error')),
-      ),
+      loading: () =>
+          const Scaffold(body: Center(child: CircularProgressIndicator())),
+      error: (error, _) => Scaffold(body: Center(child: Text('认证失败: $error'))),
     );
   }
 }
@@ -111,14 +106,7 @@ class MainScreen extends ConsumerWidget {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
-              _buildNavItem(
-                context,
-                ref,
-                0,
-                Icons.today,
-                '今日',
-                currentTab,
-              ),
+              _buildNavItem(context, ref, 0, Icons.today, '今日', currentTab),
               _buildNavItem(
                 context,
                 ref,
@@ -167,9 +155,7 @@ class MainScreen extends ConsumerWidget {
     int currentTab,
   ) {
     final isSelected = currentTab == index;
-    final color = isSelected
-        ? Theme.of(context).primaryColor
-        : Colors.grey;
+    final color = isSelected ? Theme.of(context).primaryColor : Colors.grey;
 
     return GestureDetector(
       onTap: () {

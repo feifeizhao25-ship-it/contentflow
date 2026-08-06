@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="1440" viewBox="0 0 1080 1440">
+  <rect width="1080" height="1440" fill="#173f41"/>
+  <circle cx="850" cy="250" r="280" fill="#d8ad55" opacity=".22"/>
+  <circle cx="180" cy="1170" r="360" fill="#65a899" opacity=".2"/>
+  <text x="540" y="690" text-anchor="middle" font-family="sans-serif" font-size="58" font-weight="700" fill="#fff">ContentFlow</text>
+  <text x="540" y="765" text-anchor="middle" font-family="sans-serif" font-size="34" fill="#e8d8b1">智能内容封面</text>
+</svg>

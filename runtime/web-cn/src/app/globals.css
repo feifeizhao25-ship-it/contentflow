@@ -1,0 +1,228 @@
+@import "tailwindcss";
+@custom-variant dark (&:where(.dark, .dark *));
+
+:root {
+  --font-inter: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-space-grotesk: "Avenir Next", ui-sans-serif, system-ui, sans-serif;
+  /* Premium Soft Tech Palette (Zinc + Indigo/Violet) */
+  --background: #fdfdff;
+  /* Slightly cooler, cleaner white */
+  /* Slate 50 -> Keeping it light but warm */
+  --foreground: #18181b;
+  /* Zinc 950 - Softer than pure black */
+
+  --card: #ffffff;
+  --card-foreground: #18181b;
+
+  --popover: #ffffff;
+  --popover-foreground: #18181b;
+
+  --primary: #6366f1;
+  /* Indigo 500 - Vibrant but smooth */
+  --primary-foreground: #ffffff;
+
+  --secondary: #f4f4f5;
+  /* Zinc 100 */
+  --secondary-foreground: #18181b;
+
+  --muted: #f4f4f5;
+  /* Zinc 100 */
+  --muted-foreground: #71717a;
+  /* Zinc 500 */
+
+  --accent: #f5f3ff;
+  /* Violet 50 */
+  --accent-foreground: #6366f1;
+
+  --destructive: #ef4444;
+  --destructive-foreground: #ffffff;
+
+  --border: #e4e4e7;
+  /* Zinc 200 */
+  --input: #e4e4e7;
+  --ring: #6366f1;
+
+  --radius: 1rem;
+  /* 16px - Align with AntD config */
+}
+
+/* Dark Mode - Deep Zinc */
+.dark {
+  --background: #09090b;
+  /* Zinc 950 */
+  --foreground: #fafafa;
+  /* Zinc 50 */
+
+  --card: #18181b;
+  /* Zinc 900 */
+  --card-foreground: #fafafa;
+
+  --popover: #18181b;
+  --popover-foreground: #fafafa;
+
+  --primary: #818cf8;
+  /* Indigo 400 */
+  --primary-foreground: #09090b;
+
+  --secondary: #27272a;
+  /* Zinc 800 */
+  --secondary-foreground: #fafafa;
+
+  --muted: #27272a;
+  /* Zinc 800 */
+  --muted-foreground: #a1a1aa;
+  /* Zinc 400 */
+
+  --accent: #2e1065;
+  /* Violet 950 */
+  --accent-foreground: #a78bfa;
+  /* Violet 400 */
+
+  --destructive: #7f1d1d;
+  --destructive-foreground: #fafafa;
+
+  --border: #27272a;
+  /* Zinc 800 */
+  --input: #27272a;
+  --ring: #818cf8;
+}
+
+/* Custom Scrollbar - Minimalist */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--muted-foreground);
+}
+
+body {
+  background-color: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-outfit), var(--font-sans);
+  overflow-x: hidden;
+  position: relative;
+  letter-spacing: -0.015em;
+  /* Tighter, cleaner modern tracking */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Subtle Dynamic Background Mesh - Premium Light */
+body::before {
+  content: "";
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  /* Using a complex gradient stack for a high-end SaaS feel */
+  background-image:
+    radial-gradient(at 0% 0%, rgba(99, 102, 241, 0.12) 0px, transparent 50%),
+    radial-gradient(at 100% 0%, rgba(168, 85, 247, 0.10) 0px, transparent 50%),
+    radial-gradient(at 100% 100%, rgba(236, 72, 153, 0.08) 0px, transparent 50%),
+    radial-gradient(at 0% 100%, rgba(56, 189, 248, 0.08) 0px, transparent 50%);
+  background-attachment: fixed;
+  pointer-events: none;
+  z-index: -1;
+  filter: blur(80px);
+  /* Increased blur for smoother blending */
+}
+
+/* Glassmorphism Utilities - Refined */
+.glass-panel {
+  background: rgba(255, 255, 255, 0.65);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+}
+
+.dark .glass-panel {
+  background: rgba(24, 24, 27, 0.65);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2), 0 2px 4px -1px rgba(0, 0, 0, 0.1);
+}
+
+.glass-card {
+  background-color: var(--card);
+  color: var(--card-foreground);
+  border: 1px solid var(--border);
+  box-shadow:
+    0 4px 6px -1px rgba(0, 0, 0, 0.02),
+    0 2px 4px -1px rgba(0, 0, 0, 0.01),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.5);
+  /* Inner subtle highlight */
+  border-radius: var(--radius);
+  transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+}
+
+.dark .glass-card {
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2), inset 0 0 0 1px rgba(255, 255, 255, 0.03);
+}
+
+.glass-card:hover {
+  transform: translateY(-3px);
+  box-shadow:
+    0 12px 20px -8px rgba(99, 102, 241, 0.15),
+    0 4px 8px -4px rgba(0, 0, 0, 0.05);
+  /* Colored shadow hint */
+  border-color: var(--primary);
+}
+
+.soft-shadow {
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.04);
+}
+
+.gradient-text {
+  background: linear-gradient(to right, #6366f1, #a855f7, #ec4899);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  font-weight: 700;
+}
+
+.premium-border {
+  position: relative;
+  background: padding-box linear-gradient(var(--card), var(--card)),
+    border-box linear-gradient(135deg, rgba(99, 102, 241, 0.5), rgba(168, 85, 247, 0.5));
+  border: 1px solid transparent;
+}
+.app-main {
+  margin-left: var(--sidebar-width);
+}
+
+@media (max-width: 767px) {
+  .app-sidebar {
+    display: none !important;
+  }
+
+  .app-main {
+    margin-left: 0 !important;
+    width: 100%;
+    max-width: 100vw;
+  }
+
+  .app-topbar {
+    padding-left: 0.75rem !important;
+    padding-right: 0.75rem !important;
+  }
+
+  .app-topbar > div:last-child {
+    gap: 0.25rem;
+  }
+
+  .app-content {
+    padding: 0.75rem !important;
+  }
+}

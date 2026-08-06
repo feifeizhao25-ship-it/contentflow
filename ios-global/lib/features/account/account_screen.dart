@@ -14,7 +14,7 @@ class AccountScreen extends ConsumerWidget {
       backgroundColor: const Color(0xFFF8F9FA),
       body: SafeArea(
         child: userAsync.when(
-          data: (user) => _buildContent(context, user),
+          data: (user) => _buildContent(context, ref, user),
           loading: () => const Center(child: CircularProgressIndicator()),
           error: (e, _) => Center(child: Text('Failed to load: $e')),
         ),
@@ -22,7 +22,7 @@ class AccountScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildContent(BuildContext context, User user) {
+  Widget _buildContent(BuildContext context, WidgetRef ref, User user) {
     return CustomScrollView(
       slivers: [
         // Header
@@ -37,14 +37,34 @@ class AccountScreen extends ConsumerWidget {
 
         // Menu Items
         SliverToBoxAdapter(child: _buildSectionTitle('Features')),
-        SliverToBoxAdapter(child: _buildMenuItem(context, Icons.people, 'Team management', 'Manage team members')),
-        SliverToBoxAdapter(child: _buildMenuItem(context, Icons.key, 'API settings', 'Manage API keys')),
-        
+        SliverToBoxAdapter(
+          child: _buildMenuItem(
+            context,
+            Icons.people,
+            'Team management',
+            'Manage team members',
+          ),
+        ),
+        SliverToBoxAdapter(
+          child: _buildMenuItem(
+            context,
+            Icons.key,
+            'API settings',
+            'Manage API keys',
+          ),
+        ),
+
         SliverToBoxAdapter(child: _buildSectionTitle('Settings')),
-        SliverToBoxAdapter(child: _buildMenuItem(context, Icons.settings, 'App settings', '')),
-        SliverToBoxAdapter(child: _buildMenuItem(context, Icons.help_outline, 'Help', '')),
-        SliverToBoxAdapter(child: _buildMenuItem(context, Icons.info_outline, 'About', '')),
-        
+        SliverToBoxAdapter(
+          child: _buildMenuItem(context, Icons.settings, 'App settings', ''),
+        ),
+        SliverToBoxAdapter(
+          child: _buildMenuItem(context, Icons.help_outline, 'Help', ''),
+        ),
+        SliverToBoxAdapter(
+          child: _buildMenuItem(context, Icons.info_outline, 'About', ''),
+        ),
+
         SliverToBoxAdapter(child: _buildLogoutButton(context, ref)),
 
         const SliverToBoxAdapter(child: SizedBox(height: 100)),
@@ -62,8 +82,12 @@ class AccountScreen extends ConsumerWidget {
           // Avatar
           CircleAvatar(
             radius: 50,
-            backgroundColor: Theme.of(context).primaryColor.withValues(alpha: 0.1),
-            backgroundImage: user.avatar != null ? NetworkImage(user.avatar!) : null,
+            backgroundColor: Theme.of(
+              context,
+            ).primaryColor.withValues(alpha: 0.1),
+            backgroundImage: user.avatar != null
+                ? NetworkImage(user.avatar!)
+                : null,
             child: user.avatar == null
                 ? Text(
                     user.name.substring(0, 1),
@@ -77,10 +101,7 @@ class AccountScreen extends ConsumerWidget {
           const SizedBox(height: 12),
           Text(
             user.name,
-            style: const TextStyle(
-              fontSize: 22,
-              fontWeight: FontWeight.bold,
-            ),
+            style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 4),
           Container(
@@ -263,7 +284,12 @@ class AccountScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildMenuItem(BuildContext context, IconData icon, String title, String subtitle) {
+  Widget _buildMenuItem(
+    BuildContext context,
+    IconData icon,
+    String title,
+    String subtitle,
+  ) {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
       decoration: BoxDecoration(
@@ -317,7 +343,10 @@ class AccountScreen extends ConsumerWidget {
                         );
                       }
                     },
-                    child: const Text('Confirm', style: TextStyle(color: Colors.red)),
+                    child: const Text(
+                      'Confirm',
+                      style: TextStyle(color: Colors.red),
+                    ),
                   ),
                 ],
               ),

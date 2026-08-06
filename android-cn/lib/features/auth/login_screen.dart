@@ -41,7 +41,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         return;
       }
 
-      await ref.read(apiClientProvider).login(
+      await ref
+          .read(apiClientProvider)
+          .login(
             email: email,
             password: password,
             tenantSlug: _tenantController.text.trim(),
@@ -49,9 +51,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
       if (!mounted) return;
       ref.invalidate(authStateProvider);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('登录成功')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('登录成功')));
     } catch (e) {
       if (!mounted) return;
       setState(() {
