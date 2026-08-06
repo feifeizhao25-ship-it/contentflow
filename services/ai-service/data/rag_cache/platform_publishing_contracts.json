@@ -1,0 +1,69 @@
+{
+  "schema_version": 1,
+  "timestamp": "2026-08-06T11:55:00+00:00",
+  "scope": "contentflow-global-publishing-reliability",
+  "status": "quarantined_reference",
+  "promotion_requires": [
+    "official OAuth authorization",
+    "platform-specific contract tests",
+    "idempotency verification",
+    "remote identifier readback",
+    "confirmed remote state",
+    "named reviewer approval"
+  ],
+  "sources": [
+    {
+      "platform": "TikTok",
+      "url": "https://developers.tiktok.com/doc/content-posting-api-get-started/",
+      "authority": "official",
+      "verified_at": "2026-08-06T11:55:00+00:00",
+      "review_cadence_days": 7,
+      "operational_contract": [
+        "Direct posting requires an approved publishing scope and user authorization.",
+        "Unaudited clients are restricted and must not be treated as public-production capable.",
+        "Publishing returns a publish identifier and requires status verification."
+      ]
+    },
+    {
+      "platform": "LinkedIn",
+      "url": "https://learn.microsoft.com/en-us/linkedin/marketing/community-management/shares/posts-api",
+      "authority": "official",
+      "verified_at": "2026-08-06T11:55:00+00:00",
+      "review_cadence_days": 7,
+      "operational_contract": [
+        "The Posts API is versioned and sunset versions must not be used.",
+        "Organization publishing requires approved access and appropriate organization roles.",
+        "A successful create response exposes a remote post identifier."
+      ]
+    },
+    {
+      "platform": "X",
+      "url": "https://docs.x.com/x-api/posts/manage-tweets/introduction",
+      "authority": "official",
+      "verified_at": "2026-08-06T11:55:00+00:00",
+      "review_cadence_days": 7,
+      "operational_contract": [
+        "Post creation uses the current X API post-management contract.",
+        "ContentFlow must persist the returned remote identifier before counting success.",
+        "Retries require a ContentFlow idempotency guard because remote duplicate semantics are platform-specific."
+      ]
+    },
+    {
+      "platform": "Instagram",
+      "url": "https://developers.facebook.com/docs/instagram-platform/instagram-api-with-facebook-login/content-publishing/",
+      "authority": "official",
+      "verified_at": "2026-08-06T11:55:00+00:00",
+      "review_cadence_days": 7,
+      "operational_contract": [
+        "Publishing eligibility, media constraints, permissions, and account prerequisites must be checked from the current official contract.",
+        "A container or submission state is not equivalent to a confirmed public post.",
+        "ContentFlow must read back the remote state before recording content_published."
+      ]
+    }
+  ],
+  "limitations": [
+    "This cache is a source contract, not an OAuth credential or proof of live publishing.",
+    "Platform rules may change before the weekly review date.",
+    "No entry is promoted into production behavior without connector tests and reviewer approval."
+  ]
+}

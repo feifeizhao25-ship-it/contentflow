@@ -112,12 +112,17 @@ def validate_freshness():
             now = datetime.now(tz=timezone.utc)
             age_days = (now - cache_ts).days
         
+        max_age_days = int(meta.get("review_cadence_days", MAX_AGE_DAYS))
+        warning_days = max(1, max_age_days - min(30, max_age_days // 5 or 1))
+
         # Determine status
         if age_days is None:
             status = "unknown"
-        elif age_days >= MAX_AGE_DAYS:
+        elif age_days < 0:
+            status = "unknown"
+        elif age_days >= max_age_days:
             status = "expired"
-        elif age_days >= WARNING_DAYS:
+        elif age_days >= warning_days:
             status = "warning"
         else:
             status = "fresh"
@@ -131,7 +136,8 @@ def validate_freshness():
             "source_name": source_name,
             "age_days": age_days,
             "status": status,
-            "max_age_days": MAX_AGE_DAYS,
+            "max_age_days": max_age_days,
+            "warning_days": warning_days,
             "last_cached": meta.get("last_cached", "N/A"),
             "expiry_date": meta.get("expiry_date", "N/A"),
             "needs_refresh": status in ("expired", "warning"),
@@ -141,7 +147,7 @@ def validate_freshness():
     return results
 
 
-def print_report(results):
+def print_report(results, integrity_errors=None):
     """Print human-readable freshness report."""
     print("=" * 70)
     print("📊 RAG Knowledge Base Freshness Report")
@@ -151,6 +157,10 @@ def print_report(results):
     
     if not results:
         print("   No RAG cache files found.")
+    if integrity_errors:
+        for error in integrity_errors:
+            print(f"   🔴 {error}")
+    if not results:
         return
     
     fresh = [r for r in results if r["status"] == "fresh"]
@@ -171,7 +181,7 @@ def print_report(results):
         print(f"     Source: {r['source_name']} ({r['source_url']})")
         print(f"     Age: {age_str} | Status: {r['status']}")
         if r["needs_refresh"]:
-            print(f"     ⚡ ACTION: Refresh recommended (over {WARNING_DAYS} days old)")
+            print(f"     ⚡ ACTION: Refresh recommended (source policy: {r['max_age_days']} days)")
         print()
     
     # Summary
@@ -185,7 +195,7 @@ def print_report(results):
         print(f"⚠️  {len(warning)} file(s) are approaching expiry (>{WARNING_DAYS} days old).")
 
 
-def output_json(results):
+def output_json(results, integrity_errors=None):
     """Output results as JSON."""
     output = {
         "checked_at": datetime.now(timezone.utc).isoformat(),
@@ -200,6 +210,7 @@ def output_json(results):
             "expired": len([r for r in results if r["status"] == "expired"]),
             "unknown": len([r for r in results if r["status"] == "unknown"]),
         },
+        "integrity_errors": integrity_errors or [],
         "files": results,
     }
     print(json.dumps(output, indent=2, ensure_ascii=False))
@@ -212,15 +223,27 @@ def main():
     args = parser.parse_args()
     
     results = validate_freshness()
+    metadata = load_metadata()
+    integrity_errors = []
+    if not metadata or not isinstance(metadata.get("knowledge_files"), list):
+        integrity_errors.append("RAG metadata is missing or has no knowledge_files catalog.")
+    if not results:
+        integrity_errors.append("RAG cache is empty; freshness cannot be treated as healthy.")
+    if metadata and isinstance(metadata.get("knowledge_files"), list):
+        cached_names = {item["file"] for item in results}
+        for entry in metadata["knowledge_files"]:
+            name = entry.get("file")
+            if not name or name not in cached_names:
+                integrity_errors.append(f"Catalog entry has no cache file: {name or '<missing name>'}")
     
     if args.json:
-        output_json(results)
+        output_json(results, integrity_errors)
     else:
-        print_report(results)
+        print_report(results, integrity_errors)
     
     # Exit code: 1 if any expired, 0 otherwise
     has_expired = any(r["status"] == "expired" for r in results)
-    sys.exit(1 if has_expired else 0)
+    sys.exit(1 if has_expired or integrity_errors else 0)
 
 
 if __name__ == "__main__":
