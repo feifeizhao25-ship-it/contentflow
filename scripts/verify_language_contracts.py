@@ -71,6 +71,20 @@ def check_mobile_en_values() -> list[dict[str, str]]:
     return findings
 
 
+def check_api_response_gate() -> list[str]:
+    path = ROOT / "runtime/api/src/common/interceptors/transform.interceptor.ts"
+    text = read_text(path)
+    issues: list[str] = []
+    for required in (
+        "process.env.MARKET_REGION === 'global'",
+        "containsCjk(data)",
+        "The response failed the global English-only contract",
+    ):
+        if required not in text:
+            issues.append(f"Global API response gate is missing: {required}")
+    return issues
+
+
 def fetch(url: str) -> tuple[bool, str]:
     try:
         with urlopen(url, timeout=10) as resp:
@@ -107,6 +121,7 @@ def main() -> int:
         "int_source_cjk_findings": scan_int_source(),
         "int_locale_lock_issues": check_int_locale_lock(),
         "mobile_en_value_cjk_findings": check_mobile_en_values(),
+        "api_response_gate_issues": check_api_response_gate(),
         "live": live_checks(args.cn_base, args.int_base),
     }
 
@@ -117,6 +132,8 @@ def main() -> int:
         failures.append("INT locale lock is not strict.")
     if result["mobile_en_value_cjk_findings"]:
         failures.append("Mobile English locale values contain CJK.")
+    if result["api_response_gate_issues"]:
+        failures.append("Global API responses are not protected by an English-only gate.")
     live = result["live"]
     if live.get("int_landing_has_cjk") is True:
         failures.append("INT landing HTML contains CJK.")
@@ -133,6 +150,7 @@ def main() -> int:
         print(f"  INT source CJK findings: {len(result['int_source_cjk_findings'])}")
         print(f"  INT locale lock issues: {len(result['int_locale_lock_issues'])}")
         print(f"  Mobile EN value CJK findings: {len(result['mobile_en_value_cjk_findings'])}")
+        print(f"  Global API response gate issues: {len(result['api_response_gate_issues'])}")
         if live:
             print(f"  Live: {json.dumps(live, ensure_ascii=False)}")
         print("  Result:", "PASS" if result["passed"] else "FAIL")
