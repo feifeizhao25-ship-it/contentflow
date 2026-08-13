@@ -63,7 +63,7 @@ services:
       timeout: 5s
       start_period: 30s
       retries: 5
-    networks: [backend]
+    networks: [backend, edge]
 
   web:
     image: ${IMAGE_PREFIX:?IMAGE_PREFIX is required}-web-int:${IMAGE_TAG:?IMAGE_TAG is required}

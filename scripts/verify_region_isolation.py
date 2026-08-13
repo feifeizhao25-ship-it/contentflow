@@ -56,6 +56,10 @@ def main() -> int:
     ]
     if "MARKET_REGION: cn" in GLOBAL_COMPOSE or "web-cn" in GLOBAL_COMPOSE:
         failures.append("Global-only production stack must not include domestic workloads")
+    if GLOBAL_COMPOSE.count("networks: [backend, edge]") != 2:
+        failures.append("Global API and web must join the edge network without publishing host ports")
+    if "ports:" in GLOBAL_COMPOSE:
+        failures.append("Global-only production stack must not publish host ports")
     if "contentflow.tianji-astrology.com" not in GLOBAL_ENV_EXAMPLE:
         failures.append("Global production environment does not name the approved HTTPS origin")
     expected_readiness = "http://127.0.0.1:4000/api/v1/health/ready"
