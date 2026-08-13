@@ -11,7 +11,7 @@ RUN npm run build && npm prune --omit=dev
 FROM node:20-alpine AS runtime
 WORKDIR /app
 ENV NODE_ENV=production PORT=4000
-RUN apk add --no-cache wget dumb-init && addgroup -S app && adduser -S app -G app
+RUN apk add --no-cache wget dumb-init openssl && addgroup -S app && adduser -S app -G app
 COPY --from=build --chown=app:app /app/node_modules ./node_modules
 COPY --from=build --chown=app:app /app/dist ./dist
 COPY --from=build --chown=app:app /app/src/database/prisma ./src/database/prisma
