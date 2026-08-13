@@ -58,12 +58,12 @@ services:
       postgres: { condition: service_healthy }
       redis: { condition: service_healthy }
     healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:4000/health/ready"]
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:4000/api/v1/health/ready"]
       interval: 15s
       timeout: 5s
       start_period: 30s
       retries: 5
-    networks: [backend]
+    networks: [backend, edge]
 
   web:
     image: ${IMAGE_PREFIX:?IMAGE_PREFIX is required}-web-int:${IMAGE_TAG:?IMAGE_TAG is required}

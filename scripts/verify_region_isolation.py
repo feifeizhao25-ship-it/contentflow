@@ -9,6 +9,7 @@ COMPOSE = (ROOT / "runtime" / "docker-compose.production.yml").read_text()
 GLOBAL_COMPOSE = (ROOT / "runtime" / "docker-compose.global.yml").read_text()
 ENV_EXAMPLE = (ROOT / "runtime" / ".env.production.example").read_text()
 GLOBAL_ENV_EXAMPLE = (ROOT / "runtime" / ".env.global.example").read_text()
+GLOBAL_EDGE_ROUTE = (ROOT / "runtime" / "Caddyfile.global.example").read_text()
 
 REQUIRED_COMPOSE = (
     "postgres-cn:", "postgres-int:", "redis-cn:", "redis-int:",
@@ -48,6 +49,7 @@ def main() -> int:
         "name: contentflow-global", "MARKET_REGION: global",
         "internal: true", "external: true", "IMAGE_TAG:?",
         "CORS_ORIGIN:?", "OPENROUTER_SITE_URL:?", 'ENABLE_API_DOCS: "false"',
+        "http://127.0.0.1:4000/api/v1/health/ready",
     )
     failures += [
         f"missing isolated global production contract: {token}"
@@ -55,8 +57,27 @@ def main() -> int:
     ]
     if "MARKET_REGION: cn" in GLOBAL_COMPOSE or "web-cn" in GLOBAL_COMPOSE:
         failures.append("Global-only production stack must not include domestic workloads")
+    if GLOBAL_COMPOSE.count("networks: [backend, edge]") != 2:
+        failures.append("Global API and web must join the edge network without publishing host ports")
+    if "ports:" in GLOBAL_COMPOSE:
+        failures.append("Global-only production stack must not publish host ports")
     if "contentflow.tianji-astrology.com" not in GLOBAL_ENV_EXAMPLE:
         failures.append("Global production environment does not name the approved HTTPS origin")
+    edge_required = (
+        "contentflow.tianji-astrology.com",
+        "@contentflow_api path /api/*",
+        "reverse_proxy @contentflow_api contentflow-global-api:4000",
+        "reverse_proxy contentflow-global-web:3000",
+    )
+    failures += [
+        f"missing ContentFlow edge routing contract: {token}"
+        for token in edge_required if token not in GLOBAL_EDGE_ROUTE
+    ]
+    expected_readiness = "http://127.0.0.1:4000/api/v1/health/ready"
+    if COMPOSE.count(expected_readiness) != 2:
+        failures.append("CN and Global API health checks must use the prefixed readiness route")
+    if "http://127.0.0.1:4000/health/ready" in COMPOSE + GLOBAL_COMPOSE:
+        failures.append("Unprefixed readiness route is invalid for the API controller")
     if failures:
         print("Region isolation gate: FAIL")
         for failure in failures:
