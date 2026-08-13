@@ -70,6 +70,35 @@ import { QuestModule } from './modules/quest/quest.module';
 import { AchievementModule } from './modules/achievement/achievement.module';
 import { SystemModule } from './modules/system/system.module';
 
+export function validateProductionConfig(config: Record<string, unknown>) {
+  if (config.NODE_ENV !== 'production') return config;
+
+  const required = [
+    'DATABASE_URL', 'REDIS_HOST', 'JWT_SECRET', 'JWT_REFRESH_SECRET',
+    'MARKET_REGION', 'CORS_ORIGIN',
+  ];
+  if (config.MARKET_REGION === 'global') {
+    required.push('OPENROUTER_SITE_URL');
+  }
+  const missing = required.filter((key) => !config[key]);
+  if (missing.length > 0) {
+    throw new Error(`Missing required production environment variables: ${missing.join(', ')}`);
+  }
+  for (const key of ['JWT_SECRET', 'JWT_REFRESH_SECRET']) {
+    if (String(config[key]).length < 32) {
+      throw new Error(`${key} must contain at least 32 characters`);
+    }
+  }
+  if (!['cn', 'global'].includes(String(config.MARKET_REGION))) {
+    throw new Error('MARKET_REGION must be either cn or global');
+  }
+  const origins = String(config.CORS_ORIGIN).split(',').map((value) => value.trim());
+  if (origins.some((origin) => !origin.startsWith('https://') || origin.includes('*'))) {
+    throw new Error('CORS_ORIGIN must contain explicit HTTPS origins without wildcards');
+  }
+  return config;
+}
+
 const DOMESTIC_ONLY_MODULES = [
   HotModule,
   CompetitorModule,
@@ -90,24 +119,7 @@ export function marketModulesFor(region: string | undefined) {
     ConfigModule.forRoot({
       isGlobal: true,
       envFilePath: ['.env.local', '.env'],
-      validate: (config: Record<string, unknown>) => {
-        if (config.NODE_ENV === 'production') {
-          const required = ['DATABASE_URL', 'REDIS_HOST', 'JWT_SECRET', 'JWT_REFRESH_SECRET', 'MARKET_REGION'];
-          const missing = required.filter((key) => !config[key]);
-          if (missing.length > 0) {
-            throw new Error(`Missing required production environment variables: ${missing.join(', ')}`);
-          }
-          for (const key of ['JWT_SECRET', 'JWT_REFRESH_SECRET']) {
-            if (String(config[key]).length < 32) {
-              throw new Error(`${key} must contain at least 32 characters`);
-            }
-          }
-          if (!['cn', 'global'].includes(String(config.MARKET_REGION))) {
-            throw new Error('MARKET_REGION must be either cn or global');
-          }
-        }
-        return config;
-      },
+      validate: validateProductionConfig,
     }),
     
     // 限流保护

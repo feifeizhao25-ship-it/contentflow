@@ -5,7 +5,7 @@ import { HotModule } from './modules/hot/hot.module';
 import { PointsModule } from './modules/points/points.module';
 import { QuestModule } from './modules/quest/quest.module';
 import { RewardsModule } from './modules/rewards/rewards.module';
-import { marketModulesFor } from './app.module';
+import { marketModulesFor, validateProductionConfig } from './app.module';
 
 describe('market module isolation', () => {
   const domesticModules = [
@@ -28,5 +28,27 @@ describe('market module isolation', () => {
 
   it('fails safely toward the existing CN surface outside production', () => {
     expect(marketModulesFor(undefined)).toEqual(domesticModules);
+  });
+});
+
+describe('production configuration', () => {
+  const valid = {
+    NODE_ENV: 'production',
+    DATABASE_URL: 'postgresql://db',
+    REDIS_HOST: 'redis',
+    JWT_SECRET: 'a'.repeat(32),
+    JWT_REFRESH_SECRET: 'b'.repeat(32),
+    MARKET_REGION: 'global',
+    CORS_ORIGIN: 'https://contentflow.example.com',
+    OPENROUTER_SITE_URL: 'https://contentflow.example.com',
+  };
+
+  it('accepts an explicit global production origin', () => {
+    expect(validateProductionConfig(valid)).toEqual(valid);
+  });
+
+  it('rejects missing or wildcard production origins', () => {
+    expect(() => validateProductionConfig({ ...valid, CORS_ORIGIN: '' })).toThrow('CORS_ORIGIN');
+    expect(() => validateProductionConfig({ ...valid, CORS_ORIGIN: 'https://*.example.com' })).toThrow('wildcards');
   });
 });
