@@ -32,6 +32,17 @@ jobs:
       - run: npm test -- --runInBand
       - run: npm run build
       - run: npm audit --omit=dev --audit-level=high
+      - name: Verify production image starts without external downloads
+        run: |
+          docker build --tag contentflow-api-ci .
+          if docker run --rm --network none --entrypoint sh contentflow-api-ci \
+            -lc 'npx prisma --version' > /tmp/prisma-version 2>&1; then
+            grep -F 'Query Engine' /tmp/prisma-version
+          else
+            cat /tmp/prisma-version
+            exit 1
+          fi
+          ! grep -F 'binaries.prisma.sh' /tmp/prisma-version
 
   web:
     strategy:
