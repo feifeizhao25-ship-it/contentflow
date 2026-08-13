@@ -9,6 +9,7 @@ COMPOSE = (ROOT / "runtime" / "docker-compose.production.yml").read_text()
 GLOBAL_COMPOSE = (ROOT / "runtime" / "docker-compose.global.yml").read_text()
 ENV_EXAMPLE = (ROOT / "runtime" / ".env.production.example").read_text()
 GLOBAL_ENV_EXAMPLE = (ROOT / "runtime" / ".env.global.example").read_text()
+GLOBAL_EDGE_ROUTE = (ROOT / "runtime" / "Caddyfile.global.example").read_text()
 
 REQUIRED_COMPOSE = (
     "postgres-cn:", "postgres-int:", "redis-cn:", "redis-int:",
@@ -62,6 +63,16 @@ def main() -> int:
         failures.append("Global-only production stack must not publish host ports")
     if "contentflow.tianji-astrology.com" not in GLOBAL_ENV_EXAMPLE:
         failures.append("Global production environment does not name the approved HTTPS origin")
+    edge_required = (
+        "contentflow.tianji-astrology.com",
+        "@contentflow_api path /api/*",
+        "reverse_proxy @contentflow_api contentflow-global-api:4000",
+        "reverse_proxy contentflow-global-web:3000",
+    )
+    failures += [
+        f"missing ContentFlow edge routing contract: {token}"
+        for token in edge_required if token not in GLOBAL_EDGE_ROUTE
+    ]
     expected_readiness = "http://127.0.0.1:4000/api/v1/health/ready"
     if COMPOSE.count(expected_readiness) != 2:
         failures.append("CN and Global API health checks must use the prefixed readiness route")
