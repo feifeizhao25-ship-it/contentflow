@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "timestamp": "2026-08-06T11:55:00+00:00",
+  "timestamp": "2026-08-13T12:18:35+00:00",
   "scope": "contentflow-global-publishing-reliability",
   "status": "quarantined_reference",
   "promotion_requires": [
@@ -16,7 +16,7 @@
       "platform": "TikTok",
       "url": "https://developers.tiktok.com/doc/content-posting-api-get-started/",
       "authority": "official",
-      "verified_at": "2026-08-06T11:55:00+00:00",
+      "verified_at": "2026-08-13T12:18:35+00:00",
       "review_cadence_days": 7,
       "operational_contract": [
         "Direct posting requires an approved publishing scope and user authorization.",
@@ -28,7 +28,7 @@
       "platform": "LinkedIn",
       "url": "https://learn.microsoft.com/en-us/linkedin/marketing/community-management/shares/posts-api",
       "authority": "official",
-      "verified_at": "2026-08-06T11:55:00+00:00",
+      "verified_at": "2026-08-13T12:18:35+00:00",
       "review_cadence_days": 7,
       "operational_contract": [
         "The Posts API is versioned and sunset versions must not be used.",
@@ -40,7 +40,7 @@
       "platform": "X",
       "url": "https://docs.x.com/x-api/posts/manage-tweets/introduction",
       "authority": "official",
-      "verified_at": "2026-08-06T11:55:00+00:00",
+      "verified_at": "2026-08-13T12:18:35+00:00",
       "review_cadence_days": 7,
       "operational_contract": [
         "Post creation uses the current X API post-management contract.",
@@ -52,7 +52,7 @@
       "platform": "Instagram",
       "url": "https://developers.facebook.com/docs/instagram-platform/instagram-api-with-facebook-login/content-publishing/",
       "authority": "official",
-      "verified_at": "2026-08-06T11:55:00+00:00",
+      "verified_at": "2026-08-13T12:18:35+00:00",
       "review_cadence_days": 7,
       "operational_contract": [
         "Publishing eligibility, media constraints, permissions, and account prerequisites must be checked from the current official contract.",
