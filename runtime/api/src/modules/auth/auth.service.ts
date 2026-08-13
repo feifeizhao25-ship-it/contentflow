@@ -5,6 +5,7 @@ import * as bcrypt from 'bcryptjs';
 import { PrismaService } from '../../database/prisma.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
+import { defaultTenantSettings } from '../../common/i18n/market-message';
 
 export interface JwtPayload {
   sub: string;       // userId
@@ -72,6 +73,7 @@ export class AuthService {
           ai_calls_this_month: 0,
           storage_used_mb: 0,
         },
+        settings: defaultTenantSettings(this.globalMarket),
       },
     });
 
