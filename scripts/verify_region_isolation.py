@@ -48,6 +48,7 @@ def main() -> int:
         "name: contentflow-global", "MARKET_REGION: global",
         "internal: true", "external: true", "IMAGE_TAG:?",
         "CORS_ORIGIN:?", "OPENROUTER_SITE_URL:?", 'ENABLE_API_DOCS: "false"',
+        "http://127.0.0.1:4000/api/v1/health/ready",
     )
     failures += [
         f"missing isolated global production contract: {token}"
@@ -57,6 +58,11 @@ def main() -> int:
         failures.append("Global-only production stack must not include domestic workloads")
     if "contentflow.tianji-astrology.com" not in GLOBAL_ENV_EXAMPLE:
         failures.append("Global production environment does not name the approved HTTPS origin")
+    expected_readiness = "http://127.0.0.1:4000/api/v1/health/ready"
+    if COMPOSE.count(expected_readiness) != 2:
+        failures.append("CN and Global API health checks must use the prefixed readiness route")
+    if "http://127.0.0.1:4000/health/ready" in COMPOSE + GLOBAL_COMPOSE:
+        failures.append("Unprefixed readiness route is invalid for the API controller")
     if failures:
         print("Region isolation gate: FAIL")
         for failure in failures:
