@@ -6,7 +6,9 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 COMPOSE = (ROOT / "runtime" / "docker-compose.production.yml").read_text()
+GLOBAL_COMPOSE = (ROOT / "runtime" / "docker-compose.global.yml").read_text()
 ENV_EXAMPLE = (ROOT / "runtime" / ".env.production.example").read_text()
+GLOBAL_ENV_EXAMPLE = (ROOT / "runtime" / ".env.global.example").read_text()
 
 REQUIRED_COMPOSE = (
     "postgres-cn:", "postgres-int:", "redis-cn:", "redis-int:",
@@ -42,6 +44,19 @@ def main() -> int:
         failures.append("CN database, cache, API and web must all stay on cn-backend")
     if COMPOSE.count("networks: [int-backend]") < 4:
         failures.append("Global database, cache, API and web must all stay on int-backend")
+    global_required = (
+        "name: contentflow-global", "MARKET_REGION: global",
+        "internal: true", "external: true", "IMAGE_TAG:?",
+        "CORS_ORIGIN:?", "OPENROUTER_SITE_URL:?", 'ENABLE_API_DOCS: "false"',
+    )
+    failures += [
+        f"missing isolated global production contract: {token}"
+        for token in global_required if token not in GLOBAL_COMPOSE
+    ]
+    if "MARKET_REGION: cn" in GLOBAL_COMPOSE or "web-cn" in GLOBAL_COMPOSE:
+        failures.append("Global-only production stack must not include domestic workloads")
+    if "contentflow.tianji-astrology.com" not in GLOBAL_ENV_EXAMPLE:
+        failures.append("Global production environment does not name the approved HTTPS origin")
     if failures:
         print("Region isolation gate: FAIL")
         for failure in failures:
