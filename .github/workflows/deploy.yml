@@ -1,0 +1,130 @@
+name: Deploy (ContentFlow Global)
+
+on:
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: Image tag to deploy (commit SHA built by release-images; latest is rejected)
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  packages: read
+  id-token: write
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_PREFIX: ghcr.io/feifeizhao25-ship-it/contentflow
+  BUCKET: contentflow-deploy-artifacts-664308058917
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Validate immutable image tag
+        env:
+          IMAGE_TAG: ${{ inputs.image_tag }}
+        run: |
+          case "$IMAGE_TAG" in
+            latest|*[!A-Za-z0-9._-]*|'')
+              echo "Use an immutable release version or commit SHA, not '$IMAGE_TAG'." >&2
+              exit 1
+              ;;
+          esac
+
+      # The instance has no GHCR credentials (token lacks read:packages), so
+      # the runner pulls the release images and ships them through S3,
+      # mirroring the seasons-app S3-relay pattern.
+      - uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Pull and export release images
+        run: |
+          set -euo pipefail
+          TAG="${{ inputs.image_tag }}"
+          for img in api web-int; do
+            docker pull "${IMAGE_PREFIX}-${img}:${TAG}"
+            docker save "${IMAGE_PREFIX}-${img}:${TAG}" | gzip > "/tmp/contentflow-${img}.tar.gz"
+            ls -lh "/tmp/contentflow-${img}.tar.gz"
+          done
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-region: us-west-2
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          role-session-name: contentflow-deploy
+
+      - name: Upload image archives and presign
+        env:
+          IMAGE_TAG: ${{ inputs.image_tag }}
+        run: |
+          set -euo pipefail
+          for img in api web-int; do
+            KEY="images/${{ github.run_id }}/${img}-${IMAGE_TAG}.tar.gz"
+            aws s3 cp "/tmp/contentflow-${img}.tar.gz" "s3://${BUCKET}/${KEY}"
+            URL=$(aws s3 presign "s3://${BUCKET}/${KEY}" --expires-in 3600)
+            echo "::add-mask::$URL"
+            echo "${img//-/_}_url=$URL" >> "$GITHUB_ENV"
+          done
+
+      - name: Deploy to Lightsail instance over SSH
+        env:
+          DEPLOY_HOST: ${{ secrets.CONTENTFLOW_DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.CONTENTFLOW_DEPLOY_USER }}
+          DEPLOY_SSH_KEY: ${{ secrets.CONTENTFLOW_DEPLOY_SSH_KEY }}
+          IMAGE_TAG: ${{ inputs.image_tag }}
+        run: |
+          set -euo pipefail
+          install -m 600 /dev/null /tmp/deploy-key
+          printf '%s\n' "$DEPLOY_SSH_KEY" > /tmp/deploy-key
+          export SSH="ssh -i /tmp/deploy-key -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new -o ConnectTimeout=20 ${DEPLOY_USER}@${DEPLOY_HOST}"
+          # Load one image at a time: the instance has only 1GB RAM + swap,
+          # so each archive is deleted before the next download starts.
+          for img in api web-int; do
+            URL_VAR="${img//-/_}_url"
+            $SSH "PRESIGNED='${!URL_VAR}' bash -s" <<'REMOTE'
+          set -euo pipefail
+          curl -fsSL "$PRESIGNED" -o /tmp/contentflow-image.tar.gz
+          docker load -i /tmp/contentflow-image.tar.gz
+          rm -f /tmp/contentflow-image.tar.gz
+          REMOTE
+          done
+          $SSH "IMAGE_TAG='${IMAGE_TAG}' bash -s" <<'REMOTE'
+          set -euo pipefail
+          cd /opt/contentflow-global
+          sudo cp .env ".env.deploy-bak.$(date +%s)"
+          sudo sed -i "s/^IMAGE_TAG=.*/IMAGE_TAG=${IMAGE_TAG}/" .env
+          sudo grep -E '^IMAGE_(PREFIX|TAG)=' .env
+          sudo docker compose config --quiet
+          sudo docker compose up -d api web
+          for i in $(seq 1 40); do
+            API=$(sudo docker inspect --format '{{.State.Health.Status}}' contentflow-global-api 2>/dev/null || echo missing)
+            WEB=$(sudo docker inspect --format '{{.State.Health.Status}}' contentflow-global-web 2>/dev/null || echo missing)
+            echo "health: api=$API web=$WEB"
+            if [ "$API" = healthy ] && [ "$WEB" = healthy ]; then break; fi
+            if [ "$i" = 40 ]; then
+              echo 'Containers failed to become healthy' >&2
+              sudo docker compose logs --tail=50 api web
+              exit 1
+            fi
+            sleep 5
+          done
+          curl -fsS --resolve contentflow.tianji-astrology.com:443:127.0.0.1 \
+            https://contentflow.tianji-astrology.com/api/v1/health/ready
+          echo
+          echo 'Health gate passed'
+          REMOTE
+
+      - name: Cleanup S3 image archives
+        if: always()
+        env:
+          IMAGE_TAG: ${{ inputs.image_tag }}
+        run: |
+          for img in api web-int; do
+            aws s3 rm "s3://${BUCKET}/images/${{ github.run_id }}/${img}-${IMAGE_TAG}.tar.gz" || true
+          done
