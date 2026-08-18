@@ -114,7 +114,9 @@ jobs:
             fi
             sleep 5
           done
-          curl -fsS --resolve contentflow.tianji-astrology.com:443:127.0.0.1 \
+          # -k: the origin serves a Cloudflare Origin CA certificate, which is
+          # only trusted by the Cloudflare edge, not by public CA bundles.
+          curl -fsSk --resolve contentflow.tianji-astrology.com:443:127.0.0.1 \
             https://contentflow.tianji-astrology.com/api/v1/health/ready
           echo
           echo 'Health gate passed'
