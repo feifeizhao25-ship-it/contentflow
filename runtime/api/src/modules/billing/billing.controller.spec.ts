@@ -1,9 +1,11 @@
 import { BillingController } from './billing.controller';
 import { PLANS } from './plans.constant';
+import { PrismaService } from '../../database/prisma.service';
 
 describe('BillingController', () => {
   it('returns the five canonical plan tiers in order', () => {
-    const controller = new BillingController();
+    // getPlans 不触碰数据库，prisma 传桩即可
+    const controller = new BillingController({} as PrismaService);
     const { plans } = controller.getPlans();
 
     expect(plans).toBe(PLANS);

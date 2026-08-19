@@ -18,8 +18,8 @@ import {
 import { Modal, Button, Progress, Tooltip, Badge, Card, Divider } from 'antd';
 import clsx from 'clsx';
 import { useRouter } from 'next/navigation';
+import { apiClient } from '@/lib/api-client';
 
-// 模拟用户会员状态（实际应从 API 获取）
 interface UserSubscription {
     plan: 'free' | 'pro' | 'enterprise';
     monthlyQuota: number;
@@ -28,12 +28,18 @@ interface UserSubscription {
     consecutiveDays: number;
 }
 
-const MOCK_USER_SUB: UserSubscription = {
+/**
+ * 未加载完成前的保守默认值。
+ *
+ * 注意：这不是"用户的订阅状态"，而是在拿到后端数据前的最小权限兜底。
+ * 任何时候都不能把它当成已授权状态——权限判定必须以后端返回为准。
+ */
+const DEFAULT_SUBSCRIPTION: UserSubscription = {
     plan: 'free',
-    monthlyQuota: 20,
-    usedQuota: 16,
-    renewalDate: '2026-02-15',
-    consecutiveDays: 3
+    monthlyQuota: 0,
+    usedQuota: 0,
+    renewalDate: '',
+    consecutiveDays: 0
 };
 
 // ============ 升级弹窗组件 ============
@@ -576,30 +582,42 @@ export function ShareToUnlock({ onClose }: { onClose?: () => void }) {
 
 // ============ Subscription Hook ============
 export const useSubscription = () => {
-    const [subscription, setSubscription] = useState<UserSubscription>(MOCK_USER_SUB);
+    const [subscription, setSubscription] = useState<UserSubscription>(DEFAULT_SUBSCRIPTION);
+    const [loaded, setLoaded] = useState(false);
     const [showUpgradeModal, setShowUpgradeModal] = useState(false);
     const [upgradeReason, setUpgradeReason] = useState('unlock_premium');
     const [showShareModal, setShowShareModal] = useState(false);
 
-    // 从本地存储恢复
-    useEffect(() => {
-        const saved = localStorage.getItem('userSubscription');
-        if (saved) {
-            try {
-                setSubscription(JSON.parse(saved));
-            } catch (e) {
-                console.error('Failed to parse subscription:', e);
-            }
+    // 订阅状态以后端为唯一权威来源。
+    //
+    // 此前该状态从 localStorage 读取并写回，用户在 DevTools 里把 plan 改成
+    // enterprise 即可绕过全部付费墙。localStorage 已彻底移除。
+    const refresh = useCallback(async () => {
+        try {
+            const data = await apiClient.get<Partial<UserSubscription>>('/billing/subscription');
+            setSubscription({
+                plan: (data?.plan as UserSubscription['plan']) ?? 'free',
+                monthlyQuota: data?.monthlyQuota ?? 0,
+                usedQuota: data?.usedQuota ?? 0,
+                renewalDate: data?.renewalDate ?? '',
+                consecutiveDays: data?.consecutiveDays ?? 0,
+            });
+        } catch (e) {
+            // 拉取失败时保持最小权限，不要放行
+            console.error('Failed to load subscription:', e);
+            setSubscription(DEFAULT_SUBSCRIPTION);
+        } finally {
+            setLoaded(true);
         }
     }, []);
 
-    // 保存到本地存储
-    const saveSubscription = useCallback((newSub: UserSubscription) => {
-        setSubscription(newSub);
-        localStorage.setItem('userSubscription', JSON.stringify(newSub));
-    }, []);
+    useEffect(() => {
+        refresh();
+    }, [refresh]);
 
     const checkFeature = (feature: string): boolean => {
+        // 后端数据未到位前一律不放行
+        if (!loaded) return false;
         if (subscription.plan === 'enterprise') return true;
         if (subscription.plan === 'pro' && feature !== 'api_access') return true;
         return false;
@@ -614,33 +632,37 @@ export const useSubscription = () => {
         setShowShareModal(true);
     };
 
-    const isQuotaFull = subscription.usedQuota >= subscription.monthlyQuota;
-    const usagePercentage = Math.round((subscription.usedQuota / subscription.monthlyQuota) * 100);
+    const isQuotaFull = subscription.monthlyQuota > 0
+        && subscription.usedQuota >= subscription.monthlyQuota;
+    // monthlyQuota 在数据到位前为 0，直接相除会得到 NaN/Infinity
+    const usagePercentage = subscription.monthlyQuota > 0
+        ? Math.min(100, Math.round((subscription.usedQuota / subscription.monthlyQuota) * 100))
+        : 0;
 
     // 消耗额度
+    // 本地额度预检，只用于提前弹出升级提示，避免用户白等一次请求。
+    // 真正的额度扣减与拦截在服务端 UsageService.checkQuota / trackUsage 完成，
+    // 前端这里不再自行改写 usedQuota。
     const consumeQuota = useCallback((amount: number = 1) => {
         if (subscription.plan !== 'free') return true;
-        
+
         if (subscription.usedQuota + amount > subscription.monthlyQuota) {
             requestUpgrade('quota_exceeded');
             return false;
         }
-        
-        const newSub = {
-            ...subscription,
-            usedQuota: subscription.usedQuota + amount
-        };
-        saveSubscription(newSub);
         return true;
-    }, [subscription, saveSubscription]);
+    }, [subscription]);
 
     return {
         subscription,
-        isPremium: subscription.plan !== 'free',
+        loaded,
+        // 未加载完成前一律按未订阅处理，避免出现短暂的"误解锁"闪烁
+        isPremium: loaded && subscription.plan !== 'free',
         plan: subscription.plan,
         checkFeature,
         requestUpgrade,
         requestShare,
+        refresh,
         showUpgradeModal,
         setShowUpgradeModal,
         showShareModal,

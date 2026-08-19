@@ -53,26 +53,49 @@ export default function DeveloperSettings() {
     const [newKeyName, setNewKeyName] = useState('');
     const [createdKey, setCreatedKey] = useState<string | null>(null);
 
-    // Mock data for initial view
+    // 从后端加载真实的 API Key 列表。
+    // 此前这里写死两条假数据，且"创建"是前端用 Math.random() 拼一个字符串，
+    // 从未调用后端——用户拿到的 key 根本不能用。
+    const loadKeys = async () => {
+        setLoading(true);
+        try {
+            const data = await apiClient.get<ApiKey[]>('/developer/keys');
+            setKeys(Array.isArray(data) ? data : []);
+        } catch (e: any) {
+            message.error(e?.message || '加载 API Key 列表失败');
+            setKeys([]);
+        } finally {
+            setLoading(false);
+        }
+    };
+
     useEffect(() => {
-        setKeys([
-            { id: '1', name: '生产环境 - 自媒体助手', created_at: '2024-01-20', last_used_at: '2024-02-04 10:20:15', status: 'active' },
-            { id: '2', name: '测试环境', created_at: '2024-01-15', last_used_at: null, status: 'active' },
-        ]);
+        loadKeys();
     }, []);
 
-    const handleCreateKey = () => {
+    const handleCreateKey = async () => {
         if (!newKeyName.trim()) {
             message.error('请先输入 Key 名称');
             return;
         }
 
-        // Simulate API call
-        const mockKey = `sk_ff_${Math.random().toString(36).substring(7)}${Math.random().toString(36).substring(7)}`;
-        setCreatedKey(mockKey);
-
-        // In real app, we'd send newKeyName to backend
-        // apiClient.post('/developer/keys', { name: newKeyName })
+        setLoading(true);
+        try {
+            // 明文密钥只在创建时返回一次，之后后端只存哈希
+            const created = await apiClient.post<ApiKey>('/developer/keys', {
+                name: newKeyName.trim(),
+            });
+            if (!created?.key) {
+                throw new Error('后端未返回密钥明文');
+            }
+            setCreatedKey(created.key);
+            setNewKeyName('');
+            await loadKeys();
+        } catch (e: any) {
+            message.error(e?.message || '创建 API Key 失败');
+        } finally {
+            setLoading(false);
+        }
     };
 
     const copyToClipboard = (text: string) => {
