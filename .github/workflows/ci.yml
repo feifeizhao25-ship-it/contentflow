@@ -1,0 +1,135 @@
+name: CI
+
+# 此前本项目没有任何 CI —— 构建、测试、镜像全靠本地手动执行，
+# 也就无从发现"改坏了"。这份流水线覆盖 runtime/ 下三个实际部署的服务：
+#   runtime/api      NestJS 后端
+#   runtime/web-cn   国内版前端
+#   runtime/web-int  国际版前端
+#
+# 注意：runtime/ 是本项目实际发布的那一套（见 runtime/docker-compose.production.yml），
+# 根目录下的 网页端-* 等目录为历史遗留，不纳入 CI。
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  api:
+    name: API (NestJS)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: runtime/api
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: runtime/api/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      # Prisma client 必须先生成，否则 tsc 找不到类型
+      - name: Generate Prisma client
+        run: npx prisma generate
+
+      - name: Lint
+        run: npx eslint "src/**/*.ts" --max-warnings=0
+        continue-on-error: true
+
+      - name: Build
+        run: npm run build
+
+      - name: Unit tests
+        run: npm test -- --ci --passWithNoTests
+
+  web-cn:
+    name: Web CN (Next.js)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: runtime/web-cn
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: runtime/web-cn/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+        continue-on-error: true
+
+      # 跨层契约。web-cn 里没有 jest（package.json 原本只有 lint 脚本），
+      # 所以这批检查写成独立 Node 脚本 —— 否则又是一处「写了没人跑」。
+      # 拦的是：前端调用打在不存在的路径上、响应信封没解开、
+      # 新增 AI 端点缺鉴权 / 返回假数据、Dockerfile 漏装 ffmpeg。
+      # **不设 continue-on-error** —— 断链会让整页白屏，不该被放行。
+      - name: 接口契约
+        run: npm run check:contract
+
+      - name: Build
+        run: npm run build
+        env:
+          # 构建期不应依赖真实密钥；缺失时 ai-service 会显式抛错，
+          # 这里给占位值让静态构建通过。
+          SILICONFLOW_API_KEY: ci-placeholder
+
+  web-int:
+    name: Web INT (Next.js)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: runtime/web-int
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: runtime/web-int/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+        continue-on-error: true
+
+      - name: Build
+        run: npm run build
+        env:
+          SILICONFLOW_API_KEY: ci-placeholder
+
+      - name: Unit tests
+        run: npm run test:ci
+
+  secret-scan:
+    name: Secret Scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # 本项目曾把真实 SiliconFlow / OpenRouter / Fal key 硬编码进源码与 .env，
+      # 加一道扫描防止复发。
+      - name: gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

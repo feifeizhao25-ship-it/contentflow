@@ -1,0 +1,9 @@
+        }
+        maven { url "https://repo.huaweicloud.com/repository/maven/" }
+        maven { url "https://mirrors.cloud.tencent.com/nexus/repository/maven-public/" }
+    }
+        }
+        maven { url "https://repo.huaweicloud.com/repository/maven/" }
+        maven { url "https://mirrors.cloud.tencent.com/nexus/repository/maven-public/" }
+    }
+}

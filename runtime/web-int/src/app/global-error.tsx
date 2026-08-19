@@ -1,0 +1,2 @@
+'use client';
+export default function GlobalError({reset}:{error:Error&{digest?:string};reset:()=>void}){return <html lang="en"><body><main className="shell"><section className="card"><div className="eyebrow">Workspace error</div><h1>Something interrupted this view.</h1><p>Your data was not published. Retry the view or contact support if the issue continues.</p><button className="button" onClick={reset}>Try again</button></section></main></body></html>}

@@ -1,0 +1,1 @@
+      <section id="weekly-personalization" className="bg-gradient-to-b from-gray-900/30 to-gray-950 py-24">

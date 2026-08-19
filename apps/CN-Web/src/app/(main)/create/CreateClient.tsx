@@ -1,0 +1,3 @@
+  }, [isAuthenticated, router, niche, selectedPlatforms, contentType, selectedTone, addToast, showErrorToast]);
+  }, [isAuthenticated, router, script, selectedTitle, niche, contentType, selectedPlatforms, selectedTone, duration, tags, addToast, showErrorToast]);
+  }, [isAuthenticated, router, script, selectedTitle, niche, contentType, selectedPlatforms, selectedTone, duration, tags, scheduleEnabled, scheduledAt, addToast, showErrorToast]);

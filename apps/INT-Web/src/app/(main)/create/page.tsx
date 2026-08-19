@@ -1,0 +1,3 @@
+  }, [isAuthenticated, router, topic, selectedPlatforms, contentType, selectedTone, addToast, showErrorToast, labels.enterTopic, labels.inputRequired]);
+  }, [isAuthenticated, router, script, selectedTitle, topic, contentType, selectedPlatforms, tags, addToast, showErrorToast, labels.generateContentFirst]);
+  }, [isAuthenticated, router, script, selectedTitle, selectedPlatforms, scheduleEnabled, scheduledAt, addToast, showErrorToast, labels.noPlatformAccount]);

@@ -1,0 +1,6 @@
+gradle.projectsEvaluated {
+    gradle.rootProject.allprojects { project ->
+        project.buildscript.repositories.removeAll { repo -> isUnstableDirectMavenRepo(repo) }
+        project.repositories.removeAll { repo -> isUnstableDirectMavenRepo(repo) }
+    }
+}

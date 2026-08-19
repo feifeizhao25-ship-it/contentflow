@@ -1,0 +1,15 @@
+  rpc GetUserByEmail(GetUserByEmailRequest) returns (User);
+  rpc ValidateCredentials(ValidateCredentialsRequest) returns (ValidateCredentialsResponse);
+message GetUserByEmailRequest {
+}
+
+message ValidateCredentialsRequest {
+  string email = 1;
+  string password = 2;
+  string tenant_id = 3;
+}
+
+message ValidateCredentialsResponse {
+  bool valid = 1;
+  User user = 2;
+}

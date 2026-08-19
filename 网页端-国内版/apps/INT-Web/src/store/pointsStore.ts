@@ -1,0 +1,8 @@
+  { id: '1', name: '$2 Subscription Credit', points: 500, type: 'coupon', description: 'Apply toward your next subscription invoice' },
+  { id: '2', name: '$5 Subscription Credit', points: 1200, type: 'coupon', description: 'Apply toward your next subscription invoice' },
+  { id: '3', name: '1 Day of Pro', points: 100, type: 'subscription', description: 'Try Pro features for one day' },
+  { id: '4', name: '7 Days of Pro', points: 500, type: 'subscription', description: 'Try Pro features for seven days' },
+  { id: '5', name: '30 Days of Pro', points: 1500, type: 'subscription', description: 'Unlock Pro features for thirty days' },
+  { id: '6', name: '10 GB Storage Add-on', points: 800, type: 'storage', description: 'Add storage for media and project assets' },
+  { id: '7', name: '50 GB Storage Add-on', points: 3000, type: 'storage', description: 'Add storage for media and project assets' },
+  { id: '8', name: 'Profile Frame', points: 2000, type: 'other', description: 'Customize your creator profile' },

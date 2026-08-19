@@ -1,0 +1,20 @@
+  {
+    id: 'vibrant',
+    name: 'Vibrant Trend',
+    description: 'High-energy cuts for TikTok and short-form discovery',
+    id: 'elegant',
+    name: 'Elegant Minimal',
+    description: 'Soft visual pacing for Instagram carousels and Reels',
+    visualEffects: ['Fade In/Out', 'Soft Blur', 'Text Animation'],
+    id: 'professional',
+    name: 'Professional Business',
+    description: 'Clear, concise business visuals for LinkedIn and YouTube',
+    visualEffects: ['Charts Animation', 'Data Display', 'Progress Bar'],
+const PLATFORM_STYLES: Record<TargetPlatform, string[]> = {
+  tiktok: ['vibrant', 'tech', 'playful'],
+  instagram: ['elegant', 'warm', 'professional'],
+  youtube: ['professional', 'tech', 'elegant'],
+  x: ['tech', 'professional', 'vibrant'],
+  linkedin: ['professional', 'elegant', 'tech'],
+  reddit: ['professional', 'warm', 'playful'],
+};
