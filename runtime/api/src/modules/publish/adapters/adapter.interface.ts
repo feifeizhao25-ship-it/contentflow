@@ -36,6 +36,15 @@ export interface AdapterResult<T> {
 export interface PlatformAdapter {
     platform: string;
 
+    /**
+     * 该适配器是否已完成真实平台对接。
+     *
+     * false 表示尚未接入开放平台 API，调用 createPost 不会真的把内容发出去。
+     * PublishService 必须据此拒绝发布请求，而不是回报成功——
+     * 让用户以为已发布却什么都没发生，比直接报错危害大得多。
+     */
+    readonly isLive: boolean;
+
     getCapabilities(accountId: string): Promise<PlatformCapabilities>;
 
     validate(payload: PlatformPayload): Promise<AdapterResult<null>>;
