@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../database/prisma.service';
 
 @Injectable()
@@ -6,11 +6,36 @@ export class UserService {
   constructor(private readonly prisma: PrismaService) {}
 
   async findById(id: string) {
-    const user = await this.prisma.user.findUnique({
+    return this.prisma.user.findUnique({
       where: { id },
-      include: { tenant: true },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        avatar_url: true,
+        role: true,
+        status: true,
+        preferences: true,
+        created_at: true,
+        tenant: {
+          select: { id: true, name: true, plan: true, status: true },
+        },
+      },
     });
-    return user;
+  }
+
+  async findVisibleById(id: string, tenantId: string) {
+    return this.prisma.user.findFirst({
+      where: { id, tenant_id: tenantId, status: 'active' },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        avatar_url: true,
+        role: true,
+        created_at: true,
+      },
+    });
   }
 
   async findByTenant(tenantId: string) {
@@ -31,6 +56,15 @@ export class UserService {
     return this.prisma.user.update({
       where: { id },
       data,
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        avatar_url: true,
+        role: true,
+        status: true,
+        preferences: true,
+      },
     });
   }
 

@@ -41,6 +41,8 @@ describe('production configuration', () => {
     MARKET_REGION: 'global',
     CORS_ORIGIN: 'https://contentflow.example.com',
     OPENROUTER_SITE_URL: 'https://contentflow.example.com',
+    PUBLISH_DISPATCH_WEBHOOK_URL: 'https://automation.contentflow.example.com/publish',
+    PUBLISH_DISPATCH_WEBHOOK_SECRET: 'c'.repeat(32),
   };
 
   it('accepts an explicit global production origin', () => {
@@ -50,5 +52,10 @@ describe('production configuration', () => {
   it('rejects missing or wildcard production origins', () => {
     expect(() => validateProductionConfig({ ...valid, CORS_ORIGIN: '' })).toThrow('CORS_ORIGIN');
     expect(() => validateProductionConfig({ ...valid, CORS_ORIGIN: 'https://*.example.com' })).toThrow('wildcards');
+  });
+
+  it('rejects an unencrypted or missing publishing dispatcher', () => {
+    expect(() => validateProductionConfig({ ...valid, PUBLISH_DISPATCH_WEBHOOK_URL: 'http://automation.local/publish' })).toThrow('HTTPS');
+    expect(() => validateProductionConfig({ ...valid, PUBLISH_DISPATCH_WEBHOOK_SECRET: '' })).toThrow('PUBLISH_DISPATCH_WEBHOOK_SECRET');
   });
 });

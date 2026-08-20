@@ -1,4 +1,4 @@
-import type { ContentDomain, TargetPlatform } from '@/store/onboardingStore';
+import { apiClient } from '@/lib/api-client';
 
 // 分享配置
 export interface ShareConfig {
@@ -76,7 +76,7 @@ export function generateShareConfig(
     videoId?: string;
   }
 ): ShareConfig {
-  const baseUrl = typeof window !== 'undefined' ? window.location.origin : 'https://fenfa.ai';
+  const baseUrl = typeof window !== 'undefined' ? window.location.origin : '';
   
   const configs: Record<string, ShareConfig> = {
     app: {
@@ -110,36 +110,52 @@ export async function shareContent(config: ShareConfig, platform: SharePlatform)
   success: boolean;
   message?: string;
 }> {
-  console.log(`[Share] Sharing to ${platform}:`, config);
-  return { success: true, message: '分享成功' };
+  if (typeof window === 'undefined') {
+    return { success: false, message: '分享功能只能在浏览器中使用' };
+  }
+
+  if (platform === 'copy_link') {
+    if (!navigator.clipboard?.writeText) {
+      return { success: false, message: '当前浏览器不支持自动复制，请手动复制链接' };
+    }
+    await navigator.clipboard.writeText(config.url);
+    return { success: true, message: '链接已复制' };
+  }
+
+  if (platform === 'qrcode') {
+    return { success: false, message: '二维码分享尚未启用' };
+  }
+
+  if (!navigator.share) {
+    return { success: false, message: '当前设备不支持直接分享，请复制链接后分享' };
+  }
+
+  try {
+    await navigator.share({
+      title: config.title,
+      text: [config.description, ...(config.hashtags ?? []).map(tag => `#${tag}`)].join(' '),
+      url: config.url,
+    });
+    return { success: true, message: '已交给系统分享面板' };
+  } catch (error) {
+    if (error instanceof DOMException && error.name === 'AbortError') {
+      return { success: false, message: '已取消分享' };
+    }
+    return { success: false, message: '分享失败，请复制链接后重试' };
+  }
 }
 
 // 生成分享链接
 export function generateInviteLink(inviteCode: string): string {
-  const baseUrl = typeof window !== 'undefined' ? window.location.origin : 'https://fenfa.ai';
+  const baseUrl = typeof window !== 'undefined' ? window.location.origin : '';
   return `${baseUrl}?ref=${inviteCode}`;
-}
-
-// 生成邀请码
-export function generateInviteCode(): string {
-  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-  let code = '';
-  for (let i = 0; i < 8; i++) {
-    code += chars.charAt(Math.floor(Math.random() * chars.length));
-  }
-  return code;
 }
 
 // 获取用户邀请统计
 export async function getReferralStats(userId: string): Promise<ReferralStats> {
-  return {
-    totalInvites: 0,
-    completedInvites: 0,
-    pendingInvites: 0,
-    totalRewards: { points: 0, vipDays: 0 },
-    inviteCode: generateInviteCode(),
-    inviteLink: generateInviteLink(generateInviteCode()),
-  };
+  if (!userId) throw new Error('请先登录后查看邀请数据');
+  const response = await apiClient.get<ReferralStats | { data?: ReferralStats }>('/referrals/me');
+  return (response as { data?: ReferralStats }).data ?? response as ReferralStats;
 }
 
 // 处理邀请回调
@@ -147,12 +163,14 @@ export async function handleInviteCallback(
   inviteCode: string,
   invitedUserId: string
 ): Promise<{ success: boolean; reward?: { points: number; vipDays: number }; message?: string }> {
-  console.log(`[Referral] User ${invitedUserId} registered with code ${inviteCode}`);
-  return {
-    success: true,
-    reward: { points: SHARE_REWARDS.invitee.points, vipDays: SHARE_REWARDS.invitee.vipDays },
-    message: '邀请验证成功',
-  };
+  if (!inviteCode || !invitedUserId) {
+    return { success: false, message: '邀请信息不完整' };
+  }
+  const response = await apiClient.post<
+    { success: boolean; reward?: { points: number; vipDays: number }; message?: string } |
+    { data?: { success: boolean; reward?: { points: number; vipDays: number }; message?: string } }
+  >('/referrals/accept', { inviteCode, invitedUserId });
+  return (response as { data?: any }).data ?? response as any;
 }
 
 // 获取邀请阶梯奖励

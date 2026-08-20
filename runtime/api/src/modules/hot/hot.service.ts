@@ -6,10 +6,14 @@ export class HotService {
   constructor(private readonly prisma: PrismaService) {}
 
   async getHotList(platform: string, category?: string) {
-    // 热点榜单数据（可对接第三方API）
-    return [
-      { id: '1', topic: 'AI人工智能', heat: 999999, platform },
-      { id: '2', topic: '短视频运营', heat: 888888, platform },
-    ];
+    return this.prisma.hotTopic.findMany({
+      where: {
+        platform,
+        ...(category ? { category } : {}),
+        crawled_at: { gte: new Date(Date.now() - 24 * 60 * 60 * 1000) },
+      },
+      orderBy: [{ rank_position: 'asc' }, { heat_score: 'desc' }, { crawled_at: 'desc' }],
+      take: 50,
+    });
   }
 }

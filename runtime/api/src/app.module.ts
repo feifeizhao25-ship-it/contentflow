@@ -75,7 +75,8 @@ export function validateProductionConfig(config: Record<string, unknown>) {
 
   const required = [
     'DATABASE_URL', 'REDIS_HOST', 'JWT_SECRET', 'JWT_REFRESH_SECRET',
-    'MARKET_REGION', 'CORS_ORIGIN',
+    'MARKET_REGION', 'CORS_ORIGIN', 'PUBLISH_DISPATCH_WEBHOOK_URL',
+    'PUBLISH_DISPATCH_WEBHOOK_SECRET',
   ];
   if (config.MARKET_REGION === 'global') {
     required.push('OPENROUTER_SITE_URL');
@@ -88,6 +89,12 @@ export function validateProductionConfig(config: Record<string, unknown>) {
     if (String(config[key]).length < 32) {
       throw new Error(`${key} must contain at least 32 characters`);
     }
+  }
+  if (String(config.PUBLISH_DISPATCH_WEBHOOK_SECRET).length < 32) {
+    throw new Error('PUBLISH_DISPATCH_WEBHOOK_SECRET must contain at least 32 characters');
+  }
+  if (!String(config.PUBLISH_DISPATCH_WEBHOOK_URL).startsWith('https://')) {
+    throw new Error('PUBLISH_DISPATCH_WEBHOOK_URL must use HTTPS');
   }
   if (!['cn', 'global'].includes(String(config.MARKET_REGION))) {
     throw new Error('MARKET_REGION must be either cn or global');

@@ -89,7 +89,7 @@ jobs:
       - run: flutter analyze
       - run: flutter test
       - if: startsWith(matrix.app, 'android-')
-        run: flutter build apk --release
+        run: flutter build apk --release --dart-define=API_BASE_URL=https://contentflow-ci.invalid/api/v1
         env:
           ALLOW_DEBUG_RELEASE_SIGNING: "true"
 
@@ -110,7 +110,7 @@ jobs:
           channel: stable
           cache: true
       - run: flutter pub get
-      - run: flutter build ios --release --no-codesign
+      - run: flutter build ios --release --no-codesign --dart-define=API_BASE_URL=https://contentflow-ci.invalid/api/v1
 
   deployment-config:
     runs-on: ubuntu-latest
@@ -121,6 +121,7 @@ jobs:
       - run: python3 scripts/verify_region_isolation.py
       - run: python3 scripts/verify_language_contracts.py
       - run: python3 scripts/verify_mobile_release.py
+      - run: python3 scripts/verify_production_truthfulness.py
       - run: python3 scripts/verify_revenue_operations.py
       - run: python3 scripts/validate_rag_freshness.py
       - run: python3 scripts/ops/international_readiness.py

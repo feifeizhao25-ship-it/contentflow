@@ -37,17 +37,20 @@ export default function HotPage() {
     const fetchHotTopics = async () => {
         setIsLoading(true);
         try {
-            const res = await apiClient.get<any>('/ai/hot-topics').catch(() => ({ data: null }));
-            if (res.data) {
-                setHotTopics(res.data);
-            } else {
-                setHotTopics([
-                    { id: '1', title: '2026年春节旅游：这10个小众目的地要火', heat: 98000, platform: 'xhs', prediction: 'rising', tags: ['旅游', '测评'] },
-                    { id: '2', title: '深度拆解 DeepSeek-V3 的技术架构', heat: 87000, platform: 'wechat', prediction: 'rising', tags: ['AI', '硬核'] },
-                    { id: '3', title: '极简年夜饭：1小时搞定8菜1汤', heat: 75000, platform: 'douyin', prediction: 'stable', tags: ['美食', '生活'] },
-                    { id: '4', title: '程序员副业：如何利用 AI 开发 SaaS 产品', heat: 62000, platform: 'zhihu', prediction: 'rising', tags: ['职场', '副业'] },
-                ]);
-            }
+            const platform = activeTab === 'all' ? 'xhs' : activeTab;
+            const res = await apiClient.get<any>(`/hot/list?platform=${encodeURIComponent(platform)}`);
+            const items = res?.data ?? res;
+            setHotTopics(Array.isArray(items) ? items.map((item: any) => ({
+                id: item.id,
+                title: item.topic_name,
+                heat: item.heat_score || 0,
+                platform: item.platform,
+                prediction: item.is_rising ? 'rising' : 'stable',
+                tags: item.category ? [item.category] : [],
+            })) : []);
+        } catch (error) {
+            console.error('Failed to fetch verified hot topics', error);
+            setHotTopics([]);
         } finally {
             setIsLoading(false);
         }
@@ -84,7 +87,7 @@ export default function HotPage() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 {isLoading ? [1, 2, 3, 4].map(i => <div key={i} className="h-64 bg-zinc-100 animate-pulse rounded-3xl" />) :
-                    hotTopics.map((topic, idx) => (
+                    hotTopics.length === 0 ? <div className="col-span-full"><Empty description="过去 24 小时暂无已采集热点，系统不会展示编造榜单" /></div> : hotTopics.map((topic, idx) => (
                         <motion.div key={topic.id} initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: idx * 0.1 }}>
                             <Card className="rounded-[32px] border-none shadow-sm hover:shadow-xl transition-all cursor-pointer group hover:-translate-y-2 bg-gradient-to-br from-white to-zinc-50" styles={{ body: { padding: '24px' } }}>
                                 <div className="flex justify-between mb-6">

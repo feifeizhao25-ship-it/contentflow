@@ -7,10 +7,10 @@ export class RegisterDto {
   @IsEmail({}, { message: marketMessage('Enter a valid email address', '请输入有效的邮箱地址') })
   email: string;
 
-  @ApiProperty({ example: 'password123', minLength: 6, maxLength: 20 })
+  @ApiProperty({ example: 'password123', minLength: 8, maxLength: 72 })
   @IsString()
-  @MinLength(6, { message: marketMessage('Password must contain at least 6 characters', '密码至少6个字符') })
-  @MaxLength(20, { message: marketMessage('Password must contain at most 20 characters', '密码最多20个字符') })
+  @MinLength(8, { message: marketMessage('Password must contain at least 8 characters', '密码至少8个字符') })
+  @MaxLength(72, { message: marketMessage('Password must contain at most 72 characters', '密码最多72个字符') })
   password: string;
 
   @ApiPropertyOptional({ example: '张三' })

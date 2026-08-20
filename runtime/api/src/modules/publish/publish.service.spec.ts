@@ -58,6 +58,27 @@ describe('PublishService', () => {
     expect(tenant.incrementUsage).toHaveBeenCalledWith('tenant_1', 'publish', 2);
   });
 
+  it('queues scheduled tasks with the required delay and charges usage', async () => {
+    prisma.content.findFirst.mockResolvedValue({ id: 'content_1', status: 'approved' });
+    tenant.checkQuota.mockResolvedValue(true);
+    prisma.platformAccount.findFirst.mockResolvedValue({ id: 'account_1', status: 'active', platform: 'x' });
+    prisma.publishTask.create.mockResolvedValue({ id: 'task_1' });
+    const scheduledAt = new Date(Date.now() + 60_000);
+
+    await service.createTask('tenant_1', 'user_1', {
+      contentId: 'content_1',
+      platformAccountIds: ['account_1'],
+      publishType: 'scheduled',
+      scheduledAt,
+    });
+
+    expect(queue.addPublishTask).toHaveBeenCalledWith(
+      expect.objectContaining({ taskId: 'task_1', scheduledAt }),
+      expect.any(Number),
+    );
+    expect(tenant.incrementUsage).toHaveBeenCalledWith('tenant_1', 'publish', 1);
+  });
+
   it('rejects content that does not belong to the tenant', async () => {
     prisma.content.findFirst.mockResolvedValue(null);
     await expect(
@@ -67,6 +88,21 @@ describe('PublishService', () => {
         publishType: 'immediate',
       }),
     ).rejects.toBeInstanceOf(NotFoundException);
+  });
+
+  it('rejects empty account lists and invalid schedule times', async () => {
+    await expect(service.createTask('tenant_1', 'user_1', {
+      contentId: 'content_1',
+      platformAccountIds: [],
+      publishType: 'immediate',
+    })).rejects.toThrow('At least one platform account');
+
+    await expect(service.createTask('tenant_1', 'user_1', {
+      contentId: 'content_1',
+      platformAccountIds: ['account_1'],
+      publishType: 'scheduled',
+      scheduledAt: new Date(Date.now() - 1_000),
+    })).rejects.toThrow('must be in the future');
   });
 
   it('rejects publishing when the tenant quota is exhausted', async () => {

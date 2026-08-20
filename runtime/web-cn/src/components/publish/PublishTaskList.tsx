@@ -1,143 +1,122 @@
 'use client';
 
-import React, { useState } from 'react';
-import { Button, Tag, Avatar, Badge, message } from 'antd';
+import React, { useCallback, useEffect, useState } from 'react';
+import { Alert, Button, Empty, Skeleton, Tag, message } from 'antd';
 import {
     CheckCircleFilled,
     CloseCircleFilled,
     SyncOutlined,
     ClockCircleFilled,
-    RightOutlined,
-    DownOutlined,
-    WarningFilled,
     ReloadOutlined,
-    LinkOutlined
+    LinkOutlined,
 } from '@ant-design/icons';
-import clsx from 'clsx';
-import { motion, AnimatePresence } from 'framer-motion';
+import { apiClient } from '@/lib/api-client';
 
-// Mock Data
-const MOCK_TASKS = [
-    { id: '1', title: 'AI 创业实战：如何从0到1', platform: 'xhs', account: '分发侠官方号', status: 'success', time: '10:30', date: '2024-05-20' },
-    { id: '2', title: '周末探店 VLOG - 上海篇', platform: 'douyin', account: '生活号-小美', status: 'publishing', time: '12:00', date: '2024-05-20' },
-    { id: '3', title: '深度解析：Vue3 vs React', platform: 'bilibili', account: '前端胖虎', status: 'failed', time: '09:00', date: '2024-05-20', error: '授权已失效', errorDetail: 'Token 401 Unauthorized' },
-    { id: '4', title: '职场黑话翻译机', platform: 'weixin', account: '职场大表哥', status: 'pending', time: '18:00', date: '2024-05-21' },
-];
+interface PublishTask {
+    id: string;
+    status: string;
+    scheduled_at?: string;
+    platform_post_url?: string;
+    error_code?: string;
+    error_message?: string;
+    content?: { title?: string; cover_url?: string };
+    platform_account?: {
+        platform?: string;
+        account_name?: string;
+        account_nickname?: string;
+    };
+}
+
+function unwrapTasks(response: any): PublishTask[] {
+    const payload = response?.data ?? response;
+    return Array.isArray(payload?.tasks) ? payload.tasks : [];
+}
 
 export const PublishTaskList = () => {
-    const [expandedRow, setExpandedRow] = useState<string | null>(null);
+    const [tasks, setTasks] = useState<PublishTask[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [loadError, setLoadError] = useState('');
+    const [retrying, setRetrying] = useState<string | null>(null);
 
-    const toggleRow = (id: string) => {
-        setExpandedRow(expandedRow === id ? null : id);
-    };
+    const load = useCallback(async () => {
+        setLoading(true);
+        setLoadError('');
+        try {
+            const response = await apiClient.get('/publish/tasks?pageSize=50');
+            setTasks(unwrapTasks(response));
+        } catch (error) {
+            setLoadError(error instanceof Error ? error.message : '发布任务加载失败');
+            setTasks([]);
+        } finally {
+            setLoading(false);
+        }
+    }, []);
 
-    const getStatusConfig = (status: string) => {
-        switch (status) {
-            case 'success': return { color: 'green', icon: <CheckCircleFilled />, text: '发布成功' };
-            case 'failed': return { color: 'red', icon: <CloseCircleFilled />, text: '发布失败' };
-            case 'publishing': return { color: 'blue', icon: <SyncOutlined spin />, text: '发布中' };
-            default: return { color: 'zinc', icon: <ClockCircleFilled />, text: '待发布' };
+    useEffect(() => { void load(); }, [load]);
+
+    const retry = async (taskId: string) => {
+        setRetrying(taskId);
+        try {
+            await apiClient.post(`/publish/tasks/${taskId}/retry`, {});
+            message.success('任务已重新进入发布队列');
+            await load();
+        } catch (error) {
+            message.error(error instanceof Error ? error.message : '重试失败');
+        } finally {
+            setRetrying(null);
         }
     };
 
-    const getPlatformIcon = (key: string) => {
-        const map: any = { douyin: '🎵', xhs: '📕', weixin: '💬', bilibili: '📺' };
-        return map[key] || '📱';
+    const getStatus = (status: string) => {
+        switch (status) {
+            case 'published': return { color: 'green', icon: <CheckCircleFilled />, text: '发布成功' };
+            case 'failed': return { color: 'red', icon: <CloseCircleFilled />, text: '发布失败' };
+            case 'queued':
+            case 'processing':
+            case 'submitted_unconfirmed':
+                return { color: 'blue', icon: <SyncOutlined spin={status !== 'submitted_unconfirmed'} />, text: status === 'submitted_unconfirmed' ? '等待远端确认' : '发布中' };
+            default: return { color: 'default', icon: <ClockCircleFilled />, text: '待发布' };
+        }
     };
+
+    if (loading) return <Skeleton active paragraph={{ rows: 5 }} />;
+    if (loadError) return <Alert type="error" showIcon message="无法加载发布任务" description={loadError} action={<Button onClick={() => void load()}>重试</Button>} />;
+    if (tasks.length === 0) return <Empty description="暂无真实发布任务" />;
 
     return (
         <div className="space-y-3">
-            {MOCK_TASKS.map(task => {
-                const status = getStatusConfig(task.status);
-                const isFailed = task.status === 'failed';
-                const isExpanded = expandedRow === task.id;
-
+            {tasks.map((task) => {
+                const status = getStatus(task.status);
+                const account = task.platform_account;
                 return (
-                    <div key={task.id} className="bg-white rounded-xl border border-zinc-200 overflow-hidden shadow-sm hover:shadow-md transition-all">
-                        {/* Task Row */}
-                        <div
-                            className="p-4 flex items-center gap-4 cursor-pointer hover:bg-zinc-50/50"
-                            onClick={() => isFailed && toggleRow(task.id)}
-                        >
-                            {/* Left: Icon & Title */}
-                            <div className="flex items-center gap-4 flex-1 min-w-0">
-                                <div className="w-10 h-10 rounded-lg bg-zinc-100 flex items-center justify-center text-xl">
-                                    {getPlatformIcon(task.platform)}
-                                </div>
-                                <div>
-                                    <div className="font-bold text-sm text-zinc-900 truncate">{task.title}</div>
-                                    <div className="text-xs text-zinc-500">{task.account}</div>
+                    <div key={task.id} className="bg-white rounded-xl border border-zinc-200 p-4 shadow-sm">
+                        <div className="flex flex-col gap-3 md:flex-row md:items-center">
+                            <div className="flex-1 min-w-0">
+                                <div className="font-bold text-sm text-zinc-900 truncate">{task.content?.title || '未命名内容'}</div>
+                                <div className="text-xs text-zinc-500">
+                                    {[account?.platform, account?.account_nickname || account?.account_name].filter(Boolean).join(' · ') || '账号信息不可用'}
                                 </div>
                             </div>
-
-                            {/* Center: Status & Time */}
-                            <div className="w-48 flex flex-col items-center">
-                                <Tag icon={status.icon} color={status.color} className="border-0 px-2 py-0.5 rounded-full text-xs font-medium">
-                                    {status.text}
-                                </Tag>
-                                <div className="text-[10px] text-zinc-400 mt-1">
-                                    {task.date} {task.time}
-                                </div>
-                            </div>
-
-                            {/* Right: Actions */}
-                            <div className="flex items-center gap-2 w-48 justify-end">
-                                {task.status === 'success' && (
-                                    <>
-                                        <Button size="small" type="link">查看链接</Button>
-                                        <Button size="small">复刻</Button>
-                                    </>
+                            <Tag icon={status.icon} color={status.color}>{status.text}</Tag>
+                            <div className="text-xs text-zinc-500">{task.scheduled_at ? new Date(task.scheduled_at).toLocaleString('zh-CN') : '未设置时间'}</div>
+                            <div className="flex gap-2">
+                                {task.platform_post_url && task.status === 'published' && (
+                                    <Button href={task.platform_post_url} target="_blank" icon={<LinkOutlined />}>远端链接</Button>
                                 )}
                                 {task.status === 'failed' && (
-                                    <>
-                                        <Button
-                                            size="small"
-                                            type="primary"
-                                            danger
-                                            onClick={(e) => { e.stopPropagation(); toggleRow(task.id); }}
-                                        >
-                                            一键修复
-                                        </Button>
-                                        <Button size="small" icon={<RightOutlined rotate={isExpanded ? 90 : 0} />} type="text" />
-                                    </>
+                                    <Button loading={retrying === task.id} onClick={() => void retry(task.id)} icon={<ReloadOutlined />}>重试</Button>
                                 )}
-                                {task.status === 'publishing' && <Button size="small" loading>正在同步</Button>}
                             </div>
                         </div>
-
-                        {/* Failure Detail Card (Expandable) */}
-                        <AnimatePresence>
-                            {isExpanded && isFailed && (
-                                <motion.div
-                                    initial={{ height: 0, opacity: 0 }}
-                                    animate={{ height: 'auto', opacity: 1 }}
-                                    exit={{ height: 0, opacity: 0 }}
-                                    className="bg-red-50/50 border-t border-red-100"
-                                >
-                                    <div className="p-4 px-6 flex items-start gap-6">
-                                        <div className="w-10 h-10 rounded-full bg-red-100 text-red-500 flex items-center justify-center flex-none">
-                                            <WarningFilled className="text-xl" />
-                                        </div>
-                                        <div className="flex-1">
-                                            <h4 className="font-bold text-red-600 mb-1">失败原因：{task.error}</h4>
-                                            <p className="text-sm text-zinc-600 mb-4">建议：平台账号登录状态可能已过期，请重新绑定账号后重试。</p>
-
-                                            <div className="flex gap-3 mb-4">
-                                                <Button type="primary" danger icon={<LinkOutlined />}>重新绑定并重试 (推荐)</Button>
-                                                <Button icon={<ReloadOutlined />}>仅重试</Button>
-                                                <Button type="text" danger>取消任务</Button>
-                                            </div>
-
-                                            <div className="bg-red-100/50 p-3 rounded-lg text-[10px] font-mono text-pink-700">
-                                                <div>ERROR_CODE: 401_UNAUTHORIZED</div>
-                                                <div>TRACE_ID: req_8f9s8d9f8s9d8fs</div>
-                                                <div>STEP: uploading_video</div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </motion.div>
-                            )}
-                        </AnimatePresence>
+                        {task.status === 'failed' && (
+                            <Alert
+                                type="error"
+                                showIcon
+                                className="mt-3"
+                                message={task.error_message || '远端发布失败'}
+                                description={task.error_code ? `错误码：${task.error_code}` : undefined}
+                            />
+                        )}
                     </div>
                 );
             })}

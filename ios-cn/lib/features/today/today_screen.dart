@@ -203,7 +203,6 @@ class TodayScreen extends ConsumerWidget {
       ScheduleStatus.scheduled,
       ScheduleStatus.queued,
     ].contains(schedule.status);
-    final isConfirmed = schedule.status == ScheduleStatus.confirmed;
 
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
@@ -300,20 +299,12 @@ class TodayScreen extends ConsumerWidget {
                 // Action Buttons
                 Row(
                   children: [
-                    if (isPending || isConfirmed)
+                    if (isPending)
                       Expanded(
-                        child: ElevatedButton(
-                          onPressed: () async {
-                            final api = ref.read(apiClientProvider);
-                            await api.confirmPublish(schedule.id);
-                            ref.invalidate(todaySchedulesProvider);
-                          },
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Theme.of(context).primaryColor,
-                            foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(vertical: 12),
-                          ),
-                          child: const Text('确认发布'),
+                        child: OutlinedButton.icon(
+                          onPressed: null,
+                          icon: const Icon(Icons.schedule_send),
+                          label: const Text('等待队列与平台回执'),
                         ),
                       ),
                     if (isFailed)
@@ -333,15 +324,6 @@ class TodayScreen extends ConsumerWidget {
                           ),
                         ),
                       ),
-                    if (isPending || isConfirmed) ...[
-                      const SizedBox(width: 12),
-                      OutlinedButton(
-                        onPressed: () {
-                          // TODO: Navigate to edit
-                        },
-                        child: const Text('修改时间'),
-                      ),
-                    ],
                   ],
                 ),
               ],

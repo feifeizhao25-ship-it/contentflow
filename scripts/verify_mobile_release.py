@@ -39,8 +39,19 @@ for platform in ("android", "ios"):
     ):
         check(
             f"{platform}-{market}/lib/config/{config_file}",
-            ("String.fromEnvironment(", "https://"),
-            ("http://", "localhost", "127.0.0.1"),
+            (
+                "String.fromEnvironment('API_BASE_URL')",
+                "API_BASE_URL must be an explicit HTTPS URL",
+                "uri.scheme != 'https'",
+            ),
+            (
+                "defaultValue:",
+                "api.fenfa.cn",
+                "api.fenfa.ai",
+                "http://",
+                "localhost",
+                "127.0.0.1",
+            ),
         )
 
 if errors:

@@ -33,8 +33,8 @@ export class UserController {
 
   @Get(':id')
   @ApiOperation({ summary: '获取用户详情' })
-  async getById(@Param('id') id: string) {
-    const user = await this.userService.findById(id);
+  async getById(@Param('id') id: string, @Request() req: any) {
+    const user = await this.userService.findVisibleById(id, req.user.tenantId);
     return { user };
   }
 }
