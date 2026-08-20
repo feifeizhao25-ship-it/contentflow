@@ -1,24 +1,19 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Modal, Button, message, Input, Space, Tabs, List, Avatar, Progress } from 'antd';
+import { Modal, Button, message, Input, Tabs, Alert } from 'antd';
 import { 
   WechatOutlined, 
   WeiboOutlined, 
   QqOutlined, 
   CopyOutlined, 
-  LinkOutlined,
   GiftOutlined,
-  UserOutlined,
   CheckCircleOutlined
 } from '@ant-design/icons';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { 
   generateShareConfig, 
   shareContent, 
-  getReferralStats, 
-  generateInviteLink,
-  SHARE_REWARDS,
   type SharePlatform 
 } from '@/lib/referral-service';
 
@@ -42,32 +37,8 @@ export default function ShareModal({
   onShareComplete 
 }: ShareModalProps) {
   const [activeTab, setActiveTab] = useState('share');
-  const [inviteCode, setInviteCode] = useState('');
-  const [inviteLink, setInviteLink] = useState('');
   const [copied, setCopied] = useState(false);
   const [sharing, setSharing] = useState<SharePlatform | null>(null);
-  const [stats, setStats] = useState({
-    totalInvites: 0,
-    completedInvites: 0,
-    earnedPoints: 0,
-    earnedVipDays: 0,
-  });
-
-  React.useEffect(() => {
-    if (visible) {
-      // 加载邀请数据
-      setInviteCode('FENFA' + Math.random().toString(36).substr(2, 6).toUpperCase());
-      setInviteLink(`https://fenfa.ai?ref=${inviteCode}`);
-      
-      // 模拟统计数据
-      setStats({
-        totalInvites: Math.floor(Math.random() * 20),
-        completedInvites: Math.floor(Math.random() * 10),
-        earnedPoints: Math.floor(Math.random() * 500),
-        earnedVipDays: Math.floor(Math.random() * 5),
-      });
-    }
-  }, [visible, inviteCode]);
 
   const shareConfig = generateShareConfig(type, content);
 
@@ -86,8 +57,10 @@ export default function ShareModal({
     const result = await shareContent(shareConfig, platform);
     
     if (result.success) {
-      message.success('分享成功！');
+      message.success(result.message || '分享操作已完成');
       onShareComplete?.(platform);
+    } else {
+      message.warning(result.message || '分享未完成');
     }
     
     setSharing(null);
@@ -96,7 +69,7 @@ export default function ShareModal({
   // 复制链接
   const handleCopyLink = async () => {
     try {
-      await navigator.clipboard.writeText(inviteLink);
+      await navigator.clipboard.writeText(shareConfig.url);
       setCopied(true);
       message.success('链接已复制到剪贴板');
       setTimeout(() => setCopied(false), 2000);
@@ -104,13 +77,6 @@ export default function ShareModal({
       message.error('复制失败，请手动复制');
     }
   };
-
-  // 邀请奖励说明
-  const rewardItems = [
-    { icon: '🎁', title: '被邀请人奖励', desc: `${SHARE_REWARDS.invitee.vipDays}天VIP + ${SHARE_REWARDS.invitee.points}积分` },
-    { icon: '💰', title: '邀请人奖励', desc: `${SHARE_REWARDS.inviter.vipDays}天VIP + ${SHARE_REWARDS.inviter.points}积分` },
-    { icon: '🎯', title: '阶梯奖励', desc: '邀请3人额外50积分，10人再得200积分' },
-  ];
 
   return (
     <Modal
@@ -180,35 +146,12 @@ export default function ShareModal({
             label: '邀请好友',
             children: (
               <div className="py-4">
-                {/* 邀请奖励卡片 */}
-                <div className="bg-gradient-to-r from-purple-500 to-pink-500 rounded-xl p-4 text-white mb-4">
-                  <div className="flex items-center gap-2 mb-2">
-                    <GiftOutlined className="text-xl" />
-                    <span className="font-medium">邀请奖励</span>
-                  </div>
-                  <div className="text-2xl font-bold mb-1">
-                    最高可获 {SHARE_REWARDS.milestones[3].bonus.points} 积分
-                  </div>
-                  <div className="text-sm opacity-80">
-                    + {SHARE_REWARDS.milestones[3].bonus.vipDays}天VIP会员
-                  </div>
-                </div>
-
-                {/* 奖励明细 */}
-                <List
-                  size="small"
-                  dataSource={rewardItems}
-                  renderItem={(item) => (
-                    <List.Item>
-                      <div className="flex items-center gap-3">
-                        <span className="text-xl">{item.icon}</span>
-                        <div>
-                          <div className="font-medium text-sm">{item.title}</div>
-                          <div className="text-xs text-gray-500">{item.desc}</div>
-                        </div>
-                      </div>
-                    </List.Item>
-                  )}
+                <Alert
+                  type="info"
+                  showIcon
+                  icon={<GiftOutlined />}
+                  message="邀请奖励功能正在接入"
+                  description="奖励与邀请统计将在服务端完成核验后开放。当前不会展示模拟邀请码、虚构人数或未兑现的会员权益。"
                   className="mb-4"
                 />
 
@@ -217,7 +160,7 @@ export default function ShareModal({
                   <div className="text-xs text-gray-500 mb-2">邀请链接</div>
                   <div className="flex items-center gap-2">
                     <Input 
-                      value={inviteLink}
+                      value={shareConfig.url}
                       readOnly
                       size="small"
                       className="flex-1"
@@ -232,53 +175,6 @@ export default function ShareModal({
                   </div>
                 </div>
 
-                {/* 邀请码 */}
-                <div className="text-center mb-4">
-                  <div className="text-xs text-gray-500 mb-1">或分享邀请码</div>
-                  <div className="inline-flex items-center gap-2 bg-blue-50 px-4 py-2 rounded-lg">
-                    <span className="font-mono font-bold text-lg text-blue-600">
-                      {inviteCode}
-                    </span>
-                    <Button
-                      type="text"
-                      size="small"
-                      icon={<CopyOutlined />}
-                      onClick={() => {
-                        navigator.clipboard.writeText(inviteCode);
-                        message.success('邀请码已复制');
-                      }}
-                    />
-                  </div>
-                </div>
-
-                {/* 邀请统计 */}
-                <div className="border-t pt-4">
-                  <div className="text-sm font-medium mb-3">邀请成果</div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="text-center p-3 bg-gray-50 rounded-lg">
-                      <div className="text-xl font-bold text-purple-600">
-                        {stats.totalInvites}
-                      </div>
-                      <div className="text-xs text-gray-500">已邀请</div>
-                    </div>
-                    <div className="text-center p-3 bg-gray-50 rounded-lg">
-                      <div className="text-xl font-bold text-green-600">
-                        {stats.completedInvites}
-                      </div>
-                      <div className="text-xs text-gray-500">已完成</div>
-                    </div>
-                  </div>
-                  <div className="mt-3 flex justify-center gap-6 text-center">
-                    <div>
-                      <div className="text-lg font-bold text-orange-500">{stats.earnedPoints}</div>
-                      <div className="text-xs text-gray-500">获得积分</div>
-                    </div>
-                    <div>
-                      <div className="text-lg font-bold text-blue-500">{stats.earnedVipDays}</div>
-                      <div className="text-xs text-gray-500">获得VIP(天)</div>
-                    </div>
-                  </div>
-                </div>
               </div>
             ),
           },

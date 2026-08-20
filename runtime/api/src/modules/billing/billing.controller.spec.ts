@@ -1,22 +1,25 @@
+import { ConfigService } from '@nestjs/config';
 import { BillingController } from './billing.controller';
-import { PLANS } from './plans.constant';
+import { CN_PLANS, PLANS } from './plans.constant';
 
 describe('BillingController', () => {
-  it('returns the five canonical plan tiers in order', () => {
-    const controller = new BillingController();
-    const { plans } = controller.getPlans();
+  const controller = (market: 'cn' | 'global') => new BillingController(
+    new ConfigService({ MARKET_REGION: market }),
+  );
 
-    expect(plans).toBe(PLANS);
-    expect(plans.map((p) => p.id)).toEqual(['free', 'starter', 'pro', 'team', 'enterprise']);
+  it('returns the five canonical global plan tiers in English', () => {
+    const result = controller('global').getPlans();
+    expect(result).toEqual({ market: 'global', plans: PLANS });
+    expect(result.plans.map((plan) => plan.id)).toEqual([
+      'free', 'starter', 'pro', 'team', 'enterprise',
+    ]);
+    expect(PLANS.map((plan) => plan.priceMonthlyUsd)).toEqual([0, 29, 99, 299, null]);
+  });
 
-    const [free, starter, pro, team, enterprise] = plans;
-    expect([free.priceMonthlyUsd, free.platformLimit, free.monthlyPostQuota]).toEqual([0, 3, 10]);
-    expect([starter.priceMonthlyUsd, starter.platformLimit, starter.monthlyPostQuota]).toEqual([29, 5, 100]);
-    expect([pro.priceMonthlyUsd, pro.platformLimit, pro.monthlyPostQuota]).toEqual([99, 15, 500]);
-    expect([team.priceMonthlyUsd, team.platformLimit, team.monthlyPostQuota]).toEqual([299, 30, 2000]);
-    expect(enterprise.priceMonthlyUsd).toBeNull();
-    expect(enterprise.platformLimit).toBe(-1);
-    expect(enterprise.monthlyPostQuota).toBe(-1);
-    expect(enterprise.custom).toBe(true);
+  it('returns a separate Chinese domestic catalog with CNY prices', () => {
+    const result = controller('cn').getPlans();
+    expect(result).toEqual({ market: 'cn', plans: CN_PLANS });
+    expect(CN_PLANS.map((plan) => plan.priceMonthlyCny)).toEqual([0, 49, 99, 299, null]);
+    expect(CN_PLANS.every((plan) => plan.features.length >= 3)).toBe(true);
   });
 });

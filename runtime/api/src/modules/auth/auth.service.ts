@@ -54,18 +54,28 @@ export class AuthService {
     // 密码加密
     const passwordHash = await bcrypt.hash(password, 12);
 
-    // 创建租户
-    const tenant = await this.prisma.tenant.create({
-      data: {
-        name: tenantName || (this.globalMarket ? `${name}'s workspace` : `${name}的工作室`),
-        slug: email.split('@')[0] + '_' + Date.now().toString(36),
-        limits: {
+    const freeLimits = this.globalMarket
+      ? {
+          max_accounts: 3,
+          max_members: 1,
+          max_publishes_monthly: 10,
+          max_ai_calls_monthly: 20,
+          max_storage_gb: 1,
+        }
+      : {
           max_accounts: 2,
           max_members: 1,
           max_publishes_monthly: 30,
           max_ai_calls_monthly: 20,
           max_storage_gb: 1,
-        },
+        };
+
+    // 创建租户
+    const tenant = await this.prisma.tenant.create({
+      data: {
+        name: tenantName || (this.globalMarket ? `${name}'s workspace` : `${name}的工作室`),
+        slug: email.split('@')[0] + '_' + Date.now().toString(36),
+        limits: freeLimits,
         usage_stats: {
           accounts_count: 0,
           members_count: 1,

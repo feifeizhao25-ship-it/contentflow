@@ -29,7 +29,7 @@ export default function LoginPage() {
             if (res.user) {
                 localStorage.setItem('user_info', JSON.stringify(res.user));
                 message.success('登录成功！');
-                router.push('/overview');
+                router.push('/studio');
                 return;
             }
 

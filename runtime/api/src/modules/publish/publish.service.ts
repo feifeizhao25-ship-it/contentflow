@@ -19,6 +19,17 @@ export class PublishService {
     publishType: 'immediate' | 'scheduled';
     scheduledAt?: Date;
   }) {
+    if (data.platformAccountIds.length === 0) {
+      throw new BadRequestException('At least one platform account is required');
+    }
+    if (data.publishType === 'scheduled') {
+      if (!data.scheduledAt || Number.isNaN(data.scheduledAt.getTime())) {
+        throw new BadRequestException('A valid schedule time is required');
+      }
+      if (data.scheduledAt.getTime() <= Date.now()) {
+        throw new BadRequestException('Scheduled publish time must be in the future');
+      }
+    }
     // 检查内容是否存在且已审核通过
     const content = await this.prisma.content.findFirst({
       where: { id: data.contentId, tenant_id: tenantId },
@@ -54,6 +65,7 @@ export class PublishService {
           ? data.scheduledAt
           : new Date();
 
+        const delay = Math.max(0, scheduledTime.getTime() - Date.now());
         const task = await this.prisma.publishTask.create({
           data: {
             tenant_id: tenantId,
@@ -62,28 +74,25 @@ export class PublishService {
             created_by: userId,
             publish_type: data.publishType,
             scheduled_at: scheduledTime,
-            status: data.publishType === 'immediate' ? 'queued' : 'pending',
+            status: 'queued',
+            queued_at: new Date(),
           },
         });
 
-        // 立即发布的任务加入队列
-        if (data.publishType === 'immediate') {
-          await this.publishQueue.addPublishTask({
-            taskId: task.id,
-            contentId: data.contentId,
-            platformAccountId: accountId,
-            platform: account.platform,
-          });
-        }
+        await this.publishQueue.addPublishTask({
+          taskId: task.id,
+          contentId: data.contentId,
+          platformAccountId: accountId,
+          platform: account.platform,
+          scheduledAt: scheduledTime,
+        }, delay);
 
         return task;
       })
     );
 
     // 增加使用量统计
-    if (data.publishType === 'immediate') {
-      await this.tenantService.incrementUsage(tenantId, 'publish', tasks.length);
-    }
+    await this.tenantService.incrementUsage(tenantId, 'publish', tasks.length);
 
     return tasks;
   }
@@ -101,6 +110,12 @@ export class PublishService {
         skip,
         take: pageSize,
         orderBy: { created_at: 'desc' },
+        include: {
+          content: { select: { title: true, cover_url: true } },
+          platform_account: {
+            select: { platform: true, account_name: true, account_nickname: true },
+          },
+        },
       }),
       this.prisma.publishTask.count({ where }),
     ]);

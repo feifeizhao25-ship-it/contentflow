@@ -124,23 +124,11 @@ export async function generateVideo(params: VideoGenerationParams): Promise<Gene
   // 预估视频时长
   const estimatedDuration = duration === 'short' ? 15 : duration === 'long' ? 60 : 30;
   
-  // 创建视频记录
-  const video: GeneratedVideo = {
-    id: `video_${Date.now()}`,
-    scriptId,
-    status: 'pending',
-    progress: 0,
-    duration: estimatedDuration,
-    resolution: '1080p',
-    aspectRatio: '9:16',
-    style: selectedStyle,
-    createdAt: new Date(),
-  };
-
-  // 模拟生成过程
-  await simulateVideoGeneration(video);
-  
-  return video;
+  void scriptId;
+  void scriptContent;
+  void estimatedDuration;
+  void selectedStyle;
+  throw new Error('视频生成服务尚未接入后端，任务未创建且不会返回模拟结果');
 }
 
 // 批量生成视频
@@ -173,32 +161,6 @@ export function getStylesForPlatform(platform: TargetPlatform): VideoStyle[] {
 // 获取所有风格
 export function getAllStyles(): VideoStyle[] {
   return VIDEO_STYLES;
-}
-
-// 视频生成进度模拟
-async function simulateVideoGeneration(video: GeneratedVideo): Promise<void> {
-  const steps = [
-    { progress: 10, message: '解析脚本内容...' },
-    { progress: 25, message: '生成画面素材...' },
-    { progress: 40, message: '匹配背景音乐...' },
-    { progress: 55, message: '合成字幕特效...' },
-    { progress: 70, message: '渲染视频帧...' },
-    { progress: 85, message: '音频合成...' },
-    { progress: 95, message: '最终输出...' },
-    { progress: 100, message: '生成完成！' },
-  ];
-
-  for (const step of steps) {
-    await new Promise(resolve => setTimeout(resolve, 500));
-    video.progress = step.progress;
-    console.log(`[Video Generation] ${step.message} (${step.progress}%)`);
-  }
-
-  video.status = 'completed';
-  video.progress = 100;
-  video.completedAt = new Date();
-  video.thumbnailUrl = `https://via.placeholder.com/540x960/6366f1/ffffff?text=Video+${video.id}`;
-  video.videoUrl = `https://example.com/videos/${video.id}.mp4`;
 }
 
 // 计算预估文件大小

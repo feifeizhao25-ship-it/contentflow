@@ -1,8 +1,24 @@
 import 'package:contentflow_global/features/auth/login_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:contentflow_global/config/global_config.dart';
 
 void main() {
+  test('production API URL is explicit and HTTPS', () {
+    expect(() => AppConfig.validateApiBaseUrl(''), throwsStateError);
+    expect(
+      () => AppConfig.validateApiBaseUrl('http://example.com/api/v1'),
+      throwsStateError,
+    );
+    expect(
+      () => AppConfig.validateApiBaseUrl('https://api.example.com/v1'),
+      throwsStateError,
+    );
+    expect(
+      AppConfig.validateApiBaseUrl('https://api.example.com/api/v1/'),
+      'https://api.example.com/api/v1',
+    );
+  });
   testWidgets('global iOS login stays English-only', (tester) async {
     await tester.pumpWidget(const MaterialApp(home: LoginScreen()));
 

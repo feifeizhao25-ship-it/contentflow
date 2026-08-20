@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { PrismaService } from '../../database/prisma.service';
 
 @Injectable()
@@ -19,14 +19,9 @@ export class TeamService {
     });
   }
 
-  async addMember(tenantId: string, data: { email: string; name?: string; role?: string }) {
-    return this.prisma.user.create({
-      data: {
-        tenant_id: tenantId,
-        email: data.email,
-        name: data.name,
-        role: data.role || 'member',
-      },
-    });
+  async addMember(_tenantId: string, _data: { email: string; name?: string; role?: string }) {
+    throw new BadRequestException(
+      'Team invitations are unavailable until signed invitation delivery and acceptance are configured',
+    );
   }
 }

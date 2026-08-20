@@ -7,9 +7,7 @@ import dayjs from 'dayjs';
 import clsx from 'clsx';
 import { motion } from 'framer-motion';
 import { apiClient } from '@/lib/api-client';
-import { usePointsStore } from '@/store/pointsStore';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useAchievementStore } from '@/store/appStore';
 import { trackEvent } from '@/lib/analytics';
 import { PLACEHOLDER_IMAGES } from '@/lib/placeholders';
 
@@ -26,8 +24,7 @@ const PLATFORMS = [
 function StudioContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { balance, setBalance } = usePointsStore();
-  const { unlockAchievement, isUnlocked } = useAchievementStore();
+  const [balance, setBalance] = useState<number | null>(null);
 
   const [topic, setTopic] = useState('');
   const [style, setStyle] = useState<'professional' | 'humorous' | 'xhs_influencer' | 'cinematic' | 'storytelling'>('professional');
@@ -86,7 +83,7 @@ function StudioContent() {
         setBalance(nextBalance);
       }
     } catch {
-      // ignore balance refresh failures
+      setBalance(null);
     }
   }, [setBalance]);
 
@@ -210,45 +207,11 @@ function StudioContent() {
       message.warning('请输入主题以生成视频');
       return;
     }
-    setIsGeneratingVideo(true);
-    setVideoLogs(['🤖 正在构思您的视频剧情...', '📝 编写分镜脚本中...']);
-    setVideoProgress(10);
-
-    try {
-      // Simulate multi-step progress for better UX
-      setTimeout(() => {
-        setVideoLogs(prev => [...prev, '🎨 正在请求 AI 渲染引擎...']);
-        setVideoProgress(30);
-      }, 2000);
-
-      setTimeout(() => {
-        setVideoLogs(prev => [...prev, '📽️ 正在生成第 1 个片段 (5s)...', '📽️ 正在生成第 2 个片段 (5s)...']);
-        setVideoProgress(60);
-      }, 5000);
-
-      setTimeout(() => {
-        setVideoLogs(prev => [...prev, '🎬 正在通过 Shotstack 合并视频轨道...', '🎵 添加背景音乐与音效...']);
-        setVideoProgress(85);
-      }, 10000);
-
-      const res: any = await apiClient.post('/ai/generate/video', {
-        topic,
-        style,
-        duration: videoDuration,
-      });
-
-      const videoData = res?.data || res;
-      setVideoUrl(videoData?.url || '');
-      setVideoLogs(prev => [...prev, '✅ 视频生成成功！准备预览。']);
-      setVideoProgress(100);
-      await refreshBalance();
-      message.success('视频内容包生成成功');
-    } catch (e: any) {
-      message.error(`视频生成失败: ${e.message}`);
-      setVideoLogs(prev => [...prev, '❌ 生成中断，请检查模型状态或余额。']);
-    } finally {
-      setIsGeneratingVideo(false);
-    }
+    setIsGeneratingVideo(false);
+    setVideoUrl('');
+    setVideoProgress(0);
+    setVideoLogs(['视频生成后端尚未启用，本次未创建任务。']);
+    message.info('视频生成后端尚未启用；系统不会用模拟进度或占位视频冒充结果');
   };
 
   const handleCreatePublishTasks = async () => {
@@ -275,6 +238,12 @@ function StudioContent() {
       if (!contentId) {
         throw new Error('内容创建失败');
       }
+
+      await apiClient.post(`/contents/${contentId}/submit`, {});
+      await apiClient.post(`/contents/${contentId}/review`, {
+        action: 'approve',
+        comment: '用户本人在创建发布任务时确认内容可发布',
+      });
 
       try {
         const assets: Array<{ type: string; url: string; label: string; meta?: any }> = [
@@ -304,43 +273,27 @@ function StudioContent() {
       }
 
       const validTargets = selectedPlatforms
-        .map((platform) => ({ platform, account: nextAccounts.find((a) => a.platform === platform) }))
+        .map((platform) => ({ platform, account: nextAccounts.find((a) => a.platform === platform && a.status === 'active') }))
         .filter((item) => item.account);
 
-      if (!validTargets.length) {
-        if (nextAccounts.length > 0) {
-          const fallback = nextAccounts[0];
-          validTargets.push({ platform: fallback.platform, account: fallback });
-          message.info('已自动选择可用的平台账号用于发布');
-        } else {
-          message.warning('请选择已绑定的平台账号后再创建发布任务');
-          return;
-        }
+      if (validTargets.length !== selectedPlatforms.length) {
+        const missing = selectedPlatforms.filter(platform => !validTargets.some(target => target.platform === platform));
+        message.warning(`以下平台没有可用账号：${missing.join('、')}。未创建任何发布任务。`);
+        return;
       }
 
-      await Promise.all(validTargets.map(({ platform, account }) => apiClient.post('/publish/tasks', {
+      await apiClient.post('/publish/tasks', {
         contentId,
-        platform,
-        accountId: account.id,
+        platformAccountIds: validTargets.map(({ account }) => account.id),
         publishType,
         scheduledAt: scheduleAt,
-        idempotencyKey: `studio_${contentId}_${platform}_${Date.now()}`,
-      })));
+      });
 
       trackEvent('publish_task_created', {
         platforms: validTargets.map((item) => item.platform),
         publishType,
       });
       message.success({ content: '发布任务已创建', key: 'publish' });
-
-      if (!isUnlocked('first_publish_task')) {
-        unlockAchievement('first_publish_task');
-        message.open({
-          type: 'success',
-          content: '徽章已点亮：首个发布任务',
-          duration: 3,
-        });
-      }
 
       window.location.href = '/publish';
     } catch (e: any) {
@@ -424,7 +377,7 @@ function StudioContent() {
           </Button>
           <p className="text-[10px] text-zinc-400 mt-2 flex justify-between items-center bg-zinc-50 p-2 rounded-lg">
             <span>✨ 单次消耗：<span className="text-emerald-600 font-bold">5 积分</span></span>
-            <span>可用余额：<span className="text-amber-600 font-bold">{balance}</span></span>
+            <span>可用余额：<span className="text-amber-600 font-bold">{balance ?? '暂不可用'}</span></span>
           </p>
 
           <Divider className="my-6" />

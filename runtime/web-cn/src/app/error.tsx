@@ -26,9 +26,9 @@ export default function Error({
                     <span className="text-4xl">⚠️</span>
                 </div>
 
-                <h2 className="text-2xl font-bold text-white mb-2">Something went wrong!</h2>
+                <h2 className="text-2xl font-bold text-white mb-2">页面暂时无法加载</h2>
                 <p className="text-zinc-400 mb-8 text-sm leading-relaxed">
-                    We encountered an unexpected error. Please try again or return to the dashboard.
+                    系统遇到意外错误，请重试或返回内容工作室。
                 </p>
 
                 <div className="flex flex-col gap-3">
@@ -39,23 +39,23 @@ export default function Error({
                         onClick={reset}
                         className="!rounded-xl !bg-white !text-black hover:!bg-zinc-200 !font-bold !h-12 border-none"
                     >
-                        Try Again
+                        重试
                     </Button>
                     <Button
                         type="default"
                         size="large"
                         icon={<HomeOutlined />}
-                        href="/dashboard"
+                        href="/studio"
                         className="!rounded-xl !text-zinc-400 hover:!text-white hover:!bg-white/5 !h-12 !border-white/5"
                     >
-                        Back to Dashboard
+                        返回内容工作室
                     </Button>
                 </div>
 
                 {error.digest && (
                     <div className="mt-8 pt-4 border-t border-white/5">
                         <p className="text-[10px] text-zinc-600 font-mono">
-                            Error Digest: {error.digest}
+                            错误编号：{error.digest}
                         </p>
                     </div>
                 )}

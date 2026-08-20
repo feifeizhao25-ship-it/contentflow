@@ -66,31 +66,18 @@ export default function TrafficSandwichPage() {
                 keywords: ['钩子', '转化', '反直觉'],
             });
 
-            const content = res?.data?.content || '';
-
-            // Parse or simulate parsing for demo
-            // In real scenario, we'd have a specific endpoint or better prompt
-            setHook('【反转开头】大家都以为做自媒体很难，直到我发现了这个“流量夹心”法...');
-            setCoreContent('这里填入您的核心干货或产品介绍，保持真实和专业感。');
-            setCta('如果觉得有用，记得点赞收藏！点击底部的链接领取我的自媒体地图 🚀');
-
-            setSuggestions({
-                hooks: [
-                    '你不理财，财不理你？那是因为你没看到最后...',
-                    '为什么聪明人都在用这个方法？看完这30秒你就懂了。',
-                    '警告：这可能是你今年刷到最有价值的一条视频。'
-                ],
-                ctas: [
-                    '评论区回复“指南”，我把整理好的全套资料发给你。',
-                    '关注我，每天分享一个普通人也能上手的搞钱小技巧。',
-                    '点击置顶链接，领取今日份限时福利！'
-                ]
-            });
+            const content = String(res?.data?.content || '').trim();
+            if (!content) throw new Error('AI 服务未返回策略内容');
+            const sections = content.split(/\n{2,}/).map((item: string) => item.trim()).filter(Boolean);
+            setHook(sections[0] || content);
+            setCoreContent(sections[1] || '请在此补充经核验的核心事实与产品信息。');
+            setCta(sections[2] || '请根据实际可兑现的权益填写行动引导。');
+            setSuggestions({ hooks: sections.slice(0, 3), ctas: sections.slice(3, 6) });
 
             message.success('流量策略已为您规划完成');
             setActiveStep(1);
         } catch (e) {
-            message.error('生成建议失败');
+            message.error(e instanceof Error ? e.message : '生成建议失败');
         } finally {
             setIsGenerating(false);
         }
