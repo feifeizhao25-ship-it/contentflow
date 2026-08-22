@@ -138,6 +138,11 @@ jobs:
         run: flutter analyze --no-fatal-infos --no-fatal-warnings
       - name: Test
         run: flutter test --no-pub
+      - name: Build Android release smoke artifact
+        if: startsWith(matrix.edition, 'android-')
+        env:
+          ALLOW_DEBUG_RELEASE_SIGNING: "true"
+        run: flutter build apk --release --no-pub
 
   language-and-rag-contracts:
     name: Language and RAG contracts
