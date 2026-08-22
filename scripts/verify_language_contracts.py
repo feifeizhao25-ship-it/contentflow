@@ -28,7 +28,9 @@ def read_text(path: Path) -> str:
 
 
 def scan_int_source() -> list[dict[str, object]]:
-    base = ROOT / "apps/INT-Web/src"
+    # runtime/web-int is the production image build context.  The historical
+    # apps/INT-Web tree is incomplete and must not be used as a release gate.
+    base = ROOT / "runtime/web-int/src"
     allowed_parts = {
         ("i18n", "locales", "zh.json"),
         ("i18n", "locales", "ja.json"),
@@ -49,23 +51,25 @@ def scan_int_source() -> list[dict[str, object]]:
 
 
 def check_int_locale_lock() -> list[str]:
-    path = ROOT / "apps/INT-Web/src/i18n/index.tsx"
-    text = read_text(path)
+    layout = ROOT / "runtime/web-int/src/app/layout.tsx"
+    text = read_text(layout)
     issues: list[str] = []
-    if "SUPPORTED_LOCALES: string[] = ['en']" not in text:
-        issues.append("INT-Web SUPPORTED_LOCALES is not locked to ['en'].")
-    if "return 'en';" not in text:
-        issues.append("INT-Web detectLocale does not force English.")
+    if not re.search(r"<html\s+lang=[\"']en(?:-[A-Za-z]+)?[\"']", text):
+        issues.append("Production INT-Web root HTML language is not locked to English.")
     return issues
 
 
 def check_mobile_en_values() -> list[dict[str, str]]:
-    path = ROOT / "apps/Mobile/src/i18n/locales/en.json"
-    data = json.loads(read_text(path))
     findings: list[dict[str, str]] = []
-    for key, value in data.items():
-        if isinstance(value, str) and CJK_RE.search(value):
-            findings.append({"key": key, "value": value})
+    for edition in ("android-global", "ios-global"):
+        base = ROOT / edition / "lib"
+        for path in base.rglob("*.dart"):
+            for line_no, line in enumerate(read_text(path).splitlines(), 1):
+                if CJK_RE.search(line):
+                    findings.append({
+                        "key": f"{path.relative_to(ROOT)}:{line_no}",
+                        "value": line.strip()[:160],
+                    })
     return findings
 
 

@@ -7,8 +7,9 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint",
-    "check:contract": "node scripts/check-api-contract.mjs"
+    "lint": "eslint src",
+    "check:contract": "node scripts/check-api-contract.mjs",
+    "test:security": "node --experimental-strip-types scripts/test-media-path-guard.mjs"
   },
   "dependencies": {
     "next": "16.2.12",

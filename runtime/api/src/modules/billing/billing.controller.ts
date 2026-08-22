@@ -1,4 +1,4 @@
-import { Controller, Get, UseGuards, Request } from '@nestjs/common';
+import { Controller, Get, UseGuards, Request, NotFoundException } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { PLANS } from './plans.constant';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
@@ -37,14 +37,22 @@ export class BillingController {
       where: { tenant_id: tenantId, period },
     });
 
-    const limits = (tenant?.limits as any) || {};
-    const monthlyQuota = limits.max_ai_calls_monthly ?? 0;
-    const usedQuota = (meter as any)?.ai_tokens ?? 0;
+    if (!tenant) throw new NotFoundException('Tenant not found');
 
     // 套餐已过期则按 free 处理，避免过期租户继续享有付费权限
     const expiresAt = (tenant as any)?.plan_expires_at ?? null;
     const expired = expiresAt ? new Date(expiresAt).getTime() < Date.now() : false;
-    const plan = expired ? 'free' : ((tenant as any)?.plan ?? 'free');
+    const plan = expired ? 'free' : ((tenant as any).plan ?? 'free');
+    const planDefinition = PLANS.find((item) => item.id === plan) ?? PLANS[0];
+    const storedLimits = (tenant.limits as any) || {};
+    const limits = expired ? {
+      max_accounts: planDefinition.platformLimit,
+      max_publishes_monthly: planDefinition.monthlyPostQuota,
+      max_ai_tokens_monthly: planDefinition.aiTokenQuota,
+    } : storedLimits;
+    const monthlyQuota = limits.max_ai_tokens_monthly ??
+      ((limits.max_ai_calls_monthly ?? planDefinition.aiTokenQuota / 2500) * 2500);
+    const usedQuota = (meter as any)?.ai_tokens ?? 0;
 
     return {
       plan,

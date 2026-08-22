@@ -15,7 +15,7 @@ import {
     GiftFilled,
     ArrowRightOutlined
 } from '@ant-design/icons';
-import { Modal, Tabs, Statistic, Card, Button, Badge } from 'antd';
+import { Tabs, Statistic, Card, Button, Badge } from 'antd';
 import clsx from 'clsx';
 import { useRouter, useSearchParams } from 'next/navigation';
 
@@ -73,19 +73,9 @@ function PricingContent() {
         }
     ];
 
-    const handlePurchase = (id: string, type: 'membership' | 'credits') => {
+    const handlePurchase = (id: string) => {
         setLoadingPlan(id);
-        setTimeout(() => {
-            Modal.success({
-                title: '升级成功！',
-                content: `您已成功解锁${type === 'membership' ? '专业版会员' : '积分包'}。`,
-                icon: <CheckCircleFilled className="text-indigo-500" />,
-                onOk: () => {
-                    setLoadingPlan(null);
-                    router.push('/analytics');
-                }
-            });
-        }, 1200);
+        router.push(`/login?redirect=${encodeURIComponent(`/pricing?plan=${id}`)}`);
     };
 
     return (
@@ -169,7 +159,7 @@ function PricingContent() {
                                 type="primary"
                                 block
                                 size="large"
-                                onClick={() => handlePurchase(plan.id, 'membership')}
+                                onClick={() => handlePurchase(plan.id)}
                                 loading={loadingPlan === plan.id}
                                 disabled={plan.disabled}
                                 className={clsx(
@@ -207,7 +197,7 @@ function PricingContent() {
                                     ))}
                                 </ul>
                             </div>
-                            <Button block size="large" ghost className="h-14 rounded-xl font-bold border-white/20 hover:bg-white/10 hover:border-white/40 text-white">
+                            <Button block size="large" ghost onClick={() => router.push('/login?redirect=%2Fpricing%3Fplan%3Denterprise')} className="h-14 rounded-xl font-bold border-white/20 hover:bg-white/10 hover:border-white/40 text-white">
                                 联系商务顾问 <ArrowRightOutlined />
                             </Button>
                         </div>

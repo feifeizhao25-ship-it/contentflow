@@ -1,7 +1,12 @@
+import { render, screen } from '@testing-library/react';
+import PlatformBadge from '@/components/ui/PlatformBadge';
+
 describe('PlatformBadge', () => {
   it('renders TikTok badge', () => {
     render(<PlatformBadge platform="tiktok" />);
     expect(screen.getByText('TikTok')).toBeInTheDocument();
+  });
+
   it('renders Instagram badge', () => {
     render(<PlatformBadge platform="instagram" />);
     expect(screen.getByText('Instagram')).toBeInTheDocument();

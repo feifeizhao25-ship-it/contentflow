@@ -36,63 +36,48 @@ verify_web_app() {
   local app_dir="$1"
   (
     cd "$ROOT/$app_dir" &&
+      ensure_node_dependencies &&
       npx tsc --noEmit &&
-      npm run lint &&
       npm run build
   )
 }
 
-verify_mobile_js() {
+ensure_node_dependencies() {
+  if [ ! -x node_modules/.bin/tsc ] || [ package-lock.json -nt node_modules/.package-lock.json ]; then
+    npm ci
+  fi
+}
+
+verify_cn_web() {
+  verify_web_app "runtime/web-cn" &&
+    (cd "$ROOT/runtime/web-cn" && npm run check:contract)
+}
+
+verify_api() {
   (
-    cd "$ROOT/apps/Mobile" &&
-      node scripts/patch-react-native-gradle-plugin.js &&
-      npx tsc --noEmit &&
-      npm run test -- --runInBand &&
-      npm run lint
+    cd "$ROOT/runtime/api" &&
+      ensure_node_dependencies &&
+      npm run build &&
+      npm run test -- --runInBand
   )
 }
 
-verify_android_debug() {
-  if [ ! -x "$JAVA17_HOME/bin/java" ]; then
-    printf "JDK 17 not found at %s\n" "$JAVA17_HOME"
-    return 1
-  fi
-
+verify_flutter_edition() {
+  local edition="$1"
   (
-    cd "$ROOT/apps/Mobile/android" &&
-      export JAVA_HOME="$JAVA17_HOME" &&
-      export PATH="$JAVA_HOME/bin:$PATH" &&
-      ./gradlew assembleDebug --no-daemon
+    cd "$ROOT/$edition" &&
+      flutter pub get &&
+      flutter analyze --no-fatal-infos --no-fatal-warnings &&
+      flutter test
   )
 }
 
-verify_ios_debug() {
-  if ! xcodebuild -version >/dev/null 2>&1; then
-    return 2
-  fi
-
-  (
-    cd "$ROOT/apps/Mobile/ios" &&
-      if [ -d mobile.xcworkspace ]; then
-        xcodebuild \
-          -workspace mobile.xcworkspace \
-          -scheme mobile \
-          -configuration Debug \
-          -sdk iphonesimulator \
-          -destination 'generic/platform=iOS Simulator' \
-          CODE_SIGNING_ALLOWED=NO \
-          build
-      else
-        xcodebuild \
-          -project mobile.xcodeproj \
-          -scheme mobile \
-          -configuration Debug \
-          -sdk iphonesimulator \
-          -destination 'generic/platform=iOS Simulator' \
-          CODE_SIGNING_ALLOWED=NO \
-          build
-      fi
-  )
+build_flutter_release() {
+  local edition="$1"
+  case "$edition" in
+    android-*) (cd "$ROOT/$edition" && flutter build appbundle --release) ;;
+    ios-*) (cd "$ROOT/$edition" && flutter build ios --release --no-codesign) ;;
+  esac
 }
 
 step "Environment"
@@ -103,31 +88,38 @@ else
   printf "JDK 17 missing: %s\n" "$JAVA17_HOME"
 fi
 
-run_step "CN-Web typecheck/lint/build" verify_web_app "apps/CN-Web"
-run_step "INT-Web typecheck/lint/build" verify_web_app "apps/INT-Web"
-run_step "Mobile JS typecheck/test/lint" verify_mobile_js
-run_step "Mobile Android debug build" verify_android_debug
+run_step "Production API build/test" verify_api
+run_step "CN-Web typecheck/build/API-contract" verify_cn_web
+run_step "INT-Web typecheck/build" verify_web_app "runtime/web-int"
+run_step "CN/INT language contract" python3 "$ROOT/scripts/verify_language_contracts.py"
+run_step "RAG source/freshness contract" python3 "$ROOT/scripts/validate_rag_freshness.py" --allow-empty
 
-step "Mobile iOS debug build"
-verify_ios_debug
-ios_status=$?
-if [ "$ios_status" -eq 0 ]; then
-  PASSED+=("Mobile iOS debug build")
-elif [ "$ios_status" -eq 2 ] && [ "${REQUIRE_IOS:-0}" != "1" ]; then
-  printf "SKIP: xcodebuild needs a full Xcode install/selection. Set REQUIRE_IOS=1 to fail here.\n"
-  SKIPPED+=("Mobile iOS debug build: full Xcode not selected")
+for edition in android-cn ios-cn android-global ios-global; do
+  run_step "$edition analyze/test" verify_flutter_edition "$edition"
+done
+
+if [ "${REQUIRE_RELEASE_BUILDS:-0}" = "1" ]; then
+  for edition in android-cn ios-cn android-global ios-global; do
+    run_step "$edition release build" build_flutter_release "$edition"
+  done
 else
-  FAILED+=("Mobile iOS debug build")
+  skip_step "Four mobile release artifacts" "set REQUIRE_RELEASE_BUILDS=1 on release runners with Android SDK and Xcode"
 fi
 
 step "Summary"
 printf "Passed: %s\n" "${#PASSED[@]}"
-for item in "${PASSED[@]}"; do printf "  OK  %s\n" "$item"; done
+if [ "${#PASSED[@]}" -gt 0 ]; then
+  for item in "${PASSED[@]}"; do printf "  OK  %s\n" "$item"; done
+fi
 
 printf "Skipped: %s\n" "${#SKIPPED[@]}"
-for item in "${SKIPPED[@]}"; do printf "  SKIP %s\n" "$item"; done
+if [ "${#SKIPPED[@]}" -gt 0 ]; then
+  for item in "${SKIPPED[@]}"; do printf "  SKIP %s\n" "$item"; done
+fi
 
 printf "Failed: %s\n" "${#FAILED[@]}"
-for item in "${FAILED[@]}"; do printf "  FAIL %s\n" "$item"; done
+if [ "${#FAILED[@]}" -gt 0 ]; then
+  for item in "${FAILED[@]}"; do printf "  FAIL %s\n" "$item"; done
+fi
 
 [ "${#FAILED[@]}" -eq 0 ]

@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../database/prisma.service';
+import { parseGeneratedTitles } from './title-parser';
 
 interface AIResponse {
   content: string;
@@ -9,6 +10,11 @@ interface AIResponse {
     completion_tokens: number;
     total_tokens: number;
   };
+}
+
+interface TitlesResponse {
+  titles: string[];
+  usage: AIResponse['usage'];
 }
 
 @Injectable()
@@ -36,6 +42,9 @@ export class AIService {
     const model = params.model || 'qwen-turbo';
     const provider = model.includes('deepseek') ? 'deepseek' : 'qwen';
     const apiKey = provider === 'deepseek' ? this.deepseekApiKey : this.qwenApiKey;
+    if (!apiKey) {
+      throw new Error(`${provider.toUpperCase()} API key is not configured`);
+    }
 
     const baseUrl = provider === 'deepseek' 
       ? 'https://api.deepseek.com/v1' 
@@ -156,16 +165,23 @@ ${content}
   }
 
   async generateTitles(topic: string, platform: string, count: number = 5): Promise<string[]> {
+    return (await this.generateTitlesWithUsage(topic, platform, count)).titles;
+  }
+
+  async generateTitlesWithUsage(
+    topic: string,
+    platform: string,
+    count: number = 5,
+  ): Promise<TitlesResponse> {
     const result = await this.generateText({
       prompt: `请为"${topic}"在${platform}平台生成${count}个吸引人的标题，每个标题20字以内，用换行分隔`,
       maxTokens: 500,
     });
 
-    return result.content
-      .split('\n')
-      .map(t => t.replace(/^\d+\.\s*/, '').trim())
-      .filter(t => t.length > 0)
-      .slice(0, count);
+    // 结构化解析：剥离「以下是……」等说明性前后缀，
+    // 解析不到有效标题时抛错（fail closed），不把说明文字当标题返回。
+    const titles = parseGeneratedTitles(result.content, count);
+    return { titles, usage: result.usage };
   }
 
   // 记录AI生成历史

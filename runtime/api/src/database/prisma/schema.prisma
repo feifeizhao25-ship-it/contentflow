@@ -28,7 +28,7 @@ model Tenant {
   plan_expires_at DateTime?
 
   // 配额限制
-  limits Json @default("{\"max_accounts\": 2, \"max_members\": 1, \"max_publishes_monthly\": 30, \"max_ai_calls_monthly\": 20, \"max_storage_gb\": 1}")
+  limits Json @default("{\"max_accounts\": 2, \"max_members\": 1, \"max_publishes_monthly\": 30, \"max_ai_tokens_monthly\": 50000, \"max_storage_gb\": 1}")
 
   // 使用统计
   usage_stats Json @default("{\"accounts_count\": 0, \"members_count\": 1, \"publishes_this_month\": 0, \"ai_calls_this_month\": 0, \"storage_used_mb\": 0}")

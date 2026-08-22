@@ -44,7 +44,6 @@ jobs:
 
       - name: Lint
         run: npx eslint "src/**/*.ts" --max-warnings=0
-        continue-on-error: true
 
       - name: Build
         run: npm run build
@@ -63,7 +62,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: "22"
           cache: "npm"
           cache-dependency-path: runtime/web-cn/package-lock.json
 
@@ -72,7 +71,6 @@ jobs:
 
       - name: Lint
         run: npm run lint
-        continue-on-error: true
 
       # 跨层契约。web-cn 里没有 jest（package.json 原本只有 lint 脚本），
       # 所以这批检查写成独立 Node 脚本 —— 否则又是一处「写了没人跑」。
@@ -100,7 +98,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: "22"
           cache: "npm"
           cache-dependency-path: runtime/web-int/package-lock.json
 
@@ -109,7 +107,6 @@ jobs:
 
       - name: Lint
         run: npm run lint
-        continue-on-error: true
 
       - name: Build
         run: npm run build
@@ -118,6 +115,41 @@ jobs:
 
       - name: Unit tests
         run: npm run test:ci
+
+  mobile:
+    name: Flutter ${{ matrix.edition }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        edition: [android-cn, ios-cn, android-global, ios-global]
+    defaults:
+      run:
+        working-directory: ${{ matrix.edition }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.38.5'
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - name: Analyze
+        run: flutter analyze --no-fatal-infos --no-fatal-warnings
+      - name: Test
+        run: flutter test --no-pub
+
+  language-and-rag-contracts:
+    name: Language and RAG contracts
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: CN/INT language isolation
+        run: python3 scripts/verify_language_contracts.py
+      - name: RAG provenance validator self-check
+        run: |
+          python3 -m py_compile scripts/validate_rag_freshness.py
+          python3 scripts/validate_rag_freshness.py --allow-empty
 
   secret-scan:
     name: Secret Scan

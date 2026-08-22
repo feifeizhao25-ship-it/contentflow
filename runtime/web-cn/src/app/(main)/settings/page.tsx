@@ -280,7 +280,7 @@ export default function SettingsPage() {
                                 { title: '系统更新', desc: '重要版本更新和功能上线提醒', default: false },
                             ]}
                             renderItem={(item) => (
-                                <List.Item actions={[<Switch defaultChecked={item.default} />]}>
+                                <List.Item actions={[<Switch key="enabled" defaultChecked={item.default} />]}>
                                     <List.Item.Meta title={item.title} description={item.desc} />
                                 </List.Item>
                             )}

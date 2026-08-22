@@ -3,6 +3,7 @@ import { AIService } from './ai.service';
 import { UsageService, ResourceType } from '../system/usage.service';
 import { ComplianceService } from './compliance.service';
 import { GenerateContentPackDto } from './dto/generate-content-pack.dto';
+import { labelAiGeneratedText, buildAiMediaMetadata } from '../../common/ai-content-label';
 
 @Injectable()
 export class ContentPackService {
@@ -27,7 +28,8 @@ export class ContentPackService {
             // 2. Multi-step AI Pipeline
             // Step A: Headlines x 10
             const platformsStr = dto.platforms?.join(',') || '全渠道';
-            const titles = await this.aiService.generateTitles(dto.topic, platformsStr, 10);
+            const titleResult = await this.aiService.generateTitlesWithUsage(dto.topic, platformsStr, 10);
+            const titles = titleResult.titles;
 
             // Step B: Script/Body
             const scriptPrompt = `请根据主题 "${dto.topic}" 和标题 "${titles[0]}" 创作一篇深度脚本。要求：逻辑清晰，金句频出。`;
@@ -37,9 +39,15 @@ export class ContentPackService {
             // 3. Compliance Scrubbing
             script = await this.complianceService.scrubOutput(script);
 
-            // 4. Usage Tracking
-            // Mock tokens count (Titles ~ 500, Script ~ 2000)
-            const totalTokens = 2500;
+            // 4. AI 生成内容显式标识（导出文本必须可辨识为 AI 生成）
+            script = labelAiGeneratedText(script);
+
+            // 5. Usage Tracking
+            const totalTokens =
+                titleResult.usage.total_tokens + scriptData.usage.total_tokens;
+            if (!Number.isSafeInteger(totalTokens) || totalTokens <= 0) {
+                throw new Error('AI provider did not return valid token usage');
+            }
             await this.usageService.trackUsage(tenantId, ResourceType.TOKENS, totalTokens, {
                 topic: dto.topic,
                 type: 'content_pack'
@@ -50,9 +58,15 @@ export class ContentPackService {
                 data: {
                     titles,
                     script,
+                    // 来源区块：当前生成链路未接入 RAG/知识库检索，
+                    // 明确标注「无来源」，绝不伪造引用。
+                    sources: [],
+                    sources_status: 'none',
+                    sources_note: '本次生成未引用外部知识库或检索来源',
                     metadata: {
                         usage: { tokens: totalTokens },
                         platforms: dto.platforms,
+                        ai_content: buildAiMediaMetadata({ mediaType: 'text' }),
                     }
                 }
             };

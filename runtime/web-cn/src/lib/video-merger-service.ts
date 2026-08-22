@@ -10,6 +10,8 @@ import { randomUUID } from 'crypto';
 import https from 'https';
 import { promisify } from 'util';
 import { pipeline } from 'stream';
+import { resolvePublicMediaPath } from './media-path-guard';
+import { AI_MEDIA_METADATA_ARGS } from './ai-content-label';
 
 const streamPipeline = promisify(pipeline);
 
@@ -77,16 +79,14 @@ class FFmpegMerger {
                 if (url.startsWith('http')) {
                     await downloadFile(url, tempFile);
                 } else if (url.startsWith('/')) {
-                    const localPath = path.join(process.cwd(), 'public', url.replace(/^\//, ''));
+                    // 路径白名单：只允许 public/ 根目录内的文件。
+                    // 旧的「找不到就当绝对路径复制」兜底已删除 ——
+                    // 它会把 /etc/passwd 这类任意系统文件拷进公开目录。
+                    const localPath = resolvePublicMediaPath(url);
                     if (fs.existsSync(localPath)) {
                         fs.copyFileSync(localPath, tempFile);
                     } else {
-                        // Try as absolute path if relative to public fails
-                        if (fs.existsSync(url)) {
-                            fs.copyFileSync(url, tempFile);
-                        } else {
-                            throw new Error(`Local file not found: ${url}`);
-                        }
+                        throw new Error(`Local file not found: ${url}`);
                     }
                 } else {
                     throw new Error(`Invalid video URL: ${url}`);
@@ -161,7 +161,9 @@ class FFmpegMerger {
                         '-c:v libx264',
                         '-pix_fmt yuv420p',
                         '-c:a ' + (params.outputFormat === 'webm' ? 'libvorbis' : 'aac'),
-                        '-movflags +faststart'
+                        '-movflags +faststart',
+                        // AI 生成内容隐式标识（写入文件元数据）
+                        ...AI_MEDIA_METADATA_ARGS,
                     ])
                     .on('start', (cmdLine) => {
                         console.log('FFmpeg command:', cmdLine);

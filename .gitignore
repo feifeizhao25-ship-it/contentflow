@@ -19,6 +19,7 @@ DerivedData/
 !.env.production.example
 *.log
 artifacts/
+*.tsbuildinfo
 
 # Python
 __pycache__/
@@ -38,3 +39,10 @@ GoogleService-Info.plist
 *.jks
 *.p8
 *.p12
+
+# Flutter-generated host integration files and ephemeral tool helpers.
+.flutter-plugins-dependencies
+**/ios/Flutter/ephemeral/
+**/ios/Flutter/Generated.xcconfig
+**/ios/Flutter/flutter_export_environment.sh
+**/ios/Runner/GeneratedPluginRegistrant.*

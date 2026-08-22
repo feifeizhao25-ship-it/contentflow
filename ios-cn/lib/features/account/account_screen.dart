@@ -14,7 +14,7 @@ class AccountScreen extends ConsumerWidget {
       backgroundColor: const Color(0xFFF8F9FA),
       body: SafeArea(
         child: userAsync.when(
-          data: (user) => _buildContent(context, user),
+          data: (user) => _buildContent(context, ref, user),
           loading: () => const Center(child: CircularProgressIndicator()),
           error: (e, _) => Center(child: Text('加载失败: $e')),
         ),
@@ -22,7 +22,7 @@ class AccountScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildContent(BuildContext context, User user) {
+  Widget _buildContent(BuildContext context, WidgetRef ref, User user) {
     return CustomScrollView(
       slivers: [
         // Header

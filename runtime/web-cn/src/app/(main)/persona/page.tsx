@@ -452,7 +452,7 @@ export default function PersonaPage() {
                                 dataSource={selectedPersona.writing_examples}
                                 renderItem={(item: string) => (
                                     <List.Item>
-                                        <Text type="secondary">"{item}"</Text>
+                                        <Text type="secondary">“{item}”</Text>
                                     </List.Item>
                                 )}
                             />

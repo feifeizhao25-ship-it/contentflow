@@ -82,8 +82,18 @@ class ApiClient {
             throw new Error(data.message || 'API request failed');
         }
 
-        // The NestJS backend uses a TransformInterceptor that wraps data in { data, success, message }
-        return data;
+        // The NestJS backend wraps successful payloads in { success, data,
+        // message }. Keep the client contract Promise<T> truthful by
+        // unwrapping exactly that envelope; plain responses remain supported.
+        if (
+            data &&
+            typeof data === 'object' &&
+            data.success === true &&
+            Object.prototype.hasOwnProperty.call(data, 'data')
+        ) {
+            return data.data as T;
+        }
+        return data as T;
     }
 }
 

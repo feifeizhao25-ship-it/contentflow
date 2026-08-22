@@ -58,7 +58,7 @@ export class AuthService {
           max_accounts: 2,
           max_members: 1,
           max_publishes_monthly: 30,
-          max_ai_calls_monthly: 20,
+          max_ai_tokens_monthly: 50000,
           max_storage_gb: 1,
         },
         usage_stats: {

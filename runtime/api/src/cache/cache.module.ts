@@ -3,10 +3,20 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { CacheService } from './cache.service';
 import Redis from 'ioredis';
 
-// 开发模式检查
-const useMockRedis = process.env.USE_MOCK_REDIS === 'true' || 
-  process.env.REDIS_HOST === 'localhost' || 
-  !process.env.REDIS_HOST;
+export function resolveRedisMode(config: {
+  nodeEnv?: string;
+  redisHost?: string;
+  useMockRedis?: string;
+}): 'mock' | 'redis' {
+  const production = config.nodeEnv === 'production';
+  const mockRequested = config.useMockRedis === 'true';
+  if (production && (mockRequested || !config.redisHost)) {
+    throw new Error(
+      'Production requires REDIS_HOST and forbids USE_MOCK_REDIS=true',
+    );
+  }
+  return !production && (mockRequested || !config.redisHost) ? 'mock' : 'redis';
+}
 
 // Mock Redis 客户端（开发模式使用）
 class MockRedis {
@@ -89,15 +99,20 @@ class MockRedis {
     {
       provide: 'REDIS_CLIENT',
       useFactory: async (configService: ConfigService) => {
-        // 开发模式使用 Mock Redis
-        if (useMockRedis) {
+        const redisHost = configService.get<string>('REDIS_HOST');
+        const redisMode = resolveRedisMode({
+          nodeEnv: configService.get('NODE_ENV'),
+          redisHost,
+          useMockRedis: configService.get('USE_MOCK_REDIS'),
+        });
+        if (redisMode === 'mock') {
           console.warn('🔶 使用开发模式 - Redis 操作将被模拟（Mock）');
           console.warn('🔶 配置真实的 REDIS_HOST 以连接真实 Redis');
           return new MockRedis() as any;
         }
         
         const client = new Redis({
-          host: configService.get('REDIS_HOST', 'localhost'),
+          host: redisHost || 'localhost',
           port: configService.get('REDIS_PORT', 6379),
           password: configService.get('REDIS_PASSWORD') || undefined,
           db: configService.get('REDIS_DB', 0),

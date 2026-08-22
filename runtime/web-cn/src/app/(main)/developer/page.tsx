@@ -82,14 +82,13 @@ export default function DeveloperSettings() {
         setLoading(true);
         try {
             // 明文密钥只在创建时返回一次，之后后端只存哈希
-            // 响应被 TransformInterceptor 包成 { success, data, meta }，需解包
             const created = await apiClient.post<ApiKey>('/developer/keys', {
                 name: newKeyName.trim(),
             });
-            if (!(created?.data?.key ?? created?.key)) {
+            if (!created?.key) {
                 throw new Error('后端未返回密钥明文');
             }
-            setCreatedKey((created?.data?.key ?? created?.key));
+            setCreatedKey(created.key);
             setNewKeyName('');
             await loadKeys();
         } catch (e: any) {

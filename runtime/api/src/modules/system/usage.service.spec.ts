@@ -86,4 +86,24 @@ describe('UsageService', () => {
       service.checkQuota('tenant_1', ResourceType.PUBLISHES),
     ).resolves.toBe(false);
   });
+
+  it('compares AI token usage with a token limit, not a call-count limit', async () => {
+    prisma.tenant.findUnique.mockResolvedValue({
+      limits: { max_ai_tokens_monthly: 50000 },
+    });
+    prisma.usageMeter.findFirst
+      .mockResolvedValueOnce({ ...meter, ai_tokens: 49999 })
+      .mockResolvedValueOnce({ ...meter, ai_tokens: 50000 });
+
+    await expect(service.checkQuota('tenant_1', ResourceType.TOKENS)).resolves.toBe(true);
+    await expect(service.checkQuota('tenant_1', ResourceType.TOKENS)).resolves.toBe(false);
+  });
+
+  it('converts legacy AI call limits during tenant migration', async () => {
+    prisma.tenant.findUnique.mockResolvedValue({
+      limits: { max_ai_calls_monthly: 20 },
+    });
+    prisma.usageMeter.findFirst.mockResolvedValue({ ...meter, ai_tokens: 49999 });
+    await expect(service.checkQuota('tenant_1', ResourceType.TOKENS)).resolves.toBe(true);
+  });
 });
