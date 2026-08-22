@@ -51,19 +51,6 @@ const PLATFORMS = [
     { id: 'zhihu', name: '知乎', color: '#0066ff', icon: '💡' },
 ];
 
-const MOCK_TASKS: PublishTask[] = [
-    {
-        id: '1',
-        title: '2024 AI工具大集合：让内容输出效率提升10倍',
-        date: dayjs().format('YYYY-MM-DD'),
-        time: '19:30',
-        platforms: ['xhs', 'douyin'],
-        status: 'scheduled',
-        thumbnail: 'https://via.placeholder.com/150/6366f1/ffffff?text=AI+Tools',
-        account: '测试博主A'
-    }
-];
-
 // ==================== Utils ====================
 const getCalendarDays = (currentDate: dayjs.Dayjs) => {
     const days = [];
@@ -218,7 +205,7 @@ export default function SchedulePage() {
                     dataIndex: 'title',
                     render: (text, record) => (
                         <div className="flex items-center gap-3">
-                            <img src={record.thumbnail || 'https://via.placeholder.com/40'} className="w-10 h-10 rounded-lg object-cover" />
+                            {record.thumbnail ? <img src={record.thumbnail} alt="内容缩略图" className="w-10 h-10 rounded-lg object-cover" /> : <div className="w-10 h-10 rounded-lg bg-zinc-100 flex items-center justify-center" aria-label="暂无缩略图">📄</div>}
                             <div>
                                 <div className="font-bold text-sm">{text}</div>
                                 <div className="text-[10px] text-zinc-400">{record.account || '默认账号'}</div>

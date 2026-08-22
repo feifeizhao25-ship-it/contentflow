@@ -57,6 +57,27 @@ check(
         ("return null", True),
     ),
 )
+check(
+    "runtime/web-cn/src/app/(main)/calendar/page.tsx",
+    (
+        ("redirect('/schedule?view=month')", True),
+        ("MOCK_TASKS", False),
+    ),
+)
+check(
+    "runtime/web-cn/src/app/(main)/schedule/page.tsx",
+    (
+        ("MOCK_TASKS", False),
+        ("via.placeholder.com", False),
+    ),
+)
+check(
+    "runtime/web-cn/src/app/(main)/ai-create/page.tsx",
+    (
+        ("const [materials, setMaterials] = useState<Material[]>([]);", True),
+        ("via.placeholder.com", False),
+    ),
+)
 
 if errors:
     print("Production code gate failed:", file=sys.stderr)

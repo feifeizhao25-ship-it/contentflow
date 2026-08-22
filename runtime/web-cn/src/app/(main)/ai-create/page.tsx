@@ -284,25 +284,8 @@ export default function AICreatePage() {
     // 内容库状态
     const [contentLibrary, setContentLibrary] = useState<ContentItem[]>([]);
 
-    // 素材库状态 - 从灵感库导入的示例素材
-    const [materials, setMaterials] = useState<Material[]>([
-        // 封面图 (使用 placeholder.com 替代)
-        { id: '1', name: 'AI科技封面', url: 'https://via.placeholder.com/800x600/4F46E5/FFFFFF?text=AI科技封面', type: 'image', tags: ['封面'], createdAt: dayjs().format() },
-        { id: '2', name: '效率工具封面', url: 'https://via.placeholder.com/800x600/10B981/FFFFFF?text=效率工具封面', type: 'image', tags: ['封面'], createdAt: dayjs().format() },
-        { id: '3', name: '职场技能封面', url: 'https://via.placeholder.com/800x600/F59E0B/FFFFFF?text=职场技能封面', type: 'image', tags: ['封面'], createdAt: dayjs().format() },
-        // 配图
-        { id: '4', name: '数据图表', url: 'https://via.placeholder.com/800x600/6366F1/FFFFFF?text=数据图表', type: 'image', tags: ['配图'], createdAt: dayjs().format() },
-        { id: '5', name: '团队协作', url: 'https://via.placeholder.com/800x600/EC4899/FFFFFF?text=团队协作', type: 'image', tags: ['配图'], createdAt: dayjs().format() },
-        { id: '6', name: '产品展示', url: 'https://via.placeholder.com/800x600/8B5CF6/FFFFFF?text=产品展示', type: 'image', tags: ['配图'], createdAt: dayjs().format() },
-        { id: '7', name: '教程步骤图', url: 'https://via.placeholder.com/800x600/14B8A6/FFFFFF?text=教程步骤图', type: 'image', tags: ['配图'], createdAt: dayjs().format() },
-        { id: '8', name: '案例展示', url: 'https://via.placeholder.com/800x600/F97316/FFFFFF?text=案例展示', type: 'image', tags: ['配图'], createdAt: dayjs().format() },
-        // 头像
-        { id: '9', name: '头像1', url: 'https://via.placeholder.com/400x400/3B82F6/FFFFFF?text=头像1', type: 'image', tags: ['头像'], createdAt: dayjs().format() },
-        { id: '10', name: '头像2', url: 'https://via.placeholder.com/400x400/EF4444/FFFFFF?text=头像2', type: 'image', tags: ['头像'], createdAt: dayjs().format() },
-        // Banner
-        { id: '11', name: '活动Banner', url: 'https://via.placeholder.com/1200x400/06B6D4/FFFFFF?text=活动Banner', type: 'image', tags: ['Banner'], createdAt: dayjs().format() },
-        { id: '12', name: '专题Banner', url: 'https://via.placeholder.com/1200x400/84CC16/FFFFFF?text=专题Banner', type: 'image', tags: ['Banner'], createdAt: dayjs().format() },
-    ]);
+    // 素材必须来自用户上传或真实生成接口，生产环境不预置占位图片。
+    const [materials, setMaterials] = useState<Material[]>([]);
     const [materialTags, setMaterialTags] = useState(['全部', '封面', '配图', '头像', 'Banner']);
     const [selectedTag, setSelectedTag] = useState('全部');
 
