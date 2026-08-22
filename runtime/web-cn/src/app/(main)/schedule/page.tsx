@@ -127,13 +127,14 @@ export default function SchedulePage() {
                     status: t.status === 'pending' ? 'scheduled' : t.status === 'published' ? 'published' : 'failed',
                     thumbnail: t.content?.thumbnail_url
                 }));
-                setTasks(mapped.length > 0 ? mapped : MOCK_TASKS);
+                setTasks(mapped);
             } else {
-                setTasks(MOCK_TASKS);
+                setTasks([]);
             }
         } catch (e) {
             console.error('Failed to fetch tasks', e);
-            setTasks(MOCK_TASKS);
+            message.error('发布任务加载失败，请稍后重试');
+            setTasks([]);
         } finally {
             setIsLoading(false);
         }

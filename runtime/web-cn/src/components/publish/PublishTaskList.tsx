@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useState } from 'react';
-import { Button, Tag, Avatar, Badge, message } from 'antd';
+import React, { useEffect, useState } from 'react';
+import { Button, Empty, Skeleton, Tag, message } from 'antd';
 import {
     CheckCircleFilled,
     CloseCircleFilled,
@@ -16,16 +16,42 @@ import {
 import clsx from 'clsx';
 import { motion, AnimatePresence } from 'framer-motion';
 
-// Mock Data
-const MOCK_TASKS = [
-    { id: '1', title: 'AI 创业实战：如何从0到1', platform: 'xhs', account: '分发侠官方号', status: 'success', time: '10:30', date: '2024-05-20' },
-    { id: '2', title: '周末探店 VLOG - 上海篇', platform: 'douyin', account: '生活号-小美', status: 'publishing', time: '12:00', date: '2024-05-20' },
-    { id: '3', title: '深度解析：Vue3 vs React', platform: 'bilibili', account: '前端胖虎', status: 'failed', time: '09:00', date: '2024-05-20', error: '授权已失效', errorDetail: 'Token 401 Unauthorized' },
-    { id: '4', title: '职场黑话翻译机', platform: 'weixin', account: '职场大表哥', status: 'pending', time: '18:00', date: '2024-05-21' },
-];
+import { apiClient } from '@/lib/api-client';
+
+type PublishTask = {
+    id: string;
+    title: string;
+    platform: string;
+    account: string;
+    status: string;
+    time: string;
+    date: string;
+    error?: string;
+};
 
 export const PublishTaskList = () => {
     const [expandedRow, setExpandedRow] = useState<string | null>(null);
+    const [tasks, setTasks] = useState<PublishTask[]>([]);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        apiClient.get<any[]>('/publish/tasks')
+            .then((rows) => setTasks((rows || []).map((task: any) => {
+                const scheduledAt = task.scheduled_at ? new Date(task.scheduled_at) : null;
+                return {
+                    id: String(task.id),
+                    title: task.content?.title || '未命名内容',
+                    platform: task.platform || 'unknown',
+                    account: task.account?.display_name || task.account?.name || '未绑定账号',
+                    status: task.status || 'pending',
+                    date: scheduledAt ? scheduledAt.toLocaleDateString('zh-CN') : '尚未排期',
+                    time: scheduledAt ? scheduledAt.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' }) : '',
+                    error: task.error_message,
+                };
+            })))
+            .catch(() => message.error('发布任务加载失败，请稍后重试'))
+            .finally(() => setLoading(false));
+    }, []);
 
     const toggleRow = (id: string) => {
         setExpandedRow(expandedRow === id ? null : id);
@@ -45,9 +71,14 @@ export const PublishTaskList = () => {
         return map[key] || '📱';
     };
 
+    if (loading) return <Skeleton active paragraph={{ rows: 4 }} />;
+    if (tasks.length === 0) {
+        return <Empty description="暂无发布任务。完成内容创作并选择平台后，任务会显示在这里。" />;
+    }
+
     return (
         <div className="space-y-3">
-            {MOCK_TASKS.map(task => {
+            {tasks.map(task => {
                 const status = getStatusConfig(task.status);
                 const isFailed = task.status === 'failed';
                 const isExpanded = expandedRow === task.id;
