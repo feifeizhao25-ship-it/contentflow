@@ -151,6 +151,14 @@ jobs:
           python3 -m py_compile scripts/validate_rag_freshness.py
           python3 scripts/validate_rag_freshness.py --allow-empty
 
+  production-readiness:
+    name: Production readiness
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate deployed runtime
+        run: sh 网页端-国内版/scripts/check-production-readiness.sh
+
   secret-scan:
     name: Secret Scan
     runs-on: ubuntu-latest
