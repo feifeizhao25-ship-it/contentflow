@@ -11,12 +11,12 @@ export default function WorkspacePage() {
           <div className="actions"><Link className="button" href="/create">Start a draft</Link><Link className="button secondary" href="/data-network">Review signals</Link></div>
         </div>
         <div className="grid">
-          <article className="card"><span className="status">Ready</span><div className="metric">14</div><p>market playbooks</p></article>
-          <article className="card"><span className="status">Review</span><div className="metric">28</div><p>drafts awaiting approval</p></article>
-          <article className="card"><span className="status">Quality</span><div className="metric">96%</div><p>policy checks passed</p></article>
+          <article className="card"><span className="status">Illustrative</span><div className="metric">14</div><p>sample market playbooks</p></article>
+          <article className="card"><span className="status">Illustrative</span><div className="metric">28</div><p>sample drafts awaiting approval</p></article>
+          <article className="card"><span className="status">Illustrative</span><div className="metric">96%</div><p>sample policy check rate</p></article>
         </div>
       </section>
-      <section><div className="eyebrow">Today’s priorities</div><h2>Your workspace adapts to what needs attention.</h2>
+      <section><div className="eyebrow">Example workflow</div><h2>Your workspace adapts to what needs attention.</h2>
         <div className="grid">
           <article className="card"><h3>US launch review</h3><p>Three claims need source verification before LinkedIn approval.</p></article>
           <article className="card"><h3>UK tone adaptation</h3><p>Replace sales-heavy phrasing with a proof-led editorial angle.</p></article>
