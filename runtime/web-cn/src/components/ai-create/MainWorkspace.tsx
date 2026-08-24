@@ -114,7 +114,7 @@ export const MainWorkspace = ({
                         <div className="absolute top-1/3 left-0 right-0 text-center pointer-events-none opacity-40">
                             <RocketOutlined className="text-4xl text-indigo-300 mb-4" />
                             <h3 className="text-xl font-bold text-zinc-400">开始您的创作之旅</h3>
-                            <p className="text-zinc-300 mt-2">点击顶部"生成内容包"或直接在此输入</p>
+                            <p className="text-zinc-300 mt-2">点击顶部“生成内容包”或直接在此输入</p>
                         </div>
                     )}
 

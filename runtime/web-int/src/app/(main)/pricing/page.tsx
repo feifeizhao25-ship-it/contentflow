@@ -1,3 +1,6 @@
+import entitlementsRegistry from '@/lib/entitlements-int.json';
+import { buildFallbackPlans, type EntitlementsRegistry } from '@/lib/entitlements-int';
+
 interface Plan {
   id: string;
   name: string;
@@ -32,31 +35,33 @@ function formatLimit(value: number, unit: string): string {
 
 export default async function PricingPage() {
   const plans = await loadPlans();
+  // Static fallback from the entitlement registry: when the billing API is
+  // unreachable we still render the full plan catalog; once the API answers,
+  // server data replaces the fallback on the next request.
+  const displayPlans: Plan[] = plans.length > 0
+    ? plans
+    : buildFallbackPlans(entitlementsRegistry as EntitlementsRegistry);
   return (
     <main className="shell">
       <div className="eyebrow">Pricing</div>
       <h1>Plans that scale with your distribution.</h1>
       <p>Every plan publishes through official platform APIs. Upgrade when you need more accounts or volume.</p>
-      {plans.length === 0 ? (
-        <p>Plan catalog is temporarily unavailable. Please try again later.</p>
-      ) : (
-        <div className="grid">
-          {plans.map((plan) => (
-            <article className="card" key={plan.id}>
-              <span className="status">{plan.custom ? 'Talk to sales' : 'Self-serve'}</span>
-              <h2>{plan.name}</h2>
-              <div className="metric">{formatPrice(plan)}</div>
-              <p>{formatLimit(plan.platformLimit, 'platforms')}</p>
-              <p>{formatLimit(plan.monthlyPostQuota, 'posts / month')}</p>
-              <ul>
-                {plan.features.map((feature) => (
-                  <li key={feature}>{feature}</li>
-                ))}
-              </ul>
-            </article>
-          ))}
-        </div>
-      )}
+      <div className="grid">
+        {displayPlans.map((plan) => (
+          <article className="card" key={plan.id}>
+            <span className="status">{plan.custom ? 'Talk to sales' : 'Self-serve'}</span>
+            <h2>{plan.name}</h2>
+            <div className="metric">{formatPrice(plan)}</div>
+            <p>{formatLimit(plan.platformLimit, 'platforms')}</p>
+            <p>{formatLimit(plan.monthlyPostQuota, 'posts / month')}</p>
+            <ul>
+              {plan.features.map((feature) => (
+                <li key={feature}>{feature}</li>
+              ))}
+            </ul>
+          </article>
+        ))}
+      </div>
     </main>
   );
 }

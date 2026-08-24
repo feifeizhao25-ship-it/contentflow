@@ -1,0 +1,6 @@
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "build:standalone": "npm run build && npm run package:standalone",
+    "package:standalone": "node scripts/package-standalone.js",
+    "start": "next start",

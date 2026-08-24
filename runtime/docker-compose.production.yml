@@ -1,156 +1,148 @@
 name: contentflow
 
 services:
-  postgres-cn:
+  postgres:
     image: postgres:16-alpine
     restart: unless-stopped
     environment:
-      POSTGRES_DB: contentflow_cn
-      POSTGRES_USER: contentflow_cn
-      POSTGRES_PASSWORD: ${CN_POSTGRES_PASSWORD:?CN_POSTGRES_PASSWORD is required}
-    volumes: [postgres_cn_data:/var/lib/postgresql/data]
+      POSTGRES_DB: contentflow
+      POSTGRES_USER: contentflow
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U contentflow_cn -d contentflow_cn"]
+      test: ["CMD-SHELL", "pg_isready -U contentflow -d contentflow"]
       interval: 10s
       timeout: 5s
       retries: 10
-    networks: [cn-backend]
+    networks: [backend]
 
-  postgres-int:
-    image: postgres:16-alpine
-    restart: unless-stopped
-    environment:
-      POSTGRES_DB: contentflow_global
-      POSTGRES_USER: contentflow_global
-      POSTGRES_PASSWORD: ${INT_POSTGRES_PASSWORD:?INT_POSTGRES_PASSWORD is required}
-    volumes: [postgres_int_data:/var/lib/postgresql/data]
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U contentflow_global -d contentflow_global"]
-      interval: 10s
-      timeout: 5s
-      retries: 10
-    networks: [int-backend]
-
-  redis-cn:
+  redis:
     image: redis:7.4-alpine
     restart: unless-stopped
-    command: ["redis-server", "--appendonly", "yes", "--requirepass", "${CN_REDIS_PASSWORD:?CN_REDIS_PASSWORD is required}"]
-    volumes: [redis_cn_data:/data]
-    environment:
-      REDIS_PASSWORD: ${CN_REDIS_PASSWORD:?CN_REDIS_PASSWORD is required}
+    command: ["redis-server", "--appendonly", "yes", "--requirepass", "${REDIS_PASSWORD:?REDIS_PASSWORD is required}"]
+    volumes:
+      - redis_data:/data
     healthcheck:
       test: ["CMD-SHELL", "redis-cli -a \"$${REDIS_PASSWORD}\" ping | grep PONG"]
       interval: 10s
       timeout: 5s
       retries: 10
-    networks: [cn-backend]
-
-  redis-int:
-    image: redis:7.4-alpine
-    restart: unless-stopped
-    command: ["redis-server", "--appendonly", "yes", "--requirepass", "${INT_REDIS_PASSWORD:?INT_REDIS_PASSWORD is required}"]
-    volumes: [redis_int_data:/data]
     environment:
-      REDIS_PASSWORD: ${INT_REDIS_PASSWORD:?INT_REDIS_PASSWORD is required}
-    healthcheck:
-      test: ["CMD-SHELL", "redis-cli -a \"$${REDIS_PASSWORD}\" ping | grep PONG"]
-      interval: 10s
-      timeout: 5s
-      retries: 10
-    networks: [int-backend]
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD is required}
+    networks: [backend]
 
-  api-cn:
+  api:
     build: ./api
-    image: ${CONTENTFLOW_IMAGE_PREFIX:-contentflow}-api:${IMAGE_TAG:-local}
+    image: contentflow-api:${IMAGE_TAG:?IMAGE_TAG is required}
     restart: unless-stopped
     environment:
       NODE_ENV: production
-      MARKET_REGION: cn
       PORT: 4000
-      DATABASE_URL: postgresql://contentflow_cn:${CN_POSTGRES_PASSWORD:?CN_POSTGRES_PASSWORD is required}@postgres-cn:5432/contentflow_cn
-      REDIS_HOST: redis-cn
+      DATABASE_URL: postgresql://contentflow:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}@postgres:5432/contentflow
+      REDIS_HOST: redis
       REDIS_PORT: 6379
-      REDIS_PASSWORD: ${CN_REDIS_PASSWORD:?CN_REDIS_PASSWORD is required}
-      JWT_SECRET: ${CN_JWT_SECRET:?CN_JWT_SECRET is required}
-      JWT_REFRESH_SECRET: ${CN_JWT_REFRESH_SECRET:?CN_JWT_REFRESH_SECRET is required}
-      CORS_ORIGIN: ${CN_CORS_ORIGIN:-}
-      PUBLISH_DISPATCH_WEBHOOK_URL: ${CN_PUBLISH_DISPATCH_WEBHOOK_URL:?CN_PUBLISH_DISPATCH_WEBHOOK_URL is required}
-      PUBLISH_DISPATCH_WEBHOOK_SECRET: ${CN_PUBLISH_DISPATCH_WEBHOOK_SECRET:?CN_PUBLISH_DISPATCH_WEBHOOK_SECRET is required}
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD is required}
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:?JWT_REFRESH_SECRET is required}
+      CORS_ORIGIN: ${CORS_ORIGIN:?CORS_ORIGIN is required}
+      MARKET_REGION: ${MARKET_REGION:-cn}
+      PUBLISH_DISPATCH_WEBHOOK_URL: ${PUBLISH_DISPATCH_WEBHOOK_URL:?PUBLISH_DISPATCH_WEBHOOK_URL is required}
+      PUBLISH_DISPATCH_WEBHOOK_SECRET: ${PUBLISH_DISPATCH_WEBHOOK_SECRET:?PUBLISH_DISPATCH_WEBHOOK_SECRET is required}
       QWEN_API_KEY: ${QWEN_API_KEY:-}
       DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY:-}
-    depends_on:
-      postgres-cn: { condition: service_healthy }
-      redis-cn: { condition: service_healthy }
-    healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:4000/api/v1/health/ready"]
-      interval: 15s
-      timeout: 5s
-      start_period: 30s
-      retries: 5
-    networks: [cn-backend]
-
-  api-int:
-    build: ./api
-    image: ${CONTENTFLOW_IMAGE_PREFIX:-contentflow}-api:${IMAGE_TAG:-local}
-    restart: unless-stopped
-    environment:
-      NODE_ENV: production
-      MARKET_REGION: global
-      PORT: 4000
-      DATABASE_URL: postgresql://contentflow_global:${INT_POSTGRES_PASSWORD:?INT_POSTGRES_PASSWORD is required}@postgres-int:5432/contentflow_global
-      REDIS_HOST: redis-int
-      REDIS_PORT: 6379
-      REDIS_PASSWORD: ${INT_REDIS_PASSWORD:?INT_REDIS_PASSWORD is required}
-      JWT_SECRET: ${INT_JWT_SECRET:?INT_JWT_SECRET is required}
-      JWT_REFRESH_SECRET: ${INT_JWT_REFRESH_SECRET:?INT_JWT_REFRESH_SECRET is required}
-      CORS_ORIGIN: ${INT_CORS_ORIGIN:-}
-      PUBLISH_DISPATCH_WEBHOOK_URL: ${INT_PUBLISH_DISPATCH_WEBHOOK_URL:?INT_PUBLISH_DISPATCH_WEBHOOK_URL is required}
-      PUBLISH_DISPATCH_WEBHOOK_SECRET: ${INT_PUBLISH_DISPATCH_WEBHOOK_SECRET:?INT_PUBLISH_DISPATCH_WEBHOOK_SECRET is required}
       OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
-      OPENROUTER_API_KEY_BACKUP: ${OPENROUTER_API_KEY_BACKUP:-}
-      OPENROUTER_MODELS: ${OPENROUTER_MODELS:-x-ai/grok-4.5}
-      OPENROUTER_SITE_URL: ${OPENROUTER_SITE_URL:-}
+      OPENROUTER_MODEL_FAST: ${OPENROUTER_MODEL_FAST:-qwen/qwen3-30b-a3b-instruct-2507}
+      OPENROUTER_MODEL_QUALITY: ${OPENROUTER_MODEL_QUALITY:-deepseek/deepseek-v3.2}
+      OPENROUTER_FALLBACK_MODELS: ${OPENROUTER_FALLBACK_MODELS:-deepseek/deepseek-v3.2,google/gemini-2.5-flash-lite}
+      OPENROUTER_SITE_URL: ${OPENROUTER_SITE_URL:-https://fenfa.ai}
+      OPENROUTER_CIRCUIT_FAILURES: ${OPENROUTER_CIRCUIT_FAILURES:-3}
+      OPENROUTER_CIRCUIT_COOLDOWN_MS: ${OPENROUTER_CIRCUIT_COOLDOWN_MS:-60000}
+      AI_TENANT_DAILY_BUDGET_USD: ${AI_TENANT_DAILY_BUDGET_USD:-20}
+      PAYMENT_CALLBACK_SECRET: ${PAYMENT_CALLBACK_SECRET:?PAYMENT_CALLBACK_SECRET is required}
       FAL_API_KEY: ${FAL_API_KEY:-}
-      FAL_API_KEY_BACKUP: ${FAL_API_KEY_BACKUP:-}
+      BANK_TRANSFER_ACCOUNT_NAME: ${BANK_TRANSFER_ACCOUNT_NAME:-}
+      BANK_TRANSFER_ACCOUNT_NO: ${BANK_TRANSFER_ACCOUNT_NO:-}
+      WECHAT_PAY_MCH_ID: ${WECHAT_PAY_MCH_ID:-}
+      WECHAT_PAY_PRIVATE_KEY: ${WECHAT_PAY_PRIVATE_KEY:-}
+      WECHAT_PAY_API_V3_KEY: ${WECHAT_PAY_API_V3_KEY:-}
+      ALIPAY_APP_ID: ${ALIPAY_APP_ID:-}
+      ALIPAY_PRIVATE_KEY: ${ALIPAY_PRIVATE_KEY:-}
+      ALIPAY_PUBLIC_KEY: ${ALIPAY_PUBLIC_KEY:-}
     depends_on:
-      postgres-int: { condition: service_healthy }
-      redis-int: { condition: service_healthy }
-    healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:4000/api/v1/health/ready"]
-      interval: 15s
-      timeout: 5s
-      start_period: 30s
-      retries: 5
-    networks: [int-backend]
+      postgres: { condition: service_healthy }
+      redis: { condition: service_healthy }
+    networks: [backend]
+    read_only: true
+    tmpfs:
+      - /tmp:size=256m,mode=1777
+    security_opt: [no-new-privileges:true]
+    cap_drop: [ALL]
 
   web-cn:
     build: ./web-cn
-    image: ${CONTENTFLOW_IMAGE_PREFIX:-contentflow}-web-cn:${IMAGE_TAG:-local}
+    image: contentflow-web-cn:${IMAGE_TAG:?IMAGE_TAG is required}
     restart: unless-stopped
     environment:
-      API_INTERNAL_URL: http://api-cn:4000
-    ports: ["${CN_WEB_PORT:-3100}:3000"]
+      API_INTERNAL_URL: http://api:4000
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
+      OPENROUTER_MODEL: ${OPENROUTER_MODEL_FAST:-qwen/qwen3-30b-a3b-instruct-2507}
+      OPENROUTER_FALLBACK_MODELS: ${OPENROUTER_FALLBACK_MODELS:-deepseek/deepseek-v3.2,google/gemini-2.5-flash-lite}
+    expose: ["3000"]
     depends_on:
-      api-cn: { condition: service_healthy }
-    networks: [cn-backend]
+      api: { condition: service_healthy }
+    networks: [backend]
+    read_only: true
+    tmpfs:
+      - /tmp:size=128m,mode=1777
+      - /app/.next/cache:size=128m,mode=1777
+    security_opt: [no-new-privileges:true]
+    cap_drop: [ALL]
 
   web-int:
     build: ./web-int
-    image: ${CONTENTFLOW_IMAGE_PREFIX:-contentflow}-web-int:${IMAGE_TAG:-local}
+    image: contentflow-web-int:${IMAGE_TAG:?IMAGE_TAG is required}
     restart: unless-stopped
     environment:
-      API_INTERNAL_URL: http://api-int:4000
-    ports: ["${INT_WEB_PORT:-3200}:3000"]
+      API_INTERNAL_URL: http://api:4000
+    expose: ["3000"]
     depends_on:
-      api-int: { condition: service_healthy }
-    networks: [int-backend]
+      api: { condition: service_healthy }
+    networks: [backend]
+    read_only: true
+    tmpfs:
+      - /tmp:size=128m,mode=1777
+      - /app/.next/cache:size=128m,mode=1777
+    security_opt: [no-new-privileges:true]
+    cap_drop: [ALL]
+
+  gateway:
+    image: caddy:2.10-alpine
+    restart: unless-stopped
+    environment:
+      CN_DOMAIN: ${CN_DOMAIN:?CN_DOMAIN is required}
+      INT_DOMAIN: ${INT_DOMAIN:?INT_DOMAIN is required}
+      TLS_EMAIL: ${TLS_EMAIL:?TLS_EMAIL is required}
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      web-cn: { condition: service_healthy }
+      web-int: { condition: service_healthy }
+    networks: [backend]
+    security_opt: [no-new-privileges:true]
 
 volumes:
-  postgres_cn_data:
-  postgres_int_data:
-  redis_cn_data:
-  redis_int_data:
+  postgres_data:
+  redis_data:
+  caddy_data:
+  caddy_config:
 
 networks:
-  cn-backend:
-  int-backend:
+  backend:
+    driver: bridge

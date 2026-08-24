@@ -1,14 +1,28 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../database/prisma.service';
+import { parseGeneratedTitles } from './title-parser';
 
 interface AIResponse {
   content: string;
+  model: string;
+  provider: 'openrouter' | 'deepseek' | 'qwen';
+  latency_ms: number;
+  cost_usd: number | null;
   usage: {
     prompt_tokens: number;
     completion_tokens: number;
     total_tokens: number;
   };
+}
+
+interface TitlesResponse {
+  titles: string[];
+  usage: AIResponse['usage'];
+  model: string;
+  provider: AIResponse['provider'];
+  latency_ms: number;
+  cost_usd: number | null;
 }
 
 export interface ContentSource {
@@ -30,110 +44,39 @@ export interface QualityBreakdown {
 }
 
 const PLATFORM_KNOWLEDGE: Record<string, ContentSource[]> = {
-  xhs: [{
-    title: '小红书社区规范',
-    url: 'https://ark.xiaohongshu.com/ark',
-    publisher: '小红书',
-    verifiedAt: '2026-07-30',
-  }],
-  douyin: [{
-    title: '抖音开放平台协议与平台规范入口',
-    url: 'https://open.douyin.com/platform/resource/docs/operation-standard/agreement-protocol',
-    publisher: '抖音',
-    verifiedAt: '2026-07-30',
-  }],
-  linkedin: [{
-    title: 'LinkedIn Professional Community Policies',
-    url: 'https://www.linkedin.com/legal/professional-community-policies',
-    publisher: 'LinkedIn',
-    verifiedAt: '2026-07-30',
-  }],
-  tiktok: [{
-    title: 'TikTok Community Guidelines',
-    url: 'https://www.tiktok.com/community-guidelines/en/',
-    publisher: 'TikTok',
-    verifiedAt: '2026-07-30',
-  }],
-  youtube: [{
-    title: 'YouTube Community Guidelines',
-    url: 'https://www.youtube.com/howyoutubeworks/policies/community-guidelines/',
-    publisher: 'YouTube',
-    verifiedAt: '2026-07-30',
-  }],
-  instagram: [{
-    title: 'Instagram Community Guidelines',
-    url: 'https://help.instagram.com/477434105621119',
-    publisher: 'Instagram',
-    verifiedAt: '2026-07-30',
-  }],
+  douyin: [{ title: '抖音开放平台协议与平台规范入口', url: 'https://open.douyin.com/platform/resource/docs/operation-standard/agreement-protocol', publisher: '抖音', verifiedAt: '2026-07-30' }],
+  linkedin: [{ title: 'LinkedIn Professional Community Policies', url: 'https://www.linkedin.com/legal/professional-community-policies', publisher: 'LinkedIn', verifiedAt: '2026-07-30' }],
+  tiktok: [{ title: 'TikTok Community Guidelines', url: 'https://www.tiktok.com/community-guidelines/en/', publisher: 'TikTok', verifiedAt: '2026-07-30' }],
 };
 
-export function sourcesForPlatform(
-  platform: string,
-  now: Date = new Date(),
-  maxAgeDays = 30,
-): ContentSource[] {
-  return (PLATFORM_KNOWLEDGE[platform.toLowerCase()] || [])
-    .map((source) => {
-      const ageMs = now.getTime() - new Date(`${source.verifiedAt}T00:00:00Z`).getTime();
-      const current = Number.isFinite(ageMs) &&
-        ageMs >= 0 &&
-        ageMs <= maxAgeDays * 24 * 60 * 60 * 1000;
-      return {
-        ...source,
-        freshnessStatus: current ? 'current' as const : 'review-required' as const,
-      };
-    })
-    .filter((source) => source.freshnessStatus === 'current');
+export function sourcesForPlatform(platform: string, now = new Date(), maxAgeDays = 30): ContentSource[] {
+  return (PLATFORM_KNOWLEDGE[platform.toLowerCase()] || []).map((source) => {
+    const ageMs = now.getTime() - new Date(`${source.verifiedAt}T00:00:00Z`).getTime();
+    const current = Number.isFinite(ageMs) && ageMs >= 0 && ageMs <= maxAgeDays * 86400000;
+    return { ...source, freshnessStatus: current ? 'current' as const : 'review-required' as const };
+  }).filter((source) => source.freshnessStatus === 'current');
 }
 
 export function sanitizeTitles(raw: string, count: number): string[] {
   const explanation = /^(以下|说明|理由|技巧|note:|here are|why\b)/i;
-  return raw
-    .split('\n')
-    .map((line) => line
-      .replace(/^\s*(?:[-*•]|\d+[.)、．])\s*/, '')
-      .replace(/^[`"'“”]+|[`"'“”]+$/g, '')
-      .trim())
-    .filter((line) =>
-      line.length >= 4 &&
-      line.length <= 100 &&
-      !explanation.test(line) &&
-      !/^[（(].*[）)]$/.test(line))
+  return raw.split('\n')
+    .map((line) => line.replace(/^\s*(?:[-*•]|\d+[.)、．])\s*/, '').replace(/^[`"'“”]+|[`"'“”]+$/g, '').trim())
+    .filter((line) => line.length >= 4 && line.length <= 100 && !explanation.test(line) && !/^[（(].*[）)]$/.test(line))
     .slice(0, Math.max(1, Math.min(count, 20)));
 }
 
-export function scoreContent(
-  content: string,
-  sources: ContentSource[],
-  locale: 'zh-CN' | 'en' = 'en',
-): QualityBreakdown {
-  const hasStructure = /[\n#]|[。.!?]\s/.test(content);
-  const hasInlineCitation = sources.some((source, index) =>
-    content.includes(`[${index + 1}]`) ||
-    content.includes(source.publisher) ||
-    content.includes(source.url)
-  );
+export function scoreContent(content: string, sources: ContentSource[], locale: 'zh-CN' | 'en' = 'en'): QualityBreakdown {
+  const structured = /[\n#]|[。.!?]\s/.test(content);
+  const cited = sources.some((source, index) => content.includes(`[${index + 1}]`) || content.includes(source.publisher) || content.includes(source.url));
   const accuracy = sources.length ? 26 : 20;
-  const professionalism = hasStructure ? 23 : 18;
+  const professionalism = structured ? 23 : 18;
   const platformFit = content.length >= 80 ? 18 : 14;
-  const citation = hasInlineCitation ? 14 : sources.length ? 8 : 4;
+  const citation = cited ? 14 : sources.length ? 8 : 4;
   const safety = 10;
-  const total = accuracy + professionalism + platformFit + citation + safety;
   const suggestions: string[] = [];
-  if (!sources.length) suggestions.push(locale === 'en'
-    ? 'Add an authoritative source for factual claims.'
-    : '请为事实性陈述补充权威来源。');
-  else if (!hasInlineCitation) suggestions.push(locale === 'en'
-    ? 'Connect factual claims to the numbered sources in the draft.'
-    : '请将事实性陈述与文末编号来源逐条对应。');
-  if (!hasStructure) suggestions.push(locale === 'en'
-    ? 'Use headings or shorter paragraphs to improve readability.'
-    : '请使用小标题或短段落提升可读性。');
-  if (content.length < 80) suggestions.push(locale === 'en'
-    ? 'Add supporting detail and a clear call to action.'
-    : '请补充关键依据，并给出一个明确行动建议。');
-  return { accuracy, professionalism, platformFit, citation, safety, total, suggestions };
+  if (!sources.length) suggestions.push(locale === 'en' ? 'Add an authoritative source for factual claims.' : '请为事实性陈述补充权威来源。');
+  else if (!cited) suggestions.push(locale === 'en' ? 'Connect factual claims to the numbered sources in the draft.' : '请将事实性陈述与编号来源对应。');
+  return { accuracy, professionalism, platformFit, citation, safety, total: accuracy + professionalism + platformFit + citation + safety, suggestions };
 }
 
 @Injectable()
@@ -141,10 +84,10 @@ export class AIService {
   private readonly logger = new Logger(AIService.name);
   private readonly qwenApiKey: string;
   private readonly deepseekApiKey: string;
-  private readonly openrouterApiKey: string;
-  private readonly openrouterApiKeyBackup: string;
   private readonly falApiKey: string;
-  private readonly falApiKeyBackup: string;
+  private readonly openRouterApiKey: string;
+  private openRouterFailures = 0;
+  private openRouterOpenUntil = 0;
 
   constructor(
     private readonly prisma: PrismaService,
@@ -152,122 +95,121 @@ export class AIService {
   ) {
     this.qwenApiKey = this.configService.get('QWEN_API_KEY', '');
     this.deepseekApiKey = this.configService.get('DEEPSEEK_API_KEY', '');
-    this.openrouterApiKey = this.configService.get('OPENROUTER_API_KEY', '');
-    this.openrouterApiKeyBackup = this.configService.get('OPENROUTER_API_KEY_BACKUP', '');
     this.falApiKey = this.configService.get('FAL_API_KEY', '');
-    this.falApiKeyBackup = this.configService.get('FAL_API_KEY_BACKUP', '');
+    this.openRouterApiKey = this.configService.get('OPENROUTER_API_KEY', '');
   }
 
   async generateText(params: {
     prompt: string;
-    systemPrompt?: string;
     model?: string;
     maxTokens?: number;
     temperature?: number;
   }): Promise<AIResponse> {
-    const configuredModels = this.configService
-      .get('OPENROUTER_MODELS', 'x-ai/grok-4.5')
-      .split(',')
-      .map((value: string) => value.trim())
-      .filter(Boolean);
-    const model = params.model || configuredModels[0] || 'x-ai/grok-4.5';
-    const useOpenRouter = model.includes('/') || configuredModels.includes(model);
-    const provider = useOpenRouter
-      ? 'openrouter'
-      : model.includes('deepseek') ? 'deepseek' : 'qwen';
-    const apiKey = provider === 'openrouter'
-      ? this.openrouterApiKey
-      : provider === 'deepseek' ? this.deepseekApiKey : this.qwenApiKey;
-    if (!apiKey) {
-      throw new Error(`${provider.toUpperCase()} API key not configured`);
-    }
-
-    const baseUrl = provider === 'openrouter'
-      ? this.configService.get('OPENROUTER_BASE_URL', 'https://openrouter.ai/api/v1')
-      : provider === 'deepseek'
-        ? 'https://api.deepseek.com/v1'
-        : 'https://dashscope.aliyuncs.com/api/v1';
-    const openRouterHeaders: Record<string, string> =
-      provider === 'openrouter'
-        ? {
-            'HTTP-Referer': this.configService.get<string>(
-              'OPENROUTER_SITE_URL',
-              'https://contentflow.invalid',
-            ),
-            'X-Title': 'ContentFlow',
-          }
-        : {};
-    const openRouterRouting = provider === 'openrouter' ? {
-      models: configuredModels,
-      provider: {
-        data_collection: 'deny',
-        zdr: true,
-        allow_fallbacks: configuredModels.length > 1,
-      },
-    } : {};
-    const requestTimeoutMs = Math.max(
-      5_000,
-      Math.min(
-        this.configService.get<number>('AI_REQUEST_TIMEOUT_MS', 60_000),
-        120_000,
-      ),
-    );
-    const apiKeys = provider === 'openrouter'
-      ? [...new Set([this.openrouterApiKey, this.openrouterApiKeyBackup].filter(Boolean))]
-      : [apiKey];
-    let lastError: Error | undefined;
-
-    for (const [keyIndex, candidateKey] of apiKeys.entries()) {
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), requestTimeoutMs);
-      try {
-        const response = await fetch(`${baseUrl}/chat/completions`, {
-          signal: controller.signal,
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${candidateKey}`,
-            ...openRouterHeaders,
-          },
-          body: JSON.stringify({
-            model,
-            messages: [
-              ...(params.systemPrompt
-                ? [{ role: 'system', content: params.systemPrompt }]
-                : []),
-              { role: 'user', content: params.prompt },
-            ],
-            max_tokens: params.maxTokens ?? 2000,
-            temperature: params.temperature ?? 0.7,
-            ...openRouterRouting,
-          }),
-        });
-
-        if (!response.ok) {
-          const error = await response.text();
-          throw new Error(`AI API error (${response.status}): ${error.slice(0, 300)}`);
-        }
-
-        const data = await response.json();
-        const content = data.choices[0]?.message?.content || '';
-        const usage = {
-          prompt_tokens: data.usage?.prompt_tokens || 0,
-          completion_tokens: data.usage?.completion_tokens || 0,
-          total_tokens: data.usage?.total_tokens || 0,
-        };
-        this.logger.log(`AI generation completed: ${usage.total_tokens} tokens`);
-        return { content, usage };
-      } catch (error) {
-        lastError = error instanceof Error ? error : new Error(String(error));
-        if (keyIndex + 1 < apiKeys.length) {
-          this.logger.warn('Primary AI credential failed; retrying with configured backup.');
-        }
-      } finally {
-        clearTimeout(timeout);
+    const startedAt = Date.now();
+    const maxTokens = Math.min(4000, Math.max(1, params.maxTokens || 2000));
+    const model: string = params.model || (this.openRouterApiKey
+      ? this.configService.get<string>('OPENROUTER_MODEL_FAST', 'qwen/qwen3-30b-a3b-instruct-2507')
+      : 'qwen-turbo');
+    if (this.openRouterApiKey) {
+      if (Date.now() < this.openRouterOpenUntil) {
+        throw new Error('OpenRouter circuit is open; retry after cooldown');
       }
+      const models = [
+        model,
+        ...this.configService.get<string>('OPENROUTER_FALLBACK_MODELS', 'deepseek/deepseek-v3.2,google/gemini-2.5-flash-lite')
+          .split(',').map((item: string) => item.trim()).filter(Boolean),
+      ];
+      let response: Response;
+      try {
+        response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${this.openRouterApiKey}`, 'HTTP-Referer': this.configService.get('OPENROUTER_SITE_URL', 'https://fenfa.ai'), 'X-Title': '分发侠' },
+          body: JSON.stringify({ models, messages: [{ role: 'user', content: params.prompt }], max_tokens: maxTokens, temperature: params.temperature ?? 0.7, provider: { data_collection: 'deny', zdr: true, require_parameters: true } }),
+        });
+      } catch (error) {
+        this.registerOpenRouterFailure();
+        throw error;
+      }
+      if (!response.ok) {
+        this.registerOpenRouterFailure();
+        throw new Error(`OpenRouter API error: ${response.status} ${await response.text()}`);
+      }
+      const data = await response.json();
+      const content = data.choices?.[0]?.message?.content;
+      if (!content) {
+        this.registerOpenRouterFailure();
+        throw new Error('OpenRouter returned empty content');
+      }
+      this.openRouterFailures = 0;
+      this.openRouterOpenUntil = 0;
+      return {
+        content,
+        model: String(data.model || model),
+        provider: 'openrouter',
+        latency_ms: Date.now() - startedAt,
+        cost_usd: Number.isFinite(Number(data.usage?.cost)) ? Number(data.usage.cost) : null,
+        usage: { prompt_tokens: data.usage?.prompt_tokens || 0, completion_tokens: data.usage?.completion_tokens || 0, total_tokens: data.usage?.total_tokens || 0 },
+      };
     }
-    this.logger.error('AI generation failed after all configured credentials.');
-    throw lastError ?? new Error('AI generation failed');
+    const provider = model.includes('deepseek') ? 'deepseek' : 'qwen';
+    const apiKey = provider === 'deepseek' ? this.deepseekApiKey : this.qwenApiKey;
+    if (!apiKey) {
+      throw new Error(`${provider.toUpperCase()} API key is not configured`);
+    }
+
+    const baseUrl = provider === 'deepseek' 
+      ? 'https://api.deepseek.com/v1' 
+      : 'https://dashscope.aliyuncs.com/api/v1';
+
+    try {
+      const response = await fetch(`${baseUrl}/chat/completions`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify({
+          model: model,
+          messages: [
+            { role: 'user', content: params.prompt }
+          ],
+          max_tokens: maxTokens,
+          temperature: params.temperature || 0.7,
+        }),
+      });
+
+      if (!response.ok) {
+        const error = await response.text();
+        throw new Error(`AI API error: ${error}`);
+      }
+
+      const data = await response.json();
+      const content = data.choices[0]?.message?.content || '';
+
+      // 记录使用量
+      const usage = {
+        prompt_tokens: data.usage?.prompt_tokens || 0,
+        completion_tokens: data.usage?.completion_tokens || 0,
+        total_tokens: data.usage?.total_tokens || 0,
+      };
+
+      this.logger.log(`AI generation completed: ${usage.total_tokens} tokens`);
+
+      return { content, model, provider, latency_ms: Date.now() - startedAt, cost_usd: null, usage };
+    } catch (error) {
+      this.logger.error('AI generation failed:', error);
+      throw error;
+    }
+  }
+
+  private registerOpenRouterFailure() {
+    this.openRouterFailures += 1;
+    const threshold = Math.max(1, this.configService.get<number>('OPENROUTER_CIRCUIT_FAILURES', 3));
+    if (this.openRouterFailures >= threshold) {
+      const cooldownMs = Math.max(1000, this.configService.get<number>('OPENROUTER_CIRCUIT_COOLDOWN_MS', 60000));
+      this.openRouterOpenUntil = Date.now() + cooldownMs;
+      this.logger.warn(`OpenRouter circuit opened for ${cooldownMs}ms after ${this.openRouterFailures} failures`);
+    }
   }
 
   async generateArticle(params: {
@@ -275,56 +217,28 @@ export class AIService {
     style: string;
     platform: string;
     keywords?: string[];
-    locale?: 'zh-CN' | 'en';
-  }): Promise<{
-    content: string;
-    visualPrompts?: string[];
-    provenance: 'knowledge-assisted' | 'ai-generated';
-    sources: ContentSource[];
-    quality: QualityBreakdown;
-    disclaimer: string;
-  }> {
-    const locale = params.locale === 'en' ? 'en' : 'zh-CN';
-    const platformPrompts: Record<string, Record<string, string>> = {
-      'zh-CN': {
-        xhs: `为小红书创作实用笔记，主题：${params.topic}，风格：${params.style}`,
-        douyin: `为抖音创作短视频脚本，主题：${params.topic}，风格：${params.style}`,
-        wechat: `为微信公众号创作深度文章，主题：${params.topic}，风格：${params.style}`,
-        zhihu: `为知乎创作专业回答，主题：${params.topic}，风格：${params.style}`,
-      },
-      en: {
-        linkedin: `Create a credible LinkedIn post for the selected market. Topic: ${params.topic}. Style: ${params.style}`,
-        tiktok: `Create a concise TikTok script adapted to the selected market. Topic: ${params.topic}. Style: ${params.style}`,
-        youtube: `Create a structured YouTube script. Topic: ${params.topic}. Style: ${params.style}`,
-        instagram: `Create an accessible Instagram post. Topic: ${params.topic}. Style: ${params.style}`,
-      },
+  }): Promise<{ content: string; visualPrompts?: string[]; model: string; provider: string; latency_ms: number; cost_usd: number | null; usage: AIResponse['usage'] }> {
+    // 根据平台构建不同的提示词
+    const platformPrompts: Record<string, string> = {
+      xhs: `请为小红书创作一篇爆款笔记，主题：${params.topic}，风格：${params.style}`,
+      douyin: `请为抖音创作一个短视频脚本，主题：${params.topic}，风格：${params.style}`,
+      wechat: `请为微信公众号创作一篇深度文章，主题：${params.topic}，风格：${params.style}`,
+      zhihu: `请为知乎创作一篇专业回答/文章，主题：${params.topic}，风格：${params.style}`,
     };
-    const sources = sourcesForPlatform(params.platform);
-    const sourceContext = sources.map((source, index) =>
-      `[${index + 1}] ${source.publisher}: ${source.title} (${source.url}, verified ${source.verifiedAt})`
-    ).join('\n');
 
-    const basePrompt = platformPrompts[locale][params.platform] ||
-      (locale === 'en'
-        ? `Create content about ${params.topic}. Style: ${params.style}`
-        : `创作关于${params.topic}的内容，风格：${params.style}`);
-    const systemPrompt = locale === 'en'
-      ? 'Write entirely in English. Separate verified facts from suggestions. Never invent statistics, sources, platform rules, or user testimonials.'
-      : '全部使用简体中文。区分已核实事实与创作建议。禁止编造数据、来源、平台规则或用户证言。';
+    const basePrompt = platformPrompts[params.platform] || 
+      `请创作一篇关于${params.topic}的内容，风格：${params.style}`;
 
     const result = await this.generateText({
-      systemPrompt,
-      prompt: locale === 'en'
-        ? `${basePrompt}
-Keywords: ${params.keywords?.join(', ') || params.topic}
-Authoritative context (cite only when relevant):
-${sourceContext || 'No verified knowledge source matched. Do not present factual claims as verified.'}
-Requirements: lead with audience value, use scannable sections, cite factual platform claims with [1], [2], etc., include a Sources section, end with one clear action, and append three English visual prompts after --- VISUAL_PROMPTS.`
-        : `${basePrompt}
+      prompt: `${basePrompt}
 关键词：${params.keywords?.join('、') || params.topic}
-权威上下文（仅在相关时引用）：
-${sourceContext || '未匹配到已核实知识来源，不得把事实性陈述写成已验证结论。'}
-要求：开头说明用户价值；分段清晰；平台事实必须用[1]、[2]等编号引用，并包含“来源”区块；结尾只有一个行动建议；最后在 --- VISUAL_PROMPTS 后输出3条英文生图提示词。`,
+
+要求：
+1. 开头要有吸引力
+2. 内容要有价值
+3. 结尾要有引导
+
+请在回答最后输出3个用于AI生图的英文提示词（Visual Prompts），每个占一行，用---分隔`,
       maxTokens: 3000,
     });
 
@@ -343,20 +257,22 @@ ${sourceContext || '未匹配到已核实知识来源，不得把事实性陈述
       }
     }
 
-    const content = result.content.split(/---?\s*VISUAL_PROMPTS/i)[0].trim();
     return {
-      content,
+      content: result.content.split(/---?\s*VISUAL_PROMPTS/)[0].trim(),
       visualPrompts: visualPrompts.slice(0, 3),
-      provenance: sources.length ? 'knowledge-assisted' : 'ai-generated',
-      sources,
-      quality: scoreContent(content, sources, locale),
-      disclaimer: locale === 'en'
-        ? 'AI-generated draft. Verify factual, legal, medical, and financial claims before publishing.'
-        : 'AI 生成草稿。发布前请核实事实、法律、医疗及金融相关表述。',
+      model: result.model,
+      provider: result.provider,
+      latency_ms: result.latency_ms,
+      cost_usd: result.cost_usd,
+      usage: result.usage,
     };
   }
 
   async analyzeViralContent(content: string): Promise<any> {
+    return (await this.analyzeViralContentWithUsage(content)).analysis;
+  }
+
+  async analyzeViralContentWithUsage(content: string): Promise<{ analysis: any } & Omit<AIResponse, 'content'>> {
     const result = await this.generateText({
       prompt: `分析以下内容的爆款要素：
 
@@ -372,19 +288,52 @@ ${content}
     });
 
     try {
-      return JSON.parse(result.content);
+      return { analysis: JSON.parse(result.content), model: result.model, provider: result.provider, latency_ms: result.latency_ms, cost_usd: result.cost_usd, usage: result.usage };
     } catch {
-      return { raw_analysis: result.content };
+      return { analysis: { raw_analysis: result.content }, model: result.model, provider: result.provider, latency_ms: result.latency_ms, cost_usd: result.cost_usd, usage: result.usage };
     }
   }
 
+  async assertTenantDailyBudget(tenantId: string): Promise<void> {
+    const usage = await this.getTenantDailyBudgetUsage(tenantId);
+    if (usage.limit_usd > 0 && usage.spent_usd >= usage.limit_usd) {
+      throw new Error(`AI tenant daily budget exceeded (${usage.spent_usd.toFixed(4)}/${usage.limit_usd.toFixed(2)} USD)`);
+    }
+  }
+
+  async getTenantDailyBudgetUsage(tenantId: string) {
+    const budgetUsd = Math.max(0, this.configService.get<number>('AI_TENANT_DAILY_BUDGET_USD', 20));
+    if (budgetUsd === 0) return { spent_usd: 0, limit_usd: 0, remaining_usd: -1, usage_ratio: 0, warning_level: 'disabled' };
+    const nowInChina = new Date(Date.now() + 8 * 60 * 60 * 1000);
+    const dayStart = new Date(Date.UTC(nowInChina.getUTCFullYear(), nowInChina.getUTCMonth(), nowInChina.getUTCDate()) - 8 * 60 * 60 * 1000);
+    const aggregate = await this.prisma.aIGeneration.aggregate({
+      where: { tenant_id: tenantId, status: 'success', created_at: { gte: dayStart } },
+      _sum: { cost_amount: true },
+    });
+    const spent = Number(aggregate._sum.cost_amount || 0);
+    const ratio = spent / budgetUsd;
+    const warningLevel = ratio >= 1 ? 'blocked' : ratio >= 0.95 ? 'critical' : ratio >= 0.8 ? 'warning' : 'normal';
+    return { spent_usd: spent, limit_usd: budgetUsd, remaining_usd: Math.max(budgetUsd - spent, 0), usage_ratio: Number(ratio.toFixed(4)), warning_level: warningLevel, timezone: 'Asia/Shanghai' };
+  }
+
   async generateTitles(topic: string, platform: string, count: number = 5): Promise<string[]> {
+    return (await this.generateTitlesWithUsage(topic, platform, count)).titles;
+  }
+
+  async generateTitlesWithUsage(
+    topic: string,
+    platform: string,
+    count: number = 5,
+  ): Promise<TitlesResponse> {
     const result = await this.generateText({
       prompt: `请为"${topic}"在${platform}平台生成${count}个吸引人的标题，每个标题20字以内，用换行分隔`,
       maxTokens: 500,
     });
 
-    return sanitizeTitles(result.content, count);
+    // 结构化解析：剥离「以下是……」等说明性前后缀，
+    // 解析不到有效标题时抛错（fail closed），不把说明文字当标题返回。
+    const titles = parseGeneratedTitles(result.content, count);
+    return { titles, usage: result.usage, model: result.model, provider: result.provider, latency_ms: result.latency_ms, cost_usd: result.cost_usd };
   }
 
   // 记录AI生成历史
@@ -397,6 +346,7 @@ ${content}
     tokensInput?: number;
     tokensOutput?: number;
     costAmount?: number;
+    durationMs?: number;
     status: string;
   }) {
     return this.prisma.aIGeneration.create({
@@ -411,6 +361,7 @@ ${content}
         tokens_input: data.tokensInput,
         tokens_output: data.tokensOutput,
         cost_amount: data.costAmount,
+        duration_ms: data.durationMs,
         status: data.status,
         completed_at: data.status === 'success' ? new Date() : undefined,
       },
@@ -455,38 +406,27 @@ ${content}
     try {
       this.logger.log('Generating image with fal.ai nano-banana-pro...');
 
-      const falKeys = [...new Set([this.falApiKey, this.falApiKeyBackup].filter(Boolean))];
-      let activeFalKey = falKeys[0];
-      let submitData: any;
-      let submitError: Error | undefined;
-      for (const [keyIndex, candidateKey] of falKeys.entries()) {
-        const submitResponse = await fetch('https://fal.run/fal-ai/nano-banana-pro', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Key ${candidateKey}`,
-          },
-          body: JSON.stringify({
-            prompt: enhancedPrompt,
-            image_size: { width, height },
-            seed: params.seed || Math.floor(Math.random() * 1000000),
-            num_images: 1,
-          }),
-        });
-        if (submitResponse.ok) {
-          activeFalKey = candidateKey;
-          submitData = await submitResponse.json();
-          break;
-        }
+      // fal.ai 使用异步队列模式，先提交任务
+      const submitResponse = await fetch('https://fal.run/fal-ai/nano-banana-pro', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Key ${this.falApiKey}`,
+        },
+        body: JSON.stringify({
+          prompt: enhancedPrompt,
+          image_size: { width, height },
+          seed: params.seed || Math.floor(Math.random() * 1000000),
+          num_images: 1,
+        }),
+      });
+
+      if (!submitResponse.ok) {
         const error = await submitResponse.text();
-        submitError = new Error(`fal.ai submit error (${submitResponse.status}): ${error.slice(0, 300)}`);
-        if (keyIndex + 1 < falKeys.length) {
-          this.logger.warn('Primary Fal credential failed; retrying with configured backup.');
-        }
+        throw new Error(`fal.ai submit error: ${error}`);
       }
-      if (!submitData) {
-        throw submitError ?? new Error('fal.ai submit failed');
-      }
+
+      const submitData = await submitResponse.json();
       const requestId = submitData.request_id;
 
       this.logger.log(`fal.ai request submitted: ${requestId}`);
@@ -499,7 +439,7 @@ ${content}
 
         const statusResponse = await fetch(`https://fal.run/fal-ai/nano-banana-pro/requests/${requestId}`, {
           headers: {
-            'Authorization': `Key ${activeFalKey}`,
+            'Authorization': `Key ${this.falApiKey}`,
           },
         });
 

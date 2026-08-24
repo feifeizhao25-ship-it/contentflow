@@ -1,0 +1,1048 @@
+// ============================================================
+// 分发侠数据库架构 - Prisma Schema
+// 版本: v2.0
+// 更新日期: 2024年12月
+// ============================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================================
+// 租户与用户模块
+// ============================================================
+
+model Tenant {
+  id                String   @id @default(uuid())
+  name              String
+  slug              String   @unique
+  logo_url          String?
+  
+  // 套餐信息
+  plan              String   @default("free")
+  plan_expires_at   DateTime?
+  
+  // 配额限制
+  limits            Json     @default("{\"max_accounts\": 2, \"max_members\": 1, \"max_publishes_monthly\": 30, \"max_ai_calls_monthly\": 20, \"max_storage_gb\": 1}")
+  
+  // 使用统计
+  usage_stats       Json     @default("{\"accounts_count\": 0, \"members_count\": 1, \"publishes_this_month\": 0, \"ai_calls_this_month\": 0, \"storage_used_mb\": 0}")
+  
+  // 租户设置
+  settings          Json     @default("{\"timezone\": \"Asia/Shanghai\", \"language\": \"zh-CN\", \"notification_email\": true}")
+  
+  status            String   @default("active")
+  created_at        DateTime @default(now())
+  updated_at        DateTime @updatedAt
+  
+  // 关系
+  users             User[]
+  contents          Content[]
+  platform_accounts PlatformAccount[]
+  publish_tasks     PublishTask[]
+  subscriptions     Subscription?
+  api_keys          ApiKey[]
+  activity_logs     ActivityLog[]
+  orders            PaymentOrder[]
+  
+  @@index([slug])
+  @@index([plan])
+}
+
+model User {
+  id                String   @id @default(uuid())
+  tenant_id         String
+  tenant            Tenant   @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  
+  // 基本信息
+  email             String
+  phone             String?
+  password_hash     String?
+  name              String?
+  avatar_url        String?
+  
+  // 角色权限
+  role              String   @default("member")
+  permissions       Json     @default("[]")
+  
+  // 认证信息
+  email_verified    Boolean  @default(false)
+  phone_verified    Boolean  @default(false)
+  last_login_at     DateTime?
+  login_count       Int      @default(0)
+  oauth_providers   Json     @default("{}")
+  
+  // 用户偏好
+  preferences       Json     @default("{\"theme\": \"light\", \"default_platforms\": [], \"ai_style\": \"professional\"}")
+  
+  status            String   @default("active")
+  created_at        DateTime @default(now())
+  updated_at        DateTime @updatedAt
+  
+  // 关系
+  @@unique([tenant_id, email])
+  @@index([tenant_id])
+}
+
+model UserSession {
+  id              String   @id @default(uuid())
+  user_id         String
+  token_hash      String   @unique
+  device_info     Json?
+  ip_address      String?
+  expires_at      DateTime @default(now())
+  last_active_at  DateTime @default(now())
+  created_at      DateTime @default(now())
+  
+  @@index([user_id])
+  @@index([token_hash])
+}
+
+// ============================================================
+// 平台账号模块
+// ============================================================
+
+model PlatformAccount {
+  id                    String   @id @default(uuid())
+  tenant_id             String
+  tenant                Tenant   @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  created_by            String?
+  
+  // 平台信息
+  platform              String
+  account_type          String?
+  platform_account_id   String?
+  account_name          String?
+  account_nickname      String?
+  avatar_url            String?
+  profile_url           String?
+  
+  // 粉丝数据
+  follower_count        Int      @default(0)
+  following_count       Int      @default(0)
+  content_count         Int      @default(0)
+  
+  // 授权信息 (加密存储)
+  auth_type             String
+  auth_data_encrypted   String?
+  auth_expires_at       DateTime?
+  auth_refresh_token_encrypted String?
+  
+  // 账号状态
+  status                String   @default("active")
+  health_score          Int      @default(100)
+  last_sync_at          DateTime?
+  last_publish_at       DateTime?
+  error_message         String?
+  
+  // 账号配置
+  settings              Json     @default("{\"auto_sync\": true, \"sync_interval_hours\": 6, \"publish_limit_daily\": 10}")
+  
+  // 分组标签
+  group_name            String?
+  tags                  Json     @default("[]")
+  
+  created_at            DateTime @default(now())
+  updated_at            DateTime @updatedAt
+  
+  // 关系
+  publish_tasks         PublishTask[]
+  stats_history         AccountStatsHistory[]
+  
+  @@unique([tenant_id, platform, platform_account_id])
+  @@index([tenant_id])
+  @@index([platform])
+  @@index([status])
+}
+
+model AccountStatsHistory {
+  id              String   @id @default(uuid())
+  account_id      String
+  account         PlatformAccount @relation(fields: [account_id], references: [id], onDelete: Cascade)
+  
+  follower_count  Int?
+  following_count Int?
+  content_count   Int?
+  follower_gained Int      @default(0)
+  stat_date       DateTime @default(now())
+  created_at      DateTime @default(now())
+  
+  @@unique([account_id, stat_date])
+  @@index([account_id])
+  @@index([stat_date])
+}
+
+// ============================================================
+// 内容管理模块
+// ============================================================
+
+model Content {
+  id              String   @id @default(uuid())
+  tenant_id       String
+  tenant          Tenant   @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  created_by      String?
+  
+  // 内容基本信息
+  content_type    String
+  title           String?
+  summary         String?
+  body            String?
+  body_html       String?
+  cover_url       String?
+  media_urls      Json     @default("[]")
+  
+  // 分类标签
+  category        String?
+  tags            Json     @default("[]")
+  keywords        Json     @default("[]")
+  
+  // 内容来源
+  source          String   @default("manual")
+  source_url      String?
+  
+  // AI生成参数
+  ai_params       Json?
+  ai_model        String?
+  
+  // 内容评分
+  quality_score   Int?
+  viral_score     Int?
+  
+  // 状态流转
+  status          String   @default("draft")
+  reviewed_by     String?
+  reviewed_at     DateTime?
+  review_comment  String?
+  
+  // 版本控制
+  version         Int      @default(1)
+  parent_id       String?
+  
+  created_at      DateTime @default(now())
+  updated_at      DateTime @updatedAt
+  published_at    DateTime?
+  
+  // 关系
+  platform_contents PlatformContent[]
+  publish_tasks     PublishTask[]
+  ai_generations    AIGeneration[]
+  content_annotations ContentAnnotation[]
+  content_predictions ContentPrediction[]
+  review_logs       ReviewLog[]
+  
+  @@index([tenant_id])
+  @@index([status])
+  @@index([content_type])
+  @@index([created_at])
+}
+
+model PlatformContent {
+  id              String   @id @default(uuid())
+  content_id      String
+  content         Content  @relation(fields: [content_id], references: [id], onDelete: Cascade)
+  platform        String
+  
+  // 平台适配内容
+  title           String?
+  body            String?
+  body_html       String?
+  hashtags        Json     @default("[]")
+  mentions        Json     @default("[]")
+  location        Json?
+  cover_url       String?
+  media_urls      Json     @default("[]")
+  extra_data      Json     @default("{}")
+  
+  // 字数/时长统计
+  char_count      Int?
+  word_count      Int?
+  duration_seconds Int?
+  
+  created_at      DateTime @default(now())
+  updated_at      DateTime @updatedAt
+  
+  publish_tasks   PublishTask[]
+  
+  @@unique([content_id, platform])
+  @@index([content_id])
+  @@index([platform])
+}
+
+// ============================================================
+// 发布管理模块
+// ============================================================
+
+model PublishTask {
+  id                  String   @id @default(uuid())
+  tenant_id           String
+  tenant              Tenant   @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  content_id          String
+  content             Content  @relation(fields: [content_id], references: [id], onDelete: Cascade)
+  platform_content_id String?
+  platform_content    PlatformContent? @relation(fields: [platform_content_id], references: [id])
+  platform_account_id String?
+  platform_account    PlatformAccount? @relation(fields: [platform_account_id], references: [id])
+  created_by          String?
+  
+  // 发布配置
+  publish_type        String   @default("immediate")
+  scheduled_at        DateTime?
+  
+  // 发布状态
+  status              String   @default("pending")
+  platform_post_id    String?
+  platform_post_url   String?
+  
+  // 重试机制
+  retry_count         Int      @default(0)
+  max_retries         Int      @default(3)
+  next_retry_at       DateTime?
+  
+  // 错误信息
+  error_code          String?
+  error_message       String?
+  error_details       Json?
+  
+  // 时间记录
+  queued_at           DateTime?
+  started_at          DateTime?
+  completed_at        DateTime?
+  
+  created_at          DateTime @default(now())
+  updated_at          DateTime @updatedAt
+  
+  // 关系
+  content_stats       ContentStats[]
+  
+  @@index([tenant_id])
+  @@index([status])
+  @@index([scheduled_at])
+  @@index([content_id])
+}
+
+model PublishTemplate {
+  id              String   @id @default(uuid())
+  tenant_id       String
+  created_by      String?
+  
+  name            String
+  description     String?
+  platforms       Json
+  schedule_config Json?
+  content_rules   Json?
+  is_default      Boolean  @default(false)
+  
+  created_at      DateTime @default(now())
+  updated_at      DateTime @updatedAt
+}
+
+// ============================================================
+// 数据统计模块
+// ============================================================
+
+model ContentStats {
+  id              String   @id @default(uuid())
+  publish_task_id String
+  publish_task    PublishTask @relation(fields: [publish_task_id], references: [id], onDelete: Cascade)
+  
+  // 基础指标
+  views           Int      @default(0)
+  likes           Int      @default(0)
+  comments        Int      @default(0)
+  shares          Int      @default(0)
+  saves           Int      @default(0)
+  
+  // 粉丝相关
+  followers_gained Int     @default(0)
+  
+  // 互动率
+  engagement_rate Decimal?
+  
+  // 平台特有指标
+  extra_metrics   Json     @default("{}")
+  
+  // 统计时间
+  stat_time       DateTime @default(now())
+  created_at      DateTime @default(now())
+  
+  @@index([publish_task_id])
+  @@index([stat_time])
+}
+
+model DailyReport {
+  id                    String   @id @default(uuid())
+  tenant_id             String
+  report_date           DateTime @default(now())
+  platform              String?
+  
+  // 发布统计
+  publish_count         Int      @default(0)
+  publish_success_count Int      @default(0)
+  publish_fail_count    Int      @default(0)
+  
+  // 数据统计
+  total_views           Int      @default(0)
+  total_likes           Int      @default(0)
+  total_comments        Int      @default(0)
+  total_shares          Int      @default(0)
+  total_followers_gained Int     @default(0)
+  
+  // 对比数据
+  views_change_rate     Decimal?
+  engagement_change_rate Decimal?
+  
+  // 详细数据
+  details               Json?
+  
+  created_at            DateTime @default(now())
+  
+  @@unique([tenant_id, report_date, platform])
+  @@index([tenant_id])
+  @@index([report_date])
+}
+
+// ============================================================
+// 素材库模块
+// ============================================================
+
+model Material {
+  id              String   @id @default(uuid())
+  tenant_id       String
+  created_by      String?
+  
+  // 素材类型
+  material_type   String
+  
+  // 基本信息
+  name            String?
+  description     String?
+  
+  // 文件信息
+  file_url        String
+  file_size       Int?
+  file_format     String?
+  
+  // 媒体属性
+  width           Int?
+  height          Int?
+  duration_seconds Int?
+  
+  // 分类
+  folder_id       String?
+  tags            Json     @default("[]")
+  
+  // AI分析结果
+  ai_tags         Json     @default("[]")
+  ai_description  String?
+  
+  // 使用统计
+  use_count       Int      @default(0)
+  last_used_at    DateTime?
+  
+  created_at      DateTime @default(now())
+  updated_at      DateTime @updatedAt
+  
+  @@index([tenant_id])
+  @@index([material_type])
+}
+
+model MaterialFolder {
+  id          String   @id @default(uuid())
+  tenant_id   String
+  name        String
+  parent_id   String?
+  created_at  DateTime @default(now())
+}
+
+// ============================================================
+// AI生成模块
+// ============================================================
+
+model AIGeneration {
+  id              String   @id @default(uuid())
+  tenant_id       String
+  user_id         String
+  content         Content? @relation(fields: [content_id], references: [id], onDelete: SetNull)
+  content_id      String?
+  
+  // 生成类型
+  generation_type String
+  
+  // 输入参数
+  input_params    Json
+  
+  // 模型信息
+  model_provider  String?
+  model_name      String?
+  
+  // 输出结果
+  output_content  String?
+  output_urls     Json?
+  
+  // 消耗统计
+  tokens_input    Int?
+  tokens_output   Int?
+  cost_amount     Decimal?
+  
+  // 执行信息
+  status          String   @default("pending")
+  started_at      DateTime?
+  completed_at    DateTime?
+  duration_ms     Int?
+  error_message   String?
+  
+  created_at      DateTime @default(now())
+  
+  @@index([tenant_id])
+  @@index([generation_type])
+  @@index([created_at])
+}
+
+model ViralContent {
+  id              String   @id @default(uuid())
+  platform        String
+  platform_content_id String?
+  content_url     String?
+  
+  title           String?
+  summary         String?
+  content_type    String?
+  
+  author_name     String?
+  author_id       String?
+  author_follower_count Int?
+  
+  views           Int?
+  likes           Int?
+  comments        Int?
+  shares          Int?
+  
+  // AI分析
+  analysis        Json?
+  tags            Json     @default("[]")
+  category        String?
+  
+  published_at    DateTime?
+  crawled_at      DateTime @default(now())
+  
+  @@unique([platform, platform_content_id])
+  @@index([platform])
+  @@index([category])
+  @@index([published_at])
+}
+
+model HotTopic {
+  id              String   @id @default(uuid())
+  platform        String
+  topic_name      String
+  topic_url       String?
+  
+  // 热度信息
+  heat_score      Int?
+  rank_position   Int?
+  
+  // 分类
+  category        String?
+  is_rising       Boolean  @default(false)
+  
+  // 时间
+  topic_time      DateTime?
+  crawled_at      DateTime @default(now())
+  
+  @@unique([platform, topic_name, crawled_at])
+  @@index([platform])
+  @@index([crawled_at])
+}
+
+// ============================================================
+// Phase 4 新功能模块
+// ============================================================
+
+model GrowthGoal {
+  id            String   @id @default(uuid())
+  user_id       String
+  target_type   String   // 'followers' | 'views' | 'engagement' | 'revenue'
+  target_value  BigInt
+  period_type   String   @default("monthly")
+  start_date    DateTime
+  end_date      DateTime
+  current_value BigInt   @default(0)
+  status        String   @default("active")
+  created_at    DateTime @default(now())
+  updated_at    DateTime @updatedAt
+  
+  @@index([user_id])
+}
+
+model PersonaTemplate {
+  id              String   @id @default(uuid())
+  user_id         String?
+  is_system_template Boolean @default(false)
+  name            String
+  category        String
+  description     String
+  tone_of_voice   String
+  typical_topics  String[]
+  writing_examples String[]
+  template_config Json
+  usage_count     Int      @default(0)
+  created_at      DateTime @default(now())
+  updated_at      DateTime @updatedAt
+  
+  @@index([user_id])
+}
+
+model ContentAnnotation {
+  id               String   @id @default(uuid())
+  user_id          String
+  content_id       String?
+  content          Content? @relation(fields: [content_id], references: [id], onDelete: Cascade)
+  source_url       String?
+  source_platform  String?
+  annotation_type  String   // 'hook' | 'structure' | 'emotion' | 'keyword' | 'template'
+  annotation_data  Json
+  ai_analysis_result String?
+  created_at       DateTime @default(now())
+  
+  @@index([user_id])
+}
+
+model AccountHealth {
+  id              String   @id @default(uuid())
+  user_id         String
+  account_id      String
+  check_date      DateTime
+  health_score    Int      @default(100)
+  status          String   @default("healthy")
+  issues          Json
+  recommendations Json
+  metrics_snapshot Json
+  created_at      DateTime @default(now())
+  
+  @@index([account_id])
+}
+
+model UserNotification {
+  id               String   @id @default(uuid())
+  user_id          String
+  notification_type String
+  title            String
+  content          String
+  metadata         Json?
+  is_read          Boolean  @default(false)
+  read_at          DateTime?
+  created_at       DateTime @default(now())
+  
+  @@index([user_id])
+  @@index([is_read])
+}
+
+model ABTest {
+  id           String   @id @default(uuid())
+  user_id      String
+  content_id   String?
+  test_name    String
+  variants     Json
+  winner_variant String?
+  status       String   @default("running")
+  start_date   DateTime @default(now())
+  end_date     DateTime?
+  created_at   DateTime @default(now())
+  updated_at   DateTime @updatedAt
+  
+  @@index([user_id])
+}
+
+model CompetitorMonitor {
+  id              String   @id @default(uuid())
+  user_id         String
+  competitor_name String
+  competitor_platform String
+  account_url     String?
+  last_checked_at DateTime?
+  last_post_date  DateTime?
+  recent_posts    Json
+  engagement_stats Json
+  is_active       Boolean  @default(true)
+  created_at      DateTime @default(now())
+  updated_at      DateTime @updatedAt
+  
+  @@unique([user_id, competitor_platform, account_url])
+  @@index([user_id])
+}
+
+model ScheduledTaskQueue {
+  id           String   @id @default(uuid())
+  task_type    String   // 'publish' | 'notification' | 'health_check' | 'data_sync'
+  task_payload Json
+  scheduled_at DateTime
+  executed_at  DateTime?
+  status       String   @default("pending")
+  retry_count  Int      @default(0)
+  error_message String?
+  created_at   DateTime @default(now())
+  
+  @@index([scheduled_at, status])
+}
+
+model ContentPrediction {
+  id              String   @id @default(uuid())
+  content_id      String?
+  content         Content? @relation(fields: [content_id], references: [id], onDelete: Cascade)
+  user_id         String
+  platform        String
+  predicted_score Int?
+  factors         Json
+  confidence      Float
+  actual_performance Json?
+  created_at      DateTime @default(now())
+  
+  @@index([user_id])
+}
+
+model UserGamification {
+  user_id              String   @id
+  level                Int      @default(1)
+  experience_points    Int      @default(0)
+  total_contents_created Int    @default(0)
+  total_published      Int      @default(0)
+  streak_days          Int      @default(0)
+  last_active_date     DateTime?
+  achievements         Json     @default("[]")
+  badges               Json     @default("[]")
+  created_at           DateTime @default(now())
+  updated_at           DateTime @updatedAt
+}
+
+// ============================================================
+// 积分系统模块 (V1 新增)
+// ============================================================
+
+model UserPoints {
+  id                  String   @id @default(uuid())
+  user_id             String   @unique
+  
+  // 积分余额
+  balance             Int      @default(0)
+  total_earned        Int      @default(0)
+  total_spent         Int      @default(0)
+  
+  // 签到相关
+  streak_days         Int      @default(0)
+  last_checkin_date   DateTime?
+  longest_streak      Int      @default(0)
+  
+  // 等级信息
+  level               Int      @default(1)
+  experience_points   Int      @default(0)
+  
+  created_at          DateTime @default(now())
+  updated_at          DateTime @updatedAt
+  
+  // 关系
+  points_logs         PointsLog[]
+  redemption_records  RedemptionRecord[]
+}
+
+model PointsLog {
+  id              String   @id @default(uuid())
+  user_id         String
+  user_points     UserPoints @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  
+  // 积分变动
+  points_change   Int
+  balance_before  Int
+  balance_after   Int
+  
+  // 类型
+  log_type        String   // 'checkin' | 'task_complete' | 'achievement' | 'reward_redeem' | 'admin_grant' | 'expired'
+  description     String?
+  
+  // 关联
+  related_id      String?  // 关联的任务ID、成就ID等
+  
+  created_at      DateTime @default(now())
+  
+  @@index([user_id])
+  @@index([log_type])
+  @@index([created_at])
+}
+
+model Reward {
+  id              String   @id @default(uuid())
+  
+  // 商品信息
+  name            String
+  description     String?
+  image_url       String?
+  category        String   @default("coupon") // 'coupon' | 'vip' | 'gift' | 'feature'
+  
+  // 价格
+  points_required Int
+  
+  // 库存
+  stock           Int?
+  stock_unlimited Boolean  @default(false)
+  
+  // 使用限制
+  usage_limit_per_user Int @default(1)
+  expires_at        DateTime?
+  
+  // 状态
+  is_active       Boolean  @default(true)
+  is_featured     Boolean  @default(false)
+  sort_order      Int      @default(0)
+  
+  // 兑换后的奖励详情
+  reward_details  Json?
+  
+  created_at      DateTime @default(now())
+  updated_at      DateTime @updatedAt
+  
+  // 关系
+  redemption_records RedemptionRecord[]
+  
+  @@index([category])
+  @@index([is_active])
+}
+
+model RedemptionRecord {
+  id              String   @id @default(uuid())
+  user_id         String
+  user_points     UserPoints @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  reward_id       String
+  reward          Reward   @relation(fields: [reward_id], references: [id], onDelete: Cascade)
+  
+  // 兑换信息
+  points_spent    Int
+  status          String   @default("pending") // 'pending' | 'completed' | 'cancelled' | 'expired'
+  
+  // 兑换码
+  redeem_code     String?
+  code_used_at    DateTime?
+  
+  // 使用信息
+  used_at         DateTime?
+  used_details    Json?
+  
+  // 过期时间
+  expires_at      DateTime?
+  
+  created_at      DateTime @default(now())
+  updated_at      DateTime @updatedAt
+  
+  @@index([user_id])
+  @@index([reward_id])
+  @@index([status])
+  @@index([redeem_code])
+}
+
+model Achievement {
+  id              String   @id @default(uuid())
+  
+  // 成就信息
+  name            String
+  description     String?
+  icon            String?
+  category        String   @default("general") // 'general' | 'content' | 'social' | 'milestone'
+  
+  // 解锁条件
+  condition_type  String   // 'checkin_streak' | 'contents_published' | 'points_earned' | 'tasks_completed' | 'custom'
+  condition_value Json     // 例如: { "days": 7 } 或 { "count": 10 }
+  
+  // 奖励
+  points_reward   Int      @default(0)
+  badge_icon      String?
+  
+  // 状态
+  is_active       Boolean  @default(true)
+  sort_order      Int      @default(0)
+  
+  created_at      DateTime @default(now())
+  updated_at      DateTime @updatedAt
+  
+  @@index([category])
+  @@index([condition_type])
+}
+
+model UserAchievement {
+  id              String   @id @default(uuid())
+  user_id         String
+  achievement_id  String
+  achievement     Achievement @relation(fields: [achievement_id], references: [id], onDelete: Cascade)
+  
+  // 进度
+  progress        Int      @default(0)
+  target_value    Int
+  is_unlocked     Boolean  @default(false)
+  unlocked_at     DateTime?
+  
+  // 奖励
+  points_claimed  Boolean  @default(false)
+  claimed_at      DateTime?
+  
+  created_at      DateTime @default(now())
+  updated_at      DateTime @updatedAt
+  
+  @@unique([user_id, achievement_id])
+  @@index([user_id])
+}
+
+// ============================================================
+// 团队协作模块
+// ============================================================
+
+model ReviewLog {
+  id           String   @id @default(uuid())
+  content_id   String
+  content      Content  @relation(fields: [content_id], references: [id], onDelete: Cascade)
+  reviewer_id  String
+  action       String   // 'submit' | 'approve' | 'reject' | 'request_change'
+  comment      String?
+  changes      Json?
+  created_at   DateTime @default(now())
+  
+  @@index([content_id])
+}
+
+model TeamTask {
+  id          String   @id @default(uuid())
+  tenant_id   String
+  title       String
+  description String?
+  content_id  String?
+  assignee_id String?
+  created_by  String?
+  due_date    DateTime?
+  status      String   @default("todo")
+  priority    String   @default("medium")
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+  
+  @@index([tenant_id])
+  @@index([assignee_id])
+}
+
+model ActivityLog {
+  id              String   @id @default(uuid())
+  tenant_id       String
+  tenant          Tenant   @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  user_id         String?
+  
+  action          String
+  resource_type   String
+  resource_id     String?
+  details         Json
+  ip_address      String?
+  user_agent      String?
+  created_at      DateTime @default(now())
+  
+  @@index([tenant_id])
+  @@index([user_id])
+  @@index([created_at])
+}
+
+// ============================================================
+// 支付与订阅模块
+// ============================================================
+
+model Subscription {
+  id              String   @id @default(uuid())
+  tenant_id       String   @unique
+  tenant          Tenant   @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  
+  plan            String
+  billing_cycle   String
+  amount          Decimal  @default(0)
+  currency        String   @default("CNY")
+  
+  current_period_start DateTime
+  current_period_end   DateTime
+  
+  status          String   @default("active")
+  cancel_at_period_end Boolean @default(false)
+  cancelled_at    DateTime?
+  payment_method  String?
+  
+  created_at      DateTime @default(now())
+  updated_at      DateTime @updatedAt
+  
+  orders          PaymentOrder[]
+}
+
+model PaymentOrder {
+  id              String   @id @default(uuid())
+  tenant_id       String
+  tenant          Tenant   @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  subscription_id String?
+  subscription    Subscription? @relation(fields: [subscription_id], references: [id])
+  
+  order_no        String   @unique
+  order_type      String
+  product_name    String?
+  amount          Decimal
+  currency        String   @default("CNY")
+  payment_method  String?
+  payment_channel_order_no String?
+  
+  status          String   @default("pending")
+  paid_at         DateTime?
+  
+  invoice_requested Boolean @default(false)
+  invoice_info     Json?
+  
+  created_at      DateTime @default(now())
+  updated_at      DateTime @updatedAt
+  
+  @@index([tenant_id])
+  @@index([status])
+}
+
+model UsageRecord {
+  id           String   @id @default(uuid())
+  tenant_id    String
+  usage_type   String
+  usage_count  Int      @default(1)
+  details      Json?
+  usage_date   DateTime @default(now())
+  created_at   DateTime @default(now())
+  
+  @@index([tenant_id])
+  @@index([usage_date])
+  @@index([usage_type])
+}
+
+// ============================================================
+// API密钥管理
+// ============================================================
+
+model ApiKey {
+  id              String   @id @default(uuid())
+  tenant_id       String
+  tenant          Tenant   @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  created_by      String?
+  
+  name            String
+  key_prefix      String
+  key_hash        String
+  
+  scopes          Json     @default("[\"read\"]")
+  rate_limit      Int      @default(1000)
+  ip_whitelist    Json?
+  
+  last_used_at    DateTime?
+  use_count       Int      @default(0)
+  
+  status          String   @default("active")
+  expires_at      DateTime?
+  
+  created_at      DateTime @default(now())
+  
+  @@index([tenant_id])
+  @@index([key_hash])
+}

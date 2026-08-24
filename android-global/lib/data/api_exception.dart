@@ -50,10 +50,7 @@ class ApiException implements Exception {
           statusCode: statusCode,
         );
       case DioExceptionType.unknown:
-        return ApiException(
-          'Request failed. Please try again.',
-          statusCode: statusCode,
-        );
+        return ApiException('Request failed. Please try again.', statusCode: statusCode);
     }
   }
 

@@ -1,4 +1,4 @@
-import { Controller, Post, Body, UseGuards, Request } from '@nestjs/common';
+import { Controller, Post, Get, Body, UseGuards, Request } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { AIService } from './ai.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
@@ -8,30 +8,40 @@ import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 export class AIController {
   constructor(private readonly aiService: AIService) {}
 
+  @Get('usage')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: '获取今日 AI 成本预算与预警' })
+  async getUsage(@Request() req: any) {
+    return this.aiService.getTenantDailyBudgetUsage(req.user.tenantId);
+  }
+
   @Post('generate/article')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'AI文章生成' })
   async generateArticle(@Request() req: any, @Body() body: any) {
-    const { topic, style, platform, keywords, locale } = body;
-    const requestedLocale = locale === 'en' ||
-      String(req.headers['accept-language'] || '').toLowerCase().startsWith('en')
-      ? 'en'
-      : 'zh-CN';
+    await this.aiService.assertTenantDailyBudget(req.user.tenantId);
+    const { topic, style, platform, keywords } = body;
     
     const result = await this.aiService.generateArticle({
       topic,
       style: style || 'professional',
       platform: platform || 'xhs',
       keywords,
-      locale: requestedLocale,
     });
 
     // 记录使用
     await this.aiService.recordGeneration(req.user.tenantId, req.user.sub, {
       generationType: 'article',
-      inputParams: { topic, style, platform, keywords, locale: requestedLocale },
+      inputParams: { topic, style, platform, keywords },
       outputContent: result.content,
+      modelProvider: result.provider,
+      modelName: result.model,
+      tokensInput: result.usage.prompt_tokens,
+      tokensOutput: result.usage.completion_tokens,
+      costAmount: result.cost_usd ?? undefined,
+      durationMs: result.latency_ms,
       status: 'success',
     });
 
@@ -43,10 +53,18 @@ export class AIController {
   @ApiBearerAuth()
   @ApiOperation({ summary: 'AI标题生成' })
   async generateTitles(@Request() req: any, @Body() body: any) {
+    await this.aiService.assertTenantDailyBudget(req.user.tenantId);
     const { topic, platform, count } = body;
-    const titles = await this.aiService.generateTitles(topic, platform || 'xhs', count || 5);
+    const result = await this.aiService.generateTitlesWithUsage(topic, platform || 'xhs', count || 5);
+    await this.aiService.recordGeneration(req.user.tenantId, req.user.sub, {
+      generationType: 'titles', inputParams: { topic, platform, count },
+      outputContent: JSON.stringify(result.titles), tokensInput: result.usage.prompt_tokens,
+      tokensOutput: result.usage.completion_tokens, modelProvider: result.provider,
+      modelName: result.model, costAmount: result.cost_usd ?? undefined,
+      durationMs: result.latency_ms, status: 'success',
+    });
     
-    return { titles };
+    return { titles: result.titles };
   }
 
   @Post('analyze/viral')
@@ -54,9 +72,16 @@ export class AIController {
   @ApiBearerAuth()
   @ApiOperation({ summary: '爆款内容分析' })
   async analyzeViral(@Request() req: any, @Body() body: any) {
+    await this.aiService.assertTenantDailyBudget(req.user.tenantId);
     const { content } = body;
-    const analysis = await this.aiService.analyzeViralContent(content);
-    return { analysis };
+    const result = await this.aiService.analyzeViralContentWithUsage(content);
+    await this.aiService.recordGeneration(req.user.tenantId, req.user.sub, {
+      generationType: 'viral_analysis', inputParams: { content }, outputContent: JSON.stringify(result.analysis),
+      modelProvider: result.provider, modelName: result.model, tokensInput: result.usage.prompt_tokens,
+      tokensOutput: result.usage.completion_tokens, costAmount: result.cost_usd ?? undefined,
+      durationMs: result.latency_ms, status: 'success',
+    });
+    return { analysis: result.analysis };
   }
 
   @Post('generate/image')

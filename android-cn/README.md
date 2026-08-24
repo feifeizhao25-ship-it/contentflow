@@ -1,4 +1,4 @@
-# contentflow_cn
+# contentflow_mobile
 
 A new Flutter project.
 

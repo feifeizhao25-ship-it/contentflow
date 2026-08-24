@@ -68,11 +68,7 @@ export class HttpExceptionFilter implements ExceptionFilter {
                 ? 'Internal server error'
                 : 'The request could not be processed';
     }
-    if (globalMarket && containsCjk(details)) {
-      details = undefined;
-    }
-
-    // 记录错误日志
+    if (globalMarket && containsCjk(details)) details = undefined;
     const sanitizedMessage = Array.isArray(message) ? message.join('; ') : message;
     const safeStack = exception instanceof Error && !(globalMarket && containsCjk(exception.stack))
       ? exception.stack

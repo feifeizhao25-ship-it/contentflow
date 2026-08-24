@@ -1,5 +1,4 @@
 @import "tailwindcss";
-@custom-variant dark (&:where(.dark, .dark *));
 
 :root {
   --font-inter: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
@@ -197,32 +196,4 @@ body::before {
   background: padding-box linear-gradient(var(--card), var(--card)),
     border-box linear-gradient(135deg, rgba(99, 102, 241, 0.5), rgba(168, 85, 247, 0.5));
   border: 1px solid transparent;
-}
-.app-main {
-  margin-left: var(--sidebar-width);
-}
-
-@media (max-width: 767px) {
-  .app-sidebar {
-    display: none !important;
-  }
-
-  .app-main {
-    margin-left: 0 !important;
-    width: 100%;
-    max-width: 100vw;
-  }
-
-  .app-topbar {
-    padding-left: 0.75rem !important;
-    padding-right: 0.75rem !important;
-  }
-
-  .app-topbar > div:last-child {
-    gap: 0.25rem;
-  }
-
-  .app-content {
-    padding: 0.75rem !important;
-  }
 }

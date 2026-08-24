@@ -1,250 +1,121 @@
 #!/usr/bin/env python3
-"""
-RAG Knowledge Base Freshness Validator
-======================================
-Checks all cached RAG knowledge files for freshness.
-Flags data older than 6 months (180 days) as stale.
-Outputs a report and optionally triggers refresh.
+"""Fail-closed freshness and provenance gate for ContentFlow RAG data."""
 
-Usage:
-    python3 scripts/validate_rag_freshness.py              # Check and report
-    python3 scripts/validate_rag_freshness.py --json        # JSON output
-    python3 scripts/validate_rag_freshness.py --auto-refresh # Trigger refresh for stale entries
+from __future__ import annotations
 
-Author: 分发侠 AI Service
-Created: 2026-06-27
-"""
-
-import json
-import os
-import sys
 import argparse
+import json
+import sys
+from datetime import datetime, timezone
 from pathlib import Path
-from datetime import datetime, timezone, timedelta
-
-# Configuration
-PROJECT_ROOT = Path(__file__).resolve().parent.parent
-RAG_CACHE_DIR = PROJECT_ROOT / "services" / "ai-service" / "data" / "rag_cache"
-RAG_METADATA_FILE = PROJECT_ROOT / "services" / "ai-service" / "data" / "rag_metadata.json"
-
-MAX_AGE_DAYS = 180       # 6 months
-WARNING_DAYS = 150       # Warn at 5 months
-TIMEOUT_SECONDS = 30     # HTTP fetch timeout
+from urllib.parse import urlparse
 
 
-def load_metadata():
-    """Load RAG metadata file."""
-    if not RAG_METADATA_FILE.exists():
-        print(f"⚠️  Metadata file not found: {RAG_METADATA_FILE}")
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+RAG_CACHE_DIRS = (
+    PROJECT_ROOT / "runtime" / "api" / "data" / "rag_cache",
+    PROJECT_ROOT / "services" / "ai-service" / "data" / "rag_cache",
+    PROJECT_ROOT / "data" / "rag_cache",
+)
+METADATA_FILES = (
+    PROJECT_ROOT / "services" / "ai-service" / "data" / "rag_metadata.json",
+    PROJECT_ROOT / "data" / "rag_metadata.json",
+)
+DEFAULT_MAX_AGE_DAYS = 30
+REQUIRED_FIELDS = {"source_url", "source_name", "published_at", "retrieved_at", "jurisdiction", "source_tier"}
+ALLOWED_TIERS = {"S", "A", "B", "C", "D"}
+
+
+def parse_time(value: object) -> datetime | None:
+    if isinstance(value, (int, float)):
+        return datetime.fromtimestamp(value, tz=timezone.utc)
+    if not isinstance(value, str) or not value.strip():
         return None
-    with open(RAG_METADATA_FILE, "r", encoding="utf-8") as f:
-        return json.load(f)
-
-
-def get_file_age_days(file_path):
-    """Get age of file in days based on modification time."""
-    if not file_path.exists():
-        return None
-    mtime = datetime.fromtimestamp(file_path.stat().st_mtime, tz=timezone.utc)
-    now = datetime.now(tz=timezone.utc)
-    age = (now - mtime).days
-    return age
-
-
-def get_cache_timestamp(file_path):
-    """Extract timestamp from RAG cache JSON file."""
+    normalized = value.strip().replace("Z", "+00:00")
     try:
-        with open(file_path, "r", encoding="utf-8") as f:
-            data = json.load(f)
-        ts = data.get("timestamp")
-        if ts:
-            # Try parsing ISO format
-            for fmt in [
-                "%Y-%m-%dT%H:%M:%S%z",
-                "%Y-%m-%dT%H:%M:%S",
-                "%Y-%m-%d %H:%M:%S",
-                "%Y-%m-%d",
-            ]:
-                try:
-                    return datetime.strptime(ts, fmt)
-                except ValueError:
-                    continue
-            # Try fromisoformat
-            try:
-                return datetime.fromisoformat(ts)
-            except Exception:
-                pass
-    except Exception:
-        pass
-    return None
+        parsed = datetime.fromisoformat(normalized)
+    except ValueError:
+        return None
+    return parsed.replace(tzinfo=timezone.utc) if parsed.tzinfo is None else parsed.astimezone(timezone.utc)
 
 
-def validate_freshness():
-    """Validate all RAG cache files for freshness."""
+def load_metadata() -> dict[str, dict]:
+    merged: dict[str, dict] = {}
+    for path in METADATA_FILES:
+        if not path.is_file():
+            continue
+        payload = json.loads(path.read_text(encoding="utf-8"))
+        records = payload.get("sources", payload) if isinstance(payload, dict) else payload
+        if isinstance(records, list):
+            for record in records:
+                if isinstance(record, dict) and record.get("file"):
+                    merged[str(record["file"])] = record
+        elif isinstance(records, dict):
+            merged.update({str(k): v for k, v in records.items() if isinstance(v, dict)})
+    return merged
+
+
+def validate(max_age_days: int, allow_empty: bool) -> list[str]:
+    now = datetime.now(timezone.utc)
     metadata = load_metadata()
-    results = []
-    
-    if not RAG_CACHE_DIR.exists():
-        print(f"⚠️  RAG cache directory not found: {RAG_CACHE_DIR}")
-        return results
-    
-    cache_files = list(RAG_CACHE_DIR.glob("*.json"))
-    
-    # Also check metadata entries
-    meta_map = {}
-    if metadata and "knowledge_files" in metadata:
-        for entry in metadata["knowledge_files"]:
-            meta_map[entry["file"]] = entry
-    
-    for cache_file in sorted(cache_files):
-        fname = cache_file.name
-        meta = meta_map.get(fname, {})
-        
-        # Get age from file modification time
-        age_days = get_file_age_days(cache_file)
-        
-        # Try to get more precise timestamp from file content
-        cache_ts = get_cache_timestamp(cache_file)
-        if cache_ts:
-            # Use cache timestamp if available
-            if cache_ts.tzinfo is None:
-                cache_ts = cache_ts.replace(tzinfo=timezone.utc)
-            now = datetime.now(tz=timezone.utc)
-            age_days = (now - cache_ts).days
-        
-        max_age_days = int(meta.get("review_cadence_days", MAX_AGE_DAYS))
-        warning_days = max(1, max_age_days - min(30, max_age_days // 5 or 1))
+    files = sorted({path for directory in RAG_CACHE_DIRS if directory.is_dir() for path in directory.glob("*.json")})
+    errors: list[str] = []
+    approved_source_count = 0
+    if not files:
+        return [] if allow_empty else ["没有发现RAG缓存；生产发布必须提供经过审核的知识来源"]
 
-        # Determine status
-        if age_days is None:
-            status = "unknown"
-        elif age_days < 0:
-            status = "unknown"
-        elif age_days >= max_age_days:
-            status = "expired"
-        elif age_days >= warning_days:
-            status = "warning"
-        else:
-            status = "fresh"
-        
-        source_url = meta.get("source_url", "unknown")
-        source_name = meta.get("source_name", "unknown")
-        
-        result = {
-            "file": fname,
-            "source_url": source_url,
-            "source_name": source_name,
-            "age_days": age_days,
-            "status": status,
-            "max_age_days": max_age_days,
-            "warning_days": warning_days,
-            "last_cached": meta.get("last_cached", "N/A"),
-            "expiry_date": meta.get("expiry_date", "N/A"),
-            "needs_refresh": status in ("expired", "warning"),
-        }
-        results.append(result)
-    
-    return results
+    for path in files:
+        try:
+            payload = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError) as exc:
+            errors.append(f"{path.relative_to(PROJECT_ROOT)}: JSON无效（{exc}）")
+            continue
+        # Quarantined research is deliberately unavailable to production RAG.
+        # It may use an aggregate schema while connector/reviewer evidence is
+        # still incomplete, so it must neither count as an approved source nor
+        # make the approved-source release gate fail.
+        if isinstance(payload, dict) and str(payload.get("status", "")).startswith("quarantined"):
+            continue
+        approved_source_count += 1
+        record = {**(metadata.get(path.name) or {}), **(payload if isinstance(payload, dict) else {})}
+        missing = sorted(field for field in REQUIRED_FIELDS if not record.get(field))
+        if missing:
+            errors.append(f"{path.name}: 缺少来源字段 {', '.join(missing)}")
+        url = str(record.get("source_url") or "")
+        parsed_url = urlparse(url)
+        if parsed_url.scheme != "https" or not parsed_url.netloc:
+            errors.append(f"{path.name}: source_url必须是有效HTTPS地址")
+        if record.get("source_tier") not in ALLOWED_TIERS:
+            errors.append(f"{path.name}: source_tier必须为S/A/B/C/D")
+        retrieved = parse_time(record.get("retrieved_at") or record.get("timestamp"))
+        if retrieved is None:
+            errors.append(f"{path.name}: retrieved_at格式无效")
+        elif (now - retrieved).total_seconds() > max_age_days * 86400:
+            errors.append(f"{path.name}: 已超过{max_age_days}天未更新")
+        published = parse_time(record.get("published_at"))
+        if published and published > now:
+            errors.append(f"{path.name}: published_at位于未来")
+        if record.get("review_status") not in {"approved", "verified"}:
+            errors.append(f"{path.name}: review_status必须为approved或verified")
+    if approved_source_count == 0 and not allow_empty:
+        errors.append("没有可供生产RAG使用的approved/verified来源")
+    return errors
 
 
-def print_report(results, integrity_errors=None):
-    """Print human-readable freshness report."""
-    print("=" * 70)
-    print("📊 RAG Knowledge Base Freshness Report")
-    print(f"   Checked at: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-    print(f"   Policy: Max age = {MAX_AGE_DAYS} days | Warning at {WARNING_DAYS} days")
-    print("=" * 70)
-    
-    if not results:
-        print("   No RAG cache files found.")
-    if integrity_errors:
-        for error in integrity_errors:
-            print(f"   🔴 {error}")
-    if not results:
-        return
-    
-    fresh = [r for r in results if r["status"] == "fresh"]
-    warning = [r for r in results if r["status"] == "warning"]
-    expired = [r for r in results if r["status"] == "expired"]
-    unknown = [r for r in results if r["status"] == "unknown"]
-    
-    for r in results:
-        icon = {
-            "fresh": "✅",
-            "warning": "⚠️",
-            "expired": "🔴",
-            "unknown": "❓",
-        }.get(r["status"], "❓")
-        
-        age_str = f"{r['age_days']} days" if r["age_days"] is not None else "N/A"
-        print(f"  {icon} {r['file']}")
-        print(f"     Source: {r['source_name']} ({r['source_url']})")
-        print(f"     Age: {age_str} | Status: {r['status']}")
-        if r["needs_refresh"]:
-            print(f"     ⚡ ACTION: Refresh recommended (source policy: {r['max_age_days']} days)")
-        print()
-    
-    # Summary
-    print("-" * 70)
-    print(f"📊 Summary: {len(fresh)} fresh | {len(warning)} warning | {len(expired)} expired | {len(unknown)} unknown")
-    print(f"   Total files: {len(results)}")
-    
-    if expired:
-        print(f"\n🔴 {len(expired)} file(s) have EXPIRED (>{MAX_AGE_DAYS} days old) and need immediate refresh!")
-    if warning:
-        print(f"⚠️  {len(warning)} file(s) are approaching expiry (>{WARNING_DAYS} days old).")
-
-
-def output_json(results, integrity_errors=None):
-    """Output results as JSON."""
-    output = {
-        "checked_at": datetime.now(timezone.utc).isoformat(),
-        "policy": {
-            "max_age_days": MAX_AGE_DAYS,
-            "warning_days": WARNING_DAYS,
-        },
-        "summary": {
-            "total": len(results),
-            "fresh": len([r for r in results if r["status"] == "fresh"]),
-            "warning": len([r for r in results if r["status"] == "warning"]),
-            "expired": len([r for r in results if r["status"] == "expired"]),
-            "unknown": len([r for r in results if r["status"] == "unknown"]),
-        },
-        "integrity_errors": integrity_errors or [],
-        "files": results,
-    }
-    print(json.dumps(output, indent=2, ensure_ascii=False))
-
-
-def main():
-    parser = argparse.ArgumentParser(description="Validate RAG knowledge base freshness")
-    parser.add_argument("--json", action="store_true", help="Output as JSON")
-    parser.add_argument("--auto-refresh", action="store_true", help="Trigger refresh for stale entries (not implemented)")
+def main() -> int:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--max-age-days", type=int, default=DEFAULT_MAX_AGE_DAYS)
+    parser.add_argument("--allow-empty", action="store_true", help="仅供没有RAG能力的本地开发环境")
     args = parser.parse_args()
-    
-    results = validate_freshness()
-    metadata = load_metadata()
-    integrity_errors = []
-    if not metadata or not isinstance(metadata.get("knowledge_files"), list):
-        integrity_errors.append("RAG metadata is missing or has no knowledge_files catalog.")
-    if not results:
-        integrity_errors.append("RAG cache is empty; freshness cannot be treated as healthy.")
-    if metadata and isinstance(metadata.get("knowledge_files"), list):
-        cached_names = {item["file"] for item in results}
-        for entry in metadata["knowledge_files"]:
-            name = entry.get("file")
-            if not name or name not in cached_names:
-                integrity_errors.append(f"Catalog entry has no cache file: {name or '<missing name>'}")
-    
-    if args.json:
-        output_json(results, integrity_errors)
-    else:
-        print_report(results, integrity_errors)
-    
-    # Exit code: 1 if any expired, 0 otherwise
-    has_expired = any(r["status"] == "expired" for r in results)
-    sys.exit(1 if has_expired or integrity_errors else 0)
+    errors = validate(args.max_age_days, args.allow_empty)
+    if errors:
+        print(f"RAG来源及时效门禁失败：{len(errors)}项")
+        for error in errors:
+            print(f"- {error}")
+        return 1
+    print("RAG来源及时效门禁通过")
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())

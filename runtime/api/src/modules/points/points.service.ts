@@ -92,8 +92,19 @@ export class PointsService {
     const totalPoints = basePoints + bonusPoints;
 
     // 更新用户积分
-    const updatedPoints = await this.prisma.userPoints.update({
-      where: { user_id: userId },
+    //
+    // 上面「今日是否已签到」的判断与这里的写入之间存在竞态：
+    // 连点两下签到按钮，两个请求都读到 last_checkin_date 是昨天，
+    // 都通过判断、都加分 —— 一天领两次。
+    // 改为条件更新：只在 last_checkin_date 仍早于今天时才生效。
+    const checkinUpdate = await this.prisma.userPoints.updateMany({
+      where: {
+        user_id: userId,
+        OR: [
+          { last_checkin_date: null },
+          { last_checkin_date: { lt: today } },
+        ],
+      },
       data: {
         balance: { increment: totalPoints },
         total_earned: { increment: totalPoints },
@@ -104,13 +115,32 @@ export class PointsService {
       },
     });
 
+    if (checkinUpdate.count === 0) {
+      // 另一个并发请求刚刚签到成功
+      const current = await this.prisma.userPoints.findUnique({
+        where: { user_id: userId },
+      });
+      return {
+        success: false,
+        points_earned: 0,
+        streak_days: current?.streak_days ?? userPoints.streak_days,
+        balance: current?.balance ?? userPoints.balance,
+        message: '今日已签到，明天再来吧！',
+      };
+    }
+
+    const updatedPoints = await this.prisma.userPoints.findUnique({
+      where: { user_id: userId },
+    });
+    const balanceAfter = updatedPoints?.balance ?? userPoints.balance + totalPoints;
+
     // 记录积分日志
     await this.prisma.pointsLog.create({
       data: {
         user_id: userId,
         points_change: totalPoints,
-        balance_before: userPoints.balance,
-        balance_after: updatedPoints.balance,
+        balance_before: balanceAfter - totalPoints,
+        balance_after: balanceAfter,
         log_type: 'checkin',
         description: `签到获得积分，连续签到 ${newStreakDays} 天`,
       },
@@ -120,7 +150,7 @@ export class PointsService {
       success: true,
       points_earned: totalPoints,
       streak_days: newStreakDays,
-      balance: updatedPoints.balance,
+      balance: balanceAfter,
       message: `签到成功！获得 ${totalPoints} 积分（基础 ${basePoints} + 连续签到奖励 ${bonusPoints}）`,
     };
   }
@@ -238,39 +268,55 @@ export class PointsService {
 
   /**
    * 消耗积分
+   *
+   * 原实现「先判断 balance < amount，再 decrement」是典型双花：
+   * 两个并发请求都通过判断、都执行扣减，余额变负数。
+   * 现改为带条件的 updateMany —— 余额不足时影响 0 行，由数据库保证原子性。
    */
   async spendPoints(userId: string, amount: number, logType: string, description: string, relatedId?: string) {
-    const userPoints = await this.getOrCreateUserPoints(userId);
-
-    if (userPoints.balance < amount) {
-      throw new BadRequestException(`积分不足，需要 ${amount} 积分，当前余额 ${userPoints.balance}`);
+    if (amount <= 0) {
+      throw new BadRequestException('消耗积分必须为正数');
     }
 
-    const updatedPoints = await this.prisma.userPoints.update({
-      where: { user_id: userId },
-      data: {
-        balance: { decrement: amount },
-        total_spent: { increment: amount },
-      },
-    });
+    await this.getOrCreateUserPoints(userId);
 
-    await this.prisma.pointsLog.create({
-      data: {
-        user_id: userId,
-        points_change: -amount,
-        balance_before: userPoints.balance,
-        balance_after: updatedPoints.balance,
-        log_type: logType,
-        description,
-        related_id: relatedId,
-      },
-    });
+    return await this.prisma.$transaction(async (tx) => {
+      const updated = await tx.userPoints.updateMany({
+        where: { user_id: userId, balance: { gte: amount } },
+        data: {
+          balance: { decrement: amount },
+          total_spent: { increment: amount },
+        },
+      });
 
-    return {
-      success: true,
-      points_spent: amount,
-      balance: updatedPoints.balance,
-    };
+      if (updated.count === 0) {
+        const current = await tx.userPoints.findUnique({ where: { user_id: userId } });
+        throw new BadRequestException(
+          `积分不足，需要 ${amount} 积分，当前余额 ${current?.balance ?? 0}`,
+        );
+      }
+
+      const after = await tx.userPoints.findUnique({ where: { user_id: userId } });
+      const balanceAfter = after?.balance ?? 0;
+
+      await tx.pointsLog.create({
+        data: {
+          user_id: userId,
+          points_change: -amount,
+          balance_before: balanceAfter + amount,
+          balance_after: balanceAfter,
+          log_type: logType,
+          description,
+          related_id: relatedId,
+        },
+      });
+
+      return {
+        success: true,
+        points_spent: amount,
+        balance: balanceAfter,
+      };
+    });
   }
 
   /**

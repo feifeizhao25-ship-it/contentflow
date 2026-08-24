@@ -1,18 +1,48 @@
 .DS_Store
-.env
-.env.*
-!.env.example
-!.env.*.example
-
+# 不带斜杠：同时匹配目录与符号链接。
+# runtime/{api,web-cn,web-int}/node_modules 目前是指向 recovery-candidate-v2
+# 的软链，带斜杠的规则匹配不到它们，会被当普通文件提交（内容是本机绝对路径）。
+node_modules
 node_modules/
 .next/
 dist/
-build/
 coverage/
+.dart_tool/
+build/
 .gradle/
-*.tsbuildinfo
-._*
-
+android/.gradle/
+Pods/
+DerivedData/
+.env
+.env.*
+!.env.example
+!.env.production.example
 *.log
-*.tmp
-artifacts/ops/
+artifacts/
+*.tsbuildinfo
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# 数据库文件不应入库
+*.db
+*.sqlite
+*.sqlite3
+
+# 第三方服务凭证
+google-services.json
+GoogleService-Info.plist
+*.keystore
+*.jks
+*.p8
+*.p12
+
+# Flutter-generated host integration files and ephemeral tool helpers.
+.flutter-plugins-dependencies
+**/ios/Flutter/ephemeral/
+**/ios/Flutter/Generated.xcconfig
+**/ios/Flutter/flutter_export_environment.sh
+**/ios/Runner/GeneratedPluginRegistrant.*

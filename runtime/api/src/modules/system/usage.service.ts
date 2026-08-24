@@ -50,15 +50,23 @@ export class UsageService {
 
         if (!tenant || !meter) return false;
 
-        const resStr = resource as string;
-        const limitKey = `max_${resStr.replace('_count', 'es_monthly').replace('_mb', '_gb').replace('ai_tokens', 'ai_calls_monthly')}`;
-        const limit = (tenant.limits as any)?.[limitKey] || 0;
+        const limits = (tenant.limits as any) || {};
+        const limit = resource === ResourceType.TOKENS
+            ? (limits.max_ai_tokens_monthly ??
+                ((limits.max_ai_calls_monthly ?? 0) * 2500))
+            : resource === ResourceType.STORAGE
+              ? (limits.max_storage_gb ?? 0)
+              : resource === ResourceType.PUBLISHES
+                ? (limits.max_publishes_monthly ?? 0)
+                : resource === ResourceType.IMAGES
+                  ? (limits.max_images_monthly ?? 0)
+                  : (limits.max_videos_monthly ?? 0);
         const current = (meter as any)[resource] || 0;
 
         // 如果限制是 GB，需要转换
         const adjustedCurrent = resource === ResourceType.STORAGE ? current / 1024 : current;
 
-        return adjustedCurrent < limit;
+        return limit === -1 || adjustedCurrent < limit;
     }
 
     private async getMeter(tenantId: string, period: string) {

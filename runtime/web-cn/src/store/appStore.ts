@@ -1,63 +1,90 @@
 import { create } from 'zustand';
-
-export interface TenantProfile {
-  id: string;
-  name: string;
-  plan: 'free' | 'starter' | 'pro' | 'team' | 'enterprise';
-}
-
-export interface UserProfile {
-  id: string;
-  email: string;
-  name?: string;
-  avatar_url?: string;
-  role: 'owner' | 'admin' | 'editor' | 'viewer' | 'member';
-  tenant?: TenantProfile;
-}
+import { Profile, Tenant } from '@/lib/supabase';
 
 interface AppState {
-  user: UserProfile | null;
-  tenant: TenantProfile | null;
-  setUser: (user: UserProfile | null) => void;
-  setTenant: (tenant: TenantProfile | null) => void;
-  sidebarCollapsed: boolean;
-  toggleSidebar: () => void;
-  setSidebarCollapsed: (collapsed: boolean) => void;
-  isLoading: boolean;
-  setLoading: (loading: boolean) => void;
-  initializeAuth: () => Promise<void>;
+    // User & Tenant
+    user: Profile | null;
+    tenant: Tenant | null;
+    setUser: (user: Profile | null) => void;
+    setTenant: (tenant: Tenant | null) => void;
+
+    // UI State
+    sidebarCollapsed: boolean;
+    toggleSidebar: () => void;
+    setSidebarCollapsed: (collapsed: boolean) => void;
+
+    // Loading states
+    isLoading: boolean;
+    setLoading: (loading: boolean) => void;
+
+    // Auth Actions
+    initializeAuth: () => Promise<void>;
 }
 
 export const useAppStore = create<AppState>((set) => ({
-  user: null,
-  tenant: null,
-  setUser: (user) => set({ user }),
-  setTenant: (tenant) => set({ tenant }),
-  sidebarCollapsed: false,
-  toggleSidebar: () => set((state) => ({ sidebarCollapsed: !state.sidebarCollapsed })),
-  setSidebarCollapsed: (sidebarCollapsed) => set({ sidebarCollapsed }),
-  isLoading: false,
-  setLoading: (isLoading) => set({ isLoading }),
-  initializeAuth: async () => {
-    set({ isLoading: true });
-    try {
-      const response = await fetch('/api/v1/auth/profile', {
-        credentials: 'include',
-        cache: 'no-store',
-      });
-      if (!response.ok) {
-        set({ user: null, tenant: null });
-        return;
-      }
-      const payload = await response.json();
-      const user = (payload?.data?.user ?? payload?.user) as UserProfile | undefined;
-      set({ user: user ?? null, tenant: user?.tenant ?? null });
-    } catch {
-      set({ user: null, tenant: null });
-    } finally {
-      set({ isLoading: false });
+    // User & Tenant
+    user: null,
+    tenant: null,
+    setUser: (user) => set({ user }),
+    setTenant: (tenant) => set({ tenant }),
+
+    // UI State
+    sidebarCollapsed: false,
+    toggleSidebar: () => set((state) => ({ sidebarCollapsed: !state.sidebarCollapsed })),
+    setSidebarCollapsed: (collapsed) => set({ sidebarCollapsed: collapsed }),
+
+    // Loading states
+    isLoading: false,
+    setLoading: (isLoading) => set({ isLoading }),
+
+    // Auth Actions
+    initializeAuth: async () => {
+        const { supabase } = await import('@/lib/supabase');
+        const { data: { session } } = await supabase.auth.getSession();
+
+        if (session?.user) {
+            // Fetch Profile
+            const { data: profile } = await supabase
+                .from('profiles')
+                .select('*')
+                .eq('id', session.user.id)
+                .single();
+
+            if (profile) {
+                set({ user: profile as Profile });
+
+                // Fetch Tenant
+                const { data: tenant } = await supabase
+                    .from('tenants')
+                    .select('*')
+                    .eq('id', profile.tenant_id)
+                    .single();
+
+                if (tenant) {
+                    set({ tenant: tenant as Tenant });
+                }
+            }
+        } else {
+            set({ user: null, tenant: null });
+        }
     }
-  },
 }));
 
 export const useUserStore = useAppStore;
+
+interface AchievementState {
+    unlocked: string[];
+    unlockAchievement: (id: string) => void;
+    isUnlocked: (id: string) => boolean;
+}
+
+export const useAchievementStore = create<AchievementState>((set, get) => ({
+    unlocked: [],
+    unlockAchievement: (id) =>
+        set((state) =>
+            state.unlocked.includes(id)
+                ? state
+                : { unlocked: [...state.unlocked, id] },
+        ),
+    isUnlocked: (id) => get().unlocked.includes(id),
+}));

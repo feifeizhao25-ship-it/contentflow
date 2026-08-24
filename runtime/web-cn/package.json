@@ -7,12 +7,20 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "eslint src",
+    "check:contract": "node scripts/check-api-contract.mjs",
+    "test:security": "node --experimental-strip-types scripts/test-media-path-guard.mjs",
+    "test:image-label": "node --experimental-strip-types scripts/test-ai-image-label.mjs",
+    "test:image-label-browser": "node --experimental-strip-types scripts/test-ai-image-label-browser.mjs",
+    "test:entitlements": "node --experimental-strip-types scripts/test-entitlements.mjs"
   },
   "dependencies": {
     "@ant-design/icons": "^5.4.0",
     "@ant-design/nextjs-registry": "^1.0.0",
+    "@fal-ai/client": "^1.10.0",
     "@sentry/nextjs": "^10.69.0",
+    "@supabase/ssr": "^0.12.4",
+    "@supabase/supabase-js": "^2.45.0",
     "@tiptap/react": "^2.5.0",
     "@tiptap/starter-kit": "^2.5.0",
     "antd": "^5.20.0",
@@ -30,7 +38,7 @@
     "zustand": "^4.5.0"
   },
   "devDependencies": {
-    "@tailwindcss/postcss": "^4.3.3",
+    "@tailwindcss/postcss": "^4.1.11",
     "@types/canvas-confetti": "^1.6.0",
     "@types/fluent-ffmpeg": "^2.1.28",
     "@types/node": "^20.14.0",
@@ -41,7 +49,6 @@
     "typescript": "^5.5.0"
   },
   "overrides": {
-    "nanoid": "^3.3.17",
     "postcss": "^8.5.18",
     "sharp": "^0.35.3"
   }

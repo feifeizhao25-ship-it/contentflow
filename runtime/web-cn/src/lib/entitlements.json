@@ -1,0 +1,162 @@
+{
+  "product": "contentflow-cn",
+  "version": "1.0.0",
+  "tiers": {
+    "free": {
+      "name": "免费版",
+      "priceMonthlyCny": 0,
+      "priceYearlyCny": 0,
+      "custom": false,
+      "features": ["3个平台账号", "每月30条发布", "每月5万AI令牌"],
+      "quotas": {
+        "platformAccounts": 3,
+        "monthlyPosts": 30,
+        "monthlyAiTokens": 50000,
+        "videoMinutesMonthly": 10,
+        "storageGb": 1
+      },
+      "knowledge": {
+        "platformRules": "基础",
+        "hotspotLibrary": "公共热点",
+        "templateLibrary": "基础模板"
+      },
+      "personalization": {
+        "personaCount": 1,
+        "stylePresets": "基础",
+        "recommendation": "通用推荐"
+      },
+      "export": {
+        "formats": ["视频"],
+        "watermark": true,
+        "batchExport": false
+      },
+      "collaboration": {
+        "seats": 1,
+        "approvalWorkflow": false,
+        "rolePermissions": false
+      },
+      "service": {
+        "support": "社区支持",
+        "sla": false,
+        "privateDeployment": false
+      }
+    },
+    "pro": {
+      "name": "专业版",
+      "priceMonthlyCny": 128,
+      "priceYearlyCny": 1280,
+      "custom": false,
+      "features": ["10个平台账号", "每月500条发布", "每月250万AI令牌"],
+      "quotas": {
+        "platformAccounts": 10,
+        "monthlyPosts": 500,
+        "monthlyAiTokens": 2500000,
+        "videoMinutesMonthly": 120,
+        "storageGb": 20
+      },
+      "knowledge": {
+        "platformRules": "全量平台规则",
+        "hotspotLibrary": "实时热点",
+        "templateLibrary": "全量模板"
+      },
+      "personalization": {
+        "personaCount": 5,
+        "stylePresets": "全量风格",
+        "recommendation": "个性化推荐"
+      },
+      "export": {
+        "formats": ["视频", "图文"],
+        "watermark": false,
+        "batchExport": true
+      },
+      "collaboration": {
+        "seats": 1,
+        "approvalWorkflow": false,
+        "rolePermissions": false
+      },
+      "service": {
+        "support": "工单支持",
+        "sla": false,
+        "privateDeployment": false
+      }
+    },
+    "team": {
+      "name": "团队版",
+      "priceMonthlyCny": 699,
+      "priceYearlyCny": 6990,
+      "custom": false,
+      "features": ["30个平台账号", "团队协作与审批", "每月1000万AI令牌"],
+      "quotas": {
+        "platformAccounts": 30,
+        "monthlyPosts": 2000,
+        "monthlyAiTokens": 10000000,
+        "videoMinutesMonthly": 600,
+        "storageGb": 100
+      },
+      "knowledge": {
+        "platformRules": "全量平台规则",
+        "hotspotLibrary": "实时热点+行业专题",
+        "templateLibrary": "全量模板+团队共享模板"
+      },
+      "personalization": {
+        "personaCount": 20,
+        "stylePresets": "全量风格+团队自定义",
+        "recommendation": "个性化推荐"
+      },
+      "export": {
+        "formats": ["视频", "图文", "数据报表"],
+        "watermark": false,
+        "batchExport": true
+      },
+      "collaboration": {
+        "seats": 10,
+        "approvalWorkflow": true,
+        "rolePermissions": true
+      },
+      "service": {
+        "support": "优先工单支持",
+        "sla": false,
+        "privateDeployment": false
+      }
+    },
+    "enterprise": {
+      "name": "企业版",
+      "priceMonthlyCny": null,
+      "priceYearlyCny": null,
+      "custom": true,
+      "features": ["按工作区和账号规模报价", "操作审计", "专属支持与私有化选项"],
+      "quotas": {
+        "platformAccounts": -1,
+        "monthlyPosts": -1,
+        "monthlyAiTokens": -1,
+        "videoMinutesMonthly": -1,
+        "storageGb": -1
+      },
+      "knowledge": {
+        "platformRules": "全量+私有知识库",
+        "hotspotLibrary": "实时热点+行业专题",
+        "templateLibrary": "全量+企业私有模板"
+      },
+      "personalization": {
+        "personaCount": -1,
+        "stylePresets": "企业自定义",
+        "recommendation": "个性化推荐+定制策略"
+      },
+      "export": {
+        "formats": ["视频", "图文", "数据报表", "API"],
+        "watermark": false,
+        "batchExport": true
+      },
+      "collaboration": {
+        "seats": -1,
+        "approvalWorkflow": true,
+        "rolePermissions": true
+      },
+      "service": {
+        "support": "专属客户经理",
+        "sla": true,
+        "privateDeployment": true
+      }
+    }
+  }
+}

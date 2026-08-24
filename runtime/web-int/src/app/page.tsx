@@ -16,7 +16,7 @@ export default function WorkspacePage() {
           <article className="card"><span className="status">Illustrative</span><div className="metric">96%</div><p>sample policy check rate</p></article>
         </div>
       </section>
-      <section><div className="eyebrow">Illustrative priorities</div><h2>Your workspace adapts to what needs attention.</h2>
+      <section><div className="eyebrow">Example workflow</div><h2>Your workspace adapts to what needs attention.</h2>
         <div className="grid">
           <article className="card"><h3>US launch review</h3><p>Three claims need source verification before LinkedIn approval.</p></article>
           <article className="card"><h3>UK tone adaptation</h3><p>Replace sales-heavy phrasing with a proof-led editorial angle.</p></article>

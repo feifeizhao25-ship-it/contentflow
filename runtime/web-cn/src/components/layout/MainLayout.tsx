@@ -1,9 +1,10 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Menu, Avatar, Dropdown, ConfigProvider, theme } from 'antd';
+import { Layout, Menu, Avatar, Dropdown, ConfigProvider, theme, Button } from 'antd';
 import { motion } from 'framer-motion';
 import {
+    DashboardOutlined,
     EditOutlined,
     FileTextOutlined,
     SendOutlined,
@@ -11,6 +12,7 @@ import {
     FolderOutlined,
     BarChartOutlined,
     SettingOutlined,
+    BellOutlined,
     LogoutOutlined,
     CreditCardOutlined,
     FireOutlined,
@@ -22,13 +24,19 @@ import {
     HomeOutlined,
     PlusOutlined,
     CrownOutlined,
+    ThunderboltOutlined,
     TeamOutlined,
+    AppstoreOutlined
 } from '@ant-design/icons';
 import { useAppStore } from '@/store/appStore';
 import { useThemeStore } from '@/store/themeStore';
+import { usePointsStore } from '@/store/pointsStore';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import clsx from 'clsx';
+import dayjs from 'dayjs';
+
+const { Content } = Layout;
 
 interface MainLayoutProps {
     children: React.ReactNode;
@@ -39,10 +47,12 @@ interface MainLayoutProps {
 
 export default function MainLayout({ children }: MainLayoutProps) {
     const router = useRouter();
-    const { sidebarCollapsed, toggleSidebar, user, tenant, initializeAuth } = useAppStore();
+    const { sidebarCollapsed, toggleSidebar, user } = useAppStore();
     const { isDark, toggleTheme } = useThemeStore();
+    const { balance: points } = usePointsStore();
     const pathname = usePathname();
     const [scrolled, setScrolled] = useState(false);
+    const [hasCheckedIn, setHasCheckedIn] = useState(false);
 
     // 处理滚动效果
     useEffect(() => {
@@ -53,13 +63,17 @@ export default function MainLayout({ children }: MainLayoutProps) {
         return () => window.removeEventListener('scroll', handleScroll);
     }, []);
 
+    // 检查今日是否已签到
     useEffect(() => {
-        void initializeAuth();
-    }, [initializeAuth]);
+        const lastCheckIn = localStorage.getItem('lastCheckIn');
+        if (lastCheckIn === dayjs().format('YYYY-MM-DD')) {
+            setHasCheckedIn(true);
+        }
+    }, []);
 
     // 核心创作功能
     const creationItems = [
-        { key: '/studio', icon: <EditOutlined />, label: <Link href="/studio">AI创作</Link>, desc: '生成并审核内容' },
+        { key: '/ai-create', icon: <EditOutlined />, label: <Link href="/ai-create">AI创作</Link>, desc: '快速生成内容' },
         { key: '/contents', icon: <FileTextOutlined />, label: <Link href="/contents">内容管理</Link>, desc: '管理所有作品' },
     ];
 
@@ -67,7 +81,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
     const publishItems = [
         { key: '/publish', icon: <SendOutlined />, label: <Link href="/publish">分发中心</Link>, desc: '一键多平台发布' },
         { key: '/accounts', icon: <UserOutlined />, label: <Link href="/accounts">账号管理</Link>, desc: '连接社交账号' },
-        { key: '/schedule', icon: <HomeOutlined />, label: <Link href="/schedule">发布日历</Link>, desc: '查看真实发布任务' },
+        { key: '/calendar', icon: <HomeOutlined />, label: <Link href="/calendar">发布日历</Link>, desc: '规划发布时间' },
     ];
 
     // 数据与素材
@@ -80,6 +94,9 @@ export default function MainLayout({ children }: MainLayoutProps) {
     // 设置与其他
     const settingsItems = [
         { key: '/team', icon: <TeamOutlined />, label: <Link href="/team">团队协作</Link> },
+        { key: '/community', icon: <AppstoreOutlined />, label: <Link href="/community">创作者社区</Link> },
+        { type: 'divider' as const },
+        { key: '/points', icon: <ThunderboltOutlined />, label: <Link href="/points">积分中心</Link> },
         { key: '/settings', icon: <SettingOutlined />, label: <Link href="/settings">系统设置</Link> },
         { key: '/pricing', icon: <CreditCardOutlined />, label: <Link href="/pricing">升级会员</Link> },
     ];
@@ -93,8 +110,8 @@ export default function MainLayout({ children }: MainLayoutProps) {
     ];
 
     const userMenuItems = [
-        { key: 'profile', icon: <UserOutlined />, label: <Link href="/settings">个人资料</Link> },
-        { key: 'settings', icon: <SettingOutlined />, label: <Link href="/settings">账号设置</Link> },
+        { key: 'profile', icon: <UserOutlined />, label: '个人资料' },
+        { key: 'settings', icon: <SettingOutlined />, label: '账号设置' },
         { key: 'pricing', icon: <CreditCardOutlined />, label: <Link href="/pricing" className="text-inherit">升级会员</Link> },
         { type: 'divider' as const },
         {
@@ -103,8 +120,8 @@ export default function MainLayout({ children }: MainLayoutProps) {
             label: '退出登录',
             danger: true,
             onClick: async () => {
-                await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' });
-                useAppStore.setState({ user: null, tenant: null });
+                const { supabase } = await import('@/lib/supabase');
+                await supabase.auth.signOut();
                 window.location.href = '/login';
             }
         },
@@ -123,7 +140,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
                 initial={false}
                 animate={{ width: sidebarWidth }}
                 className={clsx(
-                    "app-sidebar fixed left-0 top-0 bottom-0 z-50 h-screen transition-all duration-300 flex flex-col",
+                    "fixed left-0 top-0 bottom-0 z-50 h-screen transition-all duration-300 flex flex-col",
                     isDarkMode 
                         ? "bg-zinc-900/95 backdrop-blur-xl border-r border-zinc-800" 
                         : "bg-white/95 backdrop-blur-xl border-r border-slate-100"
@@ -207,13 +224,13 @@ export default function MainLayout({ children }: MainLayoutProps) {
                                 <span className={clsx(
                                     "text-sm font-bold",
                                     isDarkMode ? "text-amber-400" : "text-amber-600"
-                                )}>{tenant?.plan === 'free' || !tenant?.plan ? '免费版' : `${tenant.plan.toUpperCase()} 版`}</span>
+                                )}>免费版</span>
                             </div>
                             <div className={clsx(
                                 "text-[11px]",
                                 isDarkMode ? "text-zinc-500" : "text-zinc-400"
                             )}>
-                                查看套餐与明确额度
+                                升级解锁无限额度
                             </div>
                         </div>
                     </div>
@@ -222,13 +239,13 @@ export default function MainLayout({ children }: MainLayoutProps) {
 
             {/* 主内容区 */}
             <main
-                className="app-main flex-1 transition-all duration-300 flex flex-col min-h-screen relative min-w-0"
-                style={{ '--sidebar-width': `${sidebarWidth}px` } as React.CSSProperties}
+                className="flex-1 transition-all duration-300 flex flex-col min-h-screen relative"
+                style={{ marginLeft: sidebarWidth }}
             >
                 {/* 顶部栏 */}
                 <header
                     className={clsx(
-                        "app-topbar sticky top-0 z-40 transition-all duration-300 px-6 h-16 flex items-center justify-between",
+                        "sticky top-0 z-40 transition-all duration-300 px-6 h-16 flex items-center justify-between",
                         scrolled 
                             ? isDarkMode 
                                 ? "bg-zinc-900/60 border-b border-zinc-800 backdrop-blur-xl" 
@@ -286,11 +303,48 @@ export default function MainLayout({ children }: MainLayoutProps) {
                             {isDark ? <SunOutlined /> : <MoonOutlined />}
                         </motion.button>
 
+                        {/* 签到 */}
+                        <motion.button
+                            whileHover={{ scale: 1.05 }}
+                            whileTap={{ scale: 0.95 }}
+                            onClick={() => router.push('/points')}
+                            className={clsx(
+                                "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium",
+                                hasCheckedIn
+                                    ? isDarkMode ? "bg-green-500/20 text-green-400" : "bg-green-100 text-green-600"
+                                    : isDarkMode ? "bg-amber-500/20 text-amber-400" : "bg-orange-100 text-orange-600"
+                            )}
+                        >
+                            <FireOutlined className={clsx(!hasCheckedIn && "animate-pulse")} />
+                            {hasCheckedIn ? '已签到' : '签到'}
+                        </motion.button>
+
+                        {/* 积分 */}
+                        <div className={clsx(
+                            "hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium",
+                            isDarkMode ? "bg-zinc-800 text-amber-400" : "bg-amber-50 text-amber-600"
+                        )}>
+                            <ThunderboltOutlined />
+                            <span>{points}</span>
+                        </div>
+
+                        {/* 通知 */}
+                        <motion.button
+                            whileHover={{ scale: 1.05 }}
+                            className={clsx(
+                                "relative p-1.5 rounded-lg transition-colors",
+                                isDarkMode ? "text-zinc-400 hover:text-white" : "text-zinc-500 hover:text-zinc-700"
+                            )}
+                        >
+                            <BellOutlined className="text-lg" />
+                            <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-red-500 rounded-full" />
+                        </motion.button>
+
                         {/* 新建按钮 */}
                         <motion.button
                             whileHover={{ scale: 1.05 }}
                             whileTap={{ scale: 0.95 }}
-                            onClick={() => router.push('/studio')}
+                            onClick={() => router.push('/ai-create')}
                             className={clsx(
                                 "flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-sm font-medium text-white",
                                 "bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500"
@@ -332,7 +386,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
 
                 {/* 内容区 */}
                 <div className={clsx(
-                    "app-content flex-1 p-6 overflow-x-hidden",
+                    "flex-1 p-6 overflow-x-hidden",
                     isDarkMode ? "bg-zinc-950" : "bg-background"
                 )}>
                     {/* 背景光效 */}

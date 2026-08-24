@@ -126,42 +126,57 @@ export class AchievementService {
       });
     }
 
-    const newBalance = (userPoints.balance || 0) + achievement.points_reward;
+    return await this.prisma.$transaction(async (tx) => {
+      // 先抢占领取标记，只有把 points_claimed 翻成 true 的请求才发分。
+      // 上面第 120 行的判断与发分之间存在竞态，连点两下即可重复领取。
+      const claimed = await tx.userAchievement.updateMany({
+        where: {
+          id: userAchievement.id,
+          points_claimed: false,
+          is_unlocked: true,
+        },
+        data: { points_claimed: true, points_claimed_at: new Date() },
+      });
 
-    await this.prisma.userPoints.update({
-      where: { user_id: userId },
-      data: {
-        balance: newBalance,
-        total_earned: { increment: achievement.points_reward },
-        experience_points: { increment: achievement.points_reward },
-      },
+      if (claimed.count === 0) {
+        throw new BadRequestException('奖励已领取');
+      }
+
+      // increment 而非绝对赋值 —— 原来的 `balance: newBalance` 会覆盖掉
+      // 读取之后写入之前发生的其他加分
+      await tx.userPoints.update({
+        where: { user_id: userId },
+        data: {
+          balance: { increment: achievement.points_reward },
+          total_earned: { increment: achievement.points_reward },
+          experience_points: { increment: achievement.points_reward },
+        },
+      });
+
+      const after = await tx.userPoints.findUnique({ where: { user_id: userId } });
+      const newBalance = after?.balance ?? 0;
+
+      await tx.pointsLog.create({
+        data: {
+          user_id: userId,
+          points_change: achievement.points_reward,
+          balance_before: newBalance - achievement.points_reward,
+          balance_after: newBalance,
+          log_type: 'achievement_unlock',
+          description: `解锁成就: ${achievement.name}`,
+          related_id: achievementId,
+        },
+      });
+
+      return {
+        success: true,
+        achievement_id: achievement.id,
+        achievement_name: achievement.name,
+        points_earned: achievement.points_reward,
+        new_balance: newBalance,
+        message: `解锁成就 "${achievement.name}"，获得 ${achievement.points_reward} 积分！`,
+      };
     });
-
-    await this.prisma.userAchievement.update({
-      where: { id: userAchievement.id },
-      data: { points_claimed: true, points_claimed_at: new Date() },
-    });
-
-    await this.prisma.pointsLog.create({
-      data: {
-        user_id: userId,
-        points_change: achievement.points_reward,
-        balance_before: userPoints.balance,
-        balance_after: newBalance,
-        log_type: 'achievement_unlock',
-        description: `解锁成就: ${achievement.name}`,
-        related_id: achievementId,
-      },
-    });
-
-    return {
-      success: true,
-      achievement_id: achievement.id,
-      achievement_name: achievement.name,
-      points_earned: achievement.points_reward,
-      new_balance: newBalance,
-      message: `解锁成就 "${achievement.name}"，获得 ${achievement.points_reward} 积分！`,
-    };
   }
 
   async getAchievementStats(userId: string) {

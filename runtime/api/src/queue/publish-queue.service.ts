@@ -22,6 +22,10 @@ export class PublishQueueService {
     const job = await this.publishQueue.add(data, {
       delay: delay || 0,
       jobId: `publish-${data.taskId}`,
+      attempts: 3,
+      backoff: { type: 'exponential', delay: 5000 },
+      removeOnComplete: 1000,
+      removeOnFail: 5000,
     });
     return job;
   }
@@ -31,6 +35,25 @@ export class PublishQueueService {
       data: task,
       jobId: `publish-${task.taskId}`,
     })));
+  }
+
+  async retryPublishTask(data: PublishJobData) {
+    const existing = await this.publishQueue.getJob(`publish-${data.taskId}`);
+    if (existing) {
+      const state = await existing.getState();
+      if (state === 'failed') {
+        await existing.retry();
+        return existing;
+      }
+      if (['waiting', 'active', 'delayed'].includes(state)) return existing;
+    }
+    return this.publishQueue.add(data, {
+      jobId: `publish-${data.taskId}-retry-${Date.now()}`,
+      attempts: 3,
+      backoff: { type: 'exponential', delay: 5000 },
+      removeOnComplete: 1000,
+      removeOnFail: 5000,
+    });
   }
 
   async getQueueStats() {

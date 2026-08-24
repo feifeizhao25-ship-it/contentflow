@@ -466,16 +466,13 @@ class AssetsScreen extends ConsumerWidget {
         if (!context.mounted) return;
         // Upload
         final api = ref.read(apiClientProvider);
-
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('Uploading...')));
-
-        AssetType type = source == ImageSource.camera
-            ? AssetType.image
-            : AssetType.image;
-        await api.uploadAsset(image.path, type);
-
+        
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Uploading...')),
+        );
+        
+        await api.uploadAsset(image.path, AssetType.image);
+        
         ref.invalidate(assetsProvider);
 
         if (context.mounted) {

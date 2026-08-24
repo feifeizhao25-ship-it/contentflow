@@ -1,152 +1,293 @@
 'use client';
 
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Alert, Badge, Button, Card, Empty, Segmented, Select, Skeleton, Table, Tag } from 'antd';
-import { CalendarOutlined, ReloadOutlined, UnorderedListOutlined } from '@ant-design/icons';
-import Link from 'next/link';
-import dayjs, { Dayjs } from 'dayjs';
+import React, { useState, useEffect } from 'react';
+import {
+    Button, Card, Tag, Modal, Form, Input, Select, message, Empty,
+    Segmented, Table, Badge, Tooltip, Avatar, Divider, Space
+} from 'antd';
+import {
+    CalendarOutlined,
+    PlusOutlined,
+    ClockCircleOutlined,
+    EditOutlined,
+    DeleteOutlined,
+    CheckCircleOutlined,
+    ExclamationCircleOutlined,
+    UnorderedListOutlined,
+    GlobalOutlined,
+    FilterOutlined,
+    AppstoreOutlined,
+    ExclamationCircleFilled,
+    LoadingOutlined
+} from '@ant-design/icons';
+import { motion, AnimatePresence } from 'framer-motion';
+import { useThemeStore } from '@/store/themeStore';
 import { apiClient } from '@/lib/api-client';
+import { useSearchParams } from 'next/navigation';
+import clsx from 'clsx';
+import dayjs from 'dayjs';
 
-interface ApiTask {
+const { TextArea } = Input;
+const { Option } = Select;
+
+// ==================== Types ====================
+interface PublishTask {
     id: string;
-    status: string;
-    scheduled_at?: string;
-    platform_post_url?: string;
-    error_message?: string;
-    content?: { title?: string; cover_url?: string };
-    platform_account?: { platform?: string; account_name?: string; account_nickname?: string };
+    title: string;
+    date: string;
+    time: string;
+    platforms: string[];
+    status: 'scheduled' | 'published' | 'failed';
+    thumbnail?: string;
+    account?: string;
 }
 
-const STATUS_LABELS: Record<string, string> = {
-    pending: '待排期',
-    queued: '已入队',
-    processing: '发布中',
-    submitted_unconfirmed: '等待远端确认',
-    published: '已发布',
-    failed: '失败',
-    cancelled: '已取消',
+const PLATFORMS = [
+    { id: 'xhs', name: '小红书', color: '#ef4444', icon: '📕' },
+    { id: 'douyin', name: '抖音', color: '#1a1a1a', icon: '🎵' },
+    { id: 'weixin', name: '视频号', color: '#07c160', icon: '💬' },
+    { id: 'weibo', name: '微博', color: '#f59e0b', icon: '👁️' },
+    { id: 'bilibili', name: 'B站', color: '#00a1d6', icon: '📺' },
+    { id: 'zhihu', name: '知乎', color: '#0066ff', icon: '💡' },
+];
+
+// ==================== Utils ====================
+const getCalendarDays = (currentDate: dayjs.Dayjs) => {
+    const days = [];
+    const startOfMonth = currentDate.startOf('month');
+    const endOfMonth = currentDate.endOf('month');
+    const startDay = startOfMonth.day();
+    const daysInMonth = endOfMonth.date();
+
+    for (let i = 0; i < startDay; i++) {
+        days.push({ date: null, day: null, isCurrentMonth: false });
+    }
+    for (let day = 1; day <= daysInMonth; day++) {
+        const dateStr = currentDate.date(day).format('YYYY-MM-DD');
+        days.push({
+            date: dateStr,
+            day,
+            isCurrentMonth: true,
+            isToday: dateStr === dayjs().format('YYYY-MM-DD'),
+        });
+    }
+    return days;
 };
 
-function unwrapTasks(response: any): ApiTask[] {
-    const payload = response?.data ?? response;
-    return Array.isArray(payload?.tasks) ? payload.tasks : [];
-}
-
-function statusBadge(status: string) {
-    if (status === 'published') return 'success';
-    if (status === 'failed') return 'error';
-    if (status === 'cancelled') return 'default';
-    return 'processing';
-}
-
-function calendarDays(month: Dayjs) {
-    const result: Array<{ date: string | null; day: number | null }> = [];
-    for (let index = 0; index < month.startOf('month').day(); index += 1) {
-        result.push({ date: null, day: null });
-    }
-    for (let day = 1; day <= month.daysInMonth(); day += 1) {
-        result.push({ date: month.date(day).format('YYYY-MM-DD'), day });
-    }
-    return result;
-}
-
+// ==================== Main Component ====================
 export default function SchedulePage() {
-    const [view, setView] = useState<'month' | 'list'>('month');
-    const [status, setStatus] = useState('all');
-    const [month] = useState(dayjs());
-    const [selectedDate, setSelectedDate] = useState(dayjs().format('YYYY-MM-DD'));
-    const [tasks, setTasks] = useState<ApiTask[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState('');
+    const { isDark } = useThemeStore();
+    const searchParams = useSearchParams();
+    const initialView = (searchParams.get('view') === 'list' ? 'list' : 'month') as 'month' | 'list';
+    const [viewMode, setViewMode] = useState<'month' | 'list'>(initialView);
+    const [currentMonth, setCurrentMonth] = useState(dayjs());
+    const [isLoading, setIsLoading] = useState(false);
+    const [tasks, setTasks] = useState<PublishTask[]>([]);
+    const [selectedDate, setSelectedDate] = useState<string | null>(dayjs().format('YYYY-MM-DD'));
+    const [filterPlatform, setFilterPlatform] = useState<string>('all');
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [editingTask, setEditingTask] = useState<PublishTask | null>(null);
+    const [form] = Form.useForm();
 
-    const load = useCallback(async () => {
-        setLoading(true);
-        setError('');
-        try {
-            const query = status === 'all' ? '' : `?status=${encodeURIComponent(status)}`;
-            setTasks(unwrapTasks(await apiClient.get(`/publish/tasks${query}`)));
-        } catch (loadError) {
-            setTasks([]);
-            setError(loadError instanceof Error ? loadError.message : '排期加载失败');
-        } finally {
-            setLoading(false);
+    useEffect(() => {
+        const view = searchParams.get('view');
+        if (view === 'list' || view === 'month') {
+            setViewMode(view);
         }
-    }, [status]);
+    }, [searchParams]);
 
-    useEffect(() => { void load(); }, [load]);
+    useEffect(() => {
+        fetchTasks();
+    }, [filterPlatform]);
 
-    const days = useMemo(() => calendarDays(month), [month]);
-    const tasksOn = (date: string | null) => tasks.filter(task => task.scheduled_at && dayjs(task.scheduled_at).format('YYYY-MM-DD') === date);
+    const fetchTasks = async () => {
+        setIsLoading(true);
+        try {
+            const res = await apiClient.get<any>(`/publish/tasks?status=${filterPlatform === 'all' ? '' : filterPlatform}`);
+            if (res.data) {
+                const mapped: PublishTask[] = res.data.map((t: any) => ({
+                    id: t.id,
+                    title: t.content?.title || '未命名内容',
+                    date: dayjs(t.scheduled_at).format('YYYY-MM-DD'),
+                    time: dayjs(t.scheduled_at).format('HH:mm'),
+                    platforms: [t.platform],
+                    status: t.status === 'pending' ? 'scheduled' : t.status === 'published' ? 'published' : 'failed',
+                    thumbnail: t.content?.thumbnail_url
+                }));
+                setTasks(mapped);
+            } else {
+                setTasks([]);
+            }
+        } catch (e) {
+            console.error('Failed to fetch tasks', e);
+            message.error('发布任务加载失败，请稍后重试');
+            setTasks([]);
+        } finally {
+            setIsLoading(false);
+        }
+    };
 
-    if (loading) return <Skeleton active paragraph={{ rows: 8 }} />;
+    const filteredTasks = tasks;
+    const calendarDays = getCalendarDays(currentMonth);
+
+    const getTasksForDate = (date: string | null) => filteredTasks.filter(task => task.date === date);
+
+    const hasConflict = (task: PublishTask) => {
+        return tasks.some(t => t.id !== task.id && t.date === task.date && t.time === task.time);
+    };
+
+    const handleDateClick = (date: string | null) => {
+        if (date) setSelectedDate(date);
+    };
+
+    const handleSubmit = async () => {
+        const values = await form.validateFields();
+        if (editingTask) {
+            setTasks(tasks.map(t => t.id === editingTask.id ? { ...t, ...values } : t));
+            message.success('任务已更新');
+        } else {
+            setTasks([...tasks, { id: Date.now().toString(), ...values, status: 'scheduled' }]);
+            message.success('任务已排期');
+        }
+        setIsModalOpen(false);
+    };
+
+    // Monthly View
+    const renderMonthView = () => (
+        <div className="grid grid-cols-7 gap-px bg-zinc-200 dark:bg-zinc-800 rounded-2xl overflow-hidden border border-zinc-200 dark:border-zinc-800 shadow-sm relative">
+            {isLoading && <div className="absolute inset-0 bg-white/50 dark:bg-black/50 z-20 flex items-center justify-center"><LoadingOutlined className="text-3xl text-indigo-500" /></div>}
+            {['日', '一', '二', '三', '四', '五', '六'].map(d => (
+                <div key={d} className="bg-zinc-50 dark:bg-zinc-900/[0.4] py-3 text-center text-xs font-bold text-zinc-400">{d}</div>
+            ))}
+            {calendarDays.map((day, i) => {
+                const dayTasks = getTasksForDate(day.date);
+                const isSelected = selectedDate === day.date;
+                return (
+                    <div
+                        key={i}
+                        onClick={() => handleDateClick(day.date)}
+                        className={clsx(
+                            "min-h-[120px] p-2 transition-all cursor-pointer relative",
+                            day.isCurrentMonth ? "bg-white dark:bg-zinc-900" : "bg-zinc-50/50 dark:bg-zinc-950/50 opacity-50",
+                            isSelected && "ring-2 ring-inset ring-indigo-500 z-10",
+                            day.isToday && "bg-indigo-50/30"
+                        )}
+                    >
+                        <span className={clsx("text-xs font-medium", day.isToday ? "text-indigo-600 font-bold" : "text-zinc-500")}>
+                            {day.day}
+                        </span>
+                        <div className="mt-1 space-y-1">
+                            {dayTasks.slice(0, 3).map(t => (
+                                <div key={t.id} className="text-[10px] px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-700 truncate border border-indigo-100 flex items-center gap-1">
+                                    {hasConflict(t) && <ExclamationCircleFilled className="text-amber-500 text-[8px]" />}
+                                    {t.title}
+                                </div>
+                            ))}
+                            {dayTasks.length > 3 && <div className="text-[9px] text-zinc-400 text-center">+{dayTasks.length - 3} 更多</div>}
+                        </div>
+                    </div>
+                );
+            })}
+        </div>
+    );
+
+    // List View
+    const renderListView = () => (
+        <Table
+            loading={isLoading}
+            dataSource={filteredTasks}
+            rowKey="id"
+            pagination={false}
+            className="custom-table"
+            columns={[
+                {
+                    title: '内容',
+                    dataIndex: 'title',
+                    render: (text, record) => (
+                        <div className="flex items-center gap-3">
+                            {record.thumbnail ? <img src={record.thumbnail} alt="内容缩略图" className="w-10 h-10 rounded-lg object-cover" /> : <div className="w-10 h-10 rounded-lg bg-zinc-100 flex items-center justify-center" aria-label="暂无缩略图">📄</div>}
+                            <div>
+                                <div className="font-bold text-sm">{text}</div>
+                                <div className="text-[10px] text-zinc-400">{record.account || '默认账号'}</div>
+                            </div>
+                        </div>
+                    )
+                },
+                {
+                    title: '平台',
+                    dataIndex: 'platforms',
+                    render: (pids: string[]) => (
+                        <div className="flex gap-1">
+                            {pids.map(id => <span key={id}>{PLATFORMS.find(x => x.id === id)?.icon || '🌐'}</span>)}
+                        </div>
+                    )
+                },
+                {
+                    title: '发布时间',
+                    render: (_, record) => (
+                        <div className="text-xs">
+                            <div className="font-medium text-zinc-700">{record.date}</div>
+                            <div className="text-zinc-400">{record.time}</div>
+                        </div>
+                    )
+                },
+                {
+                    title: '状态',
+                    dataIndex: 'status',
+                    render: (status) => (
+                        <Badge status={status === 'scheduled' ? 'processing' : 'success'} text={status === 'scheduled' ? '待发布' : '已发布'} />
+                    )
+                }
+            ]}
+        />
+    );
 
     return (
         <div className="max-w-[1400px] mx-auto space-y-6">
-            <header className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+            <header className="flex items-center justify-between">
                 <div>
                     <h1 className="text-2xl font-bold">排期日历</h1>
-                    <p className="text-sm text-zinc-500 mt-1">仅展示服务端保存的真实任务和远端确认状态</p>
                 </div>
-                <div className="flex flex-wrap gap-3">
-                    <Select value={status} onChange={setStatus} style={{ width: 160 }} options={[
-                        { value: 'all', label: '全部状态' },
-                        ...Object.entries(STATUS_LABELS).map(([value, label]) => ({ value, label })),
-                    ]} />
-                    <Segmented value={view} onChange={(value) => setView(value as 'month' | 'list')} options={[
-                        { label: '日历', value: 'month', icon: <CalendarOutlined /> },
-                        { label: '列表', value: 'list', icon: <UnorderedListOutlined /> },
-                    ]} />
-                    <Button icon={<ReloadOutlined />} onClick={() => void load()}>刷新</Button>
-                    <Link href="/studio"><Button type="primary">创建内容并排期</Button></Link>
+                <div className="flex items-center gap-4">
+                    <Select value={filterPlatform} onChange={setFilterPlatform} style={{ width: 140 }}>
+                        <Option value="all">全部平台</Option>
+                        {PLATFORMS.map(p => <Option key={p.id} value={p.id}>{p.icon} {p.name}</Option>)}
+                    </Select>
+                    <Segmented value={viewMode} onChange={(v) => setViewMode(v as any)} options={[{ label: '日历', value: 'month', icon: <CalendarOutlined /> }, { label: '列表', value: 'list', icon: <UnorderedListOutlined /> }]} />
+                    <Button type="primary" icon={<PlusOutlined />} onClick={() => { setEditingTask(null); setIsModalOpen(true); }} className="bg-indigo-600 rounded-xl">新建排期</Button>
                 </div>
             </header>
 
-            {error && <Alert type="error" showIcon message="无法加载真实排期" description={error} />}
-
-            {!error && tasks.length === 0 ? (
-                <Card><Empty description="暂无真实排期任务"><Link href="/studio"><Button type="primary">创建第一条任务</Button></Link></Empty></Card>
-            ) : view === 'list' ? (
-                <Table<ApiTask>
-                    rowKey="id"
-                    dataSource={tasks}
-                    pagination={{ pageSize: 20 }}
-                    columns={[
-                        { title: '内容', render: (_, task) => task.content?.title || '未命名内容' },
-                        { title: '账号', render: (_, task) => [task.platform_account?.platform, task.platform_account?.account_nickname || task.platform_account?.account_name].filter(Boolean).join(' · ') || '账号信息不可用' },
-                        { title: '时间', render: (_, task) => task.scheduled_at ? dayjs(task.scheduled_at).format('YYYY-MM-DD HH:mm') : '未设置' },
-                        { title: '状态', render: (_, task) => <Badge status={statusBadge(task.status)} text={STATUS_LABELS[task.status] || task.status} /> },
-                        { title: '远端证据', render: (_, task) => task.status === 'published' && task.platform_post_url ? <a href={task.platform_post_url} target="_blank" rel="noreferrer">查看链接</a> : <span className="text-zinc-400">尚无</span> },
-                    ]}
-                />
-            ) : (
-                <div className="grid grid-cols-1 lg:grid-cols-[1fr_300px] gap-6">
-                    <div className="grid grid-cols-7 gap-px bg-zinc-200 rounded-2xl overflow-hidden border border-zinc-200">
-                        {['日', '一', '二', '三', '四', '五', '六'].map(label => <div key={label} className="bg-zinc-50 py-3 text-center text-xs font-bold text-zinc-400">{label}</div>)}
-                        {days.map((item, index) => (
-                            <button
-                                key={`${item.date}-${index}`}
-                                type="button"
-                                disabled={!item.date}
-                                onClick={() => item.date && setSelectedDate(item.date)}
-                                className={`min-h-28 p-2 text-left bg-white ${item.date === selectedDate ? 'ring-2 ring-inset ring-indigo-500' : ''} ${!item.date ? 'opacity-40' : ''}`}
-                            >
-                                <span className="text-xs text-zinc-500">{item.day}</span>
-                                <div className="mt-2 space-y-1">
-                                    {tasksOn(item.date).slice(0, 3).map(task => <Tag key={task.id} color={task.status === 'failed' ? 'red' : task.status === 'published' ? 'green' : 'blue'} className="block truncate m-0">{task.content?.title || '未命名内容'}</Tag>)}
+            <div className="grid grid-cols-12 gap-8">
+                <div className="col-span-9">{viewMode === 'month' ? renderMonthView() : renderListView()}</div>
+                <div className="col-span-3 space-y-4">
+                    <Card title={<div className="flex justify-between items-center"><span className="text-sm">本日任务</span> <Tag className="m-0 text-[10px]">{selectedDate}</Tag></div>} className="glass-card shadow-sm">
+                        <div className="space-y-3">
+                            {getTasksForDate(selectedDate).length > 0 ? getTasksForDate(selectedDate).map(t => (
+                                <div key={t.id} className="group p-3 rounded-xl border hover:border-indigo-200 transition-all">
+                                    <h4 className="text-xs font-bold truncate">{t.title}</h4>
+                                    <div className="text-[10px] text-zinc-500">{t.time}</div>
                                 </div>
-                            </button>
-                        ))}
-                    </div>
-                    <Card title={<span>当日任务 <Tag>{selectedDate}</Tag></span>}>
-                        {tasksOn(selectedDate).length === 0 ? <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="无排期任务" /> : tasksOn(selectedDate).map(task => (
-                            <div key={task.id} className="border-b border-zinc-100 py-3 last:border-0">
-                                <div className="text-sm font-medium">{task.content?.title || '未命名内容'}</div>
-                                <Badge status={statusBadge(task.status)} text={STATUS_LABELS[task.status] || task.status} />
-                            </div>
-                        ))}
+                            )) : <Empty description="无排期任务" image={Empty.PRESENTED_IMAGE_SIMPLE} />}
+                        </div>
                     </Card>
                 </div>
-            )}
+            </div>
+
+            <Modal title={editingTask ? '编辑排期' : '新建排期'} open={isModalOpen} onCancel={() => setIsModalOpen(false)} onOk={handleSubmit} okText="确认" cancelText="取消">
+                <Form form={form} layout="vertical" initialValues={{ date: selectedDate, time: '10:00' }}>
+                    <Form.Item name="title" label="标题" rules={[{ required: true }]}><Input /></Form.Item>
+                    <div className="grid grid-cols-2 gap-4">
+                        <Form.Item name="date" label="日期"><Input type="date" /></Form.Item>
+                        <Form.Item name="time" label="时间"><Input type="time" /></Form.Item>
+                    </div>
+                    <Form.Item name="platforms" label="平台"><Select mode="multiple">{PLATFORMS.map(p => <Option key={p.id} value={p.id}>{p.icon} {p.name}</Option>)}</Select></Form.Item>
+                </Form>
+            </Modal>
+
+            <style jsx global>{`
+                .glass-card { background: rgba(255,255,255,0.7); backdrop-filter: blur(10px); border-radius: 16px; }
+            `}</style>
         </div>
     );
 }

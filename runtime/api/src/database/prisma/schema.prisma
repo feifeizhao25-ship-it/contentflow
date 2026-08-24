@@ -6,7 +6,6 @@
 
 generator client {
   provider = "prisma-client-js"
-  binaryTargets = ["native", "linux-musl-openssl-3.0.x"]
 }
 
 datasource db {
@@ -29,7 +28,7 @@ model Tenant {
   plan_expires_at DateTime?
 
   // 配额限制
-  limits Json @default("{\"max_accounts\": 2, \"max_members\": 1, \"max_publishes_monthly\": 30, \"max_ai_calls_monthly\": 20, \"max_storage_gb\": 1}")
+  limits Json @default("{\"max_accounts\": 2, \"max_members\": 1, \"max_publishes_monthly\": 30, \"max_ai_tokens_monthly\": 50000, \"max_storage_gb\": 1}")
 
   // 使用统计
   usage_stats Json @default("{\"accounts_count\": 0, \"members_count\": 1, \"publishes_this_month\": 0, \"ai_calls_this_month\": 0, \"storage_used_mb\": 0}")
@@ -1082,6 +1081,10 @@ model PaymentOrder {
   subscription    Subscription? @relation(fields: [subscription_id], references: [id])
 
   order_no                 String  @unique
+  idempotency_key          String
+  market                   String  @default("cn")
+  plan_id                  String
+  billing_cycle            String
   order_type               String
   product_name             String?
   amount                   Decimal
@@ -1100,6 +1103,23 @@ model PaymentOrder {
 
   @@index([tenant_id])
   @@index([status])
+  @@unique([tenant_id, idempotency_key])
+}
+
+model PaymentWebhookEvent {
+  id                String   @id @default(uuid())
+  provider          String
+  provider_event_id String
+  order_no          String?
+  signature_valid   Boolean
+  payload_hash      String
+  processed_at      DateTime?
+  processing_error  String?
+  created_at        DateTime @default(now())
+
+  @@unique([provider, provider_event_id])
+  @@index([order_no])
+  @@index([created_at])
 }
 
 model UsageRecord {

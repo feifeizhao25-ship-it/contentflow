@@ -1,0 +1,10 @@
+
+      - name: Create application secrets
+  deploy-production:
+      - name: Configure kubectl (kubeconfig from secret)
+        run: |
+          mkdir -p "$HOME/.kube"
+          echo "${{ secrets.KUBECONFIG_B64 }}" | base64 -d > "$HOME/.kube/config"
+          chmod 600 "$HOME/.kube/config"
+          kubectl config current-context
+          kubectl create namespace production --dry-run=client -o yaml | kubectl apply -f -

@@ -1,0 +1,4 @@
+version: '3.8'
+
+# DEVELOPMENT / MIGRATION ONLY.
+# Production deployments must use 网页端-国内版/infra and the Go services.

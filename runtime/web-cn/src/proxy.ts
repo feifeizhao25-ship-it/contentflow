@@ -1,6 +1,37 @@
 import { NextResponse, type NextRequest } from 'next/server';
 
-const PUBLIC_PATHS = ['/login', '/'];
+const PUBLIC_PATHS = ['/', '/login', '/register', '/pricing', '/privacy', '/terms'];
+
+// (main) 路由组下需要登录的首段路径。只有这些路径在未登录时重定向到登录页；
+// 其余未知路径直接放行，由 Next.js 渲染中文 404 页（src/app/not-found.tsx）。
+const PROTECTED_SEGMENTS = new Set([
+    'accounts',
+    'achievements',
+    'ai-create',
+    'analytics',
+    'calendar',
+    'community',
+    'competitor',
+    'contents',
+    'create',
+    'dashboard',
+    'developer',
+    'growth',
+    'hot',
+    'materials',
+    'monetization',
+    'my-videos',
+    'overview',
+    'persona',
+    'points',
+    'publish',
+    'schedule',
+    'settings',
+    'studio',
+    'team',
+    'traffic-sandwich',
+    'video-studio',
+]);
 
 export async function proxy(request: NextRequest) {
     const { pathname } = request.nextUrl;
@@ -12,6 +43,12 @@ export async function proxy(request: NextRequest) {
         pathname.startsWith('/public') ||
         pathname.match(/\.(?:svg|png|jpg|jpeg|gif|webp|ico)$/)
     ) {
+        return NextResponse.next();
+    }
+
+    const segment = pathname.split('/')[1] ?? '';
+    if (!PROTECTED_SEGMENTS.has(segment)) {
+        // 未知路径：不做登录重定向，交给 not-found 渲染 404。
         return NextResponse.next();
     }
 

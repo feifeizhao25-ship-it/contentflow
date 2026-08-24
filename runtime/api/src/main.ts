@@ -17,7 +17,6 @@ async function bootstrap() {
   });
   
   const configService = app.get(ConfigService);
-  const marketRegion = configService.get<string>('MARKET_REGION', production ? '' : 'global');
   
   // 全局前缀
   app.setGlobalPrefix('api/v1', {
@@ -55,26 +54,24 @@ async function bootstrap() {
   app.useGlobalInterceptors(new TransformInterceptor());
   
   // Swagger文档
-  const globalMarket = marketRegion === 'global';
-  const docsEnabled = !production || (!globalMarket && configService.get<string>('ENABLE_API_DOCS') === 'true');
   const swaggerConfig = new DocumentBuilder()
-    .setTitle(globalMarket ? 'ContentFlow API' : '分发侠 API')
-    .setDescription(globalMarket ? 'Omnichannel content operations API' : '全渠道内容分发 SaaS 平台 API 文档')
+    .setTitle('分发侠 API')
+    .setDescription('全渠道内容分发SaaS平台 API文档')
     .setVersion('2.0')
     .addBearerAuth()
-    .addTag('auth', globalMarket ? 'Authentication' : '认证模块')
-    .addTag('users', globalMarket ? 'Users' : '用户模块')
-    .addTag('contents', globalMarket ? 'Content' : '内容管理')
-    .addTag('accounts', globalMarket ? 'Platform accounts' : '平台账号')
-    .addTag('publish', globalMarket ? 'Publishing' : '发布管理')
-    .addTag('ai', globalMarket ? 'AI creation' : 'AI创作')
-    .addTag('analytics', globalMarket ? 'Analytics' : '数据分析')
-    .addTag('hot', globalMarket ? 'Trends' : '热点追踪')
-    .addTag('competitor', globalMarket ? 'Competitive intelligence' : '竞品分析')
-    .addTag('team', globalMarket ? 'Team collaboration' : '团队协作')
+    .addTag('auth', '认证模块')
+    .addTag('users', '用户模块')
+    .addTag('contents', '内容管理')
+    .addTag('accounts', '平台账号')
+    .addTag('publish', '发布管理')
+    .addTag('ai', 'AI创作')
+    .addTag('analytics', '数据分析')
+    .addTag('hot', '热点追踪')
+    .addTag('competitor', '竞品分析')
+    .addTag('team', '团队协作')
     .build();
   
-  if (docsEnabled) {
+  if (!production || configService.get<string>('ENABLE_API_DOCS') === 'true') {
     const document = SwaggerModule.createDocument(app, swaggerConfig);
     SwaggerModule.setup('docs', app, document);
   }
@@ -85,7 +82,7 @@ async function bootstrap() {
   await app.listen(port, host);
   
   logger.log(`Application is running on: http://${host}:${port}`);
-  if (docsEnabled) {
+  if (!production || configService.get<string>('ENABLE_API_DOCS') === 'true') {
     logger.log(`Swagger documentation: http://${host}:${port}/docs`);
   }
 }

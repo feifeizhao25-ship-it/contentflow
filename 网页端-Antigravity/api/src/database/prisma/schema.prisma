@@ -1,0 +1,302 @@
+// ============================================================
+// 分发侠数据库架构 - Prisma Schema
+// 版本: v3.0 (Ecosystem & Platform Edition)
+// ============================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================================
+// 租户与用户模块
+// ============================================================
+
+model Tenant {
+  id                String   @id @default(uuid())
+  name              String
+  slug              String   @unique
+  logo_url          String?
+  
+  plan              String   @default("free")
+  plan_expires_at   DateTime?
+  
+  limits            Json     @default("{\"max_accounts\": 2, \"max_members\": 1, \"max_publishes_monthly\": 30, \"max_ai_calls_monthly\": 20, \"max_storage_gb\": 1}")
+  usage_stats       Json     @default("{\"storage_used_mb\": 0}")
+  
+  status            String   @default("active")
+  created_at        DateTime @default(now())
+  updated_at        DateTime @updatedAt
+  
+  users             User[]
+  platform_accounts PlatformAccount[]
+  api_keys          ApiKey[]
+  usage_meters      UsageMeter[]
+}
+
+model User {
+  id                String   @id @default(uuid())
+  tenant_id         String
+  tenant            Tenant   @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  
+  email             String
+  password_hash     String?
+  name              String?
+  avatar_url        String?
+  role              String   @default("member")
+  
+  status            String   @default("active")
+  created_at        DateTime @default(now())
+  updated_at        DateTime @updatedAt
+
+  @@unique([tenant_id, email])
+
+  gamification_profile GamificationProfile?
+  achievements         UserAchievement[]
+}
+
+// ============================================================
+// 平台账号模块 (V3.0 增强)
+// ============================================================
+
+model PlatformAccount {
+  id               String    @id @default(uuid())
+  tenant_id        String
+  tenant           Tenant    @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  platform         String    // douyin, xhs, weibo, bilibili, wechat_mp...
+  display_name     String?
+  platform_user_id String?
+  status           String    @default("active") // active, expired, revoked
+
+  // OAuth tokens (DB 存密文)
+  access_token_enc  String?
+  refresh_token_enc String?
+  token_expires_at  DateTime?
+  last_sync_at      DateTime?
+
+  // 能力探测 (决定走 L2/L3/L4/L5)
+  capabilities      Json?    // { publishLevel, supports... }
+
+  created_at        DateTime @default(now())
+  updated_at        DateTime @updatedAt
+
+  publish_tasks     PublishTask[]
+
+  @@unique([tenant_id, platform, platform_user_id])
+}
+
+// ============================================================
+// 内容管理模块
+// ============================================================
+
+model Content {
+  id              String   @id @default(uuid())
+  tenant_id       String
+  created_by      String?
+  
+  content_type    String
+  title           String?
+  summary         String?
+  body            String?
+  body_html       String?
+  cover_url       String?
+  media_urls      Json     @default("[]")
+  
+  category        String?
+  tags            Json     @default("[]")
+  status          String   @default("draft")
+  
+  created_at      DateTime @default(now())
+  updated_at      DateTime @updatedAt
+
+  publish_tasks   PublishTask[]
+  compliance      ContentCompliance?
+}
+
+// ============================================================
+// 发布管理模块 (V3.0 状态机 + 幂等)
+// ============================================================
+
+model PublishTask {
+  id               String   @id @default(uuid())
+  tenant_id        String
+  created_by       String?
+  content_id       String
+  content          Content  @relation(fields: [content_id], references: [id], onDelete: Cascade)
+  platform         String
+  platform_account_id String
+  platform_account PlatformAccount @relation(fields: [platform_account_id], references: [id])
+
+  publish_type      String   @default("immediate") // immediate | scheduled
+  scheduled_at      DateTime?
+  status            String   @default("queued")
+  // queued, scheduled, submitting, uploading, reviewing, published, failed, retrying, canceled
+  
+  external_id       String?  // 平台侧 id (稿件id、视频id等)
+  external_url      String?
+
+  idempotency_key   String
+  retry_count       Int      @default(0)
+  max_retries       Int      @default(5)
+
+  last_error_code    String?
+  last_error_message String?
+  trace_id          String?  // 全链路追踪 ID
+
+  payload_snapshot  Json?    // 保存提交时的 platform_payload
+
+  created_at        DateTime @default(now())
+  updated_at        DateTime @updatedAt
+
+  @@unique([tenant_id, idempotency_key], name: "tenant_id_idempotency_key")
+  @@index([tenant_id, platform, status])
+}
+
+// ============================================================
+// 用量与成本模块 (V3.0)
+// ============================================================
+
+model UsageMeter {
+  id          String   @id @default(uuid())
+  tenant_id   String
+  tenant      Tenant   @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  period      String   // "2026-01"
+  ai_tokens   Int      @default(0)
+  api_requests Int     @default(0)
+  image_count Int      @default(0)
+  video_count Int      @default(0)
+  publish_count Int    @default(0)
+  storage_mb  Int      @default(0)
+
+  updated_at  DateTime @updatedAt
+
+  @@unique([tenant_id, period], name: "tenant_id_period")
+}
+
+model CostLedger {
+  id            String   @id @default(uuid())
+  tenant_id     String
+  source        String   // ai|image|video|publish|api
+  ref_id        String?  // contentId/taskId/requestId
+  tokens_used   Int      @default(0)
+  cost_est_usd  Float    @default(0) // 估算成本
+  created_at    DateTime @default(now())
+
+  @@index([tenant_id, source, created_at])
+}
+
+// ============================================================
+// 内容合规与风险 (V3.0)
+// ============================================================
+
+model ContentCompliance {
+  id          String   @id @default(uuid())
+  tenant_id   String
+  content_id  String   @unique
+  content     Content  @relation(fields: [content_id], references: [id], onDelete: Cascade)
+  risk_level  String   @default("low") // low|medium|high
+  flags       Json?    // ["ad_law_risk", "sensitive_word", ...]
+  suggestions Json?    // 修复建议
+  created_at  DateTime @default(now())
+}
+
+// ============================================================
+// Developer API 平台 (API Key / Logs / Webhooks)
+// ============================================================
+
+model ApiKey {
+  id            String   @id @default(uuid())
+  tenant_id     String
+  tenant        Tenant   @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  name          String
+  key_hash      String   // 只存哈希
+  scopes        Json
+  ip_whitelist  Json?
+  status        String   @default("active") // active|revoked
+  last_used_at  DateTime?
+  expires_at    DateTime?
+  created_at    DateTime @default(now())
+  updated_at    DateTime @updatedAt
+
+  @@index([tenant_id, status])
+}
+
+model ApiRequestLog {
+  id            String   @id @default(uuid())
+  tenant_id     String
+  api_key_id    String?
+  endpoint      String
+  method        String
+  status_code   Int
+  latency_ms    Int
+  tokens_used   Int      @default(0)
+  cost_est_usd  Float    @default(0)
+  error_code    String?
+  request_meta  Json?
+  created_at    DateTime @default(now())
+
+  @@index([tenant_id, created_at])
+}
+
+model WebhookEndpoint {
+  id          String   @id @default(uuid())
+  tenant_id   String
+  url         String
+  events      Json     // ["publish.task.failed", ...]
+  secret_enc  String   // 签名密钥 (加密存储)
+  status      String   @default("active")
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+
+  @@index([tenant_id, status])
+}
+
+model WebhookDelivery {
+  id            String   @id @default(uuid())
+  webhook_id    String
+  event_type    String
+  payload       Json
+  status        String   @default("queued") // queued|success|failed
+  attempts      Int      @default(0)
+  last_error    String?
+  created_at    DateTime @default(now())
+
+  @@index([webhook_id, created_at])
+}
+
+// ============================================================
+// 用户粘性与游戏化 (V3.0 User Stickiness)
+// ============================================================
+
+model GamificationProfile {
+  id                String   @id @default(uuid())
+  user_id           String   @unique
+  user              User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  
+  level             Int      @default(1)
+  xp                Int      @default(0)
+  next_level_xp     Int      @default(100)
+  
+  current_streak    Int      @default(0)
+  longest_streak    Int      @default(0)
+  last_activity_at  DateTime?
+  
+  created_at        DateTime @default(now())
+  updated_at        DateTime @updatedAt
+}
+
+model UserAchievement {
+  id              String   @id @default(uuid())
+  user_id         String
+  user            User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  
+  achievement_id  String
+  unlocked_at     DateTime @default(now())
+  metadata        Json?
+  
+  @@unique([user_id, achievement_id])
+}

@@ -112,42 +112,54 @@ export class QuestService {
       });
     }
 
-    const newBalance = (userPoints.balance || 0) + quest.points_reward;
+    return await this.prisma.$transaction(async (tx) => {
+      // 先「抢占」领取标记：只有把 points_claimed 从 false 改成 true 的
+      // 那一个请求才继续发分。上面的 `if (userQuest.points_claimed)` 判断
+      // 与发分之间存在竞态，连点两下即可重复领取。
+      const claimed = await tx.userQuest.updateMany({
+        where: { id: userQuest.id, points_claimed: false, is_completed: true },
+        data: { points_claimed: true },
+      });
 
-    await this.prisma.userPoints.update({
-      where: { user_id: userId },
-      data: {
-        balance: newBalance,
-        total_earned: { increment: quest.points_reward },
-        experience_points: { increment: quest.points_reward },
-      },
+      if (claimed.count === 0) {
+        throw new BadRequestException('奖励已领取');
+      }
+
+      // 用 increment 而非绝对赋值 —— 原来的 `balance: newBalance` 会把
+      // 读取之后、写入之前发生的其他加分全部覆盖掉。
+      await tx.userPoints.update({
+        where: { user_id: userId },
+        data: {
+          balance: { increment: quest.points_reward },
+          total_earned: { increment: quest.points_reward },
+          experience_points: { increment: quest.points_reward },
+        },
+      });
+
+      const after = await tx.userPoints.findUnique({ where: { user_id: userId } });
+      const newBalance = after?.balance ?? 0;
+
+      await tx.pointsLog.create({
+        data: {
+          user_id: userId,
+          points_change: quest.points_reward,
+          balance_before: newBalance - quest.points_reward,
+          balance_after: newBalance,
+          log_type: 'quest_complete',
+          description: `完成任务: ${quest.name}`,
+          related_id: questId,
+        },
+      });
+
+      return {
+        success: true,
+        quest_id: quest.id,
+        quest_name: quest.name,
+        points_earned: quest.points_reward,
+        new_balance: newBalance,
+        message: `完成任务 "${quest.name}"，获得 ${quest.points_reward} 积分！`,
+      };
     });
-
-    await this.prisma.userQuest.update({
-      where: { id: userQuest.id },
-      data: { points_claimed: true },
-    });
-
-    await this.prisma.pointsLog.create({
-      data: {
-        user_id: userId,
-        points_change: quest.points_reward,
-        balance_before: userPoints.balance,
-        balance_after: newBalance,
-        log_type: 'quest_complete',
-        description: `完成任务: ${quest.name}`,
-        related_id: questId,
-      },
-    });
-
-    return {
-      success: true,
-      quest_id: quest.id,
-      quest_name: quest.name,
-      points_earned: quest.points_reward,
-      new_balance: newBalance,
-      message: `完成任务 "${quest.name}"，获得 ${quest.points_reward} 积分！`,
-    };
   }
 
   async getDailyQuests(userId: string) {

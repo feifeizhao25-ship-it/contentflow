@@ -34,14 +34,16 @@ android {
 
     val keystoreProperties = Properties()
     val keystorePropertiesFile = rootProject.file("key.properties")
-    val allowDebugReleaseSigning =
-        System.getenv("ALLOW_DEBUG_RELEASE_SIGNING") == "true"
+    val isReleaseBuild = gradle.startParameter.taskNames.any {
+        it.lowercase().contains("release")
+    }
+    val allowDebugReleaseSigning = System.getenv("ALLOW_DEBUG_RELEASE_SIGNING") == "true"
     if (keystorePropertiesFile.exists()) {
         keystoreProperties.load(FileInputStream(keystorePropertiesFile))
-    } else if (!allowDebugReleaseSigning) {
+    } else if (isReleaseBuild && !allowDebugReleaseSigning) {
         throw GradleException(
             "Release keystore is required. Add android/key.properties or set " +
-                "ALLOW_DEBUG_RELEASE_SIGNING=true for CI smoke builds only."
+                "ALLOW_DEBUG_RELEASE_SIGNING=true for CI smoke builds only.",
         )
     }
 
@@ -60,8 +62,10 @@ android {
         release {
             signingConfig = if (keystorePropertiesFile.exists()) {
                 signingConfigs.getByName("release")
-            } else {
+            } else if (allowDebugReleaseSigning) {
                 signingConfigs.getByName("debug")
+            } else {
+                null
             }
         }
     }

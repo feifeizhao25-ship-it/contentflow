@@ -20,12 +20,8 @@ export interface Response<T> {
 }
 
 export function containsCjk(value: unknown): boolean {
-  if (typeof value === 'string') {
-    return /[\u3400-\u9fff]/.test(value);
-  }
-  if (Array.isArray(value)) {
-    return value.some(containsCjk);
-  }
+  if (typeof value === 'string') return /[\u3400-\u9fff]/.test(value);
+  if (Array.isArray(value)) return value.some(containsCjk);
   if (value && typeof value === 'object') {
     return Object.entries(value as Record<string, unknown>).some(
       ([key, item]) => /[\u3400-\u9fff]/.test(key) || containsCjk(item),
@@ -54,11 +50,7 @@ export class TransformInterceptor<T>
         return {
           success: true,
           data,
-          meta: {
-            timestamp: new Date().toISOString(),
-            path: request.url,
-            version: 'v1',
-          },
+          meta: { timestamp: new Date().toISOString(), path: request.url, version: 'v1' },
         };
       }),
     );

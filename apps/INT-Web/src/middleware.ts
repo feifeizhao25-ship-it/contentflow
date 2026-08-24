@@ -1,0 +1,15 @@
+const PUBLIC_PATHS = new Set([
+    '/',
+    '/login',
+    '/reset-password',
+    '/home',
+    '/dashboard',
+    '/pricing',
+    '/create',
+    '/privacy',
+    '/terms',
+    '/legal/privacy',
+    '/legal/terms',
+    '/legal/cookie',
+    '/dpa',
+]);

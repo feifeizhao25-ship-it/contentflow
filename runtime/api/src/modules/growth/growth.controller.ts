@@ -13,12 +13,13 @@ export class GrowthController {
   @Get('plan')
   @ApiOperation({ summary: '获取增长计划' })
   async getPlan(@Request() req: any) {
-    return this.growthService.getGrowthPlan(req.user.tenantId);
+    // GrowthGoal 上的字段是 user_id 不是 tenant_id
+    return this.growthService.getGrowthPlan(req.user.id);
   }
 
   @Put('plan')
   @ApiOperation({ summary: '更新增长计划' })
   async updatePlan(@Request() req: any, @Body() body: any) {
-    return this.growthService.updateGrowthPlan(req.user.tenantId, body);
+    return this.growthService.updateGrowthPlan(req.user.id, body);
   }
 }

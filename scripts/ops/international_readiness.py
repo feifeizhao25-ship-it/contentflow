@@ -26,19 +26,25 @@ TEXT_EXTS = {".ts", ".tsx", ".js", ".jsx", ".json", ".md", ".mdx", ".css", ".htm
 SKIP_PARTS = {"node_modules", ".next", "coverage", "test-results", "playwright-report"}
 
 REQUIRED_ENVS = [
+    "DEEPSEEK_API_KEY",
+    "DEEPSEEK_API_KEY_BACKUP",
     "OPENROUTER_API_KEY",
     "OPENROUTER_API_KEY_BACKUP",
     "FAL_API_KEY",
     "FAL_API_KEY_BACKUP",
+    "POSTIZ_BASE_URL",
+    "POSTIZ_API_KEY",
+    "AWS_ACCESS_KEY_ID",
+    "AWS_SECRET_ACCESS_KEY",
+    "VULTR_API_KEY",
 ]
-LIVE_ONLY_ENVS = ["POSTIZ_BASE_URL", "POSTIZ_API_KEY"]
 
 COMMANDS = ["aws", "openclaw", "docker", "gh", "vultr", "vultr-cli"]
 
 INT_VISIBLE_SCAN_ROOTS = [
-    ROOT / "runtime" / "web-int" / "app",
-    ROOT / "runtime" / "web-int" / "components",
-    ROOT / "runtime" / "web-int" / "lib",
+    ROOT / "apps" / "INT-Web" / "src" / "app",
+    ROOT / "apps" / "INT-Web" / "src" / "components",
+    ROOT / "apps" / "INT-Web" / "src" / "store",
 ]
 
 
@@ -105,30 +111,29 @@ def main() -> int:
     ARTIFACT_DIR.mkdir(parents=True, exist_ok=True)
     now = datetime.now(timezone.utc).isoformat()
 
-    live = os.getenv("CONTENTFLOW_LIVE_PREFLIGHT") == "1"
-    env_names = REQUIRED_ENVS + LIVE_ONLY_ENVS
-    env_presence = {name: bool(os.getenv(name)) for name in env_names}
+    env_presence = {name: bool(os.getenv(name)) for name in REQUIRED_ENVS}
+    primary_backup = {
+        "deepseek": {
+            "primary": env_presence["DEEPSEEK_API_KEY"],
+            "backup": env_presence["DEEPSEEK_API_KEY_BACKUP"],
+        },
+        "openrouter": {
+            "primary": env_presence["OPENROUTER_API_KEY"],
+            "backup": env_presence["OPENROUTER_API_KEY_BACKUP"],
+        },
+        "fal": {
+            "primary": env_presence["FAL_API_KEY"],
+            "backup": env_presence["FAL_API_KEY_BACKUP"],
+        },
+    }
 
     commands = {name: command_path(name) for name in COMMANDS}
     visible_cjk = scan_han(INT_VISIBLE_SCAN_ROOTS)
 
-    not_checked = {"ok": None, "code": None, "output": "not checked in static mode"}
-    aws_identity = (
-        run_masked(["aws", "sts", "get-caller-identity", "--output", "json"], timeout=10)
-        if live
-        else not_checked
-    )
-    openclaw_health = (
-        run_masked(["openclaw", "health"], timeout=15) if live else not_checked
-    )
+    aws_identity = run_masked(["aws", "sts", "get-caller-identity", "--output", "json"], timeout=10)
+    openclaw_health = run_masked(["openclaw", "health"], timeout=15)
 
-    postiz_hosts = []
-    postiz_base = os.getenv("POSTIZ_BASE_URL", "")
-    if live and postiz_base:
-        from urllib.parse import urlparse
-        host = urlparse(postiz_base).hostname
-        if host:
-            postiz_hosts.append(host)
+    postiz_hosts = ["postiz.tianji-astrology.com", "postiz.aurenix-ai.com"]
     postiz_dns = {
         host: {
             "tcp_443": tcp_probe(host, 443),
@@ -140,30 +145,33 @@ def main() -> int:
     blockers = []
     if visible_cjk["hits"]:
         blockers.append("INT-Web visible source contains CJK characters.")
-    if live:
-        for name in REQUIRED_ENVS + LIVE_ONLY_ENVS:
-            if not env_presence[name]:
-                blockers.append(f"{name} is missing in the current shell.")
-        if not aws_identity["ok"]:
-            blockers.append("AWS CLI identity check failed.")
-        if not openclaw_health["ok"]:
-            blockers.append("OpenClaw health check failed.")
+    for provider, status in primary_backup.items():
+        if not status["primary"] or not status["backup"]:
+            blockers.append(f"{provider} primary/backup environment variables are incomplete.")
+    if not env_presence["POSTIZ_BASE_URL"] or not env_presence["POSTIZ_API_KEY"]:
+        blockers.append("Postiz API environment variables are missing in the current shell.")
+    if not env_presence["VULTR_API_KEY"] and not commands.get("vultr") and not commands.get("vultr-cli"):
+        blockers.append("Vultr API/CLI access is not available locally.")
+    if not aws_identity["ok"]:
+        blockers.append("AWS CLI identity check failed.")
+    if not openclaw_health["ok"]:
+        blockers.append("OpenClaw health check failed.")
 
     report = {
         "generated_at": now,
-        "scope": "ContentFlow Global operations readiness",
-        "mode": "live" if live else "static",
+        "scope": "ContentFlow international + EnergyIQ international operations readiness",
         "env_presence": env_presence,
+        "primary_backup": primary_backup,
         "commands": commands,
         "int_visible_cjk": visible_cjk,
         "aws_identity_masked": aws_identity,
         "openclaw_health_masked": openclaw_health,
         "postiz_dns_tcp": postiz_dns,
         "blockers": blockers,
-        "decision": "ready" if not blockers else "blocked",
+        "decision": "go_for_local_build_and_draft_queue" if not visible_cjk["hits"] else "fix_language_before_launch",
     }
 
-    out = ARTIFACT_DIR / "international-readiness.json"
+    out = ARTIFACT_DIR / "international-readiness-2026-07-23.json"
     out.write_text(json.dumps(report, indent=2, ensure_ascii=False))
     print(json.dumps({"artifact": str(out), "blockers": blockers}, indent=2, ensure_ascii=False))
     return 1 if blockers else 0

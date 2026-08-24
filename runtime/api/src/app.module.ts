@@ -72,26 +72,18 @@ import { SystemModule } from './modules/system/system.module';
 
 export function validateProductionConfig(config: Record<string, unknown>) {
   if (config.NODE_ENV !== 'production') return config;
-
   const required = [
     'DATABASE_URL', 'REDIS_HOST', 'JWT_SECRET', 'JWT_REFRESH_SECRET',
     'MARKET_REGION', 'CORS_ORIGIN', 'PUBLISH_DISPATCH_WEBHOOK_URL',
     'PUBLISH_DISPATCH_WEBHOOK_SECRET',
   ];
-  if (config.MARKET_REGION === 'global') {
-    required.push('OPENROUTER_SITE_URL');
-  }
+  if (config.MARKET_REGION === 'global') required.push('OPENROUTER_SITE_URL');
   const missing = required.filter((key) => !config[key]);
-  if (missing.length > 0) {
+  if (missing.length) {
     throw new Error(`Missing required production environment variables: ${missing.join(', ')}`);
   }
-  for (const key of ['JWT_SECRET', 'JWT_REFRESH_SECRET']) {
-    if (String(config[key]).length < 32) {
-      throw new Error(`${key} must contain at least 32 characters`);
-    }
-  }
-  if (String(config.PUBLISH_DISPATCH_WEBHOOK_SECRET).length < 32) {
-    throw new Error('PUBLISH_DISPATCH_WEBHOOK_SECRET must contain at least 32 characters');
+  for (const key of ['JWT_SECRET', 'JWT_REFRESH_SECRET', 'PUBLISH_DISPATCH_WEBHOOK_SECRET']) {
+    if (String(config[key]).length < 32) throw new Error(`${key} must contain at least 32 characters`);
   }
   if (!String(config.PUBLISH_DISPATCH_WEBHOOK_URL).startsWith('https://')) {
     throw new Error('PUBLISH_DISPATCH_WEBHOOK_URL must use HTTPS');
@@ -107,13 +99,8 @@ export function validateProductionConfig(config: Record<string, unknown>) {
 }
 
 const DOMESTIC_ONLY_MODULES = [
-  HotModule,
-  CompetitorModule,
-  GrowthModule,
-  PointsModule,
-  RewardsModule,
-  QuestModule,
-  AchievementModule,
+  HotModule, CompetitorModule, GrowthModule, PointsModule,
+  RewardsModule, QuestModule, AchievementModule,
 ];
 
 export function marketModulesFor(region: string | undefined) {

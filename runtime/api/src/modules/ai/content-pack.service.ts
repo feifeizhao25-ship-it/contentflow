@@ -3,6 +3,8 @@ import { AIService } from './ai.service';
 import { UsageService, ResourceType } from '../system/usage.service';
 import { ComplianceService } from './compliance.service';
 import { GenerateContentPackDto } from './dto/generate-content-pack.dto';
+import { labelAiGeneratedText, buildAiMediaMetadata } from '../../common/ai-content-label';
+import { RagPolicyService } from './rag-policy.service';
 
 @Injectable()
 export class ContentPackService {
@@ -12,6 +14,7 @@ export class ContentPackService {
         private readonly aiService: AIService,
         private readonly usageService: UsageService,
         private readonly complianceService: ComplianceService,
+        private readonly ragPolicyService: RagPolicyService,
     ) { }
 
     async generatePack(tenantId: string, dto: GenerateContentPackDto) {
@@ -27,19 +30,27 @@ export class ContentPackService {
             // 2. Multi-step AI Pipeline
             // Step A: Headlines x 10
             const platformsStr = dto.platforms?.join(',') || '全渠道';
-            const titles = await this.aiService.generateTitles(dto.topic, platformsStr, 10);
+            const titleResult = await this.aiService.generateTitlesWithUsage(dto.topic, platformsStr, 10);
+            const titles = titleResult.titles;
 
             // Step B: Script/Body
-            const scriptPrompt = `请根据主题 "${dto.topic}" 和标题 "${titles[0]}" 创作一篇深度脚本。要求：逻辑清晰，金句频出。`;
+            const policySources = await this.ragPolicyService.select(dto.platforms || [], dto.topic);
+            const scriptPrompt = `请根据主题 "${dto.topic}" 和标题 "${titles[0]}" 创作一篇深度脚本。要求：逻辑清晰、使用普通人能理解的表达；如资料包含合规要求，在结尾增加发布前核对清单。${this.ragPolicyService.buildContext(policySources)}`;
             const scriptData = await this.aiService.generateText({ prompt: scriptPrompt });
             let script = scriptData.content;
 
             // 3. Compliance Scrubbing
             script = await this.complianceService.scrubOutput(script);
 
-            // 4. Usage Tracking
-            // Mock tokens count (Titles ~ 500, Script ~ 2000)
-            const totalTokens = 2500;
+            // 4. AI 生成内容显式标识（导出文本必须可辨识为 AI 生成）
+            script = labelAiGeneratedText(script);
+
+            // 5. Usage Tracking
+            const totalTokens =
+                titleResult.usage.total_tokens + scriptData.usage.total_tokens;
+            if (!Number.isSafeInteger(totalTokens) || totalTokens <= 0) {
+                throw new Error('AI provider did not return valid token usage');
+            }
             await this.usageService.trackUsage(tenantId, ResourceType.TOKENS, totalTokens, {
                 topic: dto.topic,
                 type: 'content_pack'
@@ -50,9 +61,13 @@ export class ContentPackService {
                 data: {
                     titles,
                     script,
+                    sources: policySources.map(source => ({ id: source.id, source_url: source.source_url, source_name: source.source_name, published_at: source.published_at, retrieved_at: source.retrieved_at, jurisdiction: source.jurisdiction, source_tier: source.source_tier })),
+                    sources_status: policySources.length ? 'verified' : 'none',
+                    sources_note: policySources.length ? '以上资料已加入本次模型上下文；仍需发布者按最新平台页面人工复核' : '本次生成未引用外部知识库或检索来源',
                     metadata: {
                         usage: { tokens: totalTokens },
                         platforms: dto.platforms,
+                        ai_content: buildAiMediaMetadata({ mediaType: 'text' }),
                     }
                 }
             };
