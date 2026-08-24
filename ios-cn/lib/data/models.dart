@@ -31,9 +31,11 @@ class ContentPack {
       script: json['script'] ?? '',
       hashtags: List<String>.from(json['hashtags'] ?? []),
       platformPayloads: json['platform_payloads'] != null
-          ? Map<String, PlatformPayload>.from(json['platform_payloads'].map(
-              (k, v) => MapEntry(k, PlatformPayload.fromJson(v)),
-            ))
+          ? Map<String, PlatformPayload>.from(
+              json['platform_payloads'].map(
+                (k, v) => MapEntry(k, PlatformPayload.fromJson(v)),
+              ),
+            )
           : null,
       createdAt: DateTime.tryParse(json['created_at'] ?? '') ?? DateTime.now(),
     );
@@ -47,7 +49,9 @@ class ContentPack {
       'hooks': hooks,
       'script': script,
       'hashtags': hashtags,
-      'platform_payloads': platformPayloads?.map((k, v) => MapEntry(k, v.toJson())),
+      'platform_payloads': platformPayloads?.map(
+        (k, v) => MapEntry(k, v.toJson()),
+      ),
       'created_at': createdAt.toIso8601String(),
     };
   }
@@ -122,14 +126,28 @@ class Schedule {
   });
 
   factory Schedule.fromJson(Map<String, dynamic> json) {
+    final content = json['content'] is Map<String, dynamic>
+        ? json['content'] as Map<String, dynamic>
+        : const <String, dynamic>{};
+    final account = json['platform_account'] is Map<String, dynamic>
+        ? json['platform_account'] as Map<String, dynamic>
+        : const <String, dynamic>{};
+    final rawStatus = json['status']?.toString() ?? '';
+    final normalizedStatus = switch (rawStatus) {
+      'processing' => 'publishing',
+      'submitted_unconfirmed' => 'pending',
+      'cancelled' => 'canceled',
+      _ => rawStatus,
+    };
     return Schedule(
       id: json['id'] ?? '',
-      contentPackId: json['content_pack_id'] ?? '',
-      title: json['title'],
-      platform: json['platform'] ?? '',
-      publishTime: DateTime.tryParse(json['publish_time'] ?? '') ?? DateTime.now(),
+      contentPackId: json['content_id'] ?? '',
+      title: content['title'],
+      platform: account['platform'] ?? '',
+      publishTime:
+          DateTime.tryParse(json['scheduled_at'] ?? '') ?? DateTime.now(),
       status: ScheduleStatus.values.firstWhere(
-        (e) => e.name == json['status'],
+        (e) => e.name == normalizedStatus,
         orElse: () => ScheduleStatus.pending,
       ),
       errorMessage: json['error_message'],
@@ -169,11 +187,7 @@ class Schedule {
 }
 
 // ============== Asset ==============
-enum AssetType {
-  image,
-  video,
-  script,
-}
+enum AssetType { image, video, script }
 
 class Asset {
   final String id;
@@ -196,13 +210,13 @@ class Asset {
     return Asset(
       id: json['id'] ?? '',
       type: AssetType.values.firstWhere(
-        (e) => e.name == json['type'],
+        (e) => e.name == json['material_type'],
         orElse: () => AssetType.image,
       ),
-      url: json['url'] ?? '',
+      url: json['file_url'] ?? '',
       thumbnail: json['thumbnail'],
       name: json['name'],
-      uploadedAt: DateTime.tryParse(json['uploaded_at'] ?? '') ?? DateTime.now(),
+      uploadedAt: DateTime.tryParse(json['created_at'] ?? '') ?? DateTime.now(),
     );
   }
 }
@@ -240,7 +254,7 @@ class ContentAnalytics {
   }
 
   int get totalEngagement => likes + comments + shares;
-  
+
   double get engagementRate => views > 0 ? totalEngagement / views : 0;
 }
 
@@ -258,14 +272,21 @@ class AnalyticsSummary {
   });
 
   factory AnalyticsSummary.fromJson(Map<String, dynamic> json) {
+    final engagement = json['engagement'] is Map<String, dynamic>
+        ? json['engagement'] as Map<String, dynamic>
+        : const <String, dynamic>{};
+    final content = json['content'] is Map<String, dynamic>
+        ? json['content'] as Map<String, dynamic>
+        : const <String, dynamic>{};
     return AnalyticsSummary(
-      totalViews: json['total_views'] ?? 0,
-      totalEngagement: json['total_engagement'] ?? 0,
-      totalContent: json['total_content'] ?? 0,
-      topContent: (json['top_content'] as List?)
-              ?.map((e) => ContentAnalytics.fromJson(e))
-              .toList() ??
-          [],
+      totalViews: engagement['views'] ?? 0,
+      totalEngagement:
+          (engagement['likes'] ?? 0) +
+          (engagement['comments'] ?? 0) +
+          (engagement['shares'] ?? 0) +
+          (engagement['saves'] ?? 0),
+      totalContent: content['total'] ?? 0,
+      topContent: const [],
     );
   }
 }

@@ -23,48 +23,37 @@ class TodayScreen extends ConsumerWidget {
           child: CustomScrollView(
             slivers: [
               // Header
-              SliverToBoxAdapter(
-                child: _buildHeader(context),
-              ),
+              SliverToBoxAdapter(child: _buildHeader(context)),
 
               // Today's Date
-              SliverToBoxAdapter(
-                child: _buildDateHeader(context),
-              ),
+              SliverToBoxAdapter(child: _buildDateHeader(context)),
 
               // Schedule Tasks
-              SliverToBoxAdapter(
-                child: _buildSectionTitle('今日发布任务'),
-              ),
+              SliverToBoxAdapter(child: _buildSectionTitle('今日发布任务')),
 
               schedulesAsync.when(
-                data: (schedules) => _buildScheduleList(context, ref, schedules),
+                data: (schedules) =>
+                    _buildScheduleList(context, ref, schedules),
                 loading: () => const SliverToBoxAdapter(
                   child: Center(child: CircularProgressIndicator()),
                 ),
-                error: (e, _) => SliverToBoxAdapter(
-                  child: Center(child: Text('加载失败: $e')),
-                ),
+                error: (e, _) =>
+                    SliverToBoxAdapter(child: Center(child: Text('加载失败: $e'))),
               ),
 
               // Analytics Summary
-              SliverToBoxAdapter(
-                child: _buildSectionTitle('近期表现'),
-              ),
+              SliverToBoxAdapter(child: _buildSectionTitle('近期表现')),
 
               analyticsAsync.when(
                 data: (summary) => _buildAnalyticsSummary(context, summary),
                 loading: () => const SliverToBoxAdapter(
                   child: Center(child: CircularProgressIndicator()),
                 ),
-                error: (e, _) => const SliverToBoxAdapter(
-                  child: SizedBox.shrink(),
-                ),
+                error: (e, _) =>
+                    const SliverToBoxAdapter(child: SizedBox.shrink()),
               ),
 
-              const SliverToBoxAdapter(
-                child: SizedBox(height: 100),
-              ),
+              const SliverToBoxAdapter(child: SizedBox(height: 100)),
             ],
           ),
         ),
@@ -77,10 +66,7 @@ class TodayScreen extends ConsumerWidget {
       padding: const EdgeInsets.all(20),
       child: Row(
         children: [
-          const Text(
-            '📅',
-            style: TextStyle(fontSize: 28),
-          ),
+          const Text('📅', style: TextStyle(fontSize: 28)),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
@@ -96,10 +82,7 @@ class TodayScreen extends ConsumerWidget {
                 ),
                 const Text(
                   '内容增长助手',
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Colors.grey,
-                  ),
+                  style: TextStyle(fontSize: 14, color: Colors.grey),
                 ),
               ],
             ),
@@ -140,10 +123,7 @@ class TodayScreen extends ConsumerWidget {
               ),
               Text(
                 weekdays[now.weekday - 1],
-                style: const TextStyle(
-                  fontSize: 16,
-                  color: Colors.white70,
-                ),
+                style: const TextStyle(fontSize: 16, color: Colors.white70),
               ),
             ],
           ),
@@ -178,15 +158,16 @@ class TodayScreen extends ConsumerWidget {
       padding: const EdgeInsets.fromLTRB(20, 24, 20, 12),
       child: Text(
         title,
-        style: const TextStyle(
-          fontSize: 18,
-          fontWeight: FontWeight.bold,
-        ),
+        style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
       ),
     );
   }
 
-  Widget _buildScheduleList(BuildContext context, WidgetRef ref, List<Schedule> schedules) {
+  Widget _buildScheduleList(
+    BuildContext context,
+    WidgetRef ref,
+    List<Schedule> schedules,
+  ) {
     if (schedules.isEmpty) {
       return SliverToBoxAdapter(
         child: Container(
@@ -197,10 +178,7 @@ class TodayScreen extends ConsumerWidget {
             borderRadius: BorderRadius.circular(12),
           ),
           child: const Center(
-            child: Text(
-              '今日暂无发布任务',
-              style: TextStyle(color: Colors.grey),
-            ),
+            child: Text('今日暂无发布任务', style: TextStyle(color: Colors.grey)),
           ),
         ),
       );
@@ -214,14 +192,17 @@ class TodayScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildScheduleCard(BuildContext context, WidgetRef ref, Schedule schedule) {
+  Widget _buildScheduleCard(
+    BuildContext context,
+    WidgetRef ref,
+    Schedule schedule,
+  ) {
     final isFailed = schedule.status == ScheduleStatus.failed;
     final isPending = [
       ScheduleStatus.pending,
       ScheduleStatus.scheduled,
       ScheduleStatus.queued,
     ].contains(schedule.status);
-    final isConfirmed = schedule.status == ScheduleStatus.confirmed;
 
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
@@ -241,7 +222,9 @@ class TodayScreen extends ConsumerWidget {
               padding: const EdgeInsets.symmetric(vertical: 8),
               decoration: BoxDecoration(
                 color: Colors.red.shade50,
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(10)),
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(10),
+                ),
               ),
               child: const Row(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -307,10 +290,7 @@ class TodayScreen extends ConsumerWidget {
                   const SizedBox(height: 8),
                   Text(
                     '原因: ${schedule.errorMessage}',
-                    style: TextStyle(
-                      color: Colors.red.shade400,
-                      fontSize: 13,
-                    ),
+                    style: TextStyle(color: Colors.red.shade400, fontSize: 13),
                   ),
                 ],
 
@@ -319,20 +299,12 @@ class TodayScreen extends ConsumerWidget {
                 // Action Buttons
                 Row(
                   children: [
-                    if (isPending || isConfirmed)
+                    if (isPending)
                       Expanded(
-                        child: ElevatedButton(
-                          onPressed: () async {
-                            final api = ref.read(apiClientProvider);
-                            await api.confirmPublish(schedule.id);
-                            ref.invalidate(todaySchedulesProvider);
-                          },
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Theme.of(context).primaryColor,
-                            foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(vertical: 12),
-                          ),
-                          child: const Text('确认发布'),
+                        child: OutlinedButton.icon(
+                          onPressed: null,
+                          icon: const Icon(Icons.schedule_send),
+                          label: const Text('等待队列与平台回执'),
                         ),
                       ),
                     if (isFailed)
@@ -352,15 +324,6 @@ class TodayScreen extends ConsumerWidget {
                           ),
                         ),
                       ),
-                    if (isPending || isConfirmed) ...[
-                      const SizedBox(width: 12),
-                      OutlinedButton(
-                        onPressed: () {
-                          // TODO: Navigate to edit
-                        },
-                        child: const Text('修改时间'),
-                      ),
-                    ],
                   ],
                 ),
               ],
@@ -498,7 +461,10 @@ class TodayScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildAnalyticsSummary(BuildContext context, AnalyticsSummary summary) {
+  Widget _buildAnalyticsSummary(
+    BuildContext context,
+    AnalyticsSummary summary,
+  ) {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 20),
       padding: const EdgeInsets.all(20),
@@ -532,25 +498,21 @@ class TodayScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildStatItem(BuildContext context, String label, String value, IconData icon) {
+  Widget _buildStatItem(
+    BuildContext context,
+    String label,
+    String value,
+    IconData icon,
+  ) {
     return Column(
       children: [
         Icon(icon, color: Theme.of(context).primaryColor, size: 28),
         const SizedBox(height: 8),
         Text(
           value,
-          style: const TextStyle(
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-          ),
+          style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
         ),
-        Text(
-          label,
-          style: const TextStyle(
-            color: Colors.grey,
-            fontSize: 12,
-          ),
-        ),
+        Text(label, style: const TextStyle(color: Colors.grey, fontSize: 12)),
       ],
     );
   }

@@ -47,10 +47,7 @@ class AssetsScreen extends ConsumerWidget {
       padding: const EdgeInsets.all(20),
       child: Row(
         children: [
-          const Text(
-            '📁',
-            style: TextStyle(fontSize: 28),
-          ),
+          const Text('📁', style: TextStyle(fontSize: 28)),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
@@ -66,10 +63,7 @@ class AssetsScreen extends ConsumerWidget {
                 ),
                 const Text(
                   '管理你的素材资源',
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Colors.grey,
-                  ),
+                  style: TextStyle(fontSize: 14, color: Colors.grey),
                 ),
               ],
             ),
@@ -90,7 +84,11 @@ class AssetsScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildFilterTabs(BuildContext context, WidgetRef ref, AssetType? selectedType) {
+  Widget _buildFilterTabs(
+    BuildContext context,
+    WidgetRef ref,
+    AssetType? selectedType,
+  ) {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 20),
       child: SingleChildScrollView(
@@ -103,7 +101,13 @@ class AssetsScreen extends ConsumerWidget {
             const SizedBox(width: 8),
             _buildFilterChip(context, ref, AssetType.video, '视频', selectedType),
             const SizedBox(width: 8),
-            _buildFilterChip(context, ref, AssetType.script, '脚本', selectedType),
+            _buildFilterChip(
+              context,
+              ref,
+              AssetType.script,
+              '脚本',
+              selectedType,
+            ),
           ],
         ),
       ),
@@ -137,26 +141,16 @@ class AssetsScreen extends ConsumerWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              Icons.folder_open,
-              size: 64,
-              color: Colors.grey.shade400,
-            ),
+            Icon(Icons.folder_open, size: 64, color: Colors.grey.shade400),
             const SizedBox(height: 16),
             Text(
               '暂无素材',
-              style: TextStyle(
-                fontSize: 16,
-                color: Colors.grey.shade600,
-              ),
+              style: TextStyle(fontSize: 16, color: Colors.grey.shade600),
             ),
             const SizedBox(height: 8),
             Text(
               '点击 + 上传素材',
-              style: TextStyle(
-                fontSize: 14,
-                color: Colors.grey.shade400,
-              ),
+              style: TextStyle(fontSize: 14, color: Colors.grey.shade400),
             ),
           ],
         ),
@@ -194,9 +188,7 @@ class AssetsScreen extends ConsumerWidget {
           borderRadius: BorderRadius.circular(12),
           child: Column(
             children: [
-              Expanded(
-                child: _buildAssetPreview(asset),
-              ),
+              Expanded(child: _buildAssetPreview(asset)),
               Padding(
                 padding: const EdgeInsets.all(8),
                 child: Row(
@@ -240,9 +232,8 @@ class AssetsScreen extends ConsumerWidget {
                 ? Image.network(
                     asset.thumbnail!,
                     fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => Container(
-                      color: Colors.grey.shade200,
-                    ),
+                    errorBuilder: (_, __, ___) =>
+                        Container(color: Colors.grey.shade200),
                   )
                 : Container(color: Colors.grey.shade200),
             Center(
@@ -252,7 +243,11 @@ class AssetsScreen extends ConsumerWidget {
                   color: Colors.black.withValues(alpha: 0.5),
                   shape: BoxShape.circle,
                 ),
-                child: const Icon(Icons.play_arrow, color: Colors.white, size: 20),
+                child: const Icon(
+                  Icons.play_arrow,
+                  color: Colors.white,
+                  size: 20,
+                ),
               ),
             ),
           ],
@@ -350,7 +345,10 @@ class AssetsScreen extends ConsumerWidget {
                       Navigator.pop(context);
                     },
                     icon: const Icon(Icons.delete_outline, color: Colors.red),
-                    label: const Text('删除', style: TextStyle(color: Colors.red)),
+                    label: const Text(
+                      '删除',
+                      style: TextStyle(color: Colors.red),
+                    ),
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -390,10 +388,7 @@ class AssetsScreen extends ConsumerWidget {
           children: [
             const Text(
               '上传素材',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 20),
             ListTile(
@@ -445,12 +440,16 @@ class AssetsScreen extends ConsumerWidget {
     );
   }
 
-  Future<void> _pickImage(BuildContext context, WidgetRef ref, ImageSource source) async {
+  Future<void> _pickImage(
+    BuildContext context,
+    WidgetRef ref,
+    ImageSource source,
+  ) async {
     final picker = ImagePicker();
-    
+
     try {
       final XFile? image = await picker.pickImage(source: source);
-      
+
       if (image != null) {
         if (!context.mounted) return;
         // Upload
@@ -463,19 +462,19 @@ class AssetsScreen extends ConsumerWidget {
         await api.uploadAsset(image.path, AssetType.image);
         
         ref.invalidate(assetsProvider);
-        
+
         if (context.mounted) {
           Navigator.pop(context);
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('上传成功')),
-          );
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(const SnackBar(content: Text('上传成功')));
         }
       }
     } catch (e) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('上传失败: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('上传失败: $e')));
       }
     }
   }

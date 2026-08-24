@@ -47,10 +47,7 @@ class AssetsScreen extends ConsumerWidget {
       padding: const EdgeInsets.all(20),
       child: Row(
         children: [
-          const Text(
-            '📁',
-            style: TextStyle(fontSize: 28),
-          ),
+          const Text('📁', style: TextStyle(fontSize: 28)),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
@@ -66,10 +63,7 @@ class AssetsScreen extends ConsumerWidget {
                 ),
                 const Text(
                   'Manage your assets',
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Colors.grey,
-                  ),
+                  style: TextStyle(fontSize: 14, color: Colors.grey),
                 ),
               ],
             ),
@@ -90,7 +84,11 @@ class AssetsScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildFilterTabs(BuildContext context, WidgetRef ref, AssetType? selectedType) {
+  Widget _buildFilterTabs(
+    BuildContext context,
+    WidgetRef ref,
+    AssetType? selectedType,
+  ) {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 20),
       child: SingleChildScrollView(
@@ -99,11 +97,29 @@ class AssetsScreen extends ConsumerWidget {
           children: [
             _buildFilterChip(context, ref, null, 'All', selectedType),
             const SizedBox(width: 8),
-            _buildFilterChip(context, ref, AssetType.image, 'Images', selectedType),
+            _buildFilterChip(
+              context,
+              ref,
+              AssetType.image,
+              'Images',
+              selectedType,
+            ),
             const SizedBox(width: 8),
-            _buildFilterChip(context, ref, AssetType.video, 'Videos', selectedType),
+            _buildFilterChip(
+              context,
+              ref,
+              AssetType.video,
+              'Videos',
+              selectedType,
+            ),
             const SizedBox(width: 8),
-            _buildFilterChip(context, ref, AssetType.script, 'Scripts', selectedType),
+            _buildFilterChip(
+              context,
+              ref,
+              AssetType.script,
+              'Scripts',
+              selectedType,
+            ),
           ],
         ),
       ),
@@ -137,26 +153,16 @@ class AssetsScreen extends ConsumerWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              Icons.folder_open,
-              size: 64,
-              color: Colors.grey.shade400,
-            ),
+            Icon(Icons.folder_open, size: 64, color: Colors.grey.shade400),
             const SizedBox(height: 16),
             Text(
               'No assets yet',
-              style: TextStyle(
-                fontSize: 16,
-                color: Colors.grey.shade600,
-              ),
+              style: TextStyle(fontSize: 16, color: Colors.grey.shade600),
             ),
             const SizedBox(height: 8),
             Text(
               'Tap + to upload',
-              style: TextStyle(
-                fontSize: 14,
-                color: Colors.grey.shade400,
-              ),
+              style: TextStyle(fontSize: 14, color: Colors.grey.shade400),
             ),
           ],
         ),
@@ -194,9 +200,7 @@ class AssetsScreen extends ConsumerWidget {
           borderRadius: BorderRadius.circular(12),
           child: Column(
             children: [
-              Expanded(
-                child: _buildAssetPreview(asset),
-              ),
+              Expanded(child: _buildAssetPreview(asset)),
               Padding(
                 padding: const EdgeInsets.all(8),
                 child: Row(
@@ -240,9 +244,8 @@ class AssetsScreen extends ConsumerWidget {
                 ? Image.network(
                     asset.thumbnail!,
                     fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => Container(
-                      color: Colors.grey.shade200,
-                    ),
+                    errorBuilder: (_, __, ___) =>
+                        Container(color: Colors.grey.shade200),
                   )
                 : Container(color: Colors.grey.shade200),
             Center(
@@ -252,7 +255,11 @@ class AssetsScreen extends ConsumerWidget {
                   color: Colors.black.withValues(alpha: 0.5),
                   shape: BoxShape.circle,
                 ),
-                child: const Icon(Icons.play_arrow, color: Colors.white, size: 20),
+                child: const Icon(
+                  Icons.play_arrow,
+                  color: Colors.white,
+                  size: 20,
+                ),
               ),
             ),
           ],
@@ -350,7 +357,10 @@ class AssetsScreen extends ConsumerWidget {
                       Navigator.pop(context);
                     },
                     icon: const Icon(Icons.delete_outline, color: Colors.red),
-                    label: const Text('Delete', style: TextStyle(color: Colors.red)),
+                    label: const Text(
+                      'Delete',
+                      style: TextStyle(color: Colors.red),
+                    ),
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -390,10 +400,7 @@ class AssetsScreen extends ConsumerWidget {
           children: [
             const Text(
               'Upload asset',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 20),
             ListTile(
@@ -445,12 +452,16 @@ class AssetsScreen extends ConsumerWidget {
     );
   }
 
-  Future<void> _pickImage(BuildContext context, WidgetRef ref, ImageSource source) async {
+  Future<void> _pickImage(
+    BuildContext context,
+    WidgetRef ref,
+    ImageSource source,
+  ) async {
     final picker = ImagePicker();
-    
+
     try {
       final XFile? image = await picker.pickImage(source: source);
-      
+
       if (image != null) {
         if (!context.mounted) return;
         // Upload
@@ -463,19 +474,19 @@ class AssetsScreen extends ConsumerWidget {
         await api.uploadAsset(image.path, AssetType.image);
         
         ref.invalidate(assetsProvider);
-        
+
         if (context.mounted) {
           Navigator.pop(context);
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Upload complete')),
-          );
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(const SnackBar(content: Text('Upload complete')));
         }
       }
     } catch (e) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Upload failed: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Upload failed: $e')));
       }
     }
   }

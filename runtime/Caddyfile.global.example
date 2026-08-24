@@ -1,0 +1,9 @@
+# ContentFlow Global edge route. The API and web containers join the existing
+# private edge network; no application port is published on the host.
+contentflow.tianji-astrology.com {
+	tls /opt/tianji/certs/origin-cert.pem /opt/tianji/certs/origin-key.pem
+
+	@contentflow_api path /api/*
+	reverse_proxy @contentflow_api contentflow-global-api:4000
+	reverse_proxy contentflow-global-web:3000
+}

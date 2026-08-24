@@ -1,0 +1,93 @@
+name: contentflow-global
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: contentflow-global-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: contentflow_global
+      POSTGRES_USER: contentflow_global
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+    volumes: [postgres_data:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U contentflow_global -d contentflow_global"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks: [backend]
+
+  redis:
+    image: redis:7.4-alpine
+    container_name: contentflow-global-redis
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes", "--requirepass", "${REDIS_PASSWORD:?REDIS_PASSWORD is required}"]
+    volumes: [redis_data:/data]
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD is required}
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -a \"$${REDIS_PASSWORD}\" ping | grep PONG"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks: [backend]
+
+  api:
+    image: ${IMAGE_PREFIX:?IMAGE_PREFIX is required}-api:${IMAGE_TAG:?IMAGE_TAG is required}
+    container_name: contentflow-global-api
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      MARKET_REGION: global
+      PORT: 4000
+      DATABASE_URL: postgresql://contentflow_global:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}@postgres:5432/contentflow_global
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD is required}
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:?JWT_REFRESH_SECRET is required}
+      CORS_ORIGIN: ${CORS_ORIGIN:?CORS_ORIGIN is required}
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
+      OPENROUTER_API_KEY_BACKUP: ${OPENROUTER_API_KEY_BACKUP:-}
+      OPENROUTER_MODELS: ${OPENROUTER_MODELS:-x-ai/grok-4.5}
+      OPENROUTER_SITE_URL: ${OPENROUTER_SITE_URL:?OPENROUTER_SITE_URL is required}
+      FAL_API_KEY: ${FAL_API_KEY:-}
+      FAL_API_KEY_BACKUP: ${FAL_API_KEY_BACKUP:-}
+      ENABLE_API_DOCS: "false"
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis: { condition: service_healthy }
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:4000/api/v1/health/ready"]
+      interval: 15s
+      timeout: 5s
+      start_period: 30s
+      retries: 5
+    networks: [backend, edge]
+
+  web:
+    image: ${IMAGE_PREFIX:?IMAGE_PREFIX is required}-web-int:${IMAGE_TAG:?IMAGE_TAG is required}
+    container_name: contentflow-global-web
+    restart: unless-stopped
+    environment:
+      API_INTERNAL_URL: http://api:4000
+    depends_on:
+      api: { condition: service_healthy }
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:3000/"]
+      interval: 15s
+      timeout: 5s
+      start_period: 20s
+      retries: 5
+    networks: [backend, edge]
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  backend:
+    internal: true
+  edge:
+    external: true
+    name: ${EDGE_NETWORK:?EDGE_NETWORK is required}

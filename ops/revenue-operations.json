@@ -1,0 +1,47 @@
+{
+  "schema_version": 1,
+  "product": "ContentFlow Global",
+  "market": "global",
+  "currency": "USD",
+  "annual_revenue_target": 100000000,
+  "business_model": "creator/team subscriptions plus agency and enterprise workflow contracts",
+  "revenue_model": [
+    {"segment": "creator", "customers": 150000, "annual_revenue_per_customer": 300},
+    {"segment": "team", "customers": 12000, "annual_revenue_per_customer": 2400},
+    {"segment": "agency", "customers": 2400, "annual_revenue_per_customer": 7200},
+    {"segment": "enterprise", "customers": 180, "annual_revenue_per_customer": 50000}
+  ],
+  "funnel_events": [
+    "landing_viewed", "workspace_created", "content_generated",
+    "content_approved", "channel_connected", "content_published",
+    "trial_started", "checkout_started", "payment_succeeded",
+    "subscription_renewed", "subscription_cancelled"
+  ],
+  "release_gates": [
+    "production_build", "language_isolation", "security_scan",
+    "billing_live_mode", "payment_webhook", "analytics_ingestion",
+    "privacy_and_terms", "platform_policy_check", "backup_restore",
+    "rollback", "slo_monitoring"
+  ],
+  "automation": {
+    "health_check_minutes": 5,
+    "growth_digest_hours": 24,
+    "experiment_review_days": 7,
+    "knowledge_freshness_days": 30,
+    "maximum_recurring_human_hours_per_week": 20
+  },
+  "human_only": [
+    "legal_and_platform_policy_approval",
+    "enterprise_contract_signature",
+    "payment_and_social_oauth_verification",
+    "severity_one_incident_command",
+    "pricing_or_paid_media_budget_change"
+  ],
+  "stop_rules": {
+    "publish_failure_rate_percent": 5,
+    "payment_failure_rate_percent": 3,
+    "refund_rate_percent": 5,
+    "oldest_blocker_days": 7,
+    "knowledge_staleness_days": 30
+  }
+}

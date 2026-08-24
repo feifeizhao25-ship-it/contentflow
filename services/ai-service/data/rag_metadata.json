@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-08-13T12:18:35+00:00",
+  "knowledge_files": [
+    {
+      "file": "platform_publishing_contracts.json",
+      "source_name": "Official platform publishing documentation",
+      "source_url": "https://developers.tiktok.com/doc/content-posting-api-get-started/",
+      "last_cached": "2026-08-13T12:18:35+00:00",
+      "expiry_date": "2026-08-20T12:18:35+00:00",
+      "review_cadence_days": 7
+    }
+  ]
+}

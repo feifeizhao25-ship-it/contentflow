@@ -9,27 +9,28 @@ class ApiClient {
   final TokenStorage _tokenStorage;
 
   ApiClient(this._tokenStorage)
-      : _dio = Dio(BaseOptions(
+    : _dio = Dio(
+        BaseOptions(
           baseUrl: AppConfig.apiBaseUrl,
           connectTimeout: const Duration(seconds: 10),
           receiveTimeout: const Duration(seconds: 30),
-          headers: {
-            'Content-Type': 'application/json',
-            'X-Client': 'mobile',
-          },
-        )) {
-    _dio.interceptors.add(InterceptorsWrapper(
-      onRequest: (options, handler) async {
-        final token = await _tokenStorage.readToken();
-        if (token != null && token.isNotEmpty) {
-          options.headers['Authorization'] = 'Bearer $token';
-        }
-        return handler.next(options);
-      },
-      onError: (error, handler) {
-        return handler.next(error);
-      },
-    ));
+          headers: {'Content-Type': 'application/json', 'X-Client': 'mobile'},
+        ),
+      ) {
+    _dio.interceptors.add(
+      InterceptorsWrapper(
+        onRequest: (options, handler) async {
+          final token = await _tokenStorage.readToken();
+          if (token != null && token.isNotEmpty) {
+            options.headers['Authorization'] = 'Bearer $token';
+          }
+          return handler.next(options);
+        },
+        onError: (error, handler) {
+          return handler.next(error);
+        },
+      ),
+    );
   }
 
   Future<T> _handle<T>(
@@ -60,8 +61,10 @@ class ApiClient {
     if (payload is Map<String, dynamic>) {
       final data = payload['data'];
       if (data is List) return data;
-      if (data is Map<String, dynamic> && data['items'] is List) {
-        return data['items'] as List;
+      if (data is Map<String, dynamic>) {
+        for (final key in const ['items', 'tasks', 'contents', 'members']) {
+          if (data[key] is List) return data[key] as List;
+        }
       }
       if (payload['items'] is List) return payload['items'] as List;
     }
@@ -77,53 +80,39 @@ class ApiClient {
     return _handle(
       () => _dio.post(
         '/content-pack/generate',
-        data: {
-          'topic': topic,
-          'count': titleCount,
-        },
+        data: {'topic': topic, 'count': titleCount},
       ),
       (payload) => ContentPack.fromJson(_extractMap(payload)),
     );
   }
 
   Future<ContentPack> saveContentPack(ContentPack pack) async {
-    return _handle(
-      () => _dio.post('/content-pack/save', data: pack.toJson()),
-      (payload) => ContentPack.fromJson(_extractMap(payload)),
-    );
+    throw UnsupportedError('内容包保存接口尚未开放');
   }
 
   Future<List<ContentPack>> getContentPacks() async {
-    return _handle(
-      () => _dio.get('/content-pack/list'),
-      (payload) => _extractList(payload)
-          .map((e) => ContentPack.fromJson(Map<String, dynamic>.from(e)))
-          .toList(),
-    );
+    throw UnsupportedError('内容包列表接口尚未开放');
   }
 
   // ============== Schedule ==============
 
   Future<List<Schedule>> getTodaySchedules() async {
     return _handle(
-      () => _dio.get('/schedule/today'),
-      (payload) => _extractList(payload)
-          .map((e) => Schedule.fromJson(Map<String, dynamic>.from(e)))
-          .toList(),
+      () => _dio.get('/publish/tasks', queryParameters: {'pageSize': 50}),
+      (payload) => _extractList(
+        payload,
+      ).map((e) => Schedule.fromJson(Map<String, dynamic>.from(e))).toList(),
     );
   }
 
   Future<bool> confirmPublish(String scheduleId) async {
-    return _handle(
-      () => _dio.post('/publish/confirm', data: {'schedule_id': scheduleId}),
-      (_) => true,
-    );
+    throw UnsupportedError('发布结果必须由平台回执确认，不能由客户端手动确认');
   }
 
   Future<bool> retryPublish(String scheduleId) async {
     return _handle(
-      () => _dio.post('/publish/retry', data: {'schedule_id': scheduleId}),
-      (_) => true,
+      () => _dio.post('/publish/tasks/$scheduleId/retry'),
+      (payload) => _extractMap(payload).isNotEmpty,
     );
   }
 
@@ -132,43 +121,32 @@ class ApiClient {
   Future<List<Asset>> getAssets({AssetType? type}) async {
     return _handle(
       () => _dio.get(
-        '/assets/list',
+        '/materials',
         queryParameters: type != null ? {'type': type.name} : null,
       ),
-      (payload) => _extractList(payload)
-          .map((e) => Asset.fromJson(Map<String, dynamic>.from(e)))
-          .toList(),
+      (payload) => _extractList(
+        payload,
+      ).map((e) => Asset.fromJson(Map<String, dynamic>.from(e))).toList(),
     );
   }
 
   Future<Asset> uploadAsset(String filePath, AssetType type) async {
-    return _handle(
-      () async {
-        final formData = FormData.fromMap({
-          'file': await MultipartFile.fromFile(filePath),
-          'type': type.name,
-        });
-        return _dio.post('/assets/upload', data: formData);
-      },
-      (payload) => Asset.fromJson(_extractMap(payload)),
-    );
+    throw UnsupportedError('素材上传将在对象存储签名上传接入后开放');
   }
 
   // ============== Analytics ==============
 
   Future<AnalyticsSummary> getAnalyticsSummary() async {
     return _handle(
-      () => _dio.get('/analytics/summary'),
+      () => _dio.get('/analytics/dashboard'),
       (payload) => AnalyticsSummary.fromJson(_extractMap(payload)),
     );
   }
 
   Future<List<ContentAnalytics>> getContentAnalytics() async {
     return _handle(
-      () => _dio.get('/analytics/content'),
-      (payload) => _extractList(payload)
-          .map((e) => ContentAnalytics.fromJson(Map<String, dynamic>.from(e)))
-          .toList(),
+      () => _dio.get('/analytics/dashboard'),
+      (_) => <ContentAnalytics>[],
     );
   }
 
@@ -176,8 +154,12 @@ class ApiClient {
 
   Future<User> getUser() async {
     return _handle(
-      () => _dio.get('/user/me'),
-      (payload) => User.fromJson(_extractMap(payload)),
+      () => _dio.get('/users/me'),
+      (payload) => User.fromJson(
+        Map<String, dynamic>.from(
+          _extractMap(payload)['user'] ?? _extractMap(payload),
+        ),
+      ),
     );
   }
 
@@ -200,7 +182,8 @@ class ApiClient {
         data: {
           'email': email,
           'password': password,
-          if (tenantSlug != null && tenantSlug.isNotEmpty) 'tenant_slug': tenantSlug,
+          if (tenantSlug != null && tenantSlug.isNotEmpty)
+            'tenant_slug': tenantSlug,
         },
       ),
       (data) => data,

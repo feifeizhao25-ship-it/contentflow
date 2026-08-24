@@ -27,23 +27,25 @@ class InsightsScreen extends ConsumerWidget {
 
               // Analytics Chart
               SliverToBoxAdapter(child: _buildSectionTitle('📈 近期数据')),
-              
+
               summaryAsync.when(
-                data: (summary) => SliverToBoxAdapter(
-                  child: _buildChart(context, summary),
-                ),
+                data: (summary) =>
+                    SliverToBoxAdapter(child: _buildChart(context, summary)),
                 loading: () => const SliverToBoxAdapter(
                   child: Center(child: CircularProgressIndicator()),
                 ),
-                error: (_, __) => const SliverToBoxAdapter(child: SizedBox.shrink()),
+                error: (_, __) =>
+                    const SliverToBoxAdapter(child: SizedBox.shrink()),
               ),
 
               // Winner Alert
               SliverToBoxAdapter(child: _buildSectionTitle('🔥 爆款提示')),
-              
+
               contentAsync.when(
                 data: (contents) {
-                  if (contents.isEmpty) return const SliverToBoxAdapter(child: SizedBox.shrink());
+                  if (contents.isEmpty) {
+                    return const SliverToBoxAdapter(child: SizedBox.shrink());
+                  }
                   final topContent = contents.first;
                   if (topContent.engagementRate > 0.05) {
                     return SliverToBoxAdapter(
@@ -52,26 +54,28 @@ class InsightsScreen extends ConsumerWidget {
                   }
                   return const SliverToBoxAdapter(child: SizedBox.shrink());
                 },
-                loading: () => const SliverToBoxAdapter(child: SizedBox.shrink()),
-                error: (_, __) => const SliverToBoxAdapter(child: SizedBox.shrink()),
+                loading: () =>
+                    const SliverToBoxAdapter(child: SizedBox.shrink()),
+                error: (_, __) =>
+                    const SliverToBoxAdapter(child: SizedBox.shrink()),
               ),
 
               // Content List
               SliverToBoxAdapter(child: _buildSectionTitle('📋 内容列表')),
-              
+
               contentAsync.when(
                 data: (contents) => SliverList(
                   delegate: SliverChildBuilderDelegate(
-                    (context, index) => _buildContentItem(context, contents[index]),
+                    (context, index) =>
+                        _buildContentItem(context, contents[index]),
                     childCount: contents.length,
                   ),
                 ),
                 loading: () => const SliverToBoxAdapter(
                   child: Center(child: CircularProgressIndicator()),
                 ),
-                error: (e, _) => SliverToBoxAdapter(
-                  child: Center(child: Text('加载失败: $e')),
-                ),
+                error: (e, _) =>
+                    SliverToBoxAdapter(child: Center(child: Text('加载失败: $e'))),
               ),
 
               const SliverToBoxAdapter(child: SizedBox(height: 100)),
@@ -117,7 +121,8 @@ class InsightsScreen extends ConsumerWidget {
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 16, 20, 12),
       child: Text(
-        title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+        title,
+        style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
       ),
     );
   }
@@ -157,7 +162,9 @@ class InsightsScreen extends ConsumerWidget {
                     dotData: const FlDotData(show: false),
                     belowBarData: BarAreaData(
                       show: true,
-                      color: Theme.of(context).primaryColor.withValues(alpha: 0.1),
+                      color: Theme.of(
+                        context,
+                      ).primaryColor.withValues(alpha: 0.1),
                     ),
                   ),
                 ],
@@ -168,8 +175,16 @@ class InsightsScreen extends ConsumerWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
-              _buildStatColumn('播放', _formatNumber(summary.totalViews), Colors.blue),
-              _buildStatColumn('互动', _formatNumber(summary.totalEngagement), Colors.orange),
+              _buildStatColumn(
+                '播放',
+                _formatNumber(summary.totalViews),
+                Colors.blue,
+              ),
+              _buildStatColumn(
+                '互动',
+                _formatNumber(summary.totalEngagement),
+                Colors.orange,
+              ),
               _buildStatColumn('内容', '${summary.totalContent}', Colors.green),
             ],
           ),
@@ -302,7 +317,9 @@ class InsightsScreen extends ConsumerWidget {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             decoration: BoxDecoration(
-              color: _getEngagementColor(content.engagementRate).withValues(alpha: 0.1),
+              color: _getEngagementColor(
+                content.engagementRate,
+              ).withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Text(
