@@ -25,6 +25,60 @@ interface TitlesResponse {
   cost_usd: number | null;
 }
 
+export interface ContentSource {
+  title: string;
+  url: string;
+  publisher: string;
+  verifiedAt: string;
+  freshnessStatus?: 'current' | 'review-required';
+}
+
+export interface QualityBreakdown {
+  accuracy: number;
+  professionalism: number;
+  platformFit: number;
+  citation: number;
+  safety: number;
+  total: number;
+  suggestions: string[];
+}
+
+const PLATFORM_KNOWLEDGE: Record<string, ContentSource[]> = {
+  douyin: [{ title: '抖音开放平台协议与平台规范入口', url: 'https://open.douyin.com/platform/resource/docs/operation-standard/agreement-protocol', publisher: '抖音', verifiedAt: '2026-07-30' }],
+  linkedin: [{ title: 'LinkedIn Professional Community Policies', url: 'https://www.linkedin.com/legal/professional-community-policies', publisher: 'LinkedIn', verifiedAt: '2026-07-30' }],
+  tiktok: [{ title: 'TikTok Community Guidelines', url: 'https://www.tiktok.com/community-guidelines/en/', publisher: 'TikTok', verifiedAt: '2026-07-30' }],
+};
+
+export function sourcesForPlatform(platform: string, now = new Date(), maxAgeDays = 30): ContentSource[] {
+  return (PLATFORM_KNOWLEDGE[platform.toLowerCase()] || []).map((source) => {
+    const ageMs = now.getTime() - new Date(`${source.verifiedAt}T00:00:00Z`).getTime();
+    const current = Number.isFinite(ageMs) && ageMs >= 0 && ageMs <= maxAgeDays * 86400000;
+    return { ...source, freshnessStatus: current ? 'current' as const : 'review-required' as const };
+  }).filter((source) => source.freshnessStatus === 'current');
+}
+
+export function sanitizeTitles(raw: string, count: number): string[] {
+  const explanation = /^(以下|说明|理由|技巧|note:|here are|why\b)/i;
+  return raw.split('\n')
+    .map((line) => line.replace(/^\s*(?:[-*•]|\d+[.)、．])\s*/, '').replace(/^[`"'“”]+|[`"'“”]+$/g, '').trim())
+    .filter((line) => line.length >= 4 && line.length <= 100 && !explanation.test(line) && !/^[（(].*[）)]$/.test(line))
+    .slice(0, Math.max(1, Math.min(count, 20)));
+}
+
+export function scoreContent(content: string, sources: ContentSource[], locale: 'zh-CN' | 'en' = 'en'): QualityBreakdown {
+  const structured = /[\n#]|[。.!?]\s/.test(content);
+  const cited = sources.some((source, index) => content.includes(`[${index + 1}]`) || content.includes(source.publisher) || content.includes(source.url));
+  const accuracy = sources.length ? 26 : 20;
+  const professionalism = structured ? 23 : 18;
+  const platformFit = content.length >= 80 ? 18 : 14;
+  const citation = cited ? 14 : sources.length ? 8 : 4;
+  const safety = 10;
+  const suggestions: string[] = [];
+  if (!sources.length) suggestions.push(locale === 'en' ? 'Add an authoritative source for factual claims.' : '请为事实性陈述补充权威来源。');
+  else if (!cited) suggestions.push(locale === 'en' ? 'Connect factual claims to the numbered sources in the draft.' : '请将事实性陈述与编号来源对应。');
+  return { accuracy, professionalism, platformFit, citation, safety, total: accuracy + professionalism + platformFit + citation + safety, suggestions };
+}
+
 @Injectable()
 export class AIService {
   private readonly logger = new Logger(AIService.name);

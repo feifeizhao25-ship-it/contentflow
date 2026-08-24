@@ -1,72 +1,61 @@
-import { Logger } from '@nestjs/common';
+import { createHmac } from 'node:crypto';
 import { Process, Processor } from '@nestjs/bull';
-import { Job } from 'bull';
+import { Injectable, Logger } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import type { Job } from 'bull';
 import { PrismaService } from '../../database/prisma.service';
-import { PublishJobData } from '../../queue/publish-queue.service';
-import { AdapterRegistry } from './adapters/adapter.registry';
-import { PlatformPayload } from './adapters/adapter.interface';
+import type { PublishJobData } from '../../queue/publish-queue.service';
 
-function stringArray(value: unknown): string[] {
-  return Array.isArray(value) ? value.filter((item): item is string => typeof item === 'string') : [];
-}
+interface DispatchResult { state?: string; remotePostId?: string; remotePostUrl?: string; failureReason?: string }
 
+@Injectable()
 @Processor('publish-queue')
 export class PublishProcessor {
   private readonly logger = new Logger(PublishProcessor.name);
-
-  constructor(private readonly prisma: PrismaService, private readonly adapters: AdapterRegistry) {}
+  constructor(private readonly prisma: PrismaService, private readonly config: ConfigService) {}
 
   @Process()
-  async publish(job: Job<PublishJobData>) {
-    const task = await this.prisma.publishTask.findUnique({
+  async dispatch(job: Job<PublishJobData>) {
+    const webhookUrl = this.config.get<string>('PUBLISH_DISPATCH_WEBHOOK_URL', '');
+    const webhookSecret = this.config.get<string>('PUBLISH_DISPATCH_WEBHOOK_SECRET', '');
+    if (!webhookUrl || !webhookSecret) throw new Error('Production publishing dispatcher is not configured');
+    if (webhookSecret.length < 32) throw new Error('Publishing dispatcher secret must contain at least 32 characters');
+    if (new URL(webhookUrl).protocol !== 'https:') throw new Error('Publishing dispatcher must use HTTPS');
+    const task = await this.prisma.publishTask.findFirst({
       where: { id: job.data.taskId },
-      include: { content: true, platform_account: true },
+      include: { content: true, platform_account: { select: { id: true, platform: true, account_name: true, account_nickname: true, platform_account_id: true } } },
     });
-    if (!task) throw new Error('PUBLISH_TASK_NOT_FOUND');
-    if (task.status === 'published') return { alreadyPublished: true, externalId: task.platform_post_id };
-    if (task.status === 'cancelled') return { cancelled: true };
-    if (!task.platform_account || task.platform_account.tenant_id !== task.tenant_id) throw new Error('PLATFORM_ACCOUNT_TENANT_MISMATCH');
-
-    const adapter = this.adapters.get(task.platform_account.platform);
-    if (!adapter.isLive) {
-      await this.fail(task.id, 'ADAPTER_NOT_INTEGRATED', `平台 ${task.platform_account.platform} 尚未完成真实接入`);
-      throw new Error('ADAPTER_NOT_INTEGRATED');
+    if (!task || !task.platform_account) throw new Error('Publish task or platform account not found');
+    await this.prisma.publishTask.update({ where: { id: task.id }, data: { status: 'processing', started_at: new Date(), error_message: null } });
+    const payload = JSON.stringify({
+      schemaVersion: 1, idempotencyKey: `contentflow:${task.id}`, taskId: task.id,
+      tenantId: task.tenant_id, marketRegion: this.config.get<string>('MARKET_REGION'),
+      scheduledAt: task.scheduled_at?.toISOString(), account: task.platform_account,
+      content: { id: task.content.id, title: task.content.title, body: task.content.body, bodyHtml: task.content.body_html, coverUrl: task.content.cover_url, mediaUrls: task.content.media_urls, tags: task.content.tags },
+    });
+    const timestamp = Date.now().toString();
+    const signature = createHmac('sha256', webhookSecret).update(`${timestamp}.${payload}`).digest('hex');
+    try {
+      const response = await fetch(webhookUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Idempotency-Key': `contentflow:${task.id}`, 'X-ContentFlow-Timestamp': timestamp, 'X-ContentFlow-Signature': `sha256=${signature}` },
+        body: payload,
+        signal: AbortSignal.timeout(30_000),
+      });
+      const result = await response.json().catch(() => ({})) as DispatchResult;
+      if (!response.ok) throw new Error(result.failureReason || `Dispatcher HTTP ${response.status}`);
+      const state = String(result.state || 'SUBMITTED').toUpperCase();
+      const published = new Set(['PUBLISHED', 'POSTED', 'COMPLETED']).has(state);
+      if (published && !result.remotePostId) throw new Error('Dispatcher claimed publication without a remote post ID');
+      return this.prisma.publishTask.update({
+        where: { id: task.id },
+        data: { status: published ? 'published' : 'submitted_unconfirmed', platform_post_id: result.remotePostId ?? null, platform_post_url: result.remotePostUrl ?? null, completed_at: published ? new Date() : null, error_details: { remote_state: state } },
+      });
+    } catch (error) {
+      const reason = error instanceof Error ? error.message : 'Publishing dispatcher failed';
+      this.logger.error(`Task ${task.id} dispatch failed: ${reason}`);
+      await this.prisma.publishTask.update({ where: { id: task.id }, data: { status: 'failed', error_code: 'DISPATCH_FAILED', error_message: reason.slice(0, 500), completed_at: new Date() } });
+      throw error;
     }
-    await this.prisma.publishTask.update({ where: { id: task.id }, data: { status: 'processing', started_at: new Date(), error_code: null, error_message: null } });
-    const payload: PlatformPayload = {
-      platform: task.platform_account.platform,
-      contentId: task.content_id,
-      title: task.content.title || undefined,
-      body: task.content.body || undefined,
-      bodyHtml: task.content.body_html || undefined,
-      hashtags: stringArray(task.content.tags),
-      coverUrl: task.content.cover_url || undefined,
-      mediaUrls: stringArray(task.content.media_urls),
-    };
-    const validation = await adapter.validate(payload);
-    if (!validation.ok) {
-      await this.fail(task.id, validation.errorCode || 'PLATFORM_VALIDATION_FAILED', validation.humanMessage || validation.errorMessage || '平台内容校验失败');
-      throw new Error(validation.errorCode || 'PLATFORM_VALIDATION_FAILED');
-    }
-    if (adapter.uploadMedia) {
-      const upload = await adapter.uploadMedia(payload);
-      if (!upload.ok) {
-        await this.fail(task.id, upload.errorCode || 'MEDIA_UPLOAD_FAILED', upload.humanMessage || upload.errorMessage || '媒体上传失败');
-        throw new Error(upload.errorCode || 'MEDIA_UPLOAD_FAILED');
-      }
-      payload.extra = { ...payload.extra, mediaRefs: upload.data?.mediaRefs };
-    }
-    const result = await adapter.createPost(payload);
-    if (!result.ok || !result.data?.externalId) {
-      await this.fail(task.id, result.errorCode || 'PLATFORM_PUBLISH_FAILED', result.humanMessage || result.errorMessage || '平台发布失败');
-      throw new Error(result.errorCode || 'PLATFORM_PUBLISH_FAILED');
-    }
-    await this.prisma.publishTask.update({ where: { id: task.id }, data: { status: result.data.status || 'submitted', platform_post_id: result.data.externalId, completed_at: new Date() } });
-    this.logger.log(`Publish task ${task.id} submitted as ${result.data.externalId}`);
-    return { externalId: result.data.externalId, status: result.data.status };
-  }
-
-  private async fail(taskId: string, code: string, message: string) {
-    await this.prisma.publishTask.update({ where: { id: taskId }, data: { status: 'failed', error_code: code, error_message: message, completed_at: new Date() } });
   }
 }

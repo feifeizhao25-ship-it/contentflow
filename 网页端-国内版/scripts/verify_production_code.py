@@ -25,7 +25,7 @@ check(
     "runtime/api/src/app.module.ts",
     (
         ("Missing required production environment variables", True),
-        ("for (const key of ['JWT_SECRET', 'JWT_REFRESH_SECRET'])", True),
+        ("for (const key of ['JWT_SECRET', 'JWT_REFRESH_SECRET', 'PUBLISH_DISPATCH_WEBHOOK_SECRET'])", True),
     ),
 )
 check(

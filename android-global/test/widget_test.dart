@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:contentflow_mobile/main.dart';
+import 'package:contentflow_global/main.dart';
 
 void main() {
   testWidgets('global Android app starts', (tester) async {

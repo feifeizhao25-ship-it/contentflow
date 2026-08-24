@@ -70,27 +70,50 @@ import { QuestModule } from './modules/quest/quest.module';
 import { AchievementModule } from './modules/achievement/achievement.module';
 import { SystemModule } from './modules/system/system.module';
 
+export function validateProductionConfig(config: Record<string, unknown>) {
+  if (config.NODE_ENV !== 'production') return config;
+  const required = [
+    'DATABASE_URL', 'REDIS_HOST', 'JWT_SECRET', 'JWT_REFRESH_SECRET',
+    'MARKET_REGION', 'CORS_ORIGIN', 'PUBLISH_DISPATCH_WEBHOOK_URL',
+    'PUBLISH_DISPATCH_WEBHOOK_SECRET',
+  ];
+  if (config.MARKET_REGION === 'global') required.push('OPENROUTER_SITE_URL');
+  const missing = required.filter((key) => !config[key]);
+  if (missing.length) {
+    throw new Error(`Missing required production environment variables: ${missing.join(', ')}`);
+  }
+  for (const key of ['JWT_SECRET', 'JWT_REFRESH_SECRET', 'PUBLISH_DISPATCH_WEBHOOK_SECRET']) {
+    if (String(config[key]).length < 32) throw new Error(`${key} must contain at least 32 characters`);
+  }
+  if (!String(config.PUBLISH_DISPATCH_WEBHOOK_URL).startsWith('https://')) {
+    throw new Error('PUBLISH_DISPATCH_WEBHOOK_URL must use HTTPS');
+  }
+  if (!['cn', 'global'].includes(String(config.MARKET_REGION))) {
+    throw new Error('MARKET_REGION must be either cn or global');
+  }
+  const origins = String(config.CORS_ORIGIN).split(',').map((value) => value.trim());
+  if (origins.some((origin) => !origin.startsWith('https://') || origin.includes('*'))) {
+    throw new Error('CORS_ORIGIN must contain explicit HTTPS origins without wildcards');
+  }
+  return config;
+}
+
+const DOMESTIC_ONLY_MODULES = [
+  HotModule, CompetitorModule, GrowthModule, PointsModule,
+  RewardsModule, QuestModule, AchievementModule,
+];
+
+export function marketModulesFor(region: string | undefined) {
+  return region === 'global' ? [] : DOMESTIC_ONLY_MODULES;
+}
+
 @Module({
   imports: [
     // 配置模块
     ConfigModule.forRoot({
       isGlobal: true,
       envFilePath: ['.env.local', '.env'],
-      validate: (config: Record<string, unknown>) => {
-        if (config.NODE_ENV === 'production') {
-          const required = ['DATABASE_URL', 'REDIS_HOST', 'JWT_SECRET', 'JWT_REFRESH_SECRET'];
-          const missing = required.filter((key) => !config[key]);
-          if (missing.length > 0) {
-            throw new Error(`Missing required production environment variables: ${missing.join(', ')}`);
-          }
-          for (const key of ['JWT_SECRET', 'JWT_REFRESH_SECRET']) {
-            if (String(config[key]).length < 32) {
-              throw new Error(`${key} must contain at least 32 characters`);
-            }
-          }
-        }
-        return config;
-      },
+      validate: validateProductionConfig,
     }),
     
     // 限流保护
@@ -120,19 +143,9 @@ import { SystemModule } from './modules/system/system.module';
     BillingModule,
     AIModule,
     AnalyticsModule,
-    HotModule,
-    CompetitorModule,
     TeamModule,
     MaterialsModule,
-    GrowthModule,
-    // Points Module (V1)
-    PointsModule,
-    // Rewards Module (V1)
-    RewardsModule,
-    // Quest Module (V1)
-    QuestModule,
-    // Achievement Module (V1)
-    AchievementModule,
+    ...marketModulesFor(process.env.MARKET_REGION),
     SystemModule,
   ],
   providers: [

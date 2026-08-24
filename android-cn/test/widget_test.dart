@@ -10,7 +10,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'package:contentflow_mobile/main.dart';
+import 'package:contentflow_cn/main.dart';
 
 void main() {
   testWidgets('国内版登录页启动', (WidgetTester tester) async {

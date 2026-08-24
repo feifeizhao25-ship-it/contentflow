@@ -60,6 +60,7 @@ def validate(max_age_days: int, allow_empty: bool) -> list[str]:
     metadata = load_metadata()
     files = sorted({path for directory in RAG_CACHE_DIRS if directory.is_dir() for path in directory.glob("*.json")})
     errors: list[str] = []
+    approved_source_count = 0
     if not files:
         return [] if allow_empty else ["没有发现RAG缓存；生产发布必须提供经过审核的知识来源"]
 
@@ -69,6 +70,13 @@ def validate(max_age_days: int, allow_empty: bool) -> list[str]:
         except (OSError, json.JSONDecodeError) as exc:
             errors.append(f"{path.relative_to(PROJECT_ROOT)}: JSON无效（{exc}）")
             continue
+        # Quarantined research is deliberately unavailable to production RAG.
+        # It may use an aggregate schema while connector/reviewer evidence is
+        # still incomplete, so it must neither count as an approved source nor
+        # make the approved-source release gate fail.
+        if isinstance(payload, dict) and str(payload.get("status", "")).startswith("quarantined"):
+            continue
+        approved_source_count += 1
         record = {**(metadata.get(path.name) or {}), **(payload if isinstance(payload, dict) else {})}
         missing = sorted(field for field in REQUIRED_FIELDS if not record.get(field))
         if missing:
@@ -89,6 +97,8 @@ def validate(max_age_days: int, allow_empty: bool) -> list[str]:
             errors.append(f"{path.name}: published_at位于未来")
         if record.get("review_status") not in {"approved", "verified"}:
             errors.append(f"{path.name}: review_status必须为approved或verified")
+    if approved_source_count == 0 and not allow_empty:
+        errors.append("没有可供生产RAG使用的approved/verified来源")
     return errors
 
 
