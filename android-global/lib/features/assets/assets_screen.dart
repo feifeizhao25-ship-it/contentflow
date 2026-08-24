@@ -452,6 +452,7 @@ class AssetsScreen extends ConsumerWidget {
       final XFile? image = await picker.pickImage(source: source);
       
       if (image != null) {
+        if (!context.mounted) return;
         // Upload
         final api = ref.read(apiClientProvider);
         
@@ -459,8 +460,7 @@ class AssetsScreen extends ConsumerWidget {
           const SnackBar(content: Text('Uploading...')),
         );
         
-        AssetType type = source == ImageSource.camera ? AssetType.image : AssetType.image;
-        await api.uploadAsset(image.path, type);
+        await api.uploadAsset(image.path, AssetType.image);
         
         ref.invalidate(assetsProvider);
         
