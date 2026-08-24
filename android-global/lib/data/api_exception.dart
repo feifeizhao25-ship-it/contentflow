@@ -32,7 +32,6 @@ class ApiException implements Exception {
       case DioExceptionType.connectionError:
         return ApiException('Network connection failed.', statusCode: statusCode);
       case DioExceptionType.unknown:
-      default:
         return ApiException('Request failed. Please try again.', statusCode: statusCode);
     }
   }

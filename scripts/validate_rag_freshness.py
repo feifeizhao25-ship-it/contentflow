@@ -13,6 +13,7 @@ from urllib.parse import urlparse
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 RAG_CACHE_DIRS = (
+    PROJECT_ROOT / "runtime" / "api" / "data" / "rag_cache",
     PROJECT_ROOT / "services" / "ai-service" / "data" / "rag_cache",
     PROJECT_ROOT / "data" / "rag_cache",
 )

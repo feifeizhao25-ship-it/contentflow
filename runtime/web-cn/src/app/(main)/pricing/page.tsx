@@ -25,6 +25,10 @@ function PricingContent() {
     const [activeTab, setActiveTab] = useState(initialTab);
     const [isYearly] = useState(false);
     const [loadingPlan, setLoadingPlan] = useState<string | null>(null);
+    const [canonicalPlans, setCanonicalPlans] = useState<any[]>([]);
+    const [plansLoaded, setPlansLoaded] = useState(false);
+    const [plansFailed, setPlansFailed] = useState(false);
+    const [retrying, setRetrying] = useState(false);
     const router = useRouter();
 
     useEffect(() => {
@@ -32,46 +36,56 @@ function PricingContent() {
         if (tab && tab !== activeTab) {
             setActiveTab(tab);
         }
-    }, [searchParams]);
+    }, [searchParams, activeTab]);
 
-    const membershipPlans = [
-        {
-            id: 'free',
-            name: '基础版',
-            price: 0,
-            description: '适合初次体验 AI 创作',
-            features: [
-                '每月赠送 100 积分',
-                '标准生成通道',
-                '2 个账号绑定',
-                '1080P 视频导出'
-            ],
-            icon: <RocketFilled />,
-            buttonText: '当前方案',
-            highlight: false,
-            disabled: true,
-            color: 'text-zinc-500'
-        },
-        {
-            id: 'pro',
-            name: '专业版 PRO',
-            price: isYearly ? 1280 : 128,
-            description: '解锁全量 AI 引擎与算力',
-            features: [
-                '每月赠送 2,500 积分',
-                '4K 超清导出权限',
-                '优先 GPU 极速通道',
-                'AI 自动多段混剪',
-                '10 个账号矩阵管理'
-            ],
-            credits: '2,500 积分/月',
-            icon: <ThunderboltFilled />,
-            buttonText: '立即升级',
-            highlight: true,
-            badge: '最受欢迎',
-            color: 'text-indigo-500'
+    const loadPlans = async () => {
+        try {
+            const response = await fetch('/api/v1/billing/plans?market=cn', { cache: 'no-store' });
+            const envelope = await response.json();
+            if (!response.ok) throw new Error(envelope?.message || '套餐加载失败');
+            const payload = envelope?.data ?? envelope;
+            if (!Array.isArray(payload?.plans)) throw new Error('套餐数据格式错误');
+            setCanonicalPlans(payload.plans);
+            setPlansFailed(false);
+        } catch (error) {
+            // 解析/网络错误的原文（如 Unexpected token ...）只允许进控制台，不上屏。
+            console.error('价格接口加载失败:', error);
+            setCanonicalPlans([]);
+            setPlansFailed(true);
+        } finally {
+            setPlansLoaded(true);
+            setRetrying(false);
         }
-    ];
+    };
+
+    useEffect(() => {
+        void loadPlans();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
+    const handleRetry = () => {
+        setRetrying(true);
+        void loadPlans();
+    };
+
+    // 价格只能来自服务端单一权益注册表。接口失败时不展示缓存或虚构价格。
+    const sourcePlans = plansLoaded ? canonicalPlans : [];
+    const displayedPlans = sourcePlans
+        .filter((plan) => plan.id !== 'enterprise')
+        .map((plan) => ({
+        id: plan.id,
+        name: plan.name,
+        price: isYearly ? plan.priceYearlyCny : plan.priceMonthlyCny,
+        description: plan.custom ? '按团队规模与服务范围报价' : '价格与权益由服务端统一管理',
+        features: (Array.isArray(plan.features) ? plan.features.map(String) : []) as string[],
+        icon: plan.id === 'enterprise' ? <CrownFilled /> : plan.id === 'team' ? <SafetyCertificateOutlined /> : plan.id === 'pro' ? <ThunderboltFilled /> : <RocketFilled />,
+        buttonText: plan.id === 'free' ? '免费使用' : plan.custom ? '联系商务顾问' : '申请开通',
+        highlight: plan.id === 'pro',
+        disabled: plan.id === 'free',
+        color: plan.id === 'pro' ? 'text-indigo-500' : 'text-zinc-500',
+        badge: plan.id === 'pro' ? '推荐' : undefined,
+        credits: undefined as string | undefined,
+    }));
 
     const handlePurchase = (id: string) => {
         setLoadingPlan(id);
@@ -94,7 +108,7 @@ function PricingContent() {
                                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75"></span>
                                 <span className="relative inline-flex rounded-full h-2 w-2 bg-indigo-500"></span>
                             </span>
-                            <span className="text-xs font-bold text-zinc-600 dark:text-zinc-300 uppercase tracking-wider">Early Access Discount</span>
+                            <span className="text-xs font-bold text-zinc-600 dark:text-zinc-300 tracking-wider">早鸟优惠</span>
                         </div>
                         <h1 className="text-5xl md:text-7xl font-black tracking-tight mb-8 text-zinc-900 dark:text-white">
                             释放无限<br className="md:hidden" />
@@ -109,7 +123,15 @@ function PricingContent() {
 
                 {/* Plans Grid */}
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 items-start mb-32">
-                    {membershipPlans.map((plan) => (
+                    {plansFailed && (
+                        <div className="md:col-span-2 lg:col-span-3 rounded-2xl border border-amber-200 bg-amber-50 p-5 flex flex-col sm:flex-row items-center justify-center gap-4 text-amber-800">
+                            <span>价格信息加载失败，当前未展示缓存或虚构价格，请重试后再选择套餐。</span>
+                            <Button onClick={handleRetry} loading={retrying} className="shrink-0">
+                                重试
+                            </Button>
+                        </div>
+                    )}
+                    {displayedPlans.map((plan) => (
                         <motion.div
                             key={plan.id}
                             whileHover={{ y: -8 }}
@@ -136,7 +158,7 @@ function PricingContent() {
 
                             <div className="mb-8 p-4 rounded-xl bg-zinc-50 dark:bg-zinc-800/50">
                                 <div className="flex items-baseline gap-1">
-                                    <span className="text-4xl font-black tracking-tight">¥{plan.price}</span>
+                                    <span className="text-4xl font-black tracking-tight">{plan.price == null ? '按需报价' : `¥${plan.price}`}</span>
                                     <span className="text-zinc-400 font-medium">/月</span>
                                 </div>
                                 {plan.credits && (

@@ -1,7 +1,8 @@
-import { Injectable, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, InternalServerErrorException, Logger } from '@nestjs/common';
 import { PrismaService } from '../../database/prisma.service';
 import { PublishQueueService } from '../../queue/publish-queue.service';
 import { TenantService } from '../tenant/tenant.service';
+import { AdapterRegistry } from './adapters/adapter.registry';
 
 @Injectable()
 export class PublishService {
@@ -11,6 +12,7 @@ export class PublishService {
     private readonly prisma: PrismaService,
     private readonly publishQueue: PublishQueueService,
     private readonly tenantService: TenantService,
+    private readonly adapterRegistry: AdapterRegistry,
   ) {}
 
   async createTask(tenantId: string, userId: string, data: {
@@ -19,6 +21,14 @@ export class PublishService {
     publishType: 'immediate' | 'scheduled';
     scheduledAt?: Date;
   }) {
+    if (!['immediate', 'scheduled'].includes(data.publishType)) throw new BadRequestException('发布类型无效');
+    const accountIds = [...new Set(data.platformAccountIds || [])];
+    if (!accountIds.length) throw new BadRequestException('请至少选择一个平台账号');
+    if (accountIds.length !== data.platformAccountIds.length) throw new BadRequestException('平台账号不能重复');
+    const scheduledAt = data.scheduledAt ? new Date(data.scheduledAt) : undefined;
+    if (data.publishType === 'scheduled' && (!scheduledAt || Number.isNaN(scheduledAt.getTime()) || scheduledAt.getTime() <= Date.now())) {
+      throw new BadRequestException('定时发布时间必须晚于当前时间');
+    }
     // 检查内容是否存在且已审核通过
     const content = await this.prisma.content.findFirst({
       where: { id: data.contentId, tenant_id: tenantId },
@@ -38,42 +48,54 @@ export class PublishService {
       throw new BadRequestException('发布次数已达上限，请升级套餐');
     }
 
-    // 创建发布任务
-    const tasks = await Promise.all(
-      data.platformAccountIds.map(async (accountId) => {
-        // 检查账号是否存在
+    // 在写入任何任务前一次性验证所有账号与真实适配器能力，避免批量部分成功。
+    const accounts = await Promise.all(
+      accountIds.map(async (accountId) => {
         const account = await this.prisma.platformAccount.findFirst({
           where: { id: accountId, tenant_id: tenantId },
         });
-
         if (!account || account.status !== 'active') {
           throw new NotFoundException(`平台账号不存在或已禁用: ${accountId}`);
         }
+        let adapter;
+        try { adapter = this.adapterRegistry.get(account.platform); }
+        catch { throw new BadRequestException(`平台 ${account.platform} 尚无发布适配器`); }
+        if (!adapter.isLive) throw new BadRequestException(`平台 ${account.platform} 尚未完成真实开放平台接入，不能创建发布任务`);
+        return account;
+      }),
+    );
 
-        const scheduledTime = data.publishType === 'scheduled' && data.scheduledAt
-          ? data.scheduledAt
+    const tasks = await Promise.all(
+      accounts.map(async (account) => {
+        const scheduledTime = data.publishType === 'scheduled' && scheduledAt
+          ? scheduledAt
           : new Date();
 
         const task = await this.prisma.publishTask.create({
           data: {
             tenant_id: tenantId,
             content_id: data.contentId,
-            platform_account_id: accountId,
+            platform_account_id: account.id,
             created_by: userId,
             publish_type: data.publishType,
             scheduled_at: scheduledTime,
-            status: data.publishType === 'immediate' ? 'queued' : 'pending',
+            status: 'queued',
+            queued_at: new Date(),
           },
         });
 
-        // 立即发布的任务加入队列
-        if (data.publishType === 'immediate') {
+        try {
+          const delay = Math.max(0, scheduledTime.getTime() - Date.now());
           await this.publishQueue.addPublishTask({
             taskId: task.id,
             contentId: data.contentId,
-            platformAccountId: accountId,
+            platformAccountId: account.id,
             platform: account.platform,
-          });
+            scheduledAt: scheduledTime,
+          }, delay);
+        } catch (error) {
+          await this.prisma.publishTask.update({ where: { id: task.id }, data: { status: 'failed', error_code: 'QUEUE_UNAVAILABLE', error_message: '发布队列暂时不可用' } });
+          throw new InternalServerErrorException('发布队列暂时不可用，任务未进入发布流程');
         }
 
         return task;
@@ -81,9 +103,7 @@ export class PublishService {
     );
 
     // 增加使用量统计
-    if (data.publishType === 'immediate') {
-      await this.tenantService.incrementUsage(tenantId, 'publish', tasks.length);
-    }
+    await this.tenantService.incrementUsage(tenantId, 'publish', tasks.length);
 
     return tasks;
   }
@@ -101,6 +121,10 @@ export class PublishService {
         skip,
         take: pageSize,
         orderBy: { created_at: 'desc' },
+        include: {
+          content: { select: { title: true } },
+          platform_account: { select: { platform: true, account_name: true, account_nickname: true } },
+        },
       }),
       this.prisma.publishTask.count({ where }),
     ]);
@@ -119,6 +143,7 @@ export class PublishService {
   async retryTask(taskId: string, tenantId: string) {
     const task = await this.prisma.publishTask.findFirst({
       where: { id: taskId, tenant_id: tenantId },
+      include: { platform_account: true },
     });
 
     if (!task) {
@@ -129,27 +154,20 @@ export class PublishService {
       throw new BadRequestException('只有失败的任务可以重试');
     }
 
-    // 更新任务状态并重新加入队列
-    await this.prisma.publishTask.update({
-      where: { id: taskId },
-      data: {
-        status: 'queued',
-        retry_count: { increment: 1 },
-        started_at: null,
-        completed_at: null,
-      },
-    });
-
-    if (!task.platform_account_id) {
+    if (!task.platform_account_id || !task.platform_account) {
       throw new BadRequestException('发布任务缺少平台账号');
     }
 
-    await this.publishQueue.addPublishTask({
-      taskId: task.id,
-      contentId: task.content_id,
-      platformAccountId: task.platform_account_id,
-      platform: '',
-    });
+    const adapter = this.adapterRegistry.get(task.platform_account.platform);
+    if (!adapter.isLive) throw new BadRequestException(`平台 ${task.platform_account.platform} 尚未完成真实开放平台接入，不能重试`);
+
+    await this.prisma.publishTask.update({ where: { id: taskId }, data: { status: 'queued', retry_count: { increment: 1 }, started_at: null, completed_at: null, error_code: null, error_message: null } });
+    try {
+      await this.publishQueue.retryPublishTask({ taskId: task.id, contentId: task.content_id, platformAccountId: task.platform_account_id, platform: task.platform_account.platform });
+    } catch {
+      await this.prisma.publishTask.update({ where: { id: taskId }, data: { status: 'failed', error_code: 'QUEUE_UNAVAILABLE', error_message: '发布队列暂时不可用' } });
+      throw new InternalServerErrorException('发布队列暂时不可用，任务未重新进入发布流程');
+    }
 
     return { success: true, message: '任务已重新加入队列' };
   }
@@ -163,7 +181,7 @@ export class PublishService {
       throw new NotFoundException('任务不存在');
     }
 
-    if (!['pending', 'queued'].includes(task.status)) {
+    if (!['pending', 'queued', 'failed'].includes(task.status)) {
       throw new BadRequestException('当前状态无法取消');
     }
 

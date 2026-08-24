@@ -5,6 +5,10 @@ import { parseGeneratedTitles } from './title-parser';
 
 interface AIResponse {
   content: string;
+  model: string;
+  provider: 'openrouter' | 'deepseek' | 'qwen';
+  latency_ms: number;
+  cost_usd: number | null;
   usage: {
     prompt_tokens: number;
     completion_tokens: number;
@@ -15,6 +19,10 @@ interface AIResponse {
 interface TitlesResponse {
   titles: string[];
   usage: AIResponse['usage'];
+  model: string;
+  provider: AIResponse['provider'];
+  latency_ms: number;
+  cost_usd: number | null;
 }
 
 @Injectable()
@@ -23,6 +31,9 @@ export class AIService {
   private readonly qwenApiKey: string;
   private readonly deepseekApiKey: string;
   private readonly falApiKey: string;
+  private readonly openRouterApiKey: string;
+  private openRouterFailures = 0;
+  private openRouterOpenUntil = 0;
 
   constructor(
     private readonly prisma: PrismaService,
@@ -31,6 +42,7 @@ export class AIService {
     this.qwenApiKey = this.configService.get('QWEN_API_KEY', '');
     this.deepseekApiKey = this.configService.get('DEEPSEEK_API_KEY', '');
     this.falApiKey = this.configService.get('FAL_API_KEY', '');
+    this.openRouterApiKey = this.configService.get('OPENROUTER_API_KEY', '');
   }
 
   async generateText(params: {
@@ -39,7 +51,52 @@ export class AIService {
     maxTokens?: number;
     temperature?: number;
   }): Promise<AIResponse> {
-    const model = params.model || 'qwen-turbo';
+    const startedAt = Date.now();
+    const maxTokens = Math.min(4000, Math.max(1, params.maxTokens || 2000));
+    const model: string = params.model || (this.openRouterApiKey
+      ? this.configService.get<string>('OPENROUTER_MODEL_FAST', 'qwen/qwen3-30b-a3b-instruct-2507')
+      : 'qwen-turbo');
+    if (this.openRouterApiKey) {
+      if (Date.now() < this.openRouterOpenUntil) {
+        throw new Error('OpenRouter circuit is open; retry after cooldown');
+      }
+      const models = [
+        model,
+        ...this.configService.get<string>('OPENROUTER_FALLBACK_MODELS', 'deepseek/deepseek-v3.2,google/gemini-2.5-flash-lite')
+          .split(',').map((item: string) => item.trim()).filter(Boolean),
+      ];
+      let response: Response;
+      try {
+        response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${this.openRouterApiKey}`, 'HTTP-Referer': this.configService.get('OPENROUTER_SITE_URL', 'https://fenfa.ai'), 'X-Title': '分发侠' },
+          body: JSON.stringify({ models, messages: [{ role: 'user', content: params.prompt }], max_tokens: maxTokens, temperature: params.temperature ?? 0.7, provider: { data_collection: 'deny', zdr: true, require_parameters: true } }),
+        });
+      } catch (error) {
+        this.registerOpenRouterFailure();
+        throw error;
+      }
+      if (!response.ok) {
+        this.registerOpenRouterFailure();
+        throw new Error(`OpenRouter API error: ${response.status} ${await response.text()}`);
+      }
+      const data = await response.json();
+      const content = data.choices?.[0]?.message?.content;
+      if (!content) {
+        this.registerOpenRouterFailure();
+        throw new Error('OpenRouter returned empty content');
+      }
+      this.openRouterFailures = 0;
+      this.openRouterOpenUntil = 0;
+      return {
+        content,
+        model: String(data.model || model),
+        provider: 'openrouter',
+        latency_ms: Date.now() - startedAt,
+        cost_usd: Number.isFinite(Number(data.usage?.cost)) ? Number(data.usage.cost) : null,
+        usage: { prompt_tokens: data.usage?.prompt_tokens || 0, completion_tokens: data.usage?.completion_tokens || 0, total_tokens: data.usage?.total_tokens || 0 },
+      };
+    }
     const provider = model.includes('deepseek') ? 'deepseek' : 'qwen';
     const apiKey = provider === 'deepseek' ? this.deepseekApiKey : this.qwenApiKey;
     if (!apiKey) {
@@ -62,7 +119,7 @@ export class AIService {
           messages: [
             { role: 'user', content: params.prompt }
           ],
-          max_tokens: params.maxTokens || 2000,
+          max_tokens: maxTokens,
           temperature: params.temperature || 0.7,
         }),
       });
@@ -84,10 +141,20 @@ export class AIService {
 
       this.logger.log(`AI generation completed: ${usage.total_tokens} tokens`);
 
-      return { content, usage };
+      return { content, model, provider, latency_ms: Date.now() - startedAt, cost_usd: null, usage };
     } catch (error) {
       this.logger.error('AI generation failed:', error);
       throw error;
+    }
+  }
+
+  private registerOpenRouterFailure() {
+    this.openRouterFailures += 1;
+    const threshold = Math.max(1, this.configService.get<number>('OPENROUTER_CIRCUIT_FAILURES', 3));
+    if (this.openRouterFailures >= threshold) {
+      const cooldownMs = Math.max(1000, this.configService.get<number>('OPENROUTER_CIRCUIT_COOLDOWN_MS', 60000));
+      this.openRouterOpenUntil = Date.now() + cooldownMs;
+      this.logger.warn(`OpenRouter circuit opened for ${cooldownMs}ms after ${this.openRouterFailures} failures`);
     }
   }
 
@@ -96,7 +163,7 @@ export class AIService {
     style: string;
     platform: string;
     keywords?: string[];
-  }): Promise<{ content: string; visualPrompts?: string[] }> {
+  }): Promise<{ content: string; visualPrompts?: string[]; model: string; provider: string; latency_ms: number; cost_usd: number | null; usage: AIResponse['usage'] }> {
     // 根据平台构建不同的提示词
     const platformPrompts: Record<string, string> = {
       xhs: `请为小红书创作一篇爆款笔记，主题：${params.topic}，风格：${params.style}`,
@@ -139,10 +206,19 @@ export class AIService {
     return {
       content: result.content.split(/---?\s*VISUAL_PROMPTS/)[0].trim(),
       visualPrompts: visualPrompts.slice(0, 3),
+      model: result.model,
+      provider: result.provider,
+      latency_ms: result.latency_ms,
+      cost_usd: result.cost_usd,
+      usage: result.usage,
     };
   }
 
   async analyzeViralContent(content: string): Promise<any> {
+    return (await this.analyzeViralContentWithUsage(content)).analysis;
+  }
+
+  async analyzeViralContentWithUsage(content: string): Promise<{ analysis: any } & Omit<AIResponse, 'content'>> {
     const result = await this.generateText({
       prompt: `分析以下内容的爆款要素：
 
@@ -158,10 +234,32 @@ ${content}
     });
 
     try {
-      return JSON.parse(result.content);
+      return { analysis: JSON.parse(result.content), model: result.model, provider: result.provider, latency_ms: result.latency_ms, cost_usd: result.cost_usd, usage: result.usage };
     } catch {
-      return { raw_analysis: result.content };
+      return { analysis: { raw_analysis: result.content }, model: result.model, provider: result.provider, latency_ms: result.latency_ms, cost_usd: result.cost_usd, usage: result.usage };
     }
+  }
+
+  async assertTenantDailyBudget(tenantId: string): Promise<void> {
+    const usage = await this.getTenantDailyBudgetUsage(tenantId);
+    if (usage.limit_usd > 0 && usage.spent_usd >= usage.limit_usd) {
+      throw new Error(`AI tenant daily budget exceeded (${usage.spent_usd.toFixed(4)}/${usage.limit_usd.toFixed(2)} USD)`);
+    }
+  }
+
+  async getTenantDailyBudgetUsage(tenantId: string) {
+    const budgetUsd = Math.max(0, this.configService.get<number>('AI_TENANT_DAILY_BUDGET_USD', 20));
+    if (budgetUsd === 0) return { spent_usd: 0, limit_usd: 0, remaining_usd: -1, usage_ratio: 0, warning_level: 'disabled' };
+    const nowInChina = new Date(Date.now() + 8 * 60 * 60 * 1000);
+    const dayStart = new Date(Date.UTC(nowInChina.getUTCFullYear(), nowInChina.getUTCMonth(), nowInChina.getUTCDate()) - 8 * 60 * 60 * 1000);
+    const aggregate = await this.prisma.aIGeneration.aggregate({
+      where: { tenant_id: tenantId, status: 'success', created_at: { gte: dayStart } },
+      _sum: { cost_amount: true },
+    });
+    const spent = Number(aggregate._sum.cost_amount || 0);
+    const ratio = spent / budgetUsd;
+    const warningLevel = ratio >= 1 ? 'blocked' : ratio >= 0.95 ? 'critical' : ratio >= 0.8 ? 'warning' : 'normal';
+    return { spent_usd: spent, limit_usd: budgetUsd, remaining_usd: Math.max(budgetUsd - spent, 0), usage_ratio: Number(ratio.toFixed(4)), warning_level: warningLevel, timezone: 'Asia/Shanghai' };
   }
 
   async generateTitles(topic: string, platform: string, count: number = 5): Promise<string[]> {
@@ -181,7 +279,7 @@ ${content}
     // 结构化解析：剥离「以下是……」等说明性前后缀，
     // 解析不到有效标题时抛错（fail closed），不把说明文字当标题返回。
     const titles = parseGeneratedTitles(result.content, count);
-    return { titles, usage: result.usage };
+    return { titles, usage: result.usage, model: result.model, provider: result.provider, latency_ms: result.latency_ms, cost_usd: result.cost_usd };
   }
 
   // 记录AI生成历史
@@ -194,6 +292,7 @@ ${content}
     tokensInput?: number;
     tokensOutput?: number;
     costAmount?: number;
+    durationMs?: number;
     status: string;
   }) {
     return this.prisma.aIGeneration.create({
@@ -208,6 +307,7 @@ ${content}
         tokens_input: data.tokensInput,
         tokens_output: data.tokensOutput,
         cost_amount: data.costAmount,
+        duration_ms: data.durationMs,
         status: data.status,
         completed_at: data.status === 'success' ? new Date() : undefined,
       },

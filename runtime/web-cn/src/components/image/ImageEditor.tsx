@@ -34,6 +34,7 @@ import {
 } from '@ant-design/icons';
 import clsx from 'clsx';
 import { motion, AnimatePresence } from 'framer-motion';
+import { buildAiImageLabel, labelImageDataUrl } from '@/lib/ai-image-label-browser';
 
 // 图片滤镜
 const FILTERS = [
@@ -277,7 +278,11 @@ export function ImageEditor({ imageUrl, onSave, onClose, visible = true }: Image
 
         const link = document.createElement('a');
         link.download = `edited-${Date.now()}.png`;
-        link.href = canvas.toDataURL('image/png');
+        // 画布导出为 PNG data URL，下载前写入 AI 辅助编辑隐式标识（与服务端字段约定一致）
+        link.href = labelImageDataUrl(
+            canvas.toDataURL('image/png'),
+            buildAiImageLabel({ model: 'canvas-ai-edit' })
+        );
         link.click();
     };
 

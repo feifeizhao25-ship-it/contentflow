@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
+import { apiClient } from '@/lib/api-client';
 
 export type SubscriptionPlan = 'free' | 'pro' | 'enterprise';
 
@@ -59,29 +60,27 @@ export function usePermissions() {
     const [upgradeReason, setUpgradeReason] = useState<string>('unlock_premium');
 
     // 获取用户订阅状态
-    const fetchSubscription = useCallback(async (userId: string) => {
+    const fetchSubscription = useCallback(async (_userId: string) => {
         try {
-            const { data, error } = await supabase
-                .from('user_subscriptions')
-                .select('*')
-                .eq('user_id', userId)
-                .single();
-
-            if (error || !data) {
-                // 返回免费版默认配置
-                return {
-                    plan: 'free' as SubscriptionPlan,
-                    monthly_quota: FREE_LIMITS.monthly_quota,
-                    used_quota: 0,
-                    renewal_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-                    storage_limit: FREE_LIMITS.storage_bytes
-                };
-            }
-
-            return data;
+            const envelope = await apiClient.get<any>('/billing/subscription');
+            const data = envelope?.data ?? envelope;
+            return {
+                plan: (data?.plan ?? 'free') as SubscriptionPlan,
+                monthly_quota: Number(data?.monthlyQuota ?? 0),
+                used_quota: Number(data?.usedQuota ?? 0),
+                renewal_date: data?.renewalDate ?? '',
+                storage_limit: Number(data?.limits?.max_storage_gb ?? 0) * 1024 * 1024 * 1024,
+            };
         } catch (error) {
             console.error('Error fetching subscription:', error);
-            return null;
+            // 权益服务不可用时保持最小权限；不生成虚构续费日期或额度。
+            return {
+                plan: 'free' as SubscriptionPlan,
+                monthly_quota: 0,
+                used_quota: 0,
+                renewal_date: '',
+                storage_limit: 0,
+            };
         }
     }, []);
 
@@ -200,24 +199,8 @@ export function usePermissions() {
             return false;
         }
 
-        // 更新本地状态
-        setSubscription(prev => prev ? {
-            ...prev,
-            used_quota: prev.used_quota + amount
-        } : null);
-
-        // 同步到后端
-        const { data: { user } } = await supabase.auth.getUser();
-        if (user) {
-            await supabase
-                .from('user_subscriptions')
-                .update({
-                    used_quota: subscription.used_quota + amount,
-                    updated_at: new Date().toISOString()
-                })
-                .eq('user_id', user.id);
-        }
-
+        // 这里只做体验层预检。真实扣减必须由执行任务的后端事务完成，
+        // 浏览器没有修改订阅或用量数据的权限。
         return true;
     }, [subscription]);
 

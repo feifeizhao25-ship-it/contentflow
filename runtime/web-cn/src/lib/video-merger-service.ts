@@ -51,7 +51,8 @@ async function downloadFile(url: string, destPath: string) {
  * Uses local FFmpeg to merge videos
  */
 class FFmpegMerger {
-    private readonly outputDir = path.join(process.cwd(), 'public', 'generated');
+    // 目录是固定的发布子目录；标记让 Turbopack 不把动态 cwd 扩展成整个仓库追踪。
+    private readonly outputDir = path.join(/*turbopackIgnore: true*/ process.cwd(), 'public', 'generated');
 
     constructor() {
         // Ensure output directory exists

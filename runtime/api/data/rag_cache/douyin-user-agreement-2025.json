@@ -1,0 +1,14 @@
+{
+  "id": "douyin-user-agreement-2025",
+  "file": "douyin-user-agreement-2025.json",
+  "source_url": "https://www.douyin.com/agreements/?id=6773906068725565448",
+  "source_name": "抖音用户服务协议",
+  "published_at": "2025-09-01T00:00:00+08:00",
+  "retrieved_at": "2026-08-23T00:00:00+08:00",
+  "jurisdiction": "CN",
+  "source_tier": "A",
+  "review_status": "verified",
+  "platforms": ["douyin", "抖音"],
+  "topics": ["all"],
+  "content": "发布利用深度学习、虚拟现实、生成式人工智能等技术制作且可能导致公众混淆或误认的信息时，应以显著方式标识；不得利用相关技术制作、发布或传播谣言、不实信息及侵权违法内容，也不得以字符组合等方式逃避审核。涉及国内外时事、公共政策或社会事件时，应准确标注信息来源。"
+}

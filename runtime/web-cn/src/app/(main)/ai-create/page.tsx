@@ -588,12 +588,21 @@ export default function AICreatePage() {
         message.success('所有内容已复制');
     };
 
+    // AI 生成图片经服务端导出路由下载，写入隐式 AI 标识元数据；
+    // 本地 blob（用户上传素材）服务端取不到，仍走直接下载
+    const downloadImageUrl = (url: string, filename: string) => {
+        const href = /^https?:\/\//.test(url)
+            ? `/api/ai/export-image?url=${encodeURIComponent(url)}&filename=${encodeURIComponent(filename)}`
+            : url;
+        const link = document.createElement('a');
+        link.href = href;
+        link.download = filename;
+        link.click();
+    };
+
     const handleDownloadImages = (item: ContentItem) => {
         item.images.forEach((url, i) => {
-            const link = document.createElement('a');
-            link.href = url;
-            link.download = `${item.title}-${i + 1}.jpg`;
-            link.click();
+            downloadImageUrl(url, `${item.title}-${i + 1}.jpg`);
         });
         message.success('图片下载中...');
     };
@@ -601,10 +610,7 @@ export default function AICreatePage() {
     const handleDownloadAllImages = () => {
         results.forEach(item => {
             item.images.forEach((url, i) => {
-                const link = document.createElement('a');
-                link.href = url;
-                link.download = `${item.title}-${i + 1}.jpg`;
-                link.click();
+                downloadImageUrl(url, `${item.title}-${i + 1}.jpg`);
             });
         });
         message.success('全部图片下载中...');

@@ -1,19 +1,64 @@
-import { Controller, Get, UseGuards, Request, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Get, Headers, HttpCode, Post, UseGuards, Request, NotFoundException, Query, ServiceUnavailableException, UnauthorizedException } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
-import { PLANS } from './plans.constant';
+import { CN_PLANS, PLANS } from './plans.constant';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { PrismaService } from '../../database/prisma.service';
+import { BillingCycle, BillingService, PaymentMethod } from './billing.service';
+import { createHash, createHmac, timingSafeEqual } from 'crypto';
 
 @ApiTags('billing')
 @Controller('billing')
 export class BillingController {
-  constructor(private readonly prisma: PrismaService) { }
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly billingService: BillingService,
+  ) { }
+
+  @Post('callbacks/internal')
+  @HttpCode(200)
+  @ApiOperation({ summary: '支付适配器可信回调（HMAC 验签）' })
+  async trustedPaymentCallback(
+    @Headers('x-payment-timestamp') timestamp: string,
+    @Headers('x-payment-signature') signature: string,
+    @Body() body: { eventId: string; provider: string; orderNo: string; status: 'paid' | 'refunded'; providerOrderNo: string; amount?: number },
+  ) {
+    const secret = process.env.PAYMENT_CALLBACK_SECRET;
+    if (!secret || secret.length < 32) throw new ServiceUnavailableException('支付回调密钥未配置');
+    const epoch = Number(timestamp);
+    if (!Number.isFinite(epoch) || Math.abs(Date.now() - epoch * 1000) > 300000) {
+      throw new UnauthorizedException('支付回调已过期');
+    }
+    if (!body.eventId || !body.orderNo || !body.providerOrderNo || !['paid', 'refunded'].includes(body.status)) {
+      throw new BadRequestException('支付回调参数不完整');
+    }
+    const signed = `${timestamp}.${body.eventId}.${body.provider}.${body.orderNo}.${body.status}.${body.providerOrderNo}.${body.amount ?? ''}`;
+    const expected = createHmac('sha256', secret).update(signed).digest();
+    let supplied: Buffer;
+    try { supplied = Buffer.from(signature || '', 'hex'); } catch { throw new UnauthorizedException('支付回调签名无效'); }
+    if (supplied.length !== expected.length || !timingSafeEqual(supplied, expected)) {
+      throw new UnauthorizedException('支付回调签名无效');
+    }
+    if (body.status === 'refunded') {
+      return this.billingService.markRefunded(body.orderNo, body.providerOrderNo);
+    }
+    if (!Number.isFinite(body.amount)) throw new BadRequestException('支付金额缺失');
+    return this.billingService.markPaid({
+      orderNo: body.orderNo, provider: body.provider, providerEventId: body.eventId,
+      providerOrderNo: body.providerOrderNo, paidAmount: Number(body.amount),
+      payloadHash: createHash('sha256').update(signed).digest('hex'), signatureValid: true,
+    });
+  }
 
   // 公开端点:定价页与落地页直接消费,不要求登录
+  getPlans(): { market: 'global'; plans: typeof PLANS };
+  getPlans(market: 'cn'): { market: 'cn'; plans: typeof CN_PLANS };
+  getPlans(market?: string): { market: 'cn' | 'global'; plans: typeof CN_PLANS | typeof PLANS };
   @Get('plans')
   @ApiOperation({ summary: '获取订阅套餐列表(公开)' })
-  getPlans() {
-    return { plans: PLANS };
+  getPlans(@Query('market') market?: string) {
+    return market === 'cn'
+      ? { market: 'cn' as const, plans: CN_PLANS }
+      : { market: 'global' as const, plans: PLANS };
   }
 
   /**
@@ -63,5 +108,42 @@ export class BillingController {
       limits,
       period,
     };
+  }
+
+  @Post('orders')
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: '按服务端套餐价格创建支付订单' })
+  async createOrder(
+    @Request() req: any,
+    @Headers('idempotency-key') idempotencyKey: string,
+    @Body() body: { planId: string; billingCycle: BillingCycle; paymentMethod: PaymentMethod },
+  ) {
+    return this.billingService.createOrder(req.user.tenantId, body, idempotencyKey);
+  }
+
+  @Post('subscription/cancel')
+  @HttpCode(200)
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: '在当前周期结束时取消自动续费' })
+  async cancelSubscription(@Request() req: any) {
+    return this.billingService.requestCancellation(req.user.tenantId);
+  }
+
+  @Post('orders/close')
+  @HttpCode(200)
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
+  async closeOrder(@Request() req: any, @Body() body: { orderNo: string }) {
+    return this.billingService.closePendingOrder(req.user.tenantId, body.orderNo);
+  }
+
+  @Post('orders/refund')
+  @HttpCode(202)
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
+  async requestRefund(@Request() req: any, @Body() body: { orderNo: string }) {
+    return this.billingService.requestRefund(req.user.tenantId, body.orderNo);
   }
 }

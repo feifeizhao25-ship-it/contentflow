@@ -1,0 +1,46 @@
+{
+  "product": "contentflow-global",
+  "version": "1.0.0",
+  "tiers": {
+    "free": {
+      "name": "Free",
+      "priceMonthlyUsd": 0,
+      "custom": false,
+      "platformLimit": 3,
+      "monthlyPostQuota": 10,
+      "features": ["3 platform accounts", "10 posts per month", "50K AI tokens per month"]
+    },
+    "starter": {
+      "name": "Starter",
+      "priceMonthlyUsd": 29,
+      "custom": false,
+      "platformLimit": 5,
+      "monthlyPostQuota": 100,
+      "features": ["5 platform accounts", "100 posts per month", "500K AI tokens per month"]
+    },
+    "pro": {
+      "name": "Pro",
+      "priceMonthlyUsd": 99,
+      "custom": false,
+      "platformLimit": 15,
+      "monthlyPostQuota": 500,
+      "features": ["15 platform accounts", "500 posts per month", "2.5M AI tokens per month"]
+    },
+    "team": {
+      "name": "Team",
+      "priceMonthlyUsd": 299,
+      "custom": false,
+      "platformLimit": 30,
+      "monthlyPostQuota": 2000,
+      "features": ["30 platform accounts", "2000 posts per month", "10M AI tokens per month"]
+    },
+    "enterprise": {
+      "name": "Enterprise",
+      "priceMonthlyUsd": null,
+      "custom": true,
+      "platformLimit": -1,
+      "monthlyPostQuota": -1,
+      "features": ["Custom platform and volume limits", "API access", "Dedicated support"]
+    }
+  }
+}

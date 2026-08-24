@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import MobileNav from '@/components/layout/MobileNav';
 import './globals.css';
 
 export const metadata: Metadata = {
@@ -7,7 +8,7 @@ export const metadata: Metadata = {
   description: 'Review-first content operations for international teams.',
 };
 
-const links = [
+const links: ReadonlyArray<readonly [label: string, href: string]> = [
   ['Workspace', '/'],
   ['Create', '/create'],
   ['Content Packs', '/content-packs'],
@@ -23,6 +24,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
           <nav aria-label="Primary navigation">
             {links.map(([label, href]) => <Link key={href} href={href}>{label}</Link>)}
           </nav>
+          <MobileNav links={links} />
           <Link href="/login" className="button secondary">Account</Link>
         </header>
         {children}

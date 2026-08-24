@@ -101,4 +101,20 @@ describe('service 不得返回编造的业务数据', () => {
     );
     expect(src).toContain('NotFoundException');
   });
+
+  it.each(['publish/adapters/douyin.adapter.ts', 'publish/adapters/bilibili.adapter.ts'])(
+    '%s 未实现真实上传时不得仅凭环境变量宣称已接入',
+    (rel) => {
+      const src = stripComments(fs.readFileSync(path.join(MODULES_DIR, rel), 'utf8'));
+      expect(src).toMatch(/readonly isLive = false/);
+      expect(src).not.toMatch(/isLive\s*=\s*Boolean\s*\(/);
+    },
+  );
+
+  it('发布队列必须有真实消费者并写入外部稿件编号', () => {
+    const src = fs.readFileSync(path.join(MODULES_DIR, 'publish/publish.processor.ts'), 'utf8');
+    expect(src).toContain("@Processor('publish-queue')");
+    expect(src).toContain('adapter.createPost(payload)');
+    expect(src).toContain('platform_post_id: result.data.externalId');
+  });
 });

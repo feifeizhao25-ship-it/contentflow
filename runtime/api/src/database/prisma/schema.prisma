@@ -1081,6 +1081,10 @@ model PaymentOrder {
   subscription    Subscription? @relation(fields: [subscription_id], references: [id])
 
   order_no                 String  @unique
+  idempotency_key          String
+  market                   String  @default("cn")
+  plan_id                  String
+  billing_cycle            String
   order_type               String
   product_name             String?
   amount                   Decimal
@@ -1099,6 +1103,23 @@ model PaymentOrder {
 
   @@index([tenant_id])
   @@index([status])
+  @@unique([tenant_id, idempotency_key])
+}
+
+model PaymentWebhookEvent {
+  id                String   @id @default(uuid())
+  provider          String
+  provider_event_id String
+  order_no          String?
+  signature_valid   Boolean
+  payload_hash      String
+  processed_at      DateTime?
+  processing_error  String?
+  created_at        DateTime @default(now())
+
+  @@unique([provider, provider_event_id])
+  @@index([order_no])
+  @@index([created_at])
 }
 
 model UsageRecord {

@@ -10,7 +10,7 @@
 import path from 'node:path';
 
 /** 允许访问的根目录：Next.js 的 public/ */
-export const PUBLIC_MEDIA_ROOT = path.resolve(process.cwd(), 'public');
+export const PUBLIC_MEDIA_ROOT = path.resolve(/*turbopackIgnore: true*/ process.cwd(), 'public');
 
 export class MediaPathError extends Error {
     constructor(message: string) {

@@ -136,18 +136,7 @@ export async function POST(request: NextRequest) {
 
           let finalUrl = urls[0];
           if (urls.length > 1) {
-            const { videoMerger } = await import('@/lib/video-merger-service');
-            const merged = await videoMerger.mergeVideos({
-              videoUrls: urls,
-              aspectRatio: (body?.aspectRatio ?? '16:9') as '16:9' | '9:16' | '1:1',
-              outputFormat: 'mp4',
-            });
-            if (merged.status !== 'completed' || !merged.url) {
-              // 服务层有「失败退回第一段」的兜底，但那样用户会拿到一段短片
-              // 却以为是完整成片 —— 这里明确报错。
-              throw new Error('视频拼接未完成');
-            }
-            finalUrl = merged.url;
+            throw new Error('VIDEO_WORKER_NOT_CONFIGURED：多分镜合成服务尚未配置，未生成残缺成片');
           }
 
           send({ step: 'running', stepId: plan.finish, progress: 100, message: '完成' });

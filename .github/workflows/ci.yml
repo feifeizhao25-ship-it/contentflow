@@ -151,10 +151,10 @@ jobs:
       - uses: actions/checkout@v4
       - name: CN/INT language isolation
         run: python3 scripts/verify_language_contracts.py
-      - name: RAG provenance validator self-check
+      - name: RAG provenance and freshness gate
         run: |
           python3 -m py_compile scripts/validate_rag_freshness.py
-          python3 scripts/validate_rag_freshness.py --allow-empty
+          python3 scripts/validate_rag_freshness.py
 
   production-readiness:
     name: Production readiness

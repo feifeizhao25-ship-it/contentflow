@@ -289,11 +289,11 @@ class InsightsScreen extends ConsumerWidget {
                 const SizedBox(height: 8),
                 Row(
                   children: [
-                    _buildMetric(Icons.play_arrow, '${_formatNumber(content.views)}', Colors.blue),
+                    _buildMetric(Icons.play_arrow, _formatNumber(content.views), Colors.blue),
                     const SizedBox(width: 16),
-                    _buildMetric(Icons.thumb_up, '${_formatNumber(content.likes)}', Colors.orange),
+                    _buildMetric(Icons.thumb_up, _formatNumber(content.likes), Colors.orange),
                     const SizedBox(width: 16),
-                    _buildMetric(Icons.share, '${_formatNumber(content.shares)}', Colors.green),
+                    _buildMetric(Icons.share, _formatNumber(content.shares), Colors.green),
                   ],
                 ),
               ],

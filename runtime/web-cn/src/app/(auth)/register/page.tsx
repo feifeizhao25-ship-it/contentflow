@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Card, Form, Input, Button, message, Divider, Select } from 'antd';
+import { Card, Form, Input, Button, message, Divider, Select, Checkbox } from 'antd';
 import { UserOutlined, LockOutlined, MailOutlined, TeamOutlined } from '@ant-design/icons';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -183,6 +183,20 @@ export default function RegisterPage() {
                             prefix={<LockOutlined />}
                             placeholder="确认密码"
                         />
+                    </Form.Item>
+
+                    <Form.Item
+                        name="agreement"
+                        valuePropName="checked"
+                        rules={[{
+                            validator: (_, value) => value
+                                ? Promise.resolve()
+                                : Promise.reject(new Error('请先阅读并同意用户协议和隐私政策')),
+                        }]}
+                    >
+                        <Checkbox>
+                            我已阅读并同意 <Link href="/terms" target="_blank">《用户协议》</Link> 和 <Link href="/privacy" target="_blank">《隐私政策》</Link>
+                        </Checkbox>
                     </Form.Item>
 
                     <Form.Item>

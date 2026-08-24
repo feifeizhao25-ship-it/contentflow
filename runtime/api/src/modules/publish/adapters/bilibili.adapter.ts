@@ -23,10 +23,8 @@ export class BilibiliAdapter implements PlatformAdapter {
 
     platform = 'bilibili';
 
-    /** B 站开放平台凭证齐全时才视为已接入 */
-    readonly isLive = Boolean(
-        process.env.BILIBILI_CLIENT_ID && process.env.BILIBILI_CLIENT_SECRET,
-    );
+    /** 上传与投稿状态查询尚未实现；仅有凭证不能被视为真实接入。 */
+    readonly isLive = false;
 
     async getCapabilities(accountId: string): Promise<PlatformCapabilities> {
         return {

@@ -71,7 +71,10 @@ export async function POST(request: NextRequest) {
         'content-type': 'application/json',
       },
       body: JSON.stringify({
-        model: process.env.OPENROUTER_MODEL || 'anthropic/claude-3.5-sonnet',
+        models: [
+          process.env.OPENROUTER_MODEL || 'qwen/qwen3-30b-a3b-instruct-2507',
+          ...(process.env.OPENROUTER_FALLBACK_MODELS || 'deepseek/deepseek-v3.2,google/gemini-2.5-flash-lite').split(',').map((item) => item.trim()).filter(Boolean),
+        ],
         messages: [
           { role: 'system', content: '你是资深短视频编导，只输出 JSON。' },
           {
@@ -85,6 +88,32 @@ export async function POST(request: NextRequest) {
         ],
         temperature: 0.8,
         max_tokens: 2000,
+        response_format: {
+          type: 'json_schema',
+          json_schema: {
+            name: 'video_storyboard', strict: true,
+            schema: {
+              type: 'object',
+              additionalProperties: false,
+              required: ['title', 'scenes'],
+              properties: {
+                title: { type: 'string' },
+                scenes: {
+                  type: 'array', minItems: 1, maxItems: MAX_SCENES,
+                  items: {
+                    type: 'object', additionalProperties: false,
+                    required: ['visual', 'subtitle', 'time'],
+                    properties: {
+                      visual: { type: 'string' }, subtitle: { type: 'string' },
+                      time: { type: 'integer', minimum: 1, maximum: 30 },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+        provider: { data_collection: 'deny', zdr: true, require_parameters: true },
       }),
       cache: 'no-store',
     });

@@ -1,0 +1,14 @@
+{
+  "id": "bilibili-ai-policy",
+  "file": "bilibili-ai-policy.json",
+  "source_url": "https://www.bilibili.com/blackboard/activity-iPJCc96ZmI.html",
+  "source_name": "哔哩哔哩 AI 功能使用规范",
+  "published_at": "2025-06-01T00:00:00+08:00",
+  "retrieved_at": "2026-08-23T00:00:00+08:00",
+  "jurisdiction": "CN",
+  "source_tier": "A",
+  "review_status": "verified",
+  "platforms": ["bilibili", "B站", "哔哩哔哩"],
+  "topics": ["all"],
+  "content": "使用或传播 AI 功能生成的信息时，应主动核查输入及生成内容的真实性、准确性和合法性，避免侵犯肖像、名誉、隐私、个人信息及知识产权，并对 AI 生成内容添加显著标识。具体商业使用范围仍应在发布前根据账号、功能和最新平台规则人工确认。"
+}

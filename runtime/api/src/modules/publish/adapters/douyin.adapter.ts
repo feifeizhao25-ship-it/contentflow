@@ -22,10 +22,8 @@ export class DouyinAdapter implements PlatformAdapter {
 
     platform = 'douyin';
 
-    /** 抖音开放平台凭证齐全时才视为已接入 */
-    readonly isLive = Boolean(
-        process.env.DOUYIN_CLIENT_KEY && process.env.DOUYIN_CLIENT_SECRET,
-    );
+    /** 上传与状态查询尚未实现；仅有凭证不能被视为真实接入。 */
+    readonly isLive = false;
 
     async getCapabilities(accountId: string): Promise<PlatformCapabilities> {
         return {

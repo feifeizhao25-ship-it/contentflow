@@ -144,28 +144,10 @@ export class MultiSegmentVideoService {
             return segments[0].url;
         }
 
-        try {
-            // Use the professional video merger service
-            const { videoMerger } = await import('./video-merger-service');
-
-            const result = await videoMerger.mergeVideos({
-                videoUrls: segments.map(s => s.url),
-                aspectRatio: aspect_ratio as '16:9' | '9:16' | '1:1',
-                outputFormat: 'mp4',
-            });
-
-            if (result.status === 'completed' && result.url) {
-                console.log('Video merge completed:', result.url);
-                return result.url;
-            } else {
-                throw new Error('Video merge did not complete successfully');
-            }
-        } catch (error) {
-            console.error('Video merging failed:', error);
-            console.warn('Falling back to first segment only');
-            // Fallback: return the first segment
-            return segments[0].url;
-        }
+        void aspect_ratio;
+        throw new Error(
+            'VIDEO_WORKER_NOT_CONFIGURED：多分镜合成需要持久化 Worker 和对象存储，未返回第一片段作为伪成片',
+        );
     }
 
     /**

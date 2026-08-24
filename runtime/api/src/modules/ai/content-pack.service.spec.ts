@@ -13,13 +13,16 @@ describe('ContentPackService token accounting', () => {
     trackUsage: jest.fn(),
   };
   const compliance = { scrubOutput: jest.fn() };
+  const rag = { select: jest.fn(), buildContext: jest.fn() };
   let service: ContentPackService;
 
   beforeEach(() => {
     jest.clearAllMocks();
-    service = new ContentPackService(ai as any, usage as any, compliance as any);
+    service = new ContentPackService(ai as any, usage as any, compliance as any, rag as any);
     usage.checkQuota.mockResolvedValue(true);
     compliance.scrubOutput.mockImplementation(async (value: string) => value);
+    rag.select.mockResolvedValue([]);
+    rag.buildContext.mockReturnValue('');
   });
 
   it('charges the provider-reported title and script tokens', async () => {
@@ -80,6 +83,18 @@ describe('ContentPackService token accounting', () => {
     expect(result.data.sources).toEqual([]);
     expect(result.data.sources_status).toBe('none');
     expect(result.data.sources_note).toContain('未引用');
+  });
+
+  it('returns only sources that were inserted into the model context', async () => {
+    const source = { id: 'official-1', source_url: 'https://example.gov/policy', source_name: '官方规则', published_at: '2025-01-01', retrieved_at: '2026-08-23', jurisdiction: 'CN', source_tier: 'S' };
+    rag.select.mockResolvedValue([source]);
+    rag.buildContext.mockReturnValue('\n[1] 官方规则');
+    ai.generateTitlesWithUsage.mockResolvedValue({ titles: ['A title'], usage: { prompt_tokens: 1, completion_tokens: 1, total_tokens: 2 } });
+    ai.generateText.mockResolvedValue({ content: 'A script', usage: { prompt_tokens: 2, completion_tokens: 2, total_tokens: 4 } });
+    const result = await service.generatePack('tenant-1', { topic: 'Topic', platforms: ['douyin'] });
+    expect(ai.generateText).toHaveBeenCalledWith(expect.objectContaining({ prompt: expect.stringContaining('[1] 官方规则') }));
+    expect(result.data.sources).toEqual([source]);
+    expect(result.data.sources_status).toBe('verified');
   });
 
   it('fails closed when the provider omits usable token accounting', async () => {

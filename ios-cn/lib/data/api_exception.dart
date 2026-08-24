@@ -32,7 +32,6 @@ class ApiException implements Exception {
       case DioExceptionType.connectionError:
         return ApiException('网络连接失败', statusCode: statusCode);
       case DioExceptionType.unknown:
-      default:
         return ApiException('请求失败，请稍后再试', statusCode: statusCode);
     }
   }

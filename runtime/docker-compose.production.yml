@@ -48,7 +48,24 @@ services:
       CORS_ORIGIN: ${CORS_ORIGIN:?CORS_ORIGIN is required}
       QWEN_API_KEY: ${QWEN_API_KEY:-}
       DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY:-}
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
+      OPENROUTER_MODEL_FAST: ${OPENROUTER_MODEL_FAST:-qwen/qwen3-30b-a3b-instruct-2507}
+      OPENROUTER_MODEL_QUALITY: ${OPENROUTER_MODEL_QUALITY:-deepseek/deepseek-v3.2}
+      OPENROUTER_FALLBACK_MODELS: ${OPENROUTER_FALLBACK_MODELS:-deepseek/deepseek-v3.2,google/gemini-2.5-flash-lite}
+      OPENROUTER_SITE_URL: ${OPENROUTER_SITE_URL:-https://fenfa.ai}
+      OPENROUTER_CIRCUIT_FAILURES: ${OPENROUTER_CIRCUIT_FAILURES:-3}
+      OPENROUTER_CIRCUIT_COOLDOWN_MS: ${OPENROUTER_CIRCUIT_COOLDOWN_MS:-60000}
+      AI_TENANT_DAILY_BUDGET_USD: ${AI_TENANT_DAILY_BUDGET_USD:-20}
+      PAYMENT_CALLBACK_SECRET: ${PAYMENT_CALLBACK_SECRET:?PAYMENT_CALLBACK_SECRET is required}
       FAL_API_KEY: ${FAL_API_KEY:-}
+      BANK_TRANSFER_ACCOUNT_NAME: ${BANK_TRANSFER_ACCOUNT_NAME:-}
+      BANK_TRANSFER_ACCOUNT_NO: ${BANK_TRANSFER_ACCOUNT_NO:-}
+      WECHAT_PAY_MCH_ID: ${WECHAT_PAY_MCH_ID:-}
+      WECHAT_PAY_PRIVATE_KEY: ${WECHAT_PAY_PRIVATE_KEY:-}
+      WECHAT_PAY_API_V3_KEY: ${WECHAT_PAY_API_V3_KEY:-}
+      ALIPAY_APP_ID: ${ALIPAY_APP_ID:-}
+      ALIPAY_PRIVATE_KEY: ${ALIPAY_PRIVATE_KEY:-}
+      ALIPAY_PUBLIC_KEY: ${ALIPAY_PUBLIC_KEY:-}
     depends_on:
       postgres: { condition: service_healthy }
       redis: { condition: service_healthy }
@@ -65,6 +82,9 @@ services:
     restart: unless-stopped
     environment:
       API_INTERNAL_URL: http://api:4000
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
+      OPENROUTER_MODEL: ${OPENROUTER_MODEL_FAST:-qwen/qwen3-30b-a3b-instruct-2507}
+      OPENROUTER_FALLBACK_MODELS: ${OPENROUTER_FALLBACK_MODELS:-deepseek/deepseek-v3.2,google/gemini-2.5-flash-lite}
     expose: ["3000"]
     depends_on:
       api: { condition: service_healthy }

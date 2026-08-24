@@ -92,7 +92,7 @@ run_step "Production API build/test" verify_api
 run_step "CN-Web typecheck/build/API-contract" verify_cn_web
 run_step "INT-Web typecheck/build" verify_web_app "runtime/web-int"
 run_step "CN/INT language contract" python3 "$ROOT/scripts/verify_language_contracts.py"
-run_step "RAG source/freshness contract" python3 "$ROOT/scripts/validate_rag_freshness.py" --allow-empty
+run_step "RAG source/freshness contract" python3 "$ROOT/scripts/validate_rag_freshness.py"
 
 for edition in android-cn ios-cn android-global ios-global; do
   run_step "$edition analyze/test" verify_flutter_edition "$edition"
