@@ -53,6 +53,19 @@ export default function MainLayout({ children }: MainLayoutProps) {
     const pathname = usePathname();
     const [scrolled, setScrolled] = useState(false);
     const [hasCheckedIn, setHasCheckedIn] = useState(false);
+    const [isMobile, setIsMobile] = useState(false);
+    const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+    useEffect(() => {
+        const media = window.matchMedia('(max-width: 767px)');
+        const updateViewport = () => {
+            setIsMobile(media.matches);
+            if (!media.matches) setMobileMenuOpen(false);
+        };
+        updateViewport();
+        media.addEventListener('change', updateViewport);
+        return () => media.removeEventListener('change', updateViewport);
+    }, []);
 
     // 处理滚动效果
     useEffect(() => {
@@ -127,7 +140,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
         },
     ];
 
-    const sidebarWidth = sidebarCollapsed ? 80 : 240;
+    const sidebarWidth = isMobile ? 240 : (sidebarCollapsed ? 80 : 240);
     const isDarkMode = isDark;
 
     return (
@@ -135,12 +148,21 @@ export default function MainLayout({ children }: MainLayoutProps) {
             "min-h-screen flex",
             isDarkMode ? "bg-zinc-950" : "bg-background"
         )}>
+            {isMobile && mobileMenuOpen && (
+                <button
+                    type="button"
+                    aria-label="关闭导航菜单"
+                    className="fixed inset-0 z-40 bg-zinc-950/40 backdrop-blur-sm"
+                    onClick={() => setMobileMenuOpen(false)}
+                />
+            )}
             {/* 侧边栏 */}
             <motion.aside
                 initial={false}
                 animate={{ width: sidebarWidth }}
                 className={clsx(
                     "fixed left-0 top-0 bottom-0 z-50 h-screen transition-all duration-300 flex flex-col",
+                    isMobile && (mobileMenuOpen ? "translate-x-0 shadow-2xl" : "-translate-x-full"),
                     isDarkMode 
                         ? "bg-zinc-900/95 backdrop-blur-xl border-r border-zinc-800" 
                         : "bg-white/95 backdrop-blur-xl border-r border-slate-100"
@@ -240,7 +262,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
             {/* 主内容区 */}
             <main
                 className="flex-1 transition-all duration-300 flex flex-col min-h-screen relative"
-                style={{ marginLeft: sidebarWidth }}
+                style={{ marginLeft: isMobile ? 0 : sidebarWidth, minWidth: 0 }}
             >
                 {/* 顶部栏 */}
                 <header
@@ -256,7 +278,9 @@ export default function MainLayout({ children }: MainLayoutProps) {
                     {/* 左侧：折叠按钮 + 搜索 */}
                     <div className="flex items-center gap-4">
                         <button
-                            onClick={toggleSidebar}
+                            type="button"
+                            aria-label={isMobile ? "打开导航菜单" : "折叠导航菜单"}
+                            onClick={() => isMobile ? setMobileMenuOpen(true) : toggleSidebar()}
                             className={clsx(
                                 "w-8 h-8 flex items-center justify-center rounded-lg transition-colors",
                                 isDarkMode 
@@ -264,7 +288,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
                                     : "hover:bg-zinc-100 text-zinc-500 hover:text-zinc-900"
                             )}
                         >
-                            {sidebarCollapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
+                            {isMobile || sidebarCollapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
                         </button>
 
                         {/* 搜索框 */}
