@@ -33,6 +33,21 @@ jobs:
               ;;
           esac
 
+      - name: Validate production automation configuration
+        env:
+          PUBLISH_DISPATCH_WEBHOOK_URL: ${{ secrets.PUBLISH_DISPATCH_WEBHOOK_URL }}
+          PUBLISH_DISPATCH_WEBHOOK_SECRET: ${{ secrets.PUBLISH_DISPATCH_WEBHOOK_SECRET }}
+        run: |
+          set -euo pipefail
+          if [[ ! "$PUBLISH_DISPATCH_WEBHOOK_URL" =~ ^https:// ]]; then
+            echo 'Repository secret PUBLISH_DISPATCH_WEBHOOK_URL must be a real HTTPS OpenClaw publish endpoint.' >&2
+            exit 1
+          fi
+          if [ "${#PUBLISH_DISPATCH_WEBHOOK_SECRET}" -lt 32 ]; then
+            echo 'Repository secret PUBLISH_DISPATCH_WEBHOOK_SECRET must contain at least 32 characters.' >&2
+            exit 1
+          fi
+
       # The instance has no GHCR credentials (token lacks read:packages), so
       # the runner pulls the release images and ships them through S3,
       # mirroring the seasons-app S3-relay pattern.
@@ -78,11 +93,15 @@ jobs:
           DEPLOY_USER: ${{ secrets.CONTENTFLOW_DEPLOY_USER }}
           DEPLOY_SSH_KEY: ${{ secrets.CONTENTFLOW_DEPLOY_SSH_KEY }}
           IMAGE_TAG: ${{ inputs.image_tag }}
+          PUBLISH_DISPATCH_WEBHOOK_URL: ${{ secrets.PUBLISH_DISPATCH_WEBHOOK_URL }}
+          PUBLISH_DISPATCH_WEBHOOK_SECRET: ${{ secrets.PUBLISH_DISPATCH_WEBHOOK_SECRET }}
         run: |
           set -euo pipefail
           install -m 600 /dev/null /tmp/deploy-key
           printf '%s\n' "$DEPLOY_SSH_KEY" > /tmp/deploy-key
           export SSH="ssh -i /tmp/deploy-key -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new -o ConnectTimeout=20 ${DEPLOY_USER}@${DEPLOY_HOST}"
+          PUBLISH_URL_B64=$(printf '%s' "$PUBLISH_DISPATCH_WEBHOOK_URL" | base64 -w 0)
+          PUBLISH_SECRET_B64=$(printf '%s' "$PUBLISH_DISPATCH_WEBHOOK_SECRET" | base64 -w 0)
           # Load one image at a time: the instance has only 1GB RAM + swap,
           # so each archive is deleted before the next download starts.
           for img in api web-int; do
@@ -94,7 +113,7 @@ jobs:
           rm -f /tmp/contentflow-image.tar.gz
           REMOTE
           done
-          $SSH "IMAGE_TAG='${IMAGE_TAG}' bash -s" <<'REMOTE'
+          $SSH "IMAGE_TAG='${IMAGE_TAG}' PUBLISH_URL_B64='${PUBLISH_URL_B64}' PUBLISH_SECRET_B64='${PUBLISH_SECRET_B64}' bash -s" <<'REMOTE'
           set -euo pipefail
           cd /opt/contentflow-global
           PREVIOUS_ENV=''
@@ -136,6 +155,11 @@ jobs:
           }
           trap diagnose_and_rollback ERR
 
+          publish_url=$(printf '%s' "$PUBLISH_URL_B64" | base64 -d)
+          publish_secret=$(printf '%s' "$PUBLISH_SECRET_B64" | base64 -d)
+          sudo sed -i '/^PUBLISH_DISPATCH_WEBHOOK_URL=/d;/^PUBLISH_DISPATCH_WEBHOOK_SECRET=/d' .env
+          printf 'PUBLISH_DISPATCH_WEBHOOK_URL=%s\nPUBLISH_DISPATCH_WEBHOOK_SECRET=%s\n' \
+            "$publish_url" "$publish_secret" | sudo tee -a .env >/dev/null
           sudo sed -i "s/^IMAGE_TAG=.*/IMAGE_TAG=${IMAGE_TAG}/" .env
           sudo grep -E '^IMAGE_(PREFIX|TAG)=' .env
           sudo docker compose config --quiet
