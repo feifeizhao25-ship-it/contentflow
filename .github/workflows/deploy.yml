@@ -97,7 +97,45 @@ jobs:
           $SSH "IMAGE_TAG='${IMAGE_TAG}' bash -s" <<'REMOTE'
           set -euo pipefail
           cd /opt/contentflow-global
-          sudo cp .env ".env.deploy-bak.$(date +%s)"
+          PREVIOUS_ENV=''
+          CURRENT_TAG=$(sudo sed -n 's/^IMAGE_TAG=//p' .env | tail -1)
+          if [ "$CURRENT_TAG" != "$IMAGE_TAG" ]; then
+            PREVIOUS_ENV=".env.deploy-bak.$(date +%s)"
+            sudo cp .env "$PREVIOUS_ENV"
+          else
+            # A prior interrupted deploy may already have written the failed tag.
+            # Recover the newest backup that points at a different immutable image.
+            for candidate in $(ls -1t .env.deploy-bak.* 2>/dev/null || true); do
+              candidate_tag=$(sudo sed -n 's/^IMAGE_TAG=//p' "$candidate" | tail -1)
+              if [ -n "$candidate_tag" ] && [ "$candidate_tag" != "$IMAGE_TAG" ]; then
+                PREVIOUS_ENV="$candidate"
+                break
+              fi
+            done
+          fi
+
+          diagnose_and_rollback() {
+            exit_code=$?
+            trap - ERR
+            set +e
+            echo 'Deployment failed; collecting container evidence.' >&2
+            sudo docker compose ps -a >&2
+            sudo docker compose logs --no-color --tail=120 api web >&2
+            sudo docker inspect --format \
+              'container={{.Name}} status={{.State.Status}} health={{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}} exit={{.State.ExitCode}} error={{.State.Error}}' \
+              contentflow-global-api contentflow-global-web >&2
+            if [ -n "$PREVIOUS_ENV" ] && [ -f "$PREVIOUS_ENV" ]; then
+              echo "Rolling back with $PREVIOUS_ENV" >&2
+              sudo cp "$PREVIOUS_ENV" .env
+              sudo docker compose up -d api web >&2
+              sudo docker compose ps -a >&2
+            else
+              echo 'No previous immutable deployment environment was found; manual recovery is required.' >&2
+            fi
+            exit "$exit_code"
+          }
+          trap diagnose_and_rollback ERR
+
           sudo sed -i "s/^IMAGE_TAG=.*/IMAGE_TAG=${IMAGE_TAG}/" .env
           sudo grep -E '^IMAGE_(PREFIX|TAG)=' .env
           sudo docker compose config --quiet
@@ -117,9 +155,10 @@ jobs:
           # -k: the origin serves a Cloudflare Origin CA certificate, which is
           # only trusted by the Cloudflare edge, not by public CA bundles.
           curl -fsSk --resolve contentflow.tianji-astrology.com:443:127.0.0.1 \
-            https://contentflow.tianji-astrology.com/api/v1/health/ready
+            https://contentflow.tianji-astrology.com/health
           echo
           echo 'Health gate passed'
+          trap - ERR
           REMOTE
 
       - name: Cleanup S3 image archives
