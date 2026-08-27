@@ -25,7 +25,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
             {links.map(([label, href]) => <Link key={href} href={href}>{label}</Link>)}
           </nav>
           <MobileNav links={links} />
-          <Link href="/login" className="button secondary">Account</Link>
+          <Link href="/login" className="button secondary header-account">Account</Link>
         </header>
         {children}
         <footer>ContentFlow Global · Human-reviewed AI operations · Privacy by design</footer>
