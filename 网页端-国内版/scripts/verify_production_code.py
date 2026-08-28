@@ -74,7 +74,7 @@ check(
 check(
     "runtime/web-cn/src/app/(main)/ai-create/page.tsx",
     (
-        ("const [materials, setMaterials] = useState<Material[]>([]);", True),
+        ("redirect('/studio')", True),
         ("via.placeholder.com", False),
     ),
 )
