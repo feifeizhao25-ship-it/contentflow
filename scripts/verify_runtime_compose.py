@@ -11,16 +11,19 @@ import sys
 
 ROOT = Path(__file__).resolve().parents[1]
 COMPOSE = ROOT / "runtime" / "docker-compose.production.yml"
-required_services = {"postgres", "redis", "api", "web-cn", "web-int", "gateway"}
+required_services = {
+    "postgres-cn", "redis-cn", "api-cn", "web-cn",
+    "postgres-int", "redis-int", "api-int", "web-int", "gateway",
+}
 required_contracts = {
-    "POSTGRES_PASSWORD",
-    "REDIS_PASSWORD",
-    "JWT_SECRET",
-    "JWT_REFRESH_SECRET",
-    "PAYMENT_CALLBACK_SECRET",
-    "CORS_ORIGIN",
-    "PUBLISH_DISPATCH_WEBHOOK_URL",
-    "PUBLISH_DISPATCH_WEBHOOK_SECRET",
+    "CN_POSTGRES_PASSWORD", "INT_POSTGRES_PASSWORD",
+    "CN_REDIS_PASSWORD", "INT_REDIS_PASSWORD",
+    "CN_JWT_SECRET", "INT_JWT_SECRET",
+    "CN_JWT_REFRESH_SECRET", "INT_JWT_REFRESH_SECRET",
+    "CN_PAYMENT_CALLBACK_SECRET", "INT_PAYMENT_CALLBACK_SECRET",
+    "CN_CORS_ORIGIN", "INT_CORS_ORIGIN",
+    "CN_PUBLISH_DISPATCH_WEBHOOK_URL", "INT_PUBLISH_DISPATCH_WEBHOOK_URL",
+    "CN_PUBLISH_DISPATCH_WEBHOOK_SECRET", "INT_PUBLISH_DISPATCH_WEBHOOK_SECRET",
     "CN_DOMAIN",
     "INT_DOMAIN",
     "TLS_EMAIL",
@@ -40,15 +43,23 @@ environment = os.environ.copy()
 environment.update(
     {
         "IMAGE_TAG": "0123456789abcdef0123456789abcdef01234567",
-        "POSTGRES_PASSWORD": "p" * 32,
-        "REDIS_PASSWORD": "r" * 32,
-        "JWT_SECRET": "j" * 32,
-        "JWT_REFRESH_SECRET": "k" * 32,
-        "PAYMENT_CALLBACK_SECRET": "c" * 32,
-        "CORS_ORIGIN": "https://cn.example.invalid",
-        "MARKET_REGION": "cn",
-        "PUBLISH_DISPATCH_WEBHOOK_URL": "https://automation.example.invalid/publish",
-        "PUBLISH_DISPATCH_WEBHOOK_SECRET": "w" * 32,
+        "CN_POSTGRES_PASSWORD": "p" * 32,
+        "INT_POSTGRES_PASSWORD": "q" * 32,
+        "CN_REDIS_PASSWORD": "r" * 32,
+        "INT_REDIS_PASSWORD": "s" * 32,
+        "CN_JWT_SECRET": "j" * 32,
+        "INT_JWT_SECRET": "i" * 32,
+        "CN_JWT_REFRESH_SECRET": "k" * 32,
+        "INT_JWT_REFRESH_SECRET": "l" * 32,
+        "CN_PAYMENT_CALLBACK_SECRET": "c" * 32,
+        "INT_PAYMENT_CALLBACK_SECRET": "d" * 32,
+        "CN_CORS_ORIGIN": "https://cn.example.invalid",
+        "INT_CORS_ORIGIN": "https://int.example.invalid",
+        "CN_PUBLISH_DISPATCH_WEBHOOK_URL": "https://cn-automation.example.invalid/publish",
+        "INT_PUBLISH_DISPATCH_WEBHOOK_URL": "https://int-automation.example.invalid/publish",
+        "CN_PUBLISH_DISPATCH_WEBHOOK_SECRET": "w" * 32,
+        "INT_PUBLISH_DISPATCH_WEBHOOK_SECRET": "x" * 32,
+        "OPENROUTER_API_KEY": "or-test-placeholder",
         "CN_DOMAIN": "cn.example.invalid",
         "INT_DOMAIN": "int.example.invalid",
         "TLS_EMAIL": "ops@example.invalid",
@@ -80,16 +91,23 @@ if missing_services:
         + ", ".join(missing_services)
     )
 
-for name in ("postgres", "redis", "api", "web-cn", "web-int"):
+for name in required_services - {"gateway"}:
     if services[name].get("ports"):
         raise SystemExit(
             f"Production Compose gate failed: {name} must not publish host ports"
         )
 
-for name in ("api", "web-cn", "web-int"):
+for name in ("api-cn", "api-int", "web-cn", "web-int"):
     if services[name].get("restart") != "unless-stopped":
         raise SystemExit(
             f"Production Compose gate failed: {name} lacks restart policy"
         )
 
-print(f"Production Compose gate passed: {len(services)} services")
+if services["api-cn"]["environment"].get("MARKET_REGION") != "cn":
+    raise SystemExit("Production Compose gate failed: api-cn market mismatch")
+if services["api-int"]["environment"].get("MARKET_REGION") != "global":
+    raise SystemExit("Production Compose gate failed: api-int market mismatch")
+if services["api-cn"]["environment"].get("DATABASE_URL") == services["api-int"]["environment"].get("DATABASE_URL"):
+    raise SystemExit("Production Compose gate failed: CN and Global share a database")
+
+print(f"Production Compose gate passed: {len(services)} isolated services")

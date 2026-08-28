@@ -1,13 +1,12 @@
 'use client';
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Button, Card, Input, Select, Tag, message, Steps, Divider, DatePicker, TimePicker, Skeleton, Progress } from 'antd';
+import { Button, Card, Input, Select, Tag, message, Steps, Divider, DatePicker, TimePicker, Skeleton } from 'antd';
 import { Sparkles, Send, Image as ImageIcon, CalendarClock, Layers, PlayCircle } from 'lucide-react';
 import dayjs from 'dayjs';
 import clsx from 'clsx';
 import { motion } from 'framer-motion';
 import { apiClient } from '@/lib/api-client';
-import { usePointsStore } from '@/store/pointsStore';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAchievementStore } from '@/store/appStore';
 import { trackEvent } from '@/lib/analytics';
@@ -26,7 +25,7 @@ const PLATFORMS = [
 function StudioContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { balance, setBalance } = usePointsStore();
+  const [balance, setBalance] = useState<number | null>(null);
   const { unlockAchievement, isUnlocked } = useAchievementStore();
 
   const [topic, setTopic] = useState('');
@@ -41,7 +40,6 @@ function StudioContent() {
   const [isGeneratingImage, setIsGeneratingImage] = useState(false);
   const [isGeneratingVideo, setIsGeneratingVideo] = useState(false);
   const [videoUrl, setVideoUrl] = useState('');
-  const [videoProgress, setVideoProgress] = useState<number>(0);
   const [videoLogs, setVideoLogs] = useState<string[]>([]);
   const [videoDuration, setVideoDuration] = useState(15);
 
@@ -84,9 +82,11 @@ function StudioContent() {
       const nextBalance = res?.data?.balance ?? res?.balance;
       if (typeof nextBalance === 'number') {
         setBalance(nextBalance);
+      } else {
+        setBalance(null);
       }
     } catch {
-      // ignore balance refresh failures
+      setBalance(null);
     }
   }, [setBalance]);
 
@@ -211,26 +211,9 @@ function StudioContent() {
       return;
     }
     setIsGeneratingVideo(true);
-    setVideoLogs(['🤖 正在构思您的视频剧情...', '📝 编写分镜脚本中...']);
-    setVideoProgress(10);
+    setVideoLogs(['生成请求已提交，正在等待服务器返回可验证结果…']);
 
     try {
-      // Simulate multi-step progress for better UX
-      setTimeout(() => {
-        setVideoLogs(prev => [...prev, '🎨 正在请求 AI 渲染引擎...']);
-        setVideoProgress(30);
-      }, 2000);
-
-      setTimeout(() => {
-        setVideoLogs(prev => [...prev, '📽️ 正在生成第 1 个片段 (5s)...', '📽️ 正在生成第 2 个片段 (5s)...']);
-        setVideoProgress(60);
-      }, 5000);
-
-      setTimeout(() => {
-        setVideoLogs(prev => [...prev, '🎬 正在通过 Shotstack 合并视频轨道...', '🎵 添加背景音乐与音效...']);
-        setVideoProgress(85);
-      }, 10000);
-
       const res: any = await apiClient.post('/ai/generate/video', {
         topic,
         style,
@@ -238,9 +221,11 @@ function StudioContent() {
       });
 
       const videoData = res?.data || res;
-      setVideoUrl(videoData?.url || '');
-      setVideoLogs(prev => [...prev, '✅ 视频生成成功！准备预览。']);
-      setVideoProgress(100);
+      if (!videoData?.url) {
+        throw new Error('服务器未返回可验证的视频地址');
+      }
+      setVideoUrl(videoData.url);
+      setVideoLogs(prev => [...prev, '服务器已返回视频地址，可以预览。']);
       await refreshBalance();
       message.success('视频内容包生成成功');
     } catch (e: any) {
@@ -424,7 +409,7 @@ function StudioContent() {
           </Button>
           <p className="text-[10px] text-zinc-400 mt-2 flex justify-between items-center bg-zinc-50 p-2 rounded-lg">
             <span>✨ 单次消耗：<span className="text-emerald-600 font-bold">5 积分</span></span>
-            <span>可用余额：<span className="text-amber-600 font-bold">{balance}</span></span>
+            <span>可用余额：<span className="text-amber-600 font-bold">{balance ?? '暂不可用'}</span></span>
           </p>
 
           <Divider className="my-6" />
@@ -526,7 +511,7 @@ function StudioContent() {
                             <motion.div initial={{ opacity: 0, x: -5 }} animate={{ opacity: 1, x: 0 }} key={i}>{log}</motion.div>
                           ))}
                         </div>
-                        <Progress percent={videoProgress} size="small" strokeColor="#6366f1" showInfo={false} />
+                        <div className="text-[11px] text-zinc-400">系统不会用模拟进度或占位视频冒充结果</div>
                       </div>
                     ) : videoUrl ? (
                       <video src={videoUrl} controls className="w-full h-full object-contain" />

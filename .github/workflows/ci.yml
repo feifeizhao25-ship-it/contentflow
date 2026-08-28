@@ -142,7 +142,9 @@ jobs:
         if: startsWith(matrix.edition, 'android-')
         env:
           ALLOW_DEBUG_RELEASE_SIGNING: "true"
-        run: flutter build apk --release --no-pub
+        run: >-
+          flutter build apk --release --no-pub
+          --dart-define=API_BASE_URL=https://contentflow-ci.invalid/api/v1
 
   language-and-rag-contracts:
     name: Language and RAG contracts
@@ -155,6 +157,10 @@ jobs:
         run: |
           python3 -m py_compile scripts/validate_rag_freshness.py
           python3 scripts/validate_rag_freshness.py
+      - name: Region, state and API isolation
+        run: python3 scripts/verify_region_isolation.py
+      - name: Production truthfulness
+        run: python3 scripts/verify_production_truthfulness.py
 
   production-readiness:
     name: Production readiness

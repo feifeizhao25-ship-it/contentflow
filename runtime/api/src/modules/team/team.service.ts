@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { PrismaService } from '../../database/prisma.service';
 
 @Injectable()
@@ -20,13 +20,12 @@ export class TeamService {
   }
 
   async addMember(tenantId: string, data: { email: string; name?: string; role?: string }) {
-    return this.prisma.user.create({
-      data: {
-        tenant_id: tenantId,
-        email: data.email,
-        name: data.name,
-        role: data.role || 'member',
-      },
-    });
+    // A production invite needs signed invitation delivery and acceptance;
+    // silently creating an active user would bypass consent and access control.
+    void tenantId;
+    void data;
+    throw new BadRequestException(
+      '团队邀请通道尚未配置，请先接入签名邀请邮件与接受流程',
+    );
   }
 }

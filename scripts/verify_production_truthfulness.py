@@ -73,16 +73,29 @@ require(
 for workflow in (".github/workflows/ci.yml",):
     require(workflow, ("--dart-define=API_BASE_URL=https://contentflow-ci.invalid/api/v1",))
 
-for package in ("runtime/web-cn/package.json", "runtime/web-int/package.json"):
-    forbid(package, ("@supabase/supabase-js", "@supabase/ssr", "@fal-ai/client"))
-
-for stale in (
-    "runtime/api/src/modules/publish/adapters/bilibili.adapter.ts",
-    "runtime/web-cn/src/store/pointsStore.ts",
-    "runtime/web-cn/src/lib/supabase.ts",
+# SDK 本身不是风险边界：Supabase 可用于真实身份认证，Fal 也可以只在
+# Next.js 服务端路由运行。真正需要阻断的是把供应商密钥暴露到浏览器、绕过
+# 服务端鉴权，或者未接入的平台凭空返回“发布成功”。
+for route in (
+    "runtime/web-cn/src/app/api/ai/generate-video/route.ts",
+    "runtime/web-cn/src/app/api/video/generate/route.ts",
 ):
-    if (ROOT / stale).exists():
-        errors.append(f"{stale}: stale simulated or browser-direct implementation still exists")
+    require(route, ("requireAuth(request)", "process.env.FAL_API_KEY"))
+    forbid(route, ("NEXT_PUBLIC_FAL", "NEXT_PUBLIC_OPENROUTER"))
+
+for adapter in (
+    "runtime/api/src/modules/publish/adapters/douyin.adapter.ts",
+    "runtime/api/src/modules/publish/adapters/bilibili.adapter.ts",
+):
+    require(adapter, ("readonly isLive = false", "ADAPTER_NOT_INTEGRATED"))
+    forbid(adapter, ("av_mock", "bv_mock", "Math.random()", "status: 'published'"))
+
+for env_file in (
+    "runtime/.env.production.example",
+    "runtime/web-cn/.env.example",
+):
+    if (ROOT / env_file).is_file():
+        forbid(env_file, ("NEXT_PUBLIC_FAL", "NEXT_PUBLIC_OPENROUTER"))
 
 if errors:
     print("Production truthfulness gate failed:")

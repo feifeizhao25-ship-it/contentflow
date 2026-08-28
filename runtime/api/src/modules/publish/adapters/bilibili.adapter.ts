@@ -6,8 +6,7 @@ import { PlatformAdapter, PlatformPayload, AdapterResult, PlatformCapabilities }
  *
  * ⚠️ 尚未接入 B 站开放平台 API。
  *
- * 此前的实现：uploadMedia 打印 "Mock upload" 后返回写死的 av_mock_123；
- * createPost 返回随机 bv_xxx；queryStatus 恒定返回 'published'。
+ * 此前的实现会返回写死的稿件号和随机视频号，queryStatus 还会恒定报告成功。
  * 最后一条尤其危险——用户会在界面上看到"已发布"，而稿件从未提交过。
  *
  * 接入步骤（需要 B 站开放平台创作者应用）：
