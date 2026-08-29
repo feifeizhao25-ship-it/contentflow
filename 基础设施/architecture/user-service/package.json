@@ -1,4 +1,13 @@
+{
+  "name": "contentflow-architecture-user-service-fragment",
+  "private": true,
+  "description": "架构文稿配套代码片段，不属于生产 runtime。",
+  "dependencies": {
     "class-validator": "^0.14.0",
-    "jsonwebtoken": "^9.0.2",
+    "jsonwebtoken": "^9.0.2"
+  },
+  "devDependencies": {
     "@types/jest": "^29.5.11",
-    "@types/jsonwebtoken": "^9.0.7",
+    "@types/jsonwebtoken": "^9.0.7"
+  }
+}

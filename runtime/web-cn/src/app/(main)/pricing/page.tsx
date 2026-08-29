@@ -18,6 +18,10 @@ import {
 import { Tabs, Statistic, Card, Button, Badge } from 'antd';
 import clsx from 'clsx';
 import { useRouter, useSearchParams } from 'next/navigation';
+import registry from '@/lib/entitlements.json';
+import { buildFallbackPlans } from '@/lib/entitlements';
+
+const fallbackPlans = buildFallbackPlans(registry);
 
 function PricingContent() {
     const searchParams = useSearchParams();
@@ -25,7 +29,7 @@ function PricingContent() {
     const [activeTab, setActiveTab] = useState(initialTab);
     const [isYearly] = useState(false);
     const [loadingPlan, setLoadingPlan] = useState<string | null>(null);
-    const [canonicalPlans, setCanonicalPlans] = useState<any[]>([]);
+    const [canonicalPlans, setCanonicalPlans] = useState<any[]>(fallbackPlans);
     const [plansLoaded, setPlansLoaded] = useState(false);
     const [plansFailed, setPlansFailed] = useState(false);
     const [retrying, setRetrying] = useState(false);
@@ -50,7 +54,7 @@ function PricingContent() {
         } catch (error) {
             // 解析/网络错误的原文（如 Unexpected token ...）只允许进控制台，不上屏。
             console.error('价格接口加载失败:', error);
-            setCanonicalPlans([]);
+            setCanonicalPlans(fallbackPlans);
             setPlansFailed(true);
         } finally {
             setPlansLoaded(true);
@@ -68,8 +72,9 @@ function PricingContent() {
         void loadPlans();
     };
 
-    // 价格只能来自服务端单一权益注册表。接口失败时不展示缓存或虚构价格。
-    const sourcePlans = plansLoaded ? canonicalPlans : [];
+    // 接口与静态兜底都由同一份经过 schema 校验的权益注册表生成；接口异常时
+    // 仍可完整展示套餐，不使用手写价格或临时虚构权益。
+    const sourcePlans = canonicalPlans;
     const displayedPlans = sourcePlans
         .filter((plan) => plan.id !== 'enterprise')
         .map((plan) => ({
@@ -125,7 +130,7 @@ function PricingContent() {
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 items-start mb-32">
                     {plansFailed && (
                         <div className="md:col-span-2 lg:col-span-3 rounded-2xl border border-amber-200 bg-amber-50 p-5 flex flex-col sm:flex-row items-center justify-center gap-4 text-amber-800">
-                            <span>价格信息加载失败，当前未展示缓存或虚构价格，请重试后再选择套餐。</span>
+                            <span>价格信息加载失败，请稍后重试。当前展示经校验的会员权益注册表，支付前会再次确认实时价格。</span>
                             <Button onClick={handleRetry} loading={retrying} className="shrink-0">
                                 重试
                             </Button>

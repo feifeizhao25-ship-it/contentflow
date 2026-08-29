@@ -1,6 +1,12 @@
+{
+  "name": "contentflow-legacy-int-web-fragment",
+  "private": true,
+  "description": "归档恢复片段；生产国际站位于 runtime/web-int。",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "build:standalone": "npm run build && npm run package:standalone",
     "package:standalone": "node scripts/package-standalone.js",
-    "start": "next start",
+    "start": "next start"
+  }
+}

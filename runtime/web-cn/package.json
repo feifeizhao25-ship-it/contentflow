@@ -8,6 +8,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint src",
+    "test": "npm run check:contract && npm run test:security && npm run test:image-label && npm run test:image-label-browser && npm run test:entitlements",
     "check:contract": "node scripts/check-api-contract.mjs",
     "test:security": "node --experimental-strip-types scripts/test-media-path-guard.mjs",
     "test:image-label": "node --experimental-strip-types scripts/test-ai-image-label.mjs",

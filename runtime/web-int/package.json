@@ -9,9 +9,9 @@
     "package:standalone": "node scripts/package-standalone.js",
     "start": "next start",
     "lint": "eslint src",
-    "test": "jest --passWithNoTests",
-    "test:ci": "jest --ci --coverage --passWithNoTests",
-    "test:watch": "jest --watch --passWithNoTests"
+    "test": "jest",
+    "test:ci": "jest --ci --coverage",
+    "test:watch": "jest --watch"
   },
   "dependencies": {
     "@ant-design/icons": "^6.1.0",

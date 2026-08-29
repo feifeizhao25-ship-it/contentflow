@@ -1,3 +1,7 @@
+{
+  "name": "contentflow-legacy-mobile-fragment",
+  "private": true,
+  "description": "归档恢复片段；生产移动端位于 android-cn、ios-cn、android-global、ios-global。",
   "scripts": {
     "android": "react-native run-android",
     "ios": "react-native run-ios",
@@ -5,4 +9,5 @@
     "postinstall": "node scripts/patch-react-native-gradle-plugin.js",
     "start": "react-native start",
     "test": "jest"
-  },
+  }
+}
