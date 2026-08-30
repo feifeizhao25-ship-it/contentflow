@@ -65,6 +65,10 @@ jobs:
           </plist>
           PLIST
           flutter pub get
+          export CODE_SIGN_STYLE=Manual
+          export DEVELOPMENT_TEAM=M8H3FG26S9
+          export CODE_SIGN_IDENTITY="iPhone Distribution: feifei zhao (M8H3FG26S9)"
+          export PROVISIONING_PROFILE_SPECIFIER="CF Store 2026"
           flutter build ipa --release --export-options-plist=ios/ExportOptions.plist
       - name: Upload artifact
         uses: actions/upload-artifact@v4
