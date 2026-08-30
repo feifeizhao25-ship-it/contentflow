@@ -97,6 +97,38 @@ for env_file in (
     if (ROOT / env_file).is_file():
         forbid(env_file, ("NEXT_PUBLIC_FAL", "NEXT_PUBLIC_OPENROUTER"))
 
+# 国内内容生成与发布必须共用固定顺序、带版本和来源的六道闸。
+# 该静态门禁不替代动态规则库，但可防止生产代码退化回“命中后替换星号并继续发布”。
+require(
+    "runtime/api/src/common/domestic-content-compliance.ts",
+    (
+        "DOMESTIC_RULESET_VERSION",
+        "DOMESTIC_GATE_ORDER",
+        "illegal_content",
+        "advertising_law",
+        "regulated_industry",
+        "minor_protection",
+        "misinformation",
+        "intellectual_property",
+        "source:",
+        "sourceUrl:",
+        "sourceRetrievedAt:",
+        "humanOverrideAllowed: false",
+    ),
+)
+require(
+    "runtime/api/src/modules/ai/compliance.service.ts",
+    ("evaluateDomesticContent", "CONTENT_COMPLIANCE_BLOCKED", "ruleSetVersion"),
+)
+require(
+    "runtime/api/src/modules/publish/publish.service.ts",
+    ("MARKET_REGION", "evaluateDomesticContent", "CONTENT_COMPLIANCE_BLOCKED"),
+)
+forbid(
+    "runtime/api/src/modules/ai/compliance.service.ts",
+    (".replace(regex, '***')", ".replace(regex, \"***\")"),
+)
+
 if errors:
     print("Production truthfulness gate failed:")
     for error in errors:

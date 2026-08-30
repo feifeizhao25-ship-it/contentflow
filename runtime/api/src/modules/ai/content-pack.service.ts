@@ -1,4 +1,4 @@
-import { Injectable, Logger, InternalServerErrorException } from '@nestjs/common';
+import { Injectable, Logger, InternalServerErrorException, HttpException } from '@nestjs/common';
 import { AIService } from './ai.service';
 import { UsageService, ResourceType } from '../system/usage.service';
 import { ComplianceService } from './compliance.service';
@@ -73,6 +73,11 @@ export class ContentPackService {
             };
         } catch (error) {
             this.logger.error(`Failed to generate pack: ${error.message}`);
+            // Keep actionable 4xx responses (especially compliance gate details)
+            // intact. Only unexpected provider/runtime failures become a generic 500.
+            if (error instanceof HttpException) {
+                throw error;
+            }
             throw new InternalServerErrorException('生成内容包失败');
         }
     }

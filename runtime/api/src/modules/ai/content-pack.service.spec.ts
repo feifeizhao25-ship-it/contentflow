@@ -1,4 +1,4 @@
-import { InternalServerErrorException } from '@nestjs/common';
+import { BadRequestException, InternalServerErrorException } from '@nestjs/common';
 import { ContentPackService } from './content-pack.service';
 import { ResourceType } from '../system/usage.service';
 import { AI_TEXT_LABEL } from '../../common/ai-content-label';
@@ -110,6 +110,30 @@ describe('ContentPackService token accounting', () => {
     await expect(
       service.generatePack('tenant-1', { topic: 'Topic' }),
     ).rejects.toBeInstanceOf(InternalServerErrorException);
+    expect(usage.trackUsage).not.toHaveBeenCalled();
+  });
+
+  it('preserves structured compliance rejection and never charges usage', async () => {
+    ai.generateTitlesWithUsage.mockResolvedValue({
+      titles: ['A title'],
+      usage: { prompt_tokens: 1, completion_tokens: 1, total_tokens: 2 },
+    });
+    ai.generateText.mockResolvedValue({
+      content: 'blocked content',
+      usage: { prompt_tokens: 1, completion_tokens: 1, total_tokens: 2 },
+    });
+    compliance.scrubOutput.mockRejectedValue(
+      new BadRequestException({
+        code: 'CONTENT_COMPLIANCE_BLOCKED',
+        ruleset_version: 'cn-content-2026.08.30',
+      }),
+    );
+
+    await expect(
+      service.generatePack('tenant-1', { topic: 'Topic' }),
+    ).rejects.toMatchObject({
+      response: expect.objectContaining({ code: 'CONTENT_COMPLIANCE_BLOCKED' }),
+    });
     expect(usage.trackUsage).not.toHaveBeenCalled();
   });
 });

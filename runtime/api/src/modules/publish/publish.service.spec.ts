@@ -5,6 +5,7 @@ import { PublishQueueService } from '../../queue/publish-queue.service';
 import { TenantService } from '../tenant/tenant.service';
 import { PublishService } from './publish.service';
 import { AdapterRegistry } from './adapters/adapter.registry';
+import { ConfigService } from '@nestjs/config';
 
 describe('PublishService', () => {
   let service: PublishService;
@@ -35,6 +36,7 @@ describe('PublishService', () => {
         { provide: PublishQueueService, useValue: queue },
         { provide: TenantService, useValue: tenant },
         { provide: AdapterRegistry, useValue: adapterRegistry },
+        { provide: ConfigService, useValue: { get: jest.fn((_key: string, fallback: unknown) => fallback) } },
       ],
     }).compile();
     service = module.get(PublishService);
@@ -104,5 +106,16 @@ describe('PublishService', () => {
         publishType: 'immediate',
       }),
     ).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it('fails closed before queueing domestic content that hits a compliance gate', async () => {
+    prisma.content.findFirst.mockResolvedValue({
+      id: 'content_1', status: 'approved', title: '稳赚项目', body: '百分之百有效', body_html: null,
+    });
+    await expect(service.createTask('tenant_1', 'user_1', {
+      contentId: 'content_1', platformAccountIds: ['account_1'], publishType: 'immediate',
+    })).rejects.toBeInstanceOf(BadRequestException);
+    expect(prisma.publishTask.create).not.toHaveBeenCalled();
+    expect(queue.addPublishTask).not.toHaveBeenCalled();
   });
 });

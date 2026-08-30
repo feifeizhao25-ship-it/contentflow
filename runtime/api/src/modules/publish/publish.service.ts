@@ -3,6 +3,8 @@ import { PrismaService } from '../../database/prisma.service';
 import { PublishQueueService } from '../../queue/publish-queue.service';
 import { TenantService } from '../tenant/tenant.service';
 import { AdapterRegistry } from './adapters/adapter.registry';
+import { ConfigService } from '@nestjs/config';
+import { evaluateDomesticContent } from '../../common/domestic-content-compliance';
 
 @Injectable()
 export class PublishService {
@@ -13,6 +15,7 @@ export class PublishService {
     private readonly publishQueue: PublishQueueService,
     private readonly tenantService: TenantService,
     private readonly adapterRegistry: AdapterRegistry,
+    private readonly config: ConfigService,
   ) {}
 
   async createTask(tenantId: string, userId: string, data: {
@@ -40,6 +43,20 @@ export class PublishService {
 
     if (content.status !== 'approved' && content.status !== 'published') {
       throw new BadRequestException('内容未通过审核');
+    }
+
+    if (this.config.get<string>('MARKET_REGION', 'cn') === 'cn') {
+      const compliance = evaluateDomesticContent(
+        [content.title, content.body, content.body_html].filter(Boolean).join('\n'),
+      );
+      if (!compliance.passed) {
+        throw new BadRequestException({
+          code: 'CONTENT_COMPLIANCE_BLOCKED',
+          message: '内容未通过国内版发布前六道闸检查',
+          ruleSetVersion: compliance.ruleSetVersion,
+          hits: compliance.hits,
+        });
+      }
     }
 
     // 检查配额
