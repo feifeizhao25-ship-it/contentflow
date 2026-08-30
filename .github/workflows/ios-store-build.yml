@@ -58,7 +58,7 @@ jobs:
             <key>signingCertificate</key><string>iPhone Distribution: feifei zhao (M8H3FG26S9)</string>
             <key>provisioningProfiles</key>
             <dict>
-              <key>com.contentflow.global.contentflow</key>
+              <key>com.contentflow.global.contentflowGlobal</key>
               <string>CF Store 2026</string>
             </dict>
             <key>stripSwiftSymbols</key><true/>
