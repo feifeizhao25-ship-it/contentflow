@@ -1,4 +1,5 @@
 import React from 'react';
+import Image from 'next/image';
 import { motion } from 'framer-motion';
 import clsx from 'clsx';
 import { Avatar } from 'antd';
@@ -85,9 +86,12 @@ export const PhonePreview: React.FC<PhonePreviewProps> = ({
                 {/* Images Carousel Mock */}
                 {images && images.length > 0 ? (
                     <div className="w-full aspect-[3/4] bg-zinc-100 relative mb-3">
-                        <img
+                        <Image
                             src={images[0]}
-                            alt="Preview"
+                            alt="内容预览"
+                            fill
+                            sizes="320px"
+                            unoptimized
                             className="w-full h-full object-cover"
                         />
                         {images.length > 1 && (

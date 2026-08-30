@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
+import Image from 'next/image';
 import { Card, Row, Col, Input, Button, Upload, Tag, Space, Tabs, Empty, Progress, message, Modal, List, Typography, Tooltip, Divider } from 'antd';
 import {
     UploadOutlined,
@@ -239,9 +240,12 @@ export default function MaterialsPage() {
                                                 cover={
                                                     <div className="h-40 overflow-hidden bg-zinc-100 relative flex items-center justify-center">
                                                         {item.type === 'image' ? (
-                                                            <img 
+                                                            <Image
                                                                 alt={item.name} 
                                                                 src={item.url} 
+                                                                width={640}
+                                                                height={360}
+                                                                unoptimized
                                                                 className="max-w-full max-h-full object-contain" 
                                                             />
                                                         ) : (

@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
+import Image from 'next/image';
 import {
     Button, Card, Tag, Modal, Form, Input, Select, message, Empty,
     Segmented, Table, Badge, Tooltip, Avatar, Divider, Space
@@ -205,7 +206,7 @@ export default function SchedulePage() {
                     dataIndex: 'title',
                     render: (text, record) => (
                         <div className="flex items-center gap-3">
-                            {record.thumbnail ? <img src={record.thumbnail} alt="内容缩略图" className="w-10 h-10 rounded-lg object-cover" /> : <div className="w-10 h-10 rounded-lg bg-zinc-100 flex items-center justify-center" aria-label="暂无缩略图">📄</div>}
+                            {record.thumbnail ? <Image src={record.thumbnail} alt="内容缩略图" width={40} height={40} unoptimized className="w-10 h-10 rounded-lg object-cover" /> : <div className="w-10 h-10 rounded-lg bg-zinc-100 flex items-center justify-center" aria-label="暂无缩略图">📄</div>}
                             <div>
                                 <div className="font-bold text-sm">{text}</div>
                                 <div className="text-[10px] text-zinc-400">{record.account || '默认账号'}</div>

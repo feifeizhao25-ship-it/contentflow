@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import NextImage from 'next/image';
 import { Button, Card, Input, Select, Tag, message, Steps, Divider, DatePicker, TimePicker, Skeleton } from 'antd';
 import { Sparkles, Send, Image as ImageIcon, CalendarClock, Layers, PlayCircle } from 'lucide-react';
 import dayjs from 'dayjs';
@@ -490,9 +491,12 @@ function StudioContent() {
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="relative aspect-video rounded-2xl border border-zinc-200 overflow-hidden bg-zinc-100">
-                    <img
+                    <NextImage
                       src={coverUrl || PLACEHOLDER_IMAGES.cover}
-                      alt="cover"
+                      alt="封面预览"
+                      fill
+                      sizes="(max-width: 768px) 100vw, 50vw"
+                      unoptimized
                       className="w-full h-full object-cover"
                     />
                     {!coverUrl && (

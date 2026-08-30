@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { Card, Table, Button, Space, Tag, Input, Select, Modal, message, Typography } from 'antd';
 import { useSearchParams } from 'next/navigation';
+import Image from 'next/image';
 const { Text } = Typography;
 import {
     PlusOutlined,
@@ -265,9 +266,12 @@ function ContentsContent() {
                     );
                 }
                 return (
-                    <img
+                    <Image
                         src={mediaUrl || PLACEHOLDER_IMAGES.content}
-                        alt="content-preview"
+                        alt="内容预览"
+                        width={40}
+                        height={40}
+                        unoptimized
                         style={{ width: 40, height: 40, objectFit: 'cover', borderRadius: 4 }}
                         onError={(e) => {
                             const target = e.currentTarget;

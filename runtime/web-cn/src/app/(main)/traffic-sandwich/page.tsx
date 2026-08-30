@@ -166,10 +166,14 @@ export default function TrafficSandwichPage() {
                                     <div className="text-xs text-zinc-400">规划策略预计消耗：<span className="text-emerald-600 font-bold">10 积分</span></div>
                                 </div>
 
-                                <div className="pt-10 flex justify-center gap-8 opacity-40 grayscale group-hover:grayscale-0 transition-all">
-                                    <img src="https://img.icons8.com/color/48/xiaohongshu.png" className="h-8" alt="XHS" />
-                                    <img src="https://img.icons8.com/color/48/tiktok--v1.png" className="h-8" alt="Douyin" />
-                                    <img src="https://img.icons8.com/color/48/wechat.png" className="h-8" alt="Wechat" />
+                                <div className="pt-10 flex flex-wrap justify-center gap-3 opacity-60 group-hover:opacity-100 transition-opacity" aria-label="支持的平台">
+                                    {[
+                                        ['小红书', 'bg-red-50 text-red-600'],
+                                        ['抖音', 'bg-zinc-100 text-zinc-800'],
+                                        ['微信', 'bg-emerald-50 text-emerald-600'],
+                                    ].map(([name, color]) => (
+                                        <span key={name} className={`rounded-full px-3 py-1.5 text-xs font-bold ${color}`}>{name}</span>
+                                    ))}
                                 </div>
                             </motion.div>
                         )}
