@@ -1,0 +1,62 @@
+name: iOS Store Build
+on:
+  workflow_dispatch:
+jobs:
+  build-ipa:
+    runs-on: macos-15
+    timeout-minutes: 60
+    env:
+      BUNDLE_ID: com.contentflow.global.contentflow
+      PROFILE_NAME: CF Store 2026
+      KEYCHAIN_PASS: temp-keychain-pass-2026
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+      - name: Flutter doctor
+        run: flutter --version
+      - name: Setup signing
+        run: |
+          CERT_PATH=$(mktemp -d)/dist.p12
+          PROF_PATH="$HOME/Library/MobileDevice/Provisioning Profiles/distribution.mobileprovision"
+          echo -n "$IOS_P12_BASE64" | base64 -d > "$CERT_PATH"
+          mkdir -p "$HOME/Library/MobileDevice/Provisioning Profiles"
+          echo -n "$IOS_PROFILE_BASE64" | base64 -d > "$PROF_PATH"
+          security create-keychain -p "$KEYCHAIN_PASS" build.keychain
+          security default-keychain -s build.keychain
+          security unlock-keychain -p "$KEYCHAIN_PASS" build.keychain
+          security import "$CERT_PATH" -k build.keychain -P "$IOS_P12_PASSWORD" -T /usr/bin/codesign
+          security set-key-partition-list -S apple-tool:,apple: -k "$KEYCHAIN_PASS" build.keychain
+          UUID=$(/usr/libexec/PlistBuddy -c 'Print :UUID' /dev/stdin <<< "$(security cms -D -i "$PROF_PATH")")
+          mv "$PROF_PATH" "$HOME/Library/MobileDevice/Provisioning Profiles/$UUID.mobileprovision"
+          echo "Installed profile UUID: $UUID"
+      - name: Build IPA
+        working-directory: ios-global
+        run: |
+          cat > ios/ExportOptions.plist <<'PLIST'
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+            <key>method</key><string>app-store</string>
+            <key>teamID</key><string>M8H3FG26S9</string>
+            <key>signingStyle</key><string>manual</string>
+            <key>signingCertificate</key><string>iPhone Distribution: feifei zhao (M8H3FG26S9)</string>
+            <key>provisioningProfiles</key>
+            <dict>
+              <key>com.contentflow.global.contentflow</key>
+              <string>CF Store 2026</string>
+            </dict>
+            <key>stripSwiftSymbols</key><true/>
+          </dict>
+          </plist>
+          PLIST
+          flutter pub get
+          flutter build ipa --release --export-options-plist=ios/ExportOptions.plist
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: cf-store-ipa
+          path: ios-global/build/ios/ipa/*.ipa
+          retention-days: 5
