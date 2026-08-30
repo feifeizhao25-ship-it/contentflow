@@ -7,6 +7,8 @@ const nextConfig = {
   output: 'standalone',
   reactStrictMode: true,
   poweredByHeader: false,
+  allowedDevOrigins: ['127.0.0.1'],
+  turbopack: { root: process.cwd() },
   images: {
     remotePatterns: [
       { protocol: 'https', hostname: 'fal.media' },
