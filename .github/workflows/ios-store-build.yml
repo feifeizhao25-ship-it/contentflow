@@ -66,11 +66,16 @@ jobs:
           </plist>
           PLIST
           flutter pub get
-          export CODE_SIGN_STYLE=Manual
-          export DEVELOPMENT_TEAM=M8H3FG26S9
-          export CODE_SIGN_IDENTITY="iPhone Distribution: feifei zhao (M8H3FG26S9)"
-          export PROVISIONING_PROFILE_SPECIFIER="CF Store 2026"
-          flutter build ipa --release --export-options-plist=ios/ExportOptions.plist
+          # Step 1: unsigned xcarchive (skips flutter dev-cert preflight)
+          export CODE_SIGNING_ALLOWED=NO
+          export CODE_SIGNING_REQUIRED=NO
+          export CODE_SIGN_IDENTITY=""
+          flutter build xcarchive --release
+          unset CODE_SIGNING_ALLOWED CODE_SIGNING_REQUIRED CODE_SIGN_IDENTITY
+          # Step 2: sign + export at xcodebuild level with distribution cert
+          ARCH=$(ls -d build/ios/archive/*.xcarchive | head -1)
+          echo "Archive: $ARCH"
+          xcodebuild -exportArchive -archivePath "$ARCH" -exportPath build/ios/ipa -exportOptionsPlist ios/ExportOptions.plist
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
