@@ -18,18 +18,20 @@ jobs:
         run: flutter --version
       - name: Setup signing
         run: |
-          CERT_PATH=$(mktemp -d)/dist.p12
-          PROF_PATH="$HOME/Library/MobileDevice/Provisioning Profiles/distribution.mobileprovision"
+          CERT_PATH=$RUNNER_TEMP/dist.p12
+          KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
+          PROF_DIR="$HOME/Library/MobileDevice/Provisioning Profiles"
           echo -n "$IOS_P12_BASE64" | base64 -d > "$CERT_PATH"
-          mkdir -p "$HOME/Library/MobileDevice/Provisioning Profiles"
-          echo -n "$IOS_PROFILE_BASE64" | base64 -d > "$PROF_PATH"
-          security create-keychain -p "$KEYCHAIN_PASS" build.keychain
-          security default-keychain -s build.keychain
-          security unlock-keychain -p "$KEYCHAIN_PASS" build.keychain
-          security import "$CERT_PATH" -k build.keychain -P "$IOS_P12_PASSWORD" -T /usr/bin/codesign
-          security set-key-partition-list -S apple-tool:,apple: -k "$KEYCHAIN_PASS" build.keychain
-          UUID=$(/usr/libexec/PlistBuddy -c 'Print :UUID' /dev/stdin <<< "$(security cms -D -i "$PROF_PATH")")
-          mv "$PROF_PATH" "$HOME/Library/MobileDevice/Provisioning Profiles/$UUID.mobileprovision"
+          ls -la "$CERT_PATH"
+          mkdir -p "$PROF_DIR"
+          security create-keychain -p "$KEYCHAIN_PASS" "$KEYCHAIN_PATH"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
+          security unlock-keychain -p "$KEYCHAIN_PASS" "$KEYCHAIN_PATH"
+          security import "$CERT_PATH" -P "$IOS_P12_PASSWORD" -A -t cert -f pkcs12 -k "$KEYCHAIN_PATH" -T /usr/bin/codesign
+          security list-keychain -d user -s "$KEYCHAIN_PATH" login.keychain-db
+          security set-key-partition-list -S apple-tool:,apple: -k "$KEYCHAIN_PASS" "$KEYCHAIN_PATH"
+          UUID=$(security cms -D -i <(echo -n "$IOS_PROFILE_BASE64" | base64 -d) | /usr/libexec/PlistBuddy -c 'Print :UUID' /dev/stdin)
+          echo -n "$IOS_PROFILE_BASE64" | base64 -d > "$PROF_DIR/$UUID.mobileprovision"
           echo "Installed profile UUID: $UUID"
       - name: Build IPA
         working-directory: ios-global
