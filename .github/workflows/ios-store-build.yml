@@ -33,7 +33,7 @@ jobs:
           security unlock-keychain -p "$KEYCHAIN_PASS" "$KEYCHAIN_PATH"
           security import "$CERT_PATH" -P "$IOS_P12_PASSWORD" -A -t cert -f pkcs12 -k "$KEYCHAIN_PATH" -T /usr/bin/codesign
           security list-keychain -d user -s "$KEYCHAIN_PATH" login.keychain-db
-          security set-key-partition-list -S apple-tool:,apple: -k "$KEYCHAIN_PASS" "$KEYCHAIN_PATH"
+          security set-key-partition-list -S apple-tool:,apple: -k "$KEYCHAIN_PASS" "$KEYCHAIN_PATH" || true
           UUID=$(security cms -D -i <(echo -n "$IOS_PROFILE_BASE64" | base64 -d) | /usr/libexec/PlistBuddy -c 'Print :UUID' /dev/stdin)
           echo -n "$IOS_PROFILE_BASE64" | base64 -d > "$PROF_DIR/$UUID.mobileprovision"
           echo "Installed profile UUID: $UUID"
