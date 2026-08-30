@@ -121,9 +121,12 @@ check(
     "runtime/web-cn/src/app/(main)/pricing/page.tsx",
     (
         ("/api/v1/billing/plans?market=cn", True),
-        ("未展示缓存或虚构价格", True),
+        ("buildFallbackPlans", True),
+        ("价格信息加载失败，请稍后重试", True),
+        ("支付前会再次确认实时价格", True),
         ("displayedPlans.map", True),
         ("const membershipPlans =", False),
+        ("未展示缓存或虚构价格", False),
     ),
 )
 check(
