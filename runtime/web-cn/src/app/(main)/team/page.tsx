@@ -15,6 +15,7 @@ import { useSearchParams } from 'next/navigation';
 
 const { Option } = Select;
 const { Text } = Typography;
+const TAB_MAP: Record<string, string> = { approvals: 'activity' };
 
 interface TeamMember {
     id: string;
@@ -29,8 +30,7 @@ interface TeamMember {
 function TeamContent() {
     const searchParams = useSearchParams();
     // Map 'approvals' -> 'activity' tab, others default to 'members'
-    const tabMap: Record<string, string> = { approvals: 'activity' };
-    const initialTab = tabMap[searchParams.get('tab') || ''] || 'members';
+    const initialTab = TAB_MAP[searchParams.get('tab') || ''] || 'members';
     const [activeTab, setActiveTab] = useState(initialTab);
     const [members, setMembers] = useState<TeamMember[]>([]);
     const [loading, setLoading] = useState(false);
@@ -92,10 +92,8 @@ function TeamContent() {
 
     useEffect(() => {
         const tabKey = searchParams.get('tab');
-        const mappedTab = tabMap[tabKey || ''] || tabKey || 'members';
-        if (mappedTab && mappedTab !== activeTab) {
-            setActiveTab(mappedTab);
-        }
+        const mappedTab = TAB_MAP[tabKey || ''] || tabKey || 'members';
+        setActiveTab((currentTab) => mappedTab || currentTab);
     }, [searchParams]);
 
     const roleColors: Record<string, string> = {

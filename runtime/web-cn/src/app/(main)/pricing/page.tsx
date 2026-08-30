@@ -64,7 +64,6 @@ function PricingContent() {
 
     useEffect(() => {
         void loadPlans();
-        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     const handleRetry = () => {

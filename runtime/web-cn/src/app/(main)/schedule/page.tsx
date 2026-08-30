@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
     Button, Card, Tag, Modal, Form, Input, Select, message, Empty,
     Segmented, Table, Badge, Tooltip, Avatar, Divider, Space
@@ -96,11 +96,7 @@ export default function SchedulePage() {
         }
     }, [searchParams]);
 
-    useEffect(() => {
-        fetchTasks();
-    }, [filterPlatform]);
-
-    const fetchTasks = async () => {
+    const fetchTasks = useCallback(async () => {
         setIsLoading(true);
         try {
             const res = await apiClient.get<any>(`/publish/tasks?status=${filterPlatform === 'all' ? '' : filterPlatform}`);
@@ -125,7 +121,11 @@ export default function SchedulePage() {
         } finally {
             setIsLoading(false);
         }
-    };
+    }, [filterPlatform]);
+
+    useEffect(() => {
+        void fetchTasks();
+    }, [fetchTasks]);
 
     const filteredTasks = tasks;
     const calendarDays = getCalendarDays(currentMonth);

@@ -58,7 +58,7 @@ export default function EnhancedOnboardingGuide() {
       startOnboarding();
     }, 2000);
     return () => clearTimeout(timer);
-  }, []);
+  }, [startOnboarding]);
 
   // 打开时设置isActive为true
   useEffect(() => {
