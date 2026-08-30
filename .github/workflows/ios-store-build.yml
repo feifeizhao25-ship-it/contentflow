@@ -70,7 +70,7 @@ jobs:
           export CODE_SIGNING_ALLOWED=NO
           export CODE_SIGNING_REQUIRED=NO
           export CODE_SIGN_IDENTITY=""
-          flutter build xcarchive --release
+          flutter build xcarchive --release --no-codesign
           unset CODE_SIGNING_ALLOWED CODE_SIGNING_REQUIRED CODE_SIGN_IDENTITY
           # Step 2: sign + export at xcodebuild level with distribution cert
           ARCH=$(ls -d build/ios/archive/*.xcarchive | head -1)
