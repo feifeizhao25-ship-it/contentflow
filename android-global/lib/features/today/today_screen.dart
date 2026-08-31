@@ -50,7 +50,9 @@ class TodayScreen extends ConsumerWidget {
               ),
 
               analyticsAsync.when(
-                data: (summary) => _buildAnalyticsSummary(context, summary),
+                data: (summary) => SliverToBoxAdapter(
+                  child: _buildAnalyticsSummary(context, summary),
+                ),
                 loading: () => const SliverToBoxAdapter(
                   child: Center(child: CircularProgressIndicator()),
                 ),

@@ -34,7 +34,7 @@ class ApiException implements Exception {
         );
       case DioExceptionType.badResponse:
         return ApiException(
-          'Unexpected server response.',
+          'Unexpected server response. [$statusCode]',
           statusCode: statusCode,
         );
       case DioExceptionType.cancel:
