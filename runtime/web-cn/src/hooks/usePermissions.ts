@@ -1,8 +1,10 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
 import { apiClient } from '@/lib/api-client';
+import registry from '@/lib/entitlements.json';
+import type { TierId } from '@/lib/entitlements';
 
-export type SubscriptionPlan = 'free' | 'pro' | 'enterprise';
+export type SubscriptionPlan = TierId;
 
 export interface UserSubscription {
     plan: SubscriptionPlan;
@@ -19,38 +21,20 @@ export interface UserPoints {
     experience_points: number;
 }
 
-// 免费版限制
-const FREE_LIMITS = {
-    monthly_quota: 20,
-    storage_bytes: 1024 * 1024 * 1024, // 1GB
-    max_platforms: 2,
-    batch_generations: 3,
-};
-
-// Pro 版限制
-const PRO_LIMITS = {
-    monthly_quota: 200,
-    storage_bytes: 10 * 1024 * 1024 * 1024, // 10GB
-    max_platforms: 10,
-    batch_generations: 30,
-};
-
-// 企业版限制
-const ENTERPRISE_LIMITS = {
-    monthly_quota: -1, // 无限
-    storage_bytes: 100 * 1024 * 1024 * 1024, // 100GB
-    max_platforms: -1, // 无限
-    batch_generations: -1, // 无限
-};
-
-// 默认免费版限制
 const getLimits = (plan: SubscriptionPlan) => {
-    switch (plan) {
-        case 'pro': return PRO_LIMITS;
-        case 'enterprise': return ENTERPRISE_LIMITS;
-        default: return FREE_LIMITS;
-    }
+    const tier = registry.tiers[plan] ?? registry.tiers.free;
+    const storageGb = tier.quotas.storageGb;
+    return {
+        monthly_quota: tier.quotas.monthlyAiTokens,
+        storage_bytes: storageGb === -1 ? -1 : storageGb * 1024 * 1024 * 1024,
+        max_platforms: tier.quotas.platformAccounts,
+        batch_generations: tier.quotas.monthlyPosts,
+    };
 };
+
+const quotaExhausted = (subscription: UserSubscription, amount = 0) =>
+    subscription.monthly_quota !== -1
+    && subscription.used_quota + amount > subscription.monthly_quota;
 
 export function usePermissions() {
     const [subscription, setSubscription] = useState<UserSubscription | null>(null);
@@ -149,13 +133,13 @@ export function usePermissions() {
 
         switch (feature) {
             case 'ai_generate':
-                if (subscription && subscription.used_quota >= subscription.monthly_quota) {
+                if (subscription && quotaExhausted(subscription, 1)) {
                     return { allowed: false, reason: 'quota_exceeded' };
                 }
                 return { allowed: true };
             
             case 'batch_generate':
-                if (plan === 'free' && limits.batch_generations <= 0) {
+                if (limits.batch_generations === 0) {
                     return { allowed: false, reason: 'unlock_premium' };
                 }
                 return { allowed: true };
@@ -173,7 +157,7 @@ export function usePermissions() {
                 return { allowed: true };
             
             case 'multi_platform':
-                if (plan === 'free' && limits.max_platforms <= 2) {
+                if (limits.max_platforms !== -1 && limits.max_platforms <= 3) {
                     return { allowed: false, reason: 'more_accounts' };
                 }
                 return { allowed: true };
@@ -191,9 +175,7 @@ export function usePermissions() {
     const consumeQuota = useCallback(async (amount: number = 1): Promise<boolean> => {
         if (!subscription) return false;
         
-        if (subscription.plan !== 'free') return true; // Pro+ 不限制
-        
-        if (subscription.used_quota + amount > subscription.monthly_quota) {
+        if (quotaExhausted(subscription, amount)) {
             setUpgradeReason('quota_exceeded');
             setShowUpgradeModal(true);
             return false;
@@ -212,18 +194,18 @@ export function usePermissions() {
 
     // 获取使用量百分比
     const usagePercentage = useCallback(() => {
-        if (!subscription || subscription.plan !== 'free') return 0;
+        if (!subscription || subscription.monthly_quota === -1 || subscription.monthly_quota === 0) return 0;
         return Math.round((subscription.used_quota / subscription.monthly_quota) * 100);
     }, [subscription]);
 
     // 获取剩余额度
     const remainingQuota = useCallback(() => {
-        if (!subscription || subscription.plan !== 'free') return -1;
+        if (!subscription || subscription.monthly_quota === -1) return -1;
         return Math.max(0, subscription.monthly_quota - subscription.used_quota);
     }, [subscription]);
 
     // 是否为付费用户
-    const isPremium = subscription?.plan === 'pro' || subscription?.plan === 'enterprise';
+    const isPremium = subscription != null && subscription.plan !== 'free';
 
     return {
         subscription,

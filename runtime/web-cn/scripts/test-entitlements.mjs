@@ -134,5 +134,14 @@ check('proxy 区分受保护路径与未知路径', () => {
     assert.ok(src.includes("'/register'"), '注册页应保持公开');
 });
 
+check('权限 Hook 使用注册表完整覆盖团队版和有限付费额度', () => {
+    const src = readSrc('src/hooks/usePermissions.ts');
+    assert.ok(src.includes('entitlements.json'), '权限 Hook 未读取权益注册表');
+    assert.ok(src.includes('SubscriptionPlan = TierId'), '套餐类型未覆盖完整注册表');
+    assert.ok(src.includes("subscription.plan !== 'free'"), '团队版未统一识别为付费权益');
+    assert.ok(!src.includes('const FREE_LIMITS'), '仍保留重复的硬编码套餐额度');
+    assert.ok(!src.includes("subscription.plan !== 'free') return true"), '付费套餐仍错误绕过有限额度检查');
+});
+
 console.log(failures === 0 ? '\n全部通过' : `\n${failures} 项失败`);
 process.exit(failures === 0 ? 0 : 1);
