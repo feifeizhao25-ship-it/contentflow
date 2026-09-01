@@ -8,6 +8,7 @@ import {
 import { randomUUID } from 'crypto';
 import { PrismaService } from '../../database/prisma.service';
 import { CN_PLANS } from './plans.constant';
+import { createAlipayPagePay } from './alipay.adapter';
 
 export type BillingCycle = 'monthly' | 'yearly';
 export type PaymentMethod = 'wechat' | 'alipay' | 'bank_transfer';
@@ -54,7 +55,10 @@ export class BillingService {
 
     this.assertProviderReady(input.paymentMethod);
     const orderNo = `CF${Date.now()}${randomUUID().replace(/-/g, '').slice(0, 10)}`;
-    return this.prisma.paymentOrder.create({
+    const payment = input.paymentMethod === 'alipay'
+      ? createAlipayPagePay({ orderNo, amount, subject: plan.name })
+      : null;
+    const order = await this.prisma.paymentOrder.create({
       data: {
         tenant_id: tenantId,
         order_no: orderNo,
@@ -70,6 +74,7 @@ export class BillingService {
         status: 'pending',
       },
     });
+    return { ...order, paymentUrl: payment?.paymentUrl ?? null };
   }
 
   private assertProviderReady(method: PaymentMethod) {
@@ -83,7 +88,7 @@ export class BillingService {
       ? process.env.WECHAT_PAY_MCH_ID && process.env.WECHAT_PAY_PRIVATE_KEY && process.env.WECHAT_PAY_API_V3_KEY
       : process.env.ALIPAY_APP_ID && process.env.ALIPAY_PRIVATE_KEY && process.env.ALIPAY_PUBLIC_KEY;
     if (!configured) throw new ServiceUnavailableException(`${method} 商户资料尚未配置，未创建订单`);
-    throw new NotImplementedException(`${method} 下单适配器尚未启用，未创建订单`);
+    if (method === 'wechat') throw new NotImplementedException('wechat 下单适配器尚未启用，未创建订单');
   }
 
   async requestCancellation(tenantId: string) {

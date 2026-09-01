@@ -67,6 +67,29 @@ require(
     ("signed invitation delivery", "throw new BadRequestException"),
 )
 require(
+    "runtime/api/src/modules/billing/alipay.adapter.ts",
+    (
+        "RSA-SHA256",
+        "FAST_INSTANT_TRADE_PAY",
+        "https://openapi.alipay.com/gateway.do",
+        "verifyAlipayNotify",
+    ),
+)
+require(
+    "runtime/api/src/modules/billing/billing.controller.ts",
+    (
+        "callbacks/alipay",
+        "支付宝回调签名无效",
+        "支付宝商户不匹配",
+        "paidAmount: amount",
+        "response.type('text/plain').send('success')",
+    ),
+)
+require(
+    "runtime/api/src/modules/billing/billing.service.ts",
+    ("createAlipayPagePay", "支付金额或币种与订单不一致"),
+)
+require(
     "runtime/web-cn/src/app/(main)/studio/page.tsx",
     ("setBalance(null)", "系统不会用模拟进度或占位视频冒充结果"),
 )

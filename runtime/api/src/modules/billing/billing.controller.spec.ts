@@ -1,6 +1,7 @@
 import { BillingController } from './billing.controller';
 import { CN_PLANS, PLANS } from './plans.constant';
-import { createHmac } from 'crypto';
+import { createHmac, createSign, generateKeyPairSync } from 'crypto';
+import { canonicalAlipayParams } from './alipay.adapter';
 
 describe('BillingController', () => {
   const originalSecret = process.env.PAYMENT_CALLBACK_SECRET;
@@ -76,5 +77,43 @@ describe('BillingController', () => {
     const controller = new BillingController({} as any, { markPaid: jest.fn() } as any);
     const body = { eventId: 'evt-1', provider: 'bank_adapter', orderNo: 'CF1', status: 'paid' as const, providerOrderNo: 'BANK1', amount: 128 };
     await expect(controller.trustedPaymentCallback(String(Math.floor(Date.now() / 1000)), '00', body)).rejects.toThrow('签名无效');
+  });
+
+  it('verifies a real Alipay RSA2 notification before activating entitlement', async () => {
+    const keys = generateKeyPairSync('rsa', { modulusLength: 2048 });
+    process.env.ALIPAY_APP_ID = '2026000000000000';
+    process.env.ALIPAY_SELLER_ID = 'seller-1';
+    process.env.ALIPAY_PUBLIC_KEY = keys.publicKey.export({ type: 'spki', format: 'pem' }).toString();
+    const body: Record<string, string> = {
+      app_id: process.env.ALIPAY_APP_ID,
+      seller_id: process.env.ALIPAY_SELLER_ID,
+      out_trade_no: 'CF1001', trade_no: 'ALI1001',
+      trade_status: 'TRADE_SUCCESS', total_amount: '128.00',
+    };
+    const signer = createSign('RSA-SHA256'); signer.update(canonicalAlipayParams(body)); signer.end();
+    body.sign = signer.sign(keys.privateKey, 'base64'); body.sign_type = 'RSA2';
+    const billing = { markPaid: jest.fn().mockResolvedValue({ duplicate: false }) };
+    const response = { type: jest.fn().mockReturnThis(), send: jest.fn().mockReturnValue('sent') };
+    await new BillingController({} as any, billing as any).alipayCallback(body, response as any);
+    expect(billing.markPaid).toHaveBeenCalledWith(expect.objectContaining({
+      orderNo: 'CF1001', providerOrderNo: 'ALI1001', paidAmount: 128, signatureValid: true,
+    }));
+    expect(response.type).toHaveBeenCalledWith('text/plain');
+    expect(response.send).toHaveBeenCalledWith('success');
+  });
+
+  it('rejects a validly signed callback for another Alipay seller', async () => {
+    const keys = generateKeyPairSync('rsa', { modulusLength: 2048 });
+    process.env.ALIPAY_APP_ID = '2026000000000000';
+    process.env.ALIPAY_SELLER_ID = 'seller-expected';
+    process.env.ALIPAY_PUBLIC_KEY = keys.publicKey.export({ type: 'spki', format: 'pem' }).toString();
+    const body: Record<string, string> = {
+      app_id: process.env.ALIPAY_APP_ID, seller_id: 'seller-attacker',
+      out_trade_no: 'CF1001', trade_no: 'ALI1001', trade_status: 'TRADE_SUCCESS', total_amount: '128.00',
+    };
+    const signer = createSign('RSA-SHA256'); signer.update(canonicalAlipayParams(body)); signer.end();
+    body.sign = signer.sign(keys.privateKey, 'base64'); body.sign_type = 'RSA2';
+    await expect(new BillingController({} as any, { markPaid: jest.fn() } as any)
+      .alipayCallback(body, {} as any)).rejects.toThrow('商户不匹配');
   });
 });

@@ -1,10 +1,12 @@
-import { BadRequestException, Body, Controller, Get, Headers, HttpCode, Post, UseGuards, Request, NotFoundException, Query, ServiceUnavailableException, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Get, Headers, HttpCode, Post, UseGuards, Request, NotFoundException, Query, ServiceUnavailableException, UnauthorizedException, Res } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { CN_PLANS, PLANS } from './plans.constant';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { PrismaService } from '../../database/prisma.service';
 import { BillingCycle, BillingService, PaymentMethod } from './billing.service';
 import { createHash, createHmac, timingSafeEqual } from 'crypto';
+import type { Response } from 'express';
+import { verifyAlipayNotify } from './alipay.adapter';
 
 @ApiTags('billing')
 @Controller('billing')
@@ -13,6 +15,34 @@ export class BillingController {
     private readonly prisma: PrismaService,
     private readonly billingService: BillingService,
   ) { }
+
+  @Post('callbacks/alipay')
+  @HttpCode(200)
+  @ApiOperation({ summary: '支付宝正式异步通知（RSA2 验签）' })
+  async alipayCallback(@Body() body: Record<string, string>, @Res() response: Response) {
+    if (!verifyAlipayNotify(body)) throw new UnauthorizedException('支付宝回调签名无效');
+    if (body.app_id !== process.env.ALIPAY_APP_ID) throw new UnauthorizedException('支付宝应用不匹配');
+    if (!process.env.ALIPAY_SELLER_ID || body.seller_id !== process.env.ALIPAY_SELLER_ID) {
+      throw new UnauthorizedException('支付宝商户不匹配');
+    }
+    if (!['TRADE_SUCCESS', 'TRADE_FINISHED'].includes(body.trade_status)) {
+      return response.type('text/plain').send('success');
+    }
+    const amount = Number(body.total_amount);
+    if (!body.out_trade_no || !body.trade_no || !Number.isFinite(amount)) {
+      throw new BadRequestException('支付宝回调参数不完整');
+    }
+    await this.billingService.markPaid({
+      orderNo: body.out_trade_no,
+      provider: 'alipay',
+      providerEventId: `${body.trade_no}:${body.trade_status}`,
+      providerOrderNo: body.trade_no,
+      paidAmount: amount,
+      payloadHash: createHash('sha256').update(JSON.stringify(body)).digest('hex'),
+      signatureValid: true,
+    });
+    return response.type('text/plain').send('success');
+  }
 
   @Post('callbacks/internal')
   @HttpCode(200)
