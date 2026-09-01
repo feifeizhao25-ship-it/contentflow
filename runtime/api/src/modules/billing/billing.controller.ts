@@ -1,4 +1,4 @@
-import { BadRequestException, Body, Controller, Get, Headers, HttpCode, Post, UseGuards, Request, NotFoundException, Query, ServiceUnavailableException, UnauthorizedException, Res } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Get, Headers, HttpCode, Post, UseGuards, Request, NotFoundException, Query, ServiceUnavailableException, UnauthorizedException, Res, Req, RawBodyRequest } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { CN_PLANS, PLANS } from './plans.constant';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
@@ -6,7 +6,9 @@ import { PrismaService } from '../../database/prisma.service';
 import { BillingCycle, BillingService, PaymentMethod } from './billing.service';
 import { createHash, createHmac, timingSafeEqual } from 'crypto';
 import type { Response } from 'express';
+import type { Request as ExpressRequest } from 'express';
 import { verifyAlipayNotify } from './alipay.adapter';
+import { decryptWeChatNotify, verifyWeChatNotifySignature } from './wechat-pay.adapter';
 
 @ApiTags('billing')
 @Controller('billing')
@@ -15,6 +17,37 @@ export class BillingController {
     private readonly prisma: PrismaService,
     private readonly billingService: BillingService,
   ) { }
+
+  @Post('callbacks/wechat')
+  @HttpCode(200)
+  @ApiOperation({ summary: '微信支付 V3 正式异步通知（平台签名 + AES-GCM）' })
+  async wechatCallback(
+    @Req() request: RawBodyRequest<ExpressRequest>,
+    @Headers() headers: Record<string, string | string[] | undefined>,
+    @Body() body: any,
+  ) {
+    const rawBody = request.rawBody;
+    if (!rawBody || !verifyWeChatNotifySignature(rawBody, headers)) {
+      throw new UnauthorizedException('微信支付回调签名无效');
+    }
+    const transaction = decryptWeChatNotify(body);
+    if (transaction.trade_state !== 'SUCCESS') return { code: 'SUCCESS', message: '成功' };
+    const totalFen = Number(transaction.amount?.total);
+    if (!transaction.out_trade_no || !transaction.transaction_id || !Number.isInteger(totalFen)
+      || transaction.amount?.currency !== 'CNY') {
+      throw new BadRequestException('微信支付回调参数不完整');
+    }
+    await this.billingService.markPaid({
+      orderNo: transaction.out_trade_no,
+      provider: 'wechat',
+      providerEventId: `${transaction.transaction_id}:${transaction.trade_state}`,
+      providerOrderNo: transaction.transaction_id,
+      paidAmount: totalFen / 100,
+      payloadHash: createHash('sha256').update(rawBody).digest('hex'),
+      signatureValid: true,
+    });
+    return { code: 'SUCCESS', message: '成功' };
+  }
 
   @Post('callbacks/alipay')
   @HttpCode(200)

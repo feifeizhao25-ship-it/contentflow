@@ -2,13 +2,13 @@ import {
   BadRequestException,
   ConflictException,
   Injectable,
-  NotImplementedException,
   ServiceUnavailableException,
 } from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import { PrismaService } from '../../database/prisma.service';
 import { CN_PLANS } from './plans.constant';
 import { createAlipayPagePay } from './alipay.adapter';
+import { createWeChatNativePay } from './wechat-pay.adapter';
 
 export type BillingCycle = 'monthly' | 'yearly';
 export type PaymentMethod = 'wechat' | 'alipay' | 'bank_transfer';
@@ -57,7 +57,9 @@ export class BillingService {
     const orderNo = `CF${Date.now()}${randomUUID().replace(/-/g, '').slice(0, 10)}`;
     const payment = input.paymentMethod === 'alipay'
       ? createAlipayPagePay({ orderNo, amount, subject: plan.name })
-      : null;
+      : input.paymentMethod === 'wechat'
+        ? await createWeChatNativePay({ orderNo, amount, description: plan.name })
+        : null;
     const order = await this.prisma.paymentOrder.create({
       data: {
         tenant_id: tenantId,
@@ -85,10 +87,12 @@ export class BillingService {
       return;
     }
     const configured = method === 'wechat'
-      ? process.env.WECHAT_PAY_MCH_ID && process.env.WECHAT_PAY_PRIVATE_KEY && process.env.WECHAT_PAY_API_V3_KEY
+      ? process.env.WECHAT_PAY_MCH_ID && process.env.WECHAT_PAY_APP_ID
+        && process.env.WECHAT_PAY_PRIVATE_KEY && process.env.WECHAT_PAY_SERIAL_NO
+        && process.env.WECHAT_PAY_API_V3_KEY && process.env.WECHAT_PAY_NOTIFY_URL
+        && process.env.WECHAT_PAY_PLATFORM_PUBLIC_KEY && process.env.WECHAT_PAY_PLATFORM_SERIAL_NO
       : process.env.ALIPAY_APP_ID && process.env.ALIPAY_PRIVATE_KEY && process.env.ALIPAY_PUBLIC_KEY;
     if (!configured) throw new ServiceUnavailableException(`${method} 商户资料尚未配置，未创建订单`);
-    if (method === 'wechat') throw new NotImplementedException('wechat 下单适配器尚未启用，未创建订单');
   }
 
   async requestCancellation(tenantId: string) {

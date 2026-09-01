@@ -87,7 +87,16 @@ require(
 )
 require(
     "runtime/api/src/modules/billing/billing.service.ts",
-    ("createAlipayPagePay", "支付金额或币种与订单不一致"),
+    ("createAlipayPagePay", "createWeChatNativePay", "支付金额或币种与订单不一致"),
+)
+require(
+    "runtime/api/src/modules/billing/wechat-pay.adapter.ts",
+    (
+        "WECHATPAY2-SHA256-RSA2048",
+        "AEAD_AES_256_GCM",
+        "verifyWeChatNotifySignature",
+        "https://api.mch.weixin.qq.com",
+    ),
 )
 require(
     "runtime/web-cn/src/app/(main)/studio/page.tsx",
