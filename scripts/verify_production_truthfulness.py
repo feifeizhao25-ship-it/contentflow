@@ -125,6 +125,18 @@ require(
         "失败不伪造",
     ),
 )
+require(
+    "runtime/web-cn/src/components/checkin/CheckInModal.tsx",
+    ("apiClient.get", "'/points/stats'", "'/points/logs'", "'/points/checkin'"),
+)
+forbid(
+    "runtime/web-cn/src/components/checkin/CheckInModal.tsx",
+    ("模拟API调用延迟", "checkIn()", "points-storage"),
+)
+require(
+    "runtime/api/src/modules/points/points.service.ts",
+    ("startOfChinaDay", "CHINA_STANDARD_TIME_OFFSET_MS", "longest_streak:"),
+)
 forbid(
     "runtime/web-cn/src/components/onboarding/FirstVideoGuide.tsx",
     ("via.placeholder.com", "模拟视频生成进度", "高清画质 1080P", "setTimeout(resolve"),

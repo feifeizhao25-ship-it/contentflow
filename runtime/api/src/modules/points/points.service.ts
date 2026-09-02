@@ -19,6 +19,18 @@ export interface PointsInfo {
   next_level_xp: number;
 }
 
+// 国内版签到以中国标准时间的自然日为准。生产容器通常运行在 UTC，
+// 不能使用容器的本地零点，否则用户会在北京时间 00:00–08:00 遇到跨日错判。
+const CHINA_STANDARD_TIME_OFFSET_MS = 8 * 60 * 60 * 1000;
+
+function startOfChinaDay(value: Date): Date {
+  const shifted = new Date(value.getTime() + CHINA_STANDARD_TIME_OFFSET_MS);
+  return new Date(
+    Date.UTC(shifted.getUTCFullYear(), shifted.getUTCMonth(), shifted.getUTCDate())
+      - CHINA_STANDARD_TIME_OFFSET_MS,
+  );
+}
+
 @Injectable()
 export class PointsService {
   constructor(private readonly prisma: PrismaService) {}
@@ -46,18 +58,14 @@ export class PointsService {
   async checkIn(userId: string): Promise<CheckInResult> {
     const userPoints = await this.getOrCreateUserPoints(userId);
     const now = new Date();
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const today = startOfChinaDay(now);
     const yesterday = new Date(today);
-    yesterday.setDate(yesterday.getDate() - 1);
+    yesterday.setUTCDate(yesterday.getUTCDate() - 1);
 
     // 检查今日是否已签到
     if (userPoints.last_checkin_date) {
       const lastCheckIn = new Date(userPoints.last_checkin_date);
-      const lastCheckInDay = new Date(
-        lastCheckIn.getFullYear(),
-        lastCheckIn.getMonth(),
-        lastCheckIn.getDate()
-      );
+      const lastCheckInDay = startOfChinaDay(lastCheckIn);
 
       if (lastCheckInDay.getTime() === today.getTime()) {
         return {
@@ -74,11 +82,7 @@ export class PointsService {
     let newStreakDays = 1;
     if (userPoints.last_checkin_date) {
       const lastCheckIn = new Date(userPoints.last_checkin_date);
-      const lastCheckInDay = new Date(
-        lastCheckIn.getFullYear(),
-        lastCheckIn.getMonth(),
-        lastCheckIn.getDate()
-      );
+      const lastCheckInDay = startOfChinaDay(lastCheckIn);
 
       // 如果昨天签到了，连续天数+1
       if (lastCheckInDay.getTime() === yesterday.getTime()) {
@@ -109,6 +113,7 @@ export class PointsService {
         balance: { increment: totalPoints },
         total_earned: { increment: totalPoints },
         streak_days: newStreakDays,
+        longest_streak: Math.max(userPoints.longest_streak, newStreakDays),
         last_checkin_date: now,
         experience_points: { increment: totalPoints },
         level: this.calculateLevel(userPoints.experience_points + totalPoints),
@@ -185,8 +190,7 @@ export class PointsService {
    */
   async getUserPointsStats(userId: string) {
     const userPoints = await this.getOrCreateUserPoints(userId);
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    const today = startOfChinaDay(new Date());
 
     // 今日是否已签到
     const checkedInToday = userPoints.last_checkin_date 

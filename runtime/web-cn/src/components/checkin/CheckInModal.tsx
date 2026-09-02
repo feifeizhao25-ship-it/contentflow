@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Modal, Button, message, Progress } from 'antd';
 import { 
   CheckCircleOutlined, 
@@ -9,7 +9,7 @@ import {
   CloseOutlined 
 } from '@ant-design/icons';
 import { motion, AnimatePresence } from 'framer-motion';
-import { usePointsStore } from '@/store/pointsStore';
+import { apiClient } from '@/lib/api-client';
 import clsx from 'clsx';
 
 interface CheckInModalProps {
@@ -18,59 +18,87 @@ interface CheckInModalProps {
 }
 
 export default function CheckInModal({ visible, onClose }: CheckInModalProps) {
-  const { 
-    balance, 
-    consecutiveDays, 
-    checkIn, 
-    getTodayStatus,
-    checkInRecords 
-  } = usePointsStore();
-  
+  const [balance, setBalance] = useState<number | null>(null);
+  const [consecutiveDays, setConsecutiveDays] = useState(0);
+  const [checkedInDates, setCheckedInDates] = useState<string[]>([]);
   const [isAnimating, setIsAnimating] = useState(false);
   const [checkInResult, setCheckInResult] = useState<{
     success: boolean;
     bonus?: number;
     streak?: number;
   } | null>(null);
-  const [status, setStatus] = useState(getTodayStatus());
+  const [status, setStatus] = useState({ checkedIn: false, canCheckIn: false });
+
+  const refreshState = useCallback(async () => {
+    const [stats, logs] = await Promise.all([
+      apiClient.get<{
+        balance: number;
+        streak_days: number;
+        checked_in_today: boolean;
+      }>('/points/stats'),
+      apiClient.get<{ logs: Array<{ log_type: string; created_at: string }> }>('/points/logs'),
+    ]);
+    setBalance(stats.balance);
+    setConsecutiveDays(stats.streak_days);
+    setStatus({ checkedIn: stats.checked_in_today, canCheckIn: !stats.checked_in_today });
+    setCheckedInDates(
+      logs.logs
+        .filter((item) => item.log_type === 'checkin')
+        .map((item) => chinaDateKey(new Date(item.created_at))),
+    );
+  }, []);
 
   useEffect(() => {
-    setStatus(getTodayStatus());
-  }, [getTodayStatus, visible]);
+    if (!visible) return;
+    setCheckInResult(null);
+    refreshState().catch(() => {
+      setStatus({ checkedIn: false, canCheckIn: false });
+      message.error('签到数据加载失败，请稍后重试');
+    });
+  }, [refreshState, visible]);
 
   // 签到奖励阶梯
   const streakMilestones = [
-    { days: 1, bonus: 10, label: '首签' },
-    { days: 7, bonus: 10, label: '7天' },
-    { days: 14, bonus: 20, label: '14天' },
-    { days: 30, bonus: 50, label: '30天' },
-    { days: 60, bonus: 100, label: '60天' },
+    { days: 1, bonus: 15, label: '首签' },
+    { days: 3, bonus: 25, label: '3天' },
+    { days: 7, bonus: 45, label: '7天' },
+    { days: 10, bonus: 60, label: '10天+' },
   ];
 
   // 处理签到
   const handleCheckIn = async () => {
-    if (status.checkedIn || isAnimating) return;
+    if (!status.canCheckIn || isAnimating) return;
     
     setIsAnimating(true);
     
-    // 模拟API调用延迟
-    await new Promise(resolve => setTimeout(resolve, 500));
-    
-    const result = checkIn();
-    setCheckInResult(result);
-    
-    if (result.success) {
+    try {
+      const result = await apiClient.post<{
+        success: boolean;
+        points_earned: number;
+        streak_days: number;
+        balance: number;
+        message: string;
+      }>('/points/checkin', {});
+      setCheckInResult({
+        success: result.success,
+        bonus: result.points_earned,
+        streak: result.streak_days,
+      });
+      setBalance(result.balance);
+      setConsecutiveDays(result.streak_days);
+      setStatus({ checkedIn: true, canCheckIn: false });
+      await refreshState();
+      if (!result.success) {
+        message.info(result.message || '今日已签到');
+        return;
+      }
       message.success({
-        content: `🎉 签到成功！+${result.bonus}积分`,
+        content: `🎉 签到成功！+${result.points_earned}积分`,
         duration: 3,
       });
-      
-      // 3秒后关闭或显示庆祝动画
-      setTimeout(() => {
-        setIsAnimating(false);
-        setStatus(getTodayStatus());
-      }, 2000);
-    } else {
+    } catch (error) {
+      message.error(error instanceof Error ? error.message : '签到失败，请稍后重试');
+    } finally {
       setIsAnimating(false);
     }
   };
@@ -83,8 +111,8 @@ export default function CheckInModal({ visible, onClose }: CheckInModalProps) {
     for (let i = 6; i >= 0; i--) {
       const date = new Date(today);
       date.setDate(date.getDate() - i);
-      const dateStr = date.toISOString().split('T')[0];
-      const isCheckedIn = checkInRecords.some(r => r.date === dateStr);
+      const dateStr = chinaDateKey(date);
+      const isCheckedIn = checkedInDates.includes(dateStr);
       weekStatus.push({
         date: date,
         day: date.toLocaleDateString('zh-CN', { weekday: 'short' }),
@@ -136,7 +164,7 @@ export default function CheckInModal({ visible, onClose }: CheckInModalProps) {
         {/* 当前积分显示 */}
         <div className="mt-4 flex items-center justify-center gap-4">
           <div className="text-center">
-            <div className="text-3xl font-bold">{balance}</div>
+            <div className="text-3xl font-bold">{balance ?? '--'}</div>
             <div className="text-xs text-white/70">当前积分</div>
           </div>
           
@@ -284,7 +312,7 @@ export default function CheckInModal({ visible, onClose }: CheckInModalProps) {
                 type="primary"
                 onClick={handleCheckIn}
                 loading={isAnimating}
-                disabled={status.checkedIn}
+                disabled={!status.canCheckIn}
                 className={clsx(
                   "w-full h-12 rounded-xl font-medium text-lg",
                   status.checkedIn
@@ -311,4 +339,8 @@ export default function CheckInModal({ visible, onClose }: CheckInModalProps) {
       </div>
     </Modal>
   );
+}
+
+function chinaDateKey(value: Date): string {
+  return new Date(value.getTime() + 8 * 60 * 60 * 1000).toISOString().slice(0, 10);
 }
