@@ -175,6 +175,13 @@ class ApiClient {
     return _tokenStorage.clearToken();
   }
 
+  Future<void> deleteAccount() async {
+    await _handle(
+      () => _dio.delete('/users/me'),
+      (data) => data,
+    );
+  }
+
   Future<void> login({
     required String email,
     required String password,

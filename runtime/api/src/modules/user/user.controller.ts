@@ -24,6 +24,13 @@ export class UserController {
     return { user };
   }
 
+  @Delete('me')
+  @ApiOperation({ summary: '删除当前用户账号 (软删除, 5.1.1(v))' })
+  async deleteAccount(@Request() req: any) {
+    await this.userService.delete(req.user.sub);
+    return { success: true };
+  }
+
   @Get('members')
   @ApiOperation({ summary: '获取团队成员列表' })
   async getMembers(@Request() req: any) {
