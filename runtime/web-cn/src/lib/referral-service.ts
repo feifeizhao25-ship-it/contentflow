@@ -108,10 +108,36 @@ export function generateShareConfig(
 // 执行分享
 export async function shareContent(config: ShareConfig, platform: SharePlatform): Promise<{
   success: boolean;
-  message?: string;
+  verified: boolean;
+  message: string;
 }> {
-  console.log(`[Share] Sharing to ${platform}:`, config);
-  return { success: true, message: '分享成功' };
+  const shareText = [config.title, config.description, ...(config.hashtags || [])].join('\n');
+  try {
+    if (platform === 'copy_link') {
+      await navigator.clipboard.writeText(config.url);
+      return { success: true, verified: false, message: '链接已复制，请在目标平台完成分享' };
+    }
+
+    if (platform === 'weibo') {
+      const target = `https://service.weibo.com/share/share.php?url=${encodeURIComponent(config.url)}&title=${encodeURIComponent(shareText)}`;
+      const opened = window.open(target, '_blank', 'noopener,noreferrer');
+      if (!opened) throw new Error('浏览器拦截了分享窗口，请允许弹窗后重试');
+      return { success: true, verified: false, message: '已打开微博分享页，请确认后发布' };
+    }
+
+    if (navigator.share) {
+      await navigator.share({ title: config.title, text: config.description, url: config.url });
+      return { success: true, verified: false, message: '系统分享面板已完成操作' };
+    }
+
+    await navigator.clipboard.writeText(`${shareText}\n${config.url}`);
+    return { success: true, verified: false, message: '当前浏览器无法直接分享，分享内容已复制' };
+  } catch (error) {
+    if (error instanceof DOMException && error.name === 'AbortError') {
+      return { success: false, verified: false, message: '已取消分享' };
+    }
+    throw error;
+  }
 }
 
 // 生成分享链接
@@ -122,24 +148,13 @@ export function generateInviteLink(inviteCode: string): string {
 
 // 生成邀请码
 export function generateInviteCode(): string {
-  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-  let code = '';
-  for (let i = 0; i < 8; i++) {
-    code += chars.charAt(Math.floor(Math.random() * chars.length));
-  }
-  return code;
+  throw new Error('邀请码必须由服务端登记后签发');
 }
 
 // 获取用户邀请统计
 export async function getReferralStats(userId: string): Promise<ReferralStats> {
-  return {
-    totalInvites: 0,
-    completedInvites: 0,
-    pendingInvites: 0,
-    totalRewards: { points: 0, vipDays: 0 },
-    inviteCode: generateInviteCode(),
-    inviteLink: generateInviteLink(generateInviteCode()),
-  };
+  void userId;
+  throw new Error('邀请统计服务尚未接入，不能生成未经服务端登记的邀请码');
 }
 
 // 处理邀请回调
@@ -147,12 +162,9 @@ export async function handleInviteCallback(
   inviteCode: string,
   invitedUserId: string
 ): Promise<{ success: boolean; reward?: { points: number; vipDays: number }; message?: string }> {
-  console.log(`[Referral] User ${invitedUserId} registered with code ${inviteCode}`);
-  return {
-    success: true,
-    reward: { points: SHARE_REWARDS.invitee.points, vipDays: SHARE_REWARDS.invitee.vipDays },
-    message: '邀请验证成功',
-  };
+  void inviteCode;
+  void invitedUserId;
+  throw new Error('邀请回调服务尚未接入，未发放任何奖励');
 }
 
 // 获取邀请阶梯奖励

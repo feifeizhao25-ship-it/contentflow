@@ -137,6 +137,22 @@ require(
     "runtime/api/src/modules/points/points.service.ts",
     ("startOfChinaDay", "CHINA_STANDARD_TIME_OFFSET_MS", "longest_streak:"),
 )
+require(
+    "runtime/web-cn/src/lib/referral-service.ts",
+    ("verified: boolean", "navigator.share", "未发放任何奖励"),
+)
+forbid(
+    "runtime/web-cn/src/lib/referral-service.ts",
+    ("console.log(`[Share]", "message: '分享成功'", "reward: { points: SHARE_REWARDS"),
+)
+forbid(
+    "runtime/web-cn/src/components/share/ShareModal.tsx",
+    ("Math.random()", "模拟统计数据", "message.success('分享成功！')"),
+)
+forbid(
+    "runtime/web-cn/src/components/membership/PremiumGate.tsx",
+    ("模拟分享成功", "您已获得 3 天专业版体验", "?ref=${Date.now()}"),
+)
 forbid(
     "runtime/web-cn/src/components/onboarding/FirstVideoGuide.tsx",
     ("via.placeholder.com", "模拟视频生成进度", "高清画质 1080P", "setTimeout(resolve"),

@@ -19,6 +19,7 @@ import { Modal, Button, Progress, Tooltip, Badge, Card, Divider } from 'antd';
 import clsx from 'clsx';
 import { useRouter } from 'next/navigation';
 import { apiClient } from '@/lib/api-client';
+import { generateShareConfig, shareContent, type SharePlatform } from '@/lib/referral-service';
 
 interface UserSubscription {
     plan: 'free' | 'pro' | 'enterprise';
@@ -98,11 +99,11 @@ export function UpgradeModal({
             originalPrice: 399
         },
         'share_unlock': {
-            title: '分享解锁',
-            description: '分享到社交平台获得 3 天专业版',
-            features: ['3 天专业版体验', '50 次额外额度', '全部功能开放'],
-            price: 0,
-            originalPrice: 0
+            title: '解锁专业版',
+            description: '分享不会自动发放付费权益，请选择正式会员方案',
+            features: ['每月 200 次 AI 生成', '会员权益服务端校验', '订单状态实时同步'],
+            price: 49,
+            originalPrice: 59
         }
     };
 
@@ -114,33 +115,9 @@ export function UpgradeModal({
         router.push('/pricing');
     };
 
-    const handleShare = () => {
-        // 分享逻辑
-        const shareText = '我正在使用分发侠，AI 一键生成内容，效率提升 10 倍！';
-        const shareUrl = `${window.location.origin}?ref=${Date.now()}`;
-        
-        // 模拟分享
-        if (navigator.share) {
-            navigator.share({
-                title: '分发侠 - AI 内容创作平台',
-                text: shareText,
-                url: shareUrl,
-            }).then(() => {
-                Modal.success({
-                    title: '分享成功！',
-                    content: '您已获得 3 天专业版体验和 50 次额外额度！',
-                });
-                onClose();
-            });
-        } else {
-            // 复制链接
-            navigator.clipboard.writeText(shareUrl);
-            Modal.success({
-                title: '链接已复制！',
-                content: '分享到社交平台，获得专业版奖励',
-            });
-            onClose();
-        }
+    const handleShare = async () => {
+        const result = await shareContent(generateShareConfig('app'), 'copy_link');
+        Modal.info({ title: '分享操作结果', content: result.message });
     };
 
     return (
@@ -220,9 +197,9 @@ export function UpgradeModal({
                         <div className="py-2">
                             <div className="flex items-center justify-center gap-2 mb-2">
                                 <FireOutlined className="text-orange-400 animate-pulse" />
-                                <span className="text-white font-medium">分享获得奖励</span>
+                                <span className="text-white font-medium">分享产品</span>
                             </div>
-                            <p className="text-sm text-zinc-400">分享链接到社交平台，解锁 3 天专业版</p>
+                            <p className="text-sm text-zinc-400">分享不会自动发放会员权益</p>
                         </div>
                     )}
                 </div>
@@ -247,7 +224,7 @@ export function UpgradeModal({
                         icon={<RightOutlined />}
                         className="!h-14 !rounded-xl !font-bold !text-lg !bg-gradient-to-r !from-indigo-500 !to-purple-600 !border-none hover:!from-indigo-400 hover:!to-purple-500 shadow-lg"
                     >
-                        分享解锁奖励
+                        复制分享链接
                     </Button>
                 )}
                 
@@ -511,28 +488,34 @@ export function UsageStatsCard({ stats }: { stats: Array<{ label: string; value:
     );
 }
 
-// ============ 分享解锁组件 ============
+// ============ 产品分享组件（不发放付费权益） ============
 export function ShareToUnlock({ onClose }: { onClose?: () => void }) {
     const [copied, setCopied] = useState(false);
-    const router = useRouter();
-
-    const shareUrl = `${window.location.origin}?ref=${Date.now()}`;
+    const shareConfig = generateShareConfig('app');
 
     const handleCopy = async () => {
-        await navigator.clipboard.writeText(shareUrl);
-        setCopied(true);
-        setTimeout(() => setCopied(false), 2000);
+        try {
+            const result = await shareContent(shareConfig, 'copy_link');
+            setCopied(result.success);
+            if (result.success) setTimeout(() => setCopied(false), 2000);
+        } catch {
+            setCopied(false);
+        }
     };
 
-    const handleShare = (_platform: string) => {
-        // 模拟分享成功
-        Modal.success({
-            title: '分享成功！',
-            content: '您已获得 3 天专业版体验和 50 次额外额度！',
-            onOk: () => {
-                onClose?.();
-            }
-        });
+    const handleShare = async (platform: SharePlatform) => {
+        try {
+            const result = await shareContent(shareConfig, platform);
+            Modal.info({
+                title: '分享操作结果',
+                content: `${result.message}。分享不会自动解锁付费权益，会员权益以服务端订单为准。`,
+            });
+        } catch (error) {
+            Modal.error({
+                title: '分享操作失败',
+                content: error instanceof Error ? error.message : '请稍后重试',
+            });
+        }
     };
 
     const platforms = [
@@ -546,8 +529,8 @@ export function ShareToUnlock({ onClose }: { onClose?: () => void }) {
             <div className="w-16 h-16 bg-gradient-to-br from-indigo-500 to-purple-500 rounded-2xl flex items-center justify-center mx-auto mb-4">
                 <RocketOutlined className="text-3xl text-white" />
             </div>
-            <h3 className="text-xl font-bold text-zinc-900 mb-2">分享解锁</h3>
-            <p className="text-sm text-zinc-500 mb-6">分享到社交平台，立即解锁 3 天专业版体验 + 50 次额外额度</p>
+            <h3 className="text-xl font-bold text-zinc-900 mb-2">分享产品</h3>
+            <p className="text-sm text-zinc-500 mb-6">分享操作不会自动解锁会员或额度；付费权益以服务端订单为准</p>
 
             <div className="flex justify-center gap-3 mb-6">
                 {platforms.map((platform) => (
