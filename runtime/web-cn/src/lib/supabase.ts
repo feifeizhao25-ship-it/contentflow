@@ -1,12 +1,18 @@
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://localhost:3000/mock-supabase';
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'mock-key';
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
-// Only create a real client if the URL looks valid, otherwise we might see crashes in dev
-export const supabase = (supabaseUrl && !supabaseUrl.includes('placeholder'))
-  ? createClient(supabaseUrl, supabaseAnonKey)
-  : createClient('https://localhost:3000/mock-supabase', 'mock-key'); // Fallback to something that won't resolve to a live server but won't crash either
+if (process.env.NODE_ENV === 'production' && (!supabaseUrl || !supabaseAnonKey)) {
+  throw new Error('Supabase production configuration is required');
+}
+
+// Development uses a deliberately unreachable endpoint. Production can never
+// silently fall back to it because the guard above fails the build/startup.
+export const supabase = createClient(
+  supabaseUrl || 'https://supabase-development.invalid',
+  supabaseAnonKey || 'development-public-anon-key',
+);
 
 // Database types (will be generated from Supabase)
 export interface Tenant {

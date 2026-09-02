@@ -129,6 +129,20 @@ for env_file in (
     if (ROOT / env_file).is_file():
         forbid(env_file, ("NEXT_PUBLIC_FAL", "NEXT_PUBLIC_OPENROUTER"))
 
+for supabase_client in (
+    "runtime/web-cn/src/lib/supabase.ts",
+    "runtime/web-cn/src/lib/supabase-server.ts",
+):
+    require(
+        supabase_client,
+        (
+            "process.env.NODE_ENV === 'production'",
+            "Supabase production configuration is required",
+            "supabase-development.invalid",
+        ),
+    )
+    forbid(supabase_client, ("mock-supabase", "mock-key"))
+
 # 国内内容生成与发布必须共用固定顺序、带版本和来源的六道闸。
 # 该静态门禁不替代动态规则库，但可防止生产代码退化回“命中后替换星号并继续发布”。
 require(

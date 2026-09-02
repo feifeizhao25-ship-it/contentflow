@@ -92,6 +92,8 @@ jobs:
           # 构建期不应依赖真实密钥；缺失时 ai-service 会显式抛错，
           # 这里给占位值让静态构建通过。
           SILICONFLOW_API_KEY: ci-placeholder
+          NEXT_PUBLIC_SUPABASE_URL: https://contentflow-ci.invalid
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ci-public-anon-key
 
   web-int:
     name: Web INT (Next.js)
