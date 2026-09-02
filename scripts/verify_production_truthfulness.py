@@ -102,6 +102,33 @@ require(
     "runtime/web-cn/src/app/(main)/studio/page.tsx",
     ("setBalance(null)", "系统不会用模拟进度或占位视频冒充结果"),
 )
+require(
+    "runtime/web-cn/src/components/onboarding/FirstScriptGuide.tsx",
+    (
+        "/api/ai/generate-script",
+        "contentflow:onboarding-script",
+        "if (!response.ok)",
+        "已由真实服务生成",
+    ),
+)
+forbid(
+    "runtime/web-cn/src/components/onboarding/FirstScriptGuide.tsx",
+    ("mockTitles", "mockScript", "Math.random()", "模拟API调用", "viralScore"),
+)
+require(
+    "runtime/web-cn/src/components/onboarding/FirstVideoGuide.tsx",
+    (
+        "/api/video/generate",
+        "response.body.getReader()",
+        "event.done && event.url",
+        "generatedVideo.url",
+        "失败不伪造",
+    ),
+)
+forbid(
+    "runtime/web-cn/src/components/onboarding/FirstVideoGuide.tsx",
+    ("via.placeholder.com", "模拟视频生成进度", "高清画质 1080P", "setTimeout(resolve"),
+)
 for workflow in (".github/workflows/ci.yml",):
     require(workflow, ("--dart-define=API_BASE_URL=https://contentflow-ci.invalid/api/v1",))
 

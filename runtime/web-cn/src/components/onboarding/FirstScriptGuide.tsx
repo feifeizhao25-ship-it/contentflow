@@ -5,7 +5,6 @@ import { Button, Input, message } from 'antd';
 import { ThunderboltOutlined, CopyOutlined, CheckCircleOutlined, StarOutlined } from '@ant-design/icons';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useOnboardingStore, DOMAIN_NAMES } from '@/store/onboardingStore';
-import clsx from 'clsx';
 
 interface FirstScriptGuideProps {
   onScriptGenerated?: (scriptId: string) => void;
@@ -13,12 +12,11 @@ interface FirstScriptGuideProps {
 }
 
 export default function FirstScriptGuide({ onScriptGenerated, isGenerating }: FirstScriptGuideProps) {
-  const { progress } = useOnboardingStore();
+  const { progress, platforms } = useOnboardingStore();
   const [topic, setTopic] = useState('');
   const [generatedScript, setGeneratedScript] = useState<{
     title: string;
     content: string;
-    viralScore: number;
   } | null>(null);
   const [isCreating, setIsCreating] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -26,7 +24,7 @@ export default function FirstScriptGuide({ onScriptGenerated, isGenerating }: Fi
   const selectedDomain = progress.selectedDomain;
   const domainName = selectedDomain ? DOMAIN_NAMES[selectedDomain] : '创作';
 
-  // 生成脚本（模拟）
+  // 通过受鉴权的服务端路由生成真实分镜；上游不可用时明确失败。
   const handleGenerate = async () => {
     if (!topic.trim()) {
       message.warning('请输入一个创作主题');
@@ -36,51 +34,43 @@ export default function FirstScriptGuide({ onScriptGenerated, isGenerating }: Fi
     setIsCreating(true);
     
     try {
-      // 模拟API调用
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      const mockTitles: Record<string, string[]> = {
-        beauty: ['必学的减龄妆容技巧', '这款粉底液真的绝了', '新手必看的化妆顺序'],
-        fashion: ['一周穿搭不重样', '显瘦显高穿搭技巧', '平价替代品推荐'],
-        food: ['懒人必学的快手菜', '减脂期吃什么', '5分钟早餐食谱'],
-        tech: ['性价比手机推荐', '必装的APP清单', '数码小白入门指南'],
-        gaming: ['王者荣耀上分技巧', '新版本最强英雄', '游戏充值避坑指南'],
-        movie: ['近期必看影单', '电影解说技巧', '明星八卦合集'],
-        career: ['面试必问的问题', '职场新人避坑指南', '副业赚钱思路'],
-        emotional: ['治愈系的文案', '情感共鸣话题', '励志正能量语录'],
-        knowledge: ['冷知识大全', '必学的技能教程', '干货分享合集'],
-        lifestyle: ['租房好物推荐', '独居生活技巧', '时间管理方法'],
-        pets: ['猫咪行为大解析', '养宠必买清单', '宠物零食测评'],
-        travel: ['小众旅行地推荐', '旅行省钱攻略', '出行必备清单'],
-      };
-
-      const titles = mockTitles[selectedDomain || 'lifestyle'] || mockTitles.lifestyle;
-      const randomTitle = titles[Math.floor(Math.random() * titles.length)];
-      const viralScore = Math.floor(Math.random() * 20) + 75;
-
-      const mockScript = `${topic}是一个非常热门的话题。
-
-【开头】
-你是否也有类似的经历？今天就来聊聊这个话题！
-
-【正文】
-1. 第一点分享...
-2. 第二点分享...
-3. 第三点分享...
-
-【结尾】
-以上就是今天的分享，如果对你有帮助，记得点赞收藏哦！`;
+      const response = await fetch('/api/ai/generate-script', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          topic: topic.trim(),
+          type: domainName,
+          platform:
+            platforms.find((item) => item.id === progress.selectedPlatforms[0])?.name || '抖音',
+        }),
+      });
+      const payload = await response.json();
+      if (!response.ok) {
+        throw new Error(payload?.error || payload?.message || '脚本生成服务暂不可用');
+      }
+      const scenes = Array.isArray(payload?.scenes) ? payload.scenes : [];
+      if (scenes.length === 0) throw new Error('生成结果没有有效分镜');
+      const content = scenes
+        .map(
+          (scene: { subtitle?: unknown; visual?: unknown; time?: unknown }, index: number) =>
+            `【分镜 ${index + 1}】\n${String(scene.subtitle || '')}\n画面：${String(scene.visual || '')}（${Number(scene.time) || 0}秒）`,
+        )
+        .join('\n\n');
+      const scriptId = `script_${Date.now()}`;
+      sessionStorage.setItem(
+        'contentflow:onboarding-script',
+        JSON.stringify({ id: scriptId, title: String(payload?.title || topic), scenes }),
+      );
 
       setGeneratedScript({
-        title: randomTitle,
-        content: mockScript,
-        viralScore,
+        title: String(payload?.title || topic),
+        content,
       });
 
-      onScriptGenerated?.(`script_${Date.now()}`);
+      onScriptGenerated?.(scriptId);
       message.success({ content: '✨ 脚本生成成功！', duration: 3 });
     } catch (error) {
-      message.error('脚本生成失败，请重试');
+      message.error(error instanceof Error ? error.message : '脚本生成失败，请重试');
     } finally {
       setIsCreating(false);
     }
@@ -158,16 +148,9 @@ export default function FirstScriptGuide({ onScriptGenerated, isGenerating }: Fi
               <h4 className="font-medium text-indigo-600 dark:text-indigo-400 flex items-center gap-2">
                 <StarOutlined /> 生成结果
               </h4>
-              <div className="flex items-center gap-1">
-                <span className="text-sm text-gray-500">爆款指数</span>
-                <span className={clsx(
-                  "px-2 py-0.5 rounded-full text-sm font-bold",
-                  generatedScript.viralScore >= 80 
-                    ? "bg-green-100 dark:bg-green-900/30 text-green-600" : "bg-amber-100 text-amber-600"
-                )}>
-                  {generatedScript.viralScore}分
-                </span>
-              </div>
+              <span className="rounded-full bg-green-100 px-2 py-0.5 text-sm text-green-700 dark:bg-green-900/30 dark:text-green-400">
+                已由真实服务生成
+              </span>
             </div>
 
             <h3 className="font-bold text-lg text-gray-900 dark:text-white mb-2">
@@ -197,8 +180,9 @@ export default function FirstScriptGuide({ onScriptGenerated, isGenerating }: Fi
 }
 
 function getQuickTopics(domain: string): string[] {
+  const year = new Date().getFullYear();
   const topics: Record<string, string[]> = {
-    beauty: ['2024流行妆容', '平价好物推荐', '新手化妆教程', '护肤品测评'],
+    beauty: [`${year}流行妆容`, '平价好物推荐', '新手化妆教程', '护肤品测评'],
     fashion: ['穿搭技巧', '一周穿搭', '平价替代', '显瘦穿搭'],
     food: ['懒人食谱', '减脂餐', '网红美食', '一人食'],
     tech: ['数码好物', '性价比手机', 'APP推荐'],
