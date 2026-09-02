@@ -153,6 +153,14 @@ forbid(
     "runtime/web-cn/src/components/membership/PremiumGate.tsx",
     ("模拟分享成功", "您已获得 3 天专业版体验", "?ref=${Date.now()}"),
 )
+require(
+    "runtime/web-cn/src/app/(main)/traffic-sandwich/page.tsx",
+    ("String(res?.content || '')", "router.push('/studio')", "完播率需发布后数据"),
+)
+forbid(
+    "runtime/web-cn/src/app/(main)/traffic-sandwich/page.tsx",
+    ("预期完播率", "92%", "15%", "Parse or simulate parsing for demo"),
+)
 forbid(
     "runtime/web-cn/src/components/onboarding/FirstVideoGuide.tsx",
     ("via.placeholder.com", "模拟视频生成进度", "高清画质 1080P", "setTimeout(resolve"),

@@ -30,11 +30,13 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { apiClient } from '@/lib/api-client';
+import { useRouter } from 'next/navigation';
 
 const { Title, Text, Paragraph } = Typography;
 const { TextArea } = Input;
 
 export default function TrafficSandwichPage() {
+    const router = useRouter();
     const [activeStep, setActiveStep] = useState(0);
     const [isGenerating, setIsGenerating] = useState(false);
 
@@ -66,25 +68,26 @@ export default function TrafficSandwichPage() {
                 keywords: ['钩子', '转化', '反直觉'],
             });
 
-            const content = res?.data?.content || '';
+            const content = String(res?.content || '').trim();
+            const paragraphs = content
+                .split(/\n\s*\n/)
+                .map((item) => item.trim())
+                .filter(Boolean);
+            if (!content || paragraphs.length === 0) {
+                throw new Error('AI 服务未返回有效策略');
+            }
 
-            // Parse or simulate parsing for demo
-            // In real scenario, we'd have a specific endpoint or better prompt
-            setHook('【反转开头】大家都以为做自媒体很难，直到我发现了这个“流量夹心”法...');
-            setCoreContent('这里填入您的核心干货或产品介绍，保持真实和专业感。');
-            setCta('如果觉得有用，记得点赞收藏！点击底部的链接领取我的自媒体地图 🚀');
-
+            const generatedHook = paragraphs[0];
+            const generatedCta = paragraphs.length > 1 ? paragraphs[paragraphs.length - 1] : '';
+            const generatedCore = paragraphs.length > 2
+                ? paragraphs.slice(1, -1).join('\n\n')
+                : content;
+            setHook(generatedHook);
+            setCoreContent(generatedCore);
+            setCta(generatedCta);
             setSuggestions({
-                hooks: [
-                    '你不理财，财不理你？那是因为你没看到最后...',
-                    '为什么聪明人都在用这个方法？看完这30秒你就懂了。',
-                    '警告：这可能是你今年刷到最有价值的一条视频。'
-                ],
-                ctas: [
-                    '评论区回复“指南”，我把整理好的全套资料发给你。',
-                    '关注我，每天分享一个普通人也能上手的搞钱小技巧。',
-                    '点击置顶链接，领取今日份限时福利！'
-                ]
+                hooks: [generatedHook],
+                ctas: generatedCta ? [generatedCta] : [],
             });
 
             message.success('流量策略已为您规划完成');
@@ -115,7 +118,7 @@ export default function TrafficSandwichPage() {
                     <span>进阶增长模型 2.0</span>
                 </div>
                 <Title level={1} className="font-serif !text-5xl !mb-0 tracking-tight">
-                    流量三明治 <span className="text-zinc-400 font-light italic">Strategy</span>
+                    流量三明治 <span className="text-zinc-400 font-light">策略工作台</span>
                 </Title>
                 <Paragraph className="text-zinc-500 text-lg max-w-2xl mx-auto">
                     通过“钩子引流、价值留存、钩子转化”的爆款逻辑，
@@ -163,7 +166,7 @@ export default function TrafficSandwichPage() {
                                     >
                                         AI 规划三明治策略
                                     </Button>
-                                    <div className="text-xs text-zinc-400">规划策略预计消耗：<span className="text-emerald-600 font-bold">10 积分</span></div>
+                                    <div className="text-xs text-zinc-400">实际用量和权益扣减以服务端记录为准</div>
                                 </div>
 
                                 <div className="pt-10 flex flex-wrap justify-center gap-3 opacity-60 group-hover:opacity-100 transition-opacity" aria-label="支持的平台">
@@ -197,7 +200,7 @@ export default function TrafficSandwichPage() {
                                                 </div>
                                                 <div>
                                                     <Popover content="视频的前 3-5 秒，决定了用户是否会滑走。常见的钩子有『反直觉陈述』、『视觉冲击』或『结果预告』。" title="什么是流量钩子？">
-                                                        <Text strong className="text-amber-800 cursor-help border-b border-dotted border-amber-300">上层：流量钩子 (The Hook)</Text>
+                                                        <Text strong className="text-amber-800 cursor-help border-b border-dotted border-amber-300">上层：流量钩子</Text>
                                                     </Popover>
                                                     <br />
                                                     <Text type="secondary" text-xs>前3秒的核心内容，负责从信息流中“抢夺”注意力</Text>
@@ -222,7 +225,7 @@ export default function TrafficSandwichPage() {
                                                 </div>
                                                 <div>
                                                     <Popover content="这是内容的主体部分，旨在交付实际的价值、知识、情感共鸣或产品细节。这是建立品牌信任的关键。" title="什么是价值交付？">
-                                                        <Text strong className="text-emerald-800 cursor-help border-b border-dotted border-emerald-300">中层：价值交付 (Core Content)</Text>
+                                                        <Text strong className="text-emerald-800 cursor-help border-b border-dotted border-emerald-300">中层：价值交付</Text>
                                                     </Popover>
                                                     <br />
                                                     <Text type="secondary" text-xs>核心的产品点或知识干货，负责建立品牌信任</Text>
@@ -247,7 +250,7 @@ export default function TrafficSandwichPage() {
                                                 </div>
                                                 <div>
                                                     <Popover content="在结尾明确引导用户进行下一步操作，如『点赞收藏』、『关注账号』或『点击详情页』。没有指令的内容就像没有收银台的商店。" title="什么是转化指令？">
-                                                        <Text strong className="text-blue-800 cursor-help border-b border-dotted border-blue-300">下层：转化指令 (Call to Action)</Text>
+                                                        <Text strong className="text-blue-800 cursor-help border-b border-dotted border-blue-300">下层：转化指令</Text>
                                                     </Popover>
                                                     <br />
                                                     <Text type="secondary" text-xs>结尾的高能引导，负责将观看转化为实际价值</Text>
@@ -280,14 +283,13 @@ export default function TrafficSandwichPage() {
                                         <div className="p-6 bg-zinc-900 rounded-[32px] text-white shadow-2xl">
                                             <div className="flex items-center gap-2 mb-6 text-emerald-400">
                                                 <MessageSquare className="w-5 h-5" />
-                                                <span className="font-bold tracking-widest uppercase text-xs">AI Inspiration</span>
+                                                <span className="font-bold tracking-widest text-xs">AI 灵感建议</span>
                                             </div>
 
                                             <div className="space-y-8">
                                                 <div>
                                                     <div className="text-zinc-500 text-xs mb-3 flex justify-between items-center">
                                                         <span>备选钩子</span>
-                                                        <Button type="link" size="small" className="text-emerald-400 p-0 text-xs">换一批</Button>
                                                     </div>
                                                     <div className="space-y-2">
                                                         {suggestions.hooks.map((h, i) => (
@@ -305,7 +307,6 @@ export default function TrafficSandwichPage() {
                                                 <div>
                                                     <div className="text-zinc-500 text-xs mb-3 flex justify-between items-center">
                                                         <span>高转化结尾</span>
-                                                        <Button type="link" size="small" className="text-emerald-400 p-0 text-xs">换一批</Button>
                                                     </div>
                                                     <div className="space-y-2">
                                                         {suggestions.ctas.map((c, i) => (
@@ -323,13 +324,13 @@ export default function TrafficSandwichPage() {
                                                 <div className="pt-4 border-t border-white/10 flex justify-center">
                                                     <Space>
                                                         <div className="text-center px-4">
-                                                            <div className="text-2xl font-serif text-emerald-400">92%</div>
-                                                            <div className="text-[10px] text-zinc-500">预期完播率</div>
+                                                            <div className="text-sm font-medium text-emerald-400">待验证</div>
+                                                            <div className="text-[10px] text-zinc-500">完播率需发布后数据</div>
                                                         </div>
                                                         <Divider type="vertical" className="bg-zinc-800" h-8 />
                                                         <div className="text-center px-4">
-                                                            <div className="text-2xl font-serif text-amber-400">15%</div>
-                                                            <div className="text-[10px] text-zinc-500">预期点击率</div>
+                                                            <div className="text-sm font-medium text-amber-400">待验证</div>
+                                                            <div className="text-[10px] text-zinc-500">点击率需发布后数据</div>
                                                         </div>
                                                     </Space>
                                                 </div>
@@ -365,15 +366,15 @@ export default function TrafficSandwichPage() {
                                             </div>
                                             <div className="space-y-4">
                                                 <div className="p-4 bg-zinc-50 rounded-xl border-l-4 border-amber-400">
-                                                    <Text type="secondary" text-xs className="uppercase">Hook</Text>
+                                                    <Text type="secondary" text-xs>流量钩子</Text>
                                                     <Paragraph className="mt-1 mb-0">{hook}</Paragraph>
                                                 </div>
                                                 <div className="p-4 bg-zinc-50 rounded-xl border-l-4 border-emerald-400">
-                                                    <Text type="secondary" text-xs className="uppercase">Core</Text>
+                                                    <Text type="secondary" text-xs>核心内容</Text>
                                                     <Paragraph className="mt-1 mb-0 line-clamp-2">{coreContent}</Paragraph>
                                                 </div>
                                                 <div className="p-4 bg-zinc-50 rounded-xl border-l-4 border-blue-400">
-                                                    <Text type="secondary" text-xs className="uppercase">CTA</Text>
+                                                    <Text type="secondary" text-xs>转化指令</Text>
                                                     <Paragraph className="mt-1 mb-0">{cta}</Paragraph>
                                                 </div>
                                             </div>
@@ -385,10 +386,10 @@ export default function TrafficSandwichPage() {
                                                 block
                                                 size="large"
                                                 className="h-16 rounded-2xl bg-[#1f4d4f] border-none text-xl font-bold flex items-center justify-center gap-3"
-                                                onClick={() => message.info('正在唤起多平台发布接口...')}
+                                                onClick={() => router.push('/studio')}
                                             >
                                                 <Rocket className="w-6 h-6" />
-                                                立即投入全网分发
+                                                前往工作室选择账号并发布
                                             </Button>
                                             <Button
                                                 block
