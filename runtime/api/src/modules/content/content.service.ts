@@ -1,24 +1,36 @@
-import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
-import { PrismaService } from '../../database/prisma.service';
+import {
+  Injectable,
+  NotFoundException,
+  ForbiddenException,
+} from "@nestjs/common";
+import { PrismaService } from "../../database/prisma.service";
 
 @Injectable()
 export class ContentService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async findAll(tenantId: string, options: { status?: string; page?: number; pageSize?: number; keyword?: string }) {
+  async findAll(
+    tenantId: string,
+    options: {
+      status?: string;
+      page?: number;
+      pageSize?: number;
+      keyword?: string;
+    },
+  ) {
     const { status, page = 1, pageSize = 20, keyword } = options;
     const skip = (page - 1) * pageSize;
 
     const where: any = {
       tenant_id: tenantId,
-      status: { not: 'deleted' },
+      status: { not: "deleted" },
     };
 
     if (status) where.status = status;
     if (keyword) {
       where.OR = [
-        { title: { contains: keyword, mode: 'insensitive' } },
-        { body: { contains: keyword, mode: 'insensitive' } },
+        { title: { contains: keyword, mode: "insensitive" } },
+        { body: { contains: keyword, mode: "insensitive" } },
       ];
     }
 
@@ -27,7 +39,7 @@ export class ContentService {
         where,
         skip,
         take: pageSize,
-        orderBy: { created_at: 'desc' },
+        orderBy: { created_at: "desc" },
       }),
       this.prisma.content.count({ where }),
     ]);
@@ -49,20 +61,27 @@ export class ContentService {
     });
 
     if (!content) {
-      throw new NotFoundException('内容不存在');
+      throw new NotFoundException("内容不存在");
     }
 
     return content;
   }
 
-  async create(tenantId: string, userId: string, data: {
-    title?: string;
-    body?: string;
-    content_type: string;
-    cover_url?: string;
-    media_urls?: any;
-    tags?: any;
-  }) {
+  async create(
+    tenantId: string,
+    userId: string,
+    data: {
+      title?: string;
+      body?: string;
+      content_type: string;
+      cover_url?: string;
+      media_urls?: any;
+      tags?: any;
+      ai_params?: any;
+      ai_model?: string;
+      source?: string;
+    },
+  ) {
     return this.prisma.content.create({
       data: {
         tenant_id: tenantId,
@@ -73,8 +92,10 @@ export class ContentService {
         cover_url: data.cover_url,
         media_urls: data.media_urls || [],
         tags: data.tags || [],
-        status: 'draft',
-        source: 'manual',
+        status: "draft",
+        source: data.source === "ai" ? "ai" : "manual",
+        ai_params: data.ai_params,
+        ai_model: data.ai_model,
       },
     });
   }
@@ -86,12 +107,12 @@ export class ContentService {
     });
 
     if (!existing) {
-      throw new NotFoundException('内容不存在');
+      throw new NotFoundException("内容不存在");
     }
 
     // 只有草稿或已驳回的内容可以编辑
-    if (!['draft', 'rejected'].includes(existing.status)) {
-      throw new ForbiddenException('当前状态不允许编辑');
+    if (!["draft", "rejected"].includes(existing.status)) {
+      throw new ForbiddenException("当前状态不允许编辑");
     }
 
     return this.prisma.content.update({
@@ -108,31 +129,37 @@ export class ContentService {
     // 软删除
     return this.prisma.content.update({
       where: { id, tenant_id: tenantId },
-      data: { status: 'deleted' },
+      data: { status: "deleted" },
     });
   }
 
   async submitForReview(id: string, tenantId: string) {
     return this.prisma.content.update({
       where: { id, tenant_id: tenantId },
-      data: { status: 'pending_review' },
+      data: { status: "pending_review" },
     });
   }
 
-  async review(id: string, tenantId: string, reviewerId: string, action: 'approve' | 'reject', comment?: string) {
+  async review(
+    id: string,
+    tenantId: string,
+    reviewerId: string,
+    action: "approve" | "reject",
+    comment?: string,
+  ) {
     const content = await this.prisma.content.findFirst({
       where: { id, tenant_id: tenantId },
     });
 
-    if (!content || content.status !== 'pending_review') {
-      throw new NotFoundException('没有待审核的内容');
+    if (!content || content.status !== "pending_review") {
+      throw new NotFoundException("没有待审核的内容");
     }
 
     // 更新内容状态
     await this.prisma.content.update({
       where: { id },
       data: {
-        status: action === 'approve' ? 'approved' : 'rejected',
+        status: action === "approve" ? "approved" : "rejected",
         reviewed_by: reviewerId,
         reviewed_at: new Date(),
         review_comment: comment,

@@ -87,7 +87,21 @@ class ApiClient {
   }
 
   Future<ContentPack> saveContentPack(ContentPack pack) async {
-    throw UnsupportedError('内容包保存接口尚未开放');
+    await _handle(
+      () => _dio.post(
+        '/contents',
+        data: {
+          'title': pack.titles.isNotEmpty ? pack.titles.first : pack.topic,
+          'body': pack.script,
+          'content_type': 'script',
+          'tags': pack.hashtags,
+          'source': 'ai',
+          'ai_params': pack.toJson(),
+        },
+      ),
+      (payload) => _extractMap(payload),
+    );
+    return pack;
   }
 
   Future<List<ContentPack>> getContentPacks() async {

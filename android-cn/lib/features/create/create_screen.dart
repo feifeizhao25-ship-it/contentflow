@@ -56,6 +56,65 @@ class _CreateScreenState extends ConsumerState<CreateScreen> {
     }
   }
 
+  Future<void> _saveGeneratedPack() async {
+    final pack = _generatedPack;
+    if (pack == null) return;
+    try {
+      await ref.read(apiClientProvider).saveContentPack(pack);
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('已保存为云端草稿')));
+      }
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('保存失败：$error')));
+      }
+    }
+  }
+
+  void _showPlatformAdapters(ContentPack pack) {
+    final payloads = pack.platformPayloads ?? const <String, PlatformPayload>{};
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      builder: (sheetContext) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: payloads.isEmpty
+              ? const Text('本次生成未返回平台适配内容，请重新生成或先保存草稿。')
+              : ListView(
+                  shrinkWrap: true,
+                  children: [
+                    const Text(
+                      '平台适配预览',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    ...payloads.entries.map(
+                      (entry) => Card(
+                        child: ListTile(
+                          title: Text(entry.key),
+                          subtitle: Text(
+                            entry.value.adaptedContent ?? '暂无适配正文',
+                            maxLines: 4,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -299,12 +358,7 @@ class _CreateScreenState extends ConsumerState<CreateScreen> {
             children: [
               Expanded(
                 child: OutlinedButton.icon(
-                  onPressed: () {
-                    // TODO: Save to local
-                    ScaffoldMessenger.of(
-                      context,
-                    ).showSnackBar(const SnackBar(content: Text('已保存到内容包')));
-                  },
+                  onPressed: _saveGeneratedPack,
                   icon: const Icon(Icons.save),
                   label: const Text('保存到内容包'),
                   style: OutlinedButton.styleFrom(
@@ -316,12 +370,7 @@ class _CreateScreenState extends ConsumerState<CreateScreen> {
               const SizedBox(width: 12),
               Expanded(
                 child: ElevatedButton.icon(
-                  onPressed: () {
-                    // TODO: Navigate to platform adapter
-                    ScaffoldMessenger.of(
-                      context,
-                    ).showSnackBar(const SnackBar(content: Text('即将跳转到平台适配')));
-                  },
+                  onPressed: () => _showPlatformAdapters(pack),
                   icon: const Icon(Icons.adjust),
                   label: const Text('平台适配'),
                   style: ElevatedButton.styleFrom(
