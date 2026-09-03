@@ -161,6 +161,18 @@ forbid(
     "runtime/web-cn/src/app/(main)/traffic-sandwich/page.tsx",
     ("预期完播率", "92%", "15%", "Parse or simulate parsing for demo"),
 )
+require(
+    "runtime/web-cn/src/lib/video-service.ts",
+    ("/api/ai/generate-video", "if (!response.ok)", "if (!videoUrl)", "status: 'completed'"),
+)
+forbid(
+    "runtime/web-cn/src/lib/video-service.ts",
+    ("simulateVideoGeneration", "via.placeholder.com", "example.com/videos", "resolution: '1080p'"),
+)
+forbid(
+    "runtime/web-cn/src/components/video/VoiceoverPanel.tsx",
+    ("模拟进度", "setInterval(() =>", "生成中... {progress}%"),
+)
 forbid(
     "runtime/web-cn/src/components/onboarding/FirstVideoGuide.tsx",
     ("via.placeholder.com", "模拟视频生成进度", "高清画质 1080P", "setTimeout(resolve"),

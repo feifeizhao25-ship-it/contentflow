@@ -108,7 +108,7 @@ const DEFAULT_STYLE: VideoStyle = VIDEO_STYLES[0];
 
 // 生成视频
 export async function generateVideo(params: VideoGenerationParams): Promise<GeneratedVideo> {
-  const { scriptId, scriptContent, platform, style, duration } = params;
+  const { scriptId, scriptContent, platform, style, duration, aspectRatio = '9:16' } = params;
   
   // 获取风格
   let selectedStyle: VideoStyle = DEFAULT_STYLE;
@@ -121,26 +121,39 @@ export async function generateVideo(params: VideoGenerationParams): Promise<Gene
     if (found) selectedStyle = found;
   }
 
-  // 预估视频时长
-  const estimatedDuration = duration === 'short' ? 15 : duration === 'long' ? 60 : 30;
-  
-  // 创建视频记录
-  const video: GeneratedVideo = {
-    id: `video_${Date.now()}`,
-    scriptId,
-    status: 'pending',
-    progress: 0,
-    duration: estimatedDuration,
-    resolution: '1080p',
-    aspectRatio: '9:16',
-    style: selectedStyle,
-    createdAt: new Date(),
-  };
+  // 单片段供应商当前只接受 4–10 秒，不冒充长视频。
+  const requestedDuration = duration === 'short' ? 6 : duration === 'long' ? 10 : 8;
+  const response = await fetch('/api/ai/generate-video', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({
+      prompt: scriptContent,
+      style: selectedStyle.name,
+      duration: requestedDuration,
+      aspect_ratio: aspectRatio,
+    }),
+  });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(payload?.error || payload?.message || '视频生成服务暂不可用');
+  }
+  const videoUrl = String(payload?.video?.url || payload?.url || '');
+  if (!videoUrl) throw new Error('视频服务未返回可用文件');
 
-  // 模拟生成过程
-  await simulateVideoGeneration(video);
-  
-  return video;
+  const completedAt = new Date();
+  return {
+    id: `video_${completedAt.getTime()}`,
+    scriptId,
+    status: 'completed',
+    progress: 100,
+    videoUrl,
+    duration: requestedDuration,
+    resolution: '以供应商返回文件为准',
+    aspectRatio,
+    style: selectedStyle,
+    createdAt: completedAt,
+    completedAt,
+  };
 }
 
 // 批量生成视频
@@ -173,32 +186,6 @@ export function getStylesForPlatform(platform: TargetPlatform): VideoStyle[] {
 // 获取所有风格
 export function getAllStyles(): VideoStyle[] {
   return VIDEO_STYLES;
-}
-
-// 视频生成进度模拟
-async function simulateVideoGeneration(video: GeneratedVideo): Promise<void> {
-  const steps = [
-    { progress: 10, message: '解析脚本内容...' },
-    { progress: 25, message: '生成画面素材...' },
-    { progress: 40, message: '匹配背景音乐...' },
-    { progress: 55, message: '合成字幕特效...' },
-    { progress: 70, message: '渲染视频帧...' },
-    { progress: 85, message: '音频合成...' },
-    { progress: 95, message: '最终输出...' },
-    { progress: 100, message: '生成完成！' },
-  ];
-
-  for (const step of steps) {
-    await new Promise(resolve => setTimeout(resolve, 500));
-    video.progress = step.progress;
-    console.log(`[Video Generation] ${step.message} (${step.progress}%)`);
-  }
-
-  video.status = 'completed';
-  video.progress = 100;
-  video.completedAt = new Date();
-  video.thumbnailUrl = `https://via.placeholder.com/540x960/6366f1/ffffff?text=Video+${video.id}`;
-  video.videoUrl = `https://example.com/videos/${video.id}.mp4`;
 }
 
 // 计算预估文件大小

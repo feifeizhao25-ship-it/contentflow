@@ -51,15 +51,10 @@ export default function VoiceoverPanel({
     // 生成配音
     const handleGenerate = useCallback(async () => {
         setIsGenerating(true);
-        setProgress(0);
+        setProgress(10);
         setError(null);
 
         try {
-            // 模拟进度
-            const progressInterval = setInterval(() => {
-                setProgress(prev => Math.min(prev + 10, 90));
-            }, 200);
-
             const result = await generateSpeech({
                 text: script,
                 voice: selectedVoice,
@@ -68,12 +63,12 @@ export default function VoiceoverPanel({
                 pitch,
             });
 
-            clearInterval(progressInterval);
             setProgress(100);
             setGeneratedAudio({ url: result.audioUrl, duration: result.duration });
             
             onVoiceoverGenerated?.(result.audioUrl, result.duration, result.cost);
         } catch (err) {
+            setProgress(0);
             setError(err instanceof Error ? err.message : '配音生成失败');
         } finally {
             setIsGenerating(false);
@@ -258,7 +253,7 @@ export default function VoiceoverPanel({
                                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
                                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                             </svg>
-                            生成中... {progress}%
+                            {progress === 100 ? '配音已生成' : '服务端正在生成配音...'}
                         </span>
                     ) : (
                         '🎙️ 生成配音'
