@@ -2,7 +2,10 @@
 class AppConfig {
   static const region = 'GLOBAL';
   static const locale = 'en-US';
-  static const _configuredApiBaseUrl = String.fromEnvironment('API_BASE_URL');
+  static const _configuredApiBaseUrl = String.fromEnvironment(
+    'API_BASE_URL',
+    defaultValue: 'https://contentflow.tianji-astrology.com/api/v1',
+  );
 
   static String get apiBaseUrl => validateApiBaseUrl(_configuredApiBaseUrl);
 
