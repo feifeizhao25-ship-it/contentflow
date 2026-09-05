@@ -12,6 +12,8 @@ export interface PlanDefinition {
 }
 
 export interface ChinaPlanDefinition {
+  memberLimit?: number;
+  storageGb?: number;
   id: 'free' | 'pro' | 'team' | 'enterprise';
   name: string;
   priceMonthlyCny: number | null;
@@ -23,9 +25,8 @@ export interface ChinaPlanDefinition {
   features: string[];
 }
 
-// 国内版四档人民币口径。价格位于已批准文稿区间内；企业版不伪造固定价。
-// 页面、额度和后续支付订单都必须读取这一份定义。
-export const CN_PLANS: ChinaPlanDefinition[] = [
+// 历史人民币套餐，只用于已创建且无快照的旧订单。
+export const LEGACY_CN_PLANS: ChinaPlanDefinition[] = [
   {
     id: 'free', name: '免费版', priceMonthlyCny: 0, priceYearlyCny: 0,
     platformLimit: 3, monthlyPostQuota: 30, aiTokenQuota: 50000, custom: false,
@@ -47,6 +48,18 @@ export const CN_PLANS: ChinaPlanDefinition[] = [
     features: ['按工作区和账号规模报价', '操作审计', '专属支持与私有化选项'],
   },
 ];
+
+// 2026-09-01 已批准定价；旧订单使用下单快照或 LEGACY_CN_PLANS，禁止重定价。
+export const CN_PLAN_VERSION = '2026-09-01';
+export const CN_PLANS: ChinaPlanDefinition[] = LEGACY_CN_PLANS.map((plan) => {
+  const updates: Record<string, Partial<ChinaPlanDefinition>> = {
+    free: { memberLimit: 1, storageGb: 1, platformLimit: 1, monthlyPostQuota: 5, features: ['1个平台账号', '每月5条发布', '人工智能生成内容标识'] },
+    pro: { memberLimit: 1, storageGb: 5, priceMonthlyCny: 99, priceYearlyCny: 990, monthlyPostQuota: 200, features: ['10个平台账号', '每月200条发布', '内容日历与排期'] },
+    team: { memberLimit: 5, storageGb: 50, priceMonthlyCny: 499, priceYearlyCny: 4990, monthlyPostQuota: 1000, features: ['30个平台账号', '团队协作与审批', '每月1000条发布'] },
+    enterprise: { memberLimit: 20, storageGb: -1, priceMonthlyCny: 1999, priceYearlyCny: 19990, custom: false, monthlyPostQuota: 5000, aiTokenQuota: 10000000, features: ['每月5000条发布', '操作审计', '团队协作与审批'] },
+  };
+  return { ...plan, ...updates[plan.id] };
+});
 
 export const PLANS: PlanDefinition[] = [
   {

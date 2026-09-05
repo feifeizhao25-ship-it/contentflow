@@ -1,3 +1,4 @@
+import { effectiveEntitlements } from '../billing/effective-limits';
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../database/prisma.service';
 
@@ -28,20 +29,21 @@ export class TenantService {
       throw new NotFoundException('租户不存在');
     }
 
-    const limits = tenant.limits as any;
-    const usage = tenant.usage_stats as any;
+    const limits = effectiveEntitlements(tenant).limits;
+    const usage = (tenant.usage_stats as any) ?? {};
+    const below = (used: number | undefined, cap: number | undefined) => cap === -1 || (Number.isFinite(cap) && (used ?? 0) < cap!);
 
     switch (resourceType) {
       case 'account':
-        return usage.accounts_count < limits.max_accounts;
+        return below(usage.accounts_count, limits.max_accounts);
       case 'member':
-        return usage.members_count < limits.max_members;
+        return below(usage.members_count, limits.max_members);
       case 'publish':
-        return usage.publishes_this_month < limits.max_publishes_monthly;
+        return below(usage.publishes_this_month, limits.max_publishes_monthly);
       case 'ai_call':
-        return usage.ai_calls_this_month < limits.max_ai_calls_monthly;
+        return below(usage.ai_calls_this_month, limits.max_ai_calls_monthly);
       default:
-        return true;
+        return false;
     }
   }
 

@@ -23,6 +23,17 @@ jobs:
   api:
     name: API (NestJS)
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: ci
+          POSTGRES_PASSWORD: ci-isolated-test-only
+          POSTGRES_DB: contentflow_ci
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U ci -d contentflow_ci"
+          --health-interval 5s --health-timeout 5s --health-retries 10
     defaults:
       run:
         working-directory: runtime/api
@@ -44,6 +55,13 @@ jobs:
       # Prisma client 必须先生成，否则 tsc 找不到类型
       - name: Generate Prisma client
         run: npx prisma generate
+
+      - name: Migrations and order snapshot persistence
+        env:
+          DATABASE_URL: postgresql://ci:ci-isolated-test-only@localhost:5432/contentflow_ci
+        run: |
+          npx prisma migrate deploy
+          node scripts/test-order-snapshot.cjs
 
       - name: Lint
         run: npx eslint "src/**/*.ts" --max-warnings=0

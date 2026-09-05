@@ -1087,6 +1087,7 @@ model PaymentOrder {
   billing_cycle            String
   order_type               String
   product_name             String?
+  plan_snapshot            Json?
   amount                   Decimal
   currency                 String  @default("CNY")
   payment_method           String?

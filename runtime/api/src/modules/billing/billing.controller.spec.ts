@@ -38,9 +38,9 @@ describe('BillingController', () => {
     expect(result.market).toBe('cn');
     expect(result.plans).toBe(CN_PLANS);
     expect(CN_PLANS.map((plan) => plan.id)).toEqual(['free', 'pro', 'team', 'enterprise']);
-    expect(CN_PLANS.map((plan) => plan.priceMonthlyCny)).toEqual([0, 128, 699, null]);
-    expect(CN_PLANS[0].monthlyPostQuota).toBe(30);
-    expect(CN_PLANS[3].custom).toBe(true);
+    expect(CN_PLANS.map((plan) => plan.priceMonthlyCny)).toEqual([0, 99, 499, 1999]);
+    expect(CN_PLANS[0].monthlyPostQuota).toBe(5);
+    expect(CN_PLANS[3].custom).toBe(false);
   });
 
   it('applies free limits when a paid subscription has expired', async () => {

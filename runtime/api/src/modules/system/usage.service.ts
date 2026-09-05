@@ -1,4 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { effectiveEntitlements } from '../billing/effective-limits';
 import { PrismaService } from '../../database/prisma.service';
 
 export enum ResourceType {
@@ -50,7 +51,7 @@ export class UsageService {
 
         if (!tenant || !meter) return false;
 
-        const limits = (tenant.limits as any) || {};
+        const limits: Record<string, number> = effectiveEntitlements(tenant).limits;
         const limit = resource === ResourceType.TOKENS
             ? (limits.max_ai_tokens_monthly ??
                 ((limits.max_ai_calls_monthly ?? 0) * 2500))

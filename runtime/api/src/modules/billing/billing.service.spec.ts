@@ -1,3 +1,4 @@
+import { CN_PLANS } from './plans.constant';
 import { BadRequestException, ConflictException, ServiceUnavailableException } from '@nestjs/common';
 import { BillingService } from './billing.service';
 
@@ -26,9 +27,20 @@ describe('BillingService', () => {
     const order = await service.createOrder('tenant-1', {
       planId: 'pro', billingCycle: 'monthly', paymentMethod: 'bank_transfer',
     }, 'intent-123456');
-    expect(order.amount).toBe(128);
+    expect(order.amount).toBe(99);
+    expect((order as any).plan_snapshot.priceMonthlyCny).toBe(99);
     expect(order.currency).toBe('CNY');
     expect(order.status).toBe('pending');
+  });
+
+  it('creates the public enterprise annual offer with an immutable plan snapshot', async () => {
+    process.env.BANK_TRANSFER_ACCOUNT_NAME = '测试商户';
+    process.env.BANK_TRANSFER_ACCOUNT_NO = 'verified-account';
+    const order = await new BillingService(prisma()).createOrder('tenant-1', {
+      planId: 'enterprise', billingCycle: 'yearly', paymentMethod: 'bank_transfer',
+    }, 'enterprise-123456');
+    expect(order.amount).toBe(19990);
+    expect((order as any).plan_snapshot.monthlyPostQuota).toBe(5000);
   });
 
   it('returns the same order for the same idempotency key and request', async () => {
@@ -63,14 +75,14 @@ describe('BillingService', () => {
     expect(db.paymentOrder.create).not.toHaveBeenCalled();
   });
 
-  it('rejects free and custom plans from self-service checkout', async () => {
+  it('rejects free plans from self-service checkout', async () => {
     const service = new BillingService(prisma());
     await expect(service.createOrder('tenant-1', {
-      planId: 'enterprise', billingCycle: 'yearly', paymentMethod: 'bank_transfer',
+      planId: 'free', billingCycle: 'yearly', paymentMethod: 'bank_transfer',
     }, 'intent-123456')).rejects.toBeInstanceOf(BadRequestException);
   });
 
-  it('activates entitlement, order and webhook event in one transaction', async () => {
+  it.each([false, true])('activates purchased entitlement in one transaction (snapshot=%s)', async (hasSnapshot) => {
     const tx = {
       paymentWebhookEvent: {
         findUnique: jest.fn().mockResolvedValue(null),
@@ -80,10 +92,11 @@ describe('BillingService', () => {
         findUnique: jest.fn().mockResolvedValue({
           order_no: 'CF1', tenant_id: 'tenant-1', plan_id: 'pro', billing_cycle: 'monthly',
           payment_method: 'bank_transfer', amount: 128, currency: 'CNY', status: 'pending',
+          plan_snapshot: hasSnapshot ? CN_PLANS[1] : null,
         }),
         update: jest.fn().mockResolvedValue({}),
       },
-      subscription: { upsert: jest.fn().mockResolvedValue({ id: 'sub-1' }) },
+      subscription: { findUnique: jest.fn().mockResolvedValue(null), upsert: jest.fn().mockResolvedValue({ id: 'sub-1' }) },
       tenant: { update: jest.fn().mockResolvedValue({}) },
     };
     const db = prisma({ $transaction: jest.fn((callback) => callback(tx)) });
@@ -94,7 +107,7 @@ describe('BillingService', () => {
     expect(result.duplicate).toBe(false);
     expect(tx.subscription.upsert).toHaveBeenCalled();
     expect(tx.tenant.update).toHaveBeenCalledWith(expect.objectContaining({
-      data: expect.objectContaining({ plan: 'pro' }),
+      data: expect.objectContaining({ plan: 'pro', limits: expect.objectContaining({ max_publishes_monthly: hasSnapshot ? 200 : 500 }) }),
     }));
     expect(tx.paymentOrder.update).toHaveBeenCalledWith(expect.objectContaining({
       data: expect.objectContaining({ status: 'paid', subscription_id: 'sub-1' }),

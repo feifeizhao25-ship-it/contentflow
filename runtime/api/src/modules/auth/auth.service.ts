@@ -1,3 +1,4 @@
+import { CN_PLANS, PLANS } from '../billing/plans.constant';
 import { Injectable, UnauthorizedException, ConflictException, Logger } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
@@ -49,15 +50,16 @@ export class AuthService {
     // 密码加密
     const passwordHash = await bcrypt.hash(password, 12);
 
+    const freePlan = process.env.MARKET_REGION === 'global' ? PLANS[0] : CN_PLANS[0];
     // 创建租户
     const tenant = await this.prisma.tenant.create({
       data: {
         name: tenantName || `${name}的工作室`,
         slug: email.split('@')[0] + '_' + Date.now().toString(36),
         limits: {
-          max_accounts: 2,
+          max_accounts: freePlan.platformLimit,
           max_members: 1,
-          max_publishes_monthly: 30,
+          max_publishes_monthly: freePlan.monthlyPostQuota,
           max_ai_tokens_monthly: 50000,
           max_storage_gb: 1,
         },

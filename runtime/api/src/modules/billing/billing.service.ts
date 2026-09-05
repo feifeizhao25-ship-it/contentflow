@@ -1,3 +1,4 @@
+import { subscriptionPeriodEnd } from './subscription-period';
 import {
   BadRequestException,
   ConflictException,
@@ -6,7 +7,7 @@ import {
 } from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import { PrismaService } from '../../database/prisma.service';
-import { CN_PLANS } from './plans.constant';
+import { CN_PLANS, LEGACY_CN_PLANS, CN_PLAN_VERSION, ChinaPlanDefinition } from './plans.constant';
 import { createAlipayPagePay } from './alipay.adapter';
 import { createWeChatNativePay } from './wechat-pay.adapter';
 
@@ -47,8 +48,7 @@ export class BillingService {
     if (existing) {
       const sameRequest = existing.plan_id === input.planId
         && existing.billing_cycle === input.billingCycle
-        && existing.payment_method === input.paymentMethod
-        && Number(existing.amount) === amount;
+        && existing.payment_method === input.paymentMethod;
       if (!sameRequest) throw new ConflictException('该幂等键已用于另一笔订单');
       return existing;
     }
@@ -70,6 +70,7 @@ export class BillingService {
         billing_cycle: input.billingCycle,
         order_type: 'subscription',
         product_name: plan.name,
+        plan_snapshot: { version: CN_PLAN_VERSION, ...plan },
         amount,
         currency: 'CNY',
         payment_method: input.paymentMethod,
@@ -153,15 +154,21 @@ export class BillingService {
         throw new BadRequestException('支付金额或币种与订单不一致');
       }
 
-      const plan = CN_PLANS.find((item) => item.id === order.plan_id);
-      if (!plan || plan.custom || plan.id === 'free') throw new BadRequestException('订单套餐无效');
+      const plan = (order.plan_snapshot as ChinaPlanDefinition | null)
+        ?? LEGACY_CN_PLANS.find((item) => item.id === order.plan_id);
+      if (!plan || plan.id !== order.plan_id || plan.custom || plan.id === 'free') throw new BadRequestException('订单套餐无效');
       const now = new Date();
-      const periodEnd = new Date(now);
-      order.billing_cycle === 'yearly'
-        ? periodEnd.setFullYear(periodEnd.getFullYear() + 1)
-        : periodEnd.setMonth(periodEnd.getMonth() + 1);
+      const previous = await tx.subscription.findUnique({ where: { tenant_id: order.tenant_id } });
+      const remaining = previous?.status === 'active' && previous.plan === plan.id
+        && previous.current_period_end && new Date(previous.current_period_end).getTime() > now.getTime();
+      const periodEnd = subscriptionPeriodEnd(
+        remaining ? new Date(previous.current_period_end) : now,
+        order.billing_cycle === 'yearly' ? 'yearly' : 'monthly',
+      );
       const limits = {
         max_accounts: plan.platformLimit,
+        max_members: plan.memberLimit ?? ({ free: 1, pro: 1, team: 10, enterprise: -1 }[plan.id]),
+        max_storage_gb: plan.storageGb ?? ({ free: 1, pro: 20, team: 100, enterprise: -1 }[plan.id]),
         max_publishes_monthly: plan.monthlyPostQuota,
         max_ai_tokens_monthly: plan.aiTokenQuota,
       };
