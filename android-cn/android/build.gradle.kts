@@ -1,9 +1,11 @@
 allprojects {
     repositories {
-        maven("https://maven.aliyun.com/repository/google")
-        maven("https://maven.aliyun.com/repository/central")
         google()
         mavenCentral()
+        // Match pluginManagement: transient mirror 5xx responses must not
+        // prevent CI from resolving artifacts available in official repositories.
+        maven("https://maven.aliyun.com/repository/google")
+        maven("https://maven.aliyun.com/repository/central")
     }
 }
 
