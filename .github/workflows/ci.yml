@@ -69,6 +69,11 @@ jobs:
       - name: Build
         run: npm run build
 
+      - name: PostgreSQL billing concurrency
+        env:
+          DATABASE_URL: postgresql://ci:ci-isolated-test-only@localhost:5432/contentflow_ci
+        run: node scripts/test-billing-concurrency.cjs
+
       - name: Unit tests
         run: npm test -- --ci
 

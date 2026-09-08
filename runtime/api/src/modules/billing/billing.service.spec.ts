@@ -95,6 +95,7 @@ describe('BillingService', () => {
           plan_snapshot: hasSnapshot ? CN_PLANS[1] : null,
         }),
         update: jest.fn().mockResolvedValue({}),
+        updateMany: jest.fn().mockResolvedValue({ count: 1 }),
       },
       subscription: { findUnique: jest.fn().mockResolvedValue(null), upsert: jest.fn().mockResolvedValue({ id: 'sub-1' }) },
       tenant: { update: jest.fn().mockResolvedValue({}) },
@@ -110,7 +111,7 @@ describe('BillingService', () => {
       data: expect.objectContaining({ plan: 'pro', limits: expect.objectContaining({ max_publishes_monthly: hasSnapshot ? 200 : 500 }) }),
     }));
     expect(tx.paymentOrder.update).toHaveBeenCalledWith(expect.objectContaining({
-      data: expect.objectContaining({ status: 'paid', subscription_id: 'sub-1' }),
+      data: expect.objectContaining({ subscription_id: 'sub-1' }),
     }));
     expect(tx.paymentWebhookEvent.create).toHaveBeenCalled();
   });

@@ -113,10 +113,12 @@ export class BillingService {
     });
     if (!order) throw new BadRequestException('订单不存在');
     if (order.status !== 'paid') throw new ConflictException(`订单状态 ${order.status} 不允许申请退款`);
-    return this.prisma.paymentOrder.update({
-      where: { order_no: orderNo },
+    const changed = await this.prisma.paymentOrder.updateMany({
+      where: { order_no: orderNo, tenant_id: tenantId, status: 'paid' },
       data: { status: 'refund_pending' },
     });
+    if (changed.count !== 1) throw new ConflictException('订单状态已变化，请刷新后重试');
+    return this.prisma.paymentOrder.findUnique({ where: { order_no: orderNo } });
   }
 
   async closePendingOrder(tenantId: string, orderNo: string) {
@@ -125,10 +127,12 @@ export class BillingService {
     });
     if (!order) throw new BadRequestException('订单不存在');
     if (order.status !== 'pending') throw new ConflictException(`订单状态 ${order.status} 不允许关闭`);
-    return this.prisma.paymentOrder.update({
-      where: { order_no: orderNo },
+    const changed = await this.prisma.paymentOrder.updateMany({
+      where: { order_no: orderNo, tenant_id: tenantId, status: 'pending' },
       data: { status: 'closed' },
     });
+    if (changed.count !== 1) throw new ConflictException('订单状态已变化，请刷新后重试');
+    return this.prisma.paymentOrder.findUnique({ where: { order_no: orderNo } });
   }
 
   async markPaid(input: {
@@ -158,6 +162,13 @@ export class BillingService {
         ?? LEGACY_CN_PLANS.find((item) => item.id === order.plan_id);
       if (!plan || plan.id !== order.plan_id || plan.custom || plan.id === 'free') throw new BadRequestException('订单套餐无效');
       const now = new Date();
+      // Acquire the order transition before writing any entitlement. The enclosing
+      // transaction rolls this back if a later entitlement/event write fails.
+      const claimed = await tx.paymentOrder.updateMany({
+        where: { order_no: order.order_no, tenant_id: order.tenant_id, status: 'pending' },
+        data: { status: 'paid', paid_at: now, payment_channel_order_no: input.providerOrderNo },
+      });
+      if (claimed.count !== 1) throw new ConflictException('订单状态已变化，请刷新后重试');
       const previous = await tx.subscription.findUnique({ where: { tenant_id: order.tenant_id } });
       const remaining = previous?.status === 'active' && previous.plan === plan.id
         && previous.current_period_end && new Date(previous.current_period_end).getTime() > now.getTime();
@@ -192,7 +203,7 @@ export class BillingService {
       });
       await tx.paymentOrder.update({
         where: { order_no: order.order_no },
-        data: { status: 'paid', paid_at: now, subscription_id: subscription.id, payment_channel_order_no: input.providerOrderNo },
+        data: { subscription_id: subscription.id },
       });
       const event = await tx.paymentWebhookEvent.create({
         data: {
