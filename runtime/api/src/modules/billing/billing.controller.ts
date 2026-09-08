@@ -1,4 +1,4 @@
-import { BadRequestException, Body, Controller, Get, Headers, HttpCode, Post, UseGuards, Request, NotFoundException, Query, ServiceUnavailableException, UnauthorizedException, Res, Req, RawBodyRequest } from '@nestjs/common';
+import { ForbiddenException, BadRequestException, Body, Controller, Get, Headers, HttpCode, Post, UseGuards, Request, NotFoundException, Query, ServiceUnavailableException, UnauthorizedException, Res, Req, RawBodyRequest } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { effectiveEntitlements } from './effective-limits';
 import { CN_PLANS, PLANS } from './plans.constant';
@@ -18,6 +18,20 @@ export class BillingController {
     private readonly prisma: PrismaService,
     private readonly billingService: BillingService,
   ) { }
+
+  private async requireBillingManager(req: any): Promise<void> {
+    const userId = req.user?.sub;
+    const tenantId = req.user?.tenantId;
+    if (typeof userId !== 'string' || !userId || typeof tenantId !== 'string' || !tenantId) {
+      throw new ForbiddenException('当前账号无权管理工作区账单');
+    }
+    // Recheck current membership: JWT role may predate removal or demotion.
+    const manager = await this.prisma.user.findFirst({
+      where: { id: userId, tenant_id: tenantId, status: 'active', role: { in: ['owner', 'admin'] } },
+      select: { id: true },
+    });
+    if (!manager) throw new ForbiddenException('仅工作区所有者或管理员可以管理账单');
+  }
 
   @Post('callbacks/wechat')
   @HttpCode(200)
@@ -175,6 +189,7 @@ export class BillingController {
     @Headers('idempotency-key') idempotencyKey: string,
     @Body() body: { planId: string; billingCycle: BillingCycle; paymentMethod: PaymentMethod },
   ) {
+    await this.requireBillingManager(req);
     return this.billingService.createOrder(req.user.tenantId, body, idempotencyKey);
   }
 
@@ -184,6 +199,7 @@ export class BillingController {
   @UseGuards(JwtAuthGuard)
   @ApiOperation({ summary: '在当前周期结束时取消自动续费' })
   async cancelSubscription(@Request() req: any) {
+    await this.requireBillingManager(req);
     return this.billingService.requestCancellation(req.user.tenantId);
   }
 
@@ -192,6 +208,7 @@ export class BillingController {
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
   async closeOrder(@Request() req: any, @Body() body: { orderNo: string }) {
+    await this.requireBillingManager(req);
     return this.billingService.closePendingOrder(req.user.tenantId, body.orderNo);
   }
 
@@ -200,6 +217,7 @@ export class BillingController {
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
   async requestRefund(@Request() req: any, @Body() body: { orderNo: string }) {
+    await this.requireBillingManager(req);
     return this.billingService.requestRefund(req.user.tenantId, body.orderNo);
   }
 }
