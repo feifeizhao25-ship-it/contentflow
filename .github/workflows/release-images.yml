@@ -44,6 +44,13 @@ jobs:
               ;;
           esac
       - uses: docker/setup-buildx-action@v3
+      - name: Validate domestic public backend configuration
+        if: matrix.name == 'web-cn'
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ vars.CN_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.CN_SUPABASE_ANON_KEY }}
+        run: |
+          node -e 'const u = new URL(process.env.NEXT_PUBLIC_SUPABASE_URL); if (u.protocol !== "https:" || u.hostname.endsWith(".invalid") || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) throw new Error("请配置国内公开后端地址和匿名公钥；禁止使用构建占位值")'
       - uses: docker/login-action@v3
         with:
           registry: ${{ env.REGISTRY }}
@@ -54,4 +61,7 @@ jobs:
           context: ${{ matrix.context }}
           file: ${{ matrix.dockerfile }}
           push: true
+          build-args: |
+            NEXT_PUBLIC_SUPABASE_URL=${{ matrix.name == 'web-cn' && vars.CN_SUPABASE_URL || '' }}
+            NEXT_PUBLIC_SUPABASE_ANON_KEY=${{ matrix.name == 'web-cn' && secrets.CN_SUPABASE_ANON_KEY || '' }}
           tags: ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}-${{ matrix.name }}:${{ inputs.tag }}

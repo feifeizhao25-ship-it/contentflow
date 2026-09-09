@@ -7,6 +7,13 @@ RUN npm config set fetch-retries 5 \
     && npm ci
 COPY . .
 ENV NEXT_TELEMETRY_DISABLED=1
+ARG NEXT_PUBLIC_SUPABASE_URL
+ARG NEXT_PUBLIC_SUPABASE_ANON_KEY
+ENV NEXT_PUBLIC_SUPABASE_URL=$NEXT_PUBLIC_SUPABASE_URL \
+    NEXT_PUBLIC_SUPABASE_ANON_KEY=$NEXT_PUBLIC_SUPABASE_ANON_KEY
+# These are browser-public settings, never a service-role key. Reject fixture
+# hosts here so the release image cannot embed CI's unreachable placeholders.
+RUN node -e 'const u = new URL(process.env.NEXT_PUBLIC_SUPABASE_URL); if (u.protocol !== "https:" || u.hostname.endsWith(".invalid") || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) throw new Error("国内公开后端地址和匿名公钥未正确配置")'
 RUN npm run build
 
 FROM node:22-alpine AS runtime

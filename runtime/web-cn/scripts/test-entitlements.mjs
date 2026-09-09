@@ -99,7 +99,7 @@ check('定价页使用注册表兜底且错误文案为友好中文', () => {
 check('定价页无英文角标残留', () => {
     const src = readSrc('src/app/(main)/pricing/page.tsx');
     assert.ok(!src.includes('Early Access Discount'), '英文角标未移除');
-    assert.ok(src.includes('早鸟优惠'), '缺中文角标');
+    assert.ok(src.includes('会员方案'), '缺中文角标');
 });
 
 // ---------- API 客户端友好错误 ----------

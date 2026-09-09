@@ -1,9 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useEffect } from 'react';
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
-import { Space } from 'antd';
 import {
     BoldOutlined,
     ItalicOutlined,
@@ -17,9 +16,11 @@ interface TiptapEditorProps {
     onChange: (content: string) => void;
 }
 
-const ToolbarButton = ({ active, onClick, icon }: { active: boolean; onClick: () => void; icon: React.ReactNode }) => (
+const ToolbarButton = ({ active, onClick, icon, label }: { active: boolean; onClick: () => void; icon: React.ReactNode; label: string }) => (
     <button
         type="button"
+        aria-label={label}
+        aria-pressed={active}
         onClick={onClick}
         className={clsx(
             "p-1.5 rounded-lg transition-all text-sm flex items-center justify-center",
@@ -37,6 +38,7 @@ export const TiptapEditor = ({ content, onChange }: TiptapEditorProps) => {
         extensions: [StarterKit],
         content: content,
         immediatelyRender: false,
+        shouldRerenderOnTransaction: true,
         editorProps: {
             attributes: {
                 class: 'prose prose-sm max-w-none focus:outline-none min-h-[300px] px-4 py-3 text-zinc-900 placeholder-zinc-400',
@@ -49,7 +51,7 @@ export const TiptapEditor = ({ content, onChange }: TiptapEditorProps) => {
 
     useEffect(() => {
         if (editor && content !== editor.getHTML()) {
-            editor.commands.setContent(content);
+            editor.commands.setContent(content, { emitUpdate: false });
         }
     }, [content, editor]);
 
@@ -62,22 +64,26 @@ export const TiptapEditor = ({ content, onChange }: TiptapEditorProps) => {
             {/* Toolbar */}
             <div className="p-2 border-b border-white/5 bg-zinc-900/30 backdrop-blur flex items-center gap-2">
                 <ToolbarButton
+                    label="加粗"
                     active={editor.isActive('bold')}
                     onClick={() => editor.chain().focus().toggleBold().run()}
                     icon={<BoldOutlined />}
                 />
                 <ToolbarButton
+                    label="斜体"
                     active={editor.isActive('italic')}
                     onClick={() => editor.chain().focus().toggleItalic().run()}
                     icon={<ItalicOutlined />}
                 />
                 <div className="w-px h-4 bg-white/10 mx-1" />
                 <ToolbarButton
+                    label="无序列表"
                     active={editor.isActive('bulletList')}
                     onClick={() => editor.chain().focus().toggleBulletList().run()}
                     icon={<UnorderedListOutlined />}
                 />
                 <ToolbarButton
+                    label="有序列表"
                     active={editor.isActive('orderedList')}
                     onClick={() => editor.chain().focus().toggleOrderedList().run()}
                     icon={<OrderedListOutlined />}
@@ -91,4 +97,3 @@ export const TiptapEditor = ({ content, onChange }: TiptapEditorProps) => {
         </div>
     );
 };
-

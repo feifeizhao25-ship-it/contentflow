@@ -7,15 +7,10 @@ import {
     ThunderboltFilled,
     CrownFilled,
     RocketFilled,
-    LoadingOutlined,
     SafetyCertificateOutlined,
-    PlusCircleFilled,
-    FireFilled,
-    VideoCameraFilled,
-    GiftFilled,
-    ArrowRightOutlined
+    GiftFilled
 } from '@ant-design/icons';
-import { Tabs, Statistic, Card, Button, Badge } from 'antd';
+import { Button } from 'antd';
 import clsx from 'clsx';
 import { useRouter, useSearchParams } from 'next/navigation';
 import registry from '@/lib/entitlements.json';
@@ -75,7 +70,6 @@ function PricingContent() {
     // 仍可完整展示套餐，不使用手写价格或临时虚构权益。
     const sourcePlans = canonicalPlans;
     const displayedPlans = sourcePlans
-        .filter((plan) => plan.id !== 'enterprise')
         .map((plan) => ({
         id: plan.id,
         name: plan.name,
@@ -112,23 +106,23 @@ function PricingContent() {
                                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75"></span>
                                 <span className="relative inline-flex rounded-full h-2 w-2 bg-indigo-500"></span>
                             </span>
-                            <span className="text-xs font-bold text-zinc-600 dark:text-zinc-300 tracking-wider">早鸟优惠</span>
+                            <span className="text-xs font-bold text-zinc-600 dark:text-zinc-300 tracking-wider">会员方案</span>
                         </div>
                         <h1 className="text-5xl md:text-7xl font-black tracking-tight mb-8 text-zinc-900 dark:text-white">
                             释放无限<br className="md:hidden" />
                             <span className="bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600"> 创作潜能</span>
                         </h1>
                         <p className="text-xl text-zinc-500 dark:text-zinc-400 font-medium max-w-2xl mx-auto leading-relaxed">
-                            采用「会员订阅 + 灵活积分」模式，让每一分预算都花在刀刃上。<br className="hidden md:block" />
-                            无论是个人博主还是 MCN 机构，都能找到最适合的方案。
+                            根据账号数量、发布频次和团队规模，选择适合你的会员方案。<br className="hidden md:block" />
+                            各项额度独立计算，付款前请确认价格、有效期和服务范围。
                         </p>
                     </motion.div>
                 </div>
 
                 {/* Plans Grid */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 items-start mb-32">
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 items-stretch mb-20">
                     {plansFailed && (
-                        <div className="md:col-span-2 lg:col-span-3 rounded-2xl border border-amber-200 bg-amber-50 p-5 flex flex-col sm:flex-row items-center justify-center gap-4 text-amber-800">
+                        <div className="col-span-full rounded-2xl border border-amber-200 bg-amber-50 p-5 flex flex-col sm:flex-row items-center justify-center gap-4 text-amber-800">
                             <span>价格信息加载失败，请稍后重试。当前展示经校验的会员权益注册表，支付前会再次确认实时价格。</span>
                             <Button onClick={handleRetry} loading={retrying} className="shrink-0">
                                 重试
@@ -142,7 +136,7 @@ function PricingContent() {
                             className={clsx(
                                 "relative rounded-[2.5rem] p-8 h-full flex flex-col transition-all duration-300",
                                 plan.highlight
-                                    ? "bg-white dark:bg-zinc-900 border-2 border-indigo-500 shadow-2xl shadow-indigo-500/10 z-10 scale-105"
+                                    ? "bg-white dark:bg-zinc-900 border-2 border-indigo-500 shadow-2xl shadow-indigo-500/10 z-10"
                                     : "bg-white/50 dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 backdrop-blur-sm hover:bg-white dark:hover:bg-zinc-900"
                             )}
                         >
@@ -200,34 +194,6 @@ function PricingContent() {
                         </motion.div>
                     ))}
 
-                    {/* Enterprise Card */}
-                    <div className="rounded-[2.5rem] p-10 bg-gradient-to-br from-indigo-900 to-purple-900 text-white border border-indigo-700/50 shadow-2xl relative overflow-hidden group">
-                        <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full blur-[80px] -translate-y-1/2 translate-x-1/2" />
-
-                        <div className="relative z-10 h-full flex flex-col justify-between">
-                            <div>
-                                <div className="w-14 h-14 bg-white/10 backdrop-blur rounded-2xl flex items-center justify-center text-amber-400 text-2xl mb-6">
-                                    <CrownFilled />
-                                </div>
-                                <h3 className="text-2xl font-black mb-4">企业定制版</h3>
-                                <p className="text-indigo-200 text-sm leading-relaxed mb-8">
-                                    为 MCN 机构及大型内容团队打造。
-                                    提供私有化模型训练、API 独享速率、以及专属客户经理。
-                                </p>
-                                <ul className="space-y-4 mb-8">
-                                    {['多租户权限隔离', '私有知识库部署', 'SLA 服务保障', '对公转账支持'].map((f, i) => (
-                                        <li key={i} className="flex items-center gap-3 text-sm font-bold text-indigo-100">
-                                            <div className="w-5 h-5 rounded-full bg-white/20 flex items-center justify-center text-[10px]"><CheckCircleFilled /></div>
-                                            {f}
-                                        </li>
-                                    ))}
-                                </ul>
-                            </div>
-                            <Button block size="large" ghost onClick={() => router.push('/login?redirect=%2Fpricing%3Fplan%3Denterprise')} className="h-14 rounded-xl font-bold border-white/20 hover:bg-white/10 hover:border-white/40 text-white">
-                                联系商务顾问 <ArrowRightOutlined />
-                            </Button>
-                        </div>
-                    </div>
                 </div>
 
                 {/* FAQ Section */}
@@ -235,14 +201,14 @@ function PricingContent() {
                     <h2 className="text-2xl font-black text-center mb-12">常见问题</h2>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-10">
                         {[
-                            { q: '会员积分与充值积分有何区别？', a: '会员每月赠送的积分当月有效，过期清零；单独购买的充值积分包永久有效，用完为止。' },
-                            { q: '可以开具发票吗？', a: '支持。购买后可在「我的订单」中申请开具增值税电子普通发票，企业版支持专票。' },
-                            { q: '生成失败会扣积分吗？', a: '不会。如果因系统原因导致任务失败，积分将自动原路退回至您的账户。' },
-                            { q: '如何升级或降级套餐？', a: '您可以随时在当前周期结束后切换套餐。升级套餐将立即生效并补差价。' }
+                            { q: '会员所有功能都不限量吗？', a: '不是。账号、发布和生成等额度分别计算，以所选套餐的各项说明为准。' },
+                            { q: '需要发票怎么办？', a: '请在付款前向服务方确认开票种类、所需信息和办理方式。' },
+                            { q: '任务失败或扣费异常怎么办？', a: '请保留任务编号和订单号，核对账户记录并联系支持人员处理。退款结果以实际账单为准。' },
+                            { q: '套餐变更何时生效？', a: '请在确认订单前核对生效时间、有效期和应付金额。已购权益按照原订单约定处理。' }
                         ].map((item, i) => (
                             <div key={i}>
                                 <h4 className="font-bold text-lg mb-2 flex items-center gap-2">
-                                    <span className="text-indigo-500">Q.</span> {item.q}
+                                    <span className="text-indigo-500">问</span> {item.q}
                                 </h4>
                                 <p className="text-zinc-500 text-sm leading-relaxed">{item.a}</p>
                             </div>
@@ -254,7 +220,7 @@ function PricingContent() {
                 <div className="text-center pb-8 border-t border-zinc-100 dark:border-zinc-800 pt-8">
                     <div className="inline-flex items-center gap-2 text-zinc-400 text-xs font-bold uppercase tracking-wider">
                         <SafetyCertificateOutlined className="text-emerald-500 text-lg" />
-                        <span>企业级安全保障 · 256 位 SSL 加密</span>
+                        <span>付款前请核对订单信息与服务条款</span>
                     </div>
                 </div>
             </div>

@@ -252,7 +252,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
                                 "text-[11px]",
                                 isDarkMode ? "text-zinc-500" : "text-zinc-400"
                             )}>
-                                升级解锁无限额度
+                                查看各档会员权益
                             </div>
                         </div>
                     </div>
