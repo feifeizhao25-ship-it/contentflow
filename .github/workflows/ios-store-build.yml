@@ -67,7 +67,7 @@ jobs:
           PLIST
           flutter pub get
           # API base must be injected or app crashes at launch (StateError in AppConfig)
-          export API_BASE_URL='https://contentflow.tianji-astrology.com/api/v1'
+          export API_BASE_URL='https://contentflow.website/api/v1'
           # Step 1: unsigned xcarchive (skips flutter dev-cert preflight)
           export CODE_SIGNING_ALLOWED=NO
           export CODE_SIGNING_REQUIRED=NO

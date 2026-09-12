@@ -61,8 +61,34 @@ class AuthGate extends ConsumerWidget {
       data: (isAuthed) => isAuthed ? const MainScreen() : const LoginScreen(),
       loading: () =>
           const Scaffold(body: Center(child: CircularProgressIndicator())),
-      error: (error, _) =>
-          Scaffold(body: Center(child: Text('Authentication failed: $error'))),
+      error: (error, _) => Scaffold(
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(32),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(Icons.cloud_off, size: 64, color: Colors.grey),
+                const SizedBox(height: 24),
+                const Text(
+                  'Connection issue',
+                  style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 12),
+                const Text(
+                  'We could not reach the ContentFlow service. Check your internet connection and try again.',
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 24),
+                ElevatedButton(
+                  onPressed: () => ref.invalidate(authStateProvider),
+                  child: const Text('Tap to retry'),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 }
