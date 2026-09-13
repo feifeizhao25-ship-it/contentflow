@@ -1,3 +1,4 @@
+import { deleteOwnedMaterial } from './delete-owned-material';
 import { supabase } from './supabase';
 
 export interface Material {
@@ -118,45 +119,7 @@ export async function getUserMaterials(userId: string, options?: {
 
 // 删除素材
 export async function deleteMaterial(materialId: string, userId: string): Promise<boolean> {
-    try {
-        // 获取素材信息
-        const { data: material, error: fetchError } = await supabase
-            .from('materials')
-            .select('url')
-            .eq('id', materialId)
-            .eq('user_id', userId)
-            .single();
-
-        if (fetchError || !material) {
-            console.error('Material not found');
-            return false;
-        }
-
-        // 从 Storage 删除文件
-        const urlPath = material.url.split('/').pop();
-        if (urlPath) {
-            await supabase.storage
-                .from('materials')
-                .remove([`${userId}/${urlPath}`]);
-        }
-
-        // 从数据库删除记录
-        const { error: deleteError } = await supabase
-            .from('materials')
-            .delete()
-            .eq('id', materialId)
-            .eq('user_id', userId);
-
-        if (deleteError) {
-            console.error('Error deleting material:', deleteError);
-            throw deleteError;
-        }
-
-        return true;
-    } catch (error) {
-        console.error('deleteMaterial error:', error);
-        return false;
-    }
+    return deleteOwnedMaterial(supabase, materialId, userId);
 }
 
 // 切换收藏状态
