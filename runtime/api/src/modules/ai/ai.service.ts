@@ -84,6 +84,46 @@ export function scoreContent(content: string, sources: ContentSource[], locale: 
   return { accuracy, professionalism, platformFit, citation, safety, total: accuracy + professionalism + platformFit + citation + safety, suggestions };
 }
 
+/** 境内供应商的 OpenAI 兼容对话接口。地址写死，不从环境变量读。 */
+export const DOMESTIC_CHAT_ENDPOINTS = {
+  qwen: 'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions',
+  deepseek: 'https://api.deepseek.com/chat/completions',
+} as const;
+
+/** 通义万相文生图（DashScope 异步任务）。 */
+export const DASHSCOPE_IMAGE_SYNTHESIS = 'https://dashscope.aliyuncs.com/api/v1/services/aigc/text2image/image-synthesis';
+export const DASHSCOPE_TASKS = 'https://dashscope.aliyuncs.com/api/v1/tasks/';
+
+export const MAX_SCRIPT_SCENES = 12;
+
+export function buildScriptPrompt(topic: string, type: string, platform: string): string {
+  return [
+    `为「${platform}」平台创作一条「${type}」类短视频的分镜脚本，主题：${topic}`,
+    '',
+    '要求：',
+    `1. 分镜 4–${MAX_SCRIPT_SCENES} 个，总时长 30–90 秒`,
+    '2. visual 用于驱动视频生成，必须是具体可视化的画面描述（场景、主体、镜头、光线），不要写抽象概念',
+    '3. subtitle 是该分镜的口播/字幕文案，口语化',
+    '4. time 是该分镜时长（秒，整数）',
+    '',
+    '只输出 JSON，不要 markdown 代码块，格式：',
+    '{"title":"标题","scenes":[{"visual":"画面描述","subtitle":"字幕","time":6}]}',
+  ].join('\n');
+}
+
+/** 模型有时会裹上 ```json 代码块或加前后缀，这里做一次容错提取。 */
+export function parseScriptJson(raw: string): any {
+  const cleaned = String(raw || '').replace(/^```(?:json)?\s*/i, '').replace(/```\s*$/, '').trim();
+  try {
+    return JSON.parse(cleaned);
+  } catch {
+    const start = cleaned.indexOf('{');
+    const end = cleaned.lastIndexOf('}');
+    if (start !== -1 && end > start) return JSON.parse(cleaned.slice(start, end + 1));
+    throw new Error('模型未返回可解析的 JSON');
+  }
+}
+
 @Injectable()
 export class AIService {
   private readonly logger = new Logger(AIService.name);
@@ -177,55 +217,77 @@ export class AIService {
         usage: { prompt_tokens: data.usage?.prompt_tokens || 0, completion_tokens: data.usage?.completion_tokens || 0, total_tokens: data.usage?.total_tokens || 0 },
       };
     }
-    const provider = model.includes('deepseek') ? 'deepseek' : 'qwen';
-    const apiKey = provider === 'deepseek' ? this.deepseekApiKey : this.qwenApiKey;
-    if (!apiKey) {
-      throw new Error(`${provider.toUpperCase()} API key is not configured`);
+    return this.generateDomesticText(params, model, maxTokens, startedAt);
+  }
+
+  /**
+   * 境内直连：通义千问（DashScope 兼容模式）与 DeepSeek。
+   *
+   * 2026-09-21 之前这里有两处让国内版的文本生成**一次也成功不了**：
+   *  1. 千问的地址写成 `https://dashscope.aliyuncs.com/api/v1/chat/completions` ——
+   *     DashScope 没有这个路径（OpenAI 兼容接口在 `/compatible-mode/v1`），永远 404；
+   *  2. 未指定模型时一律用 `qwen-turbo`：只配了 DEEPSEEK_API_KEY 的部署
+   *     （compose 写的是「两把至少要有一把」）每次都报「QWEN key 未配置」，
+   *     从来不会去用已经配好的 DeepSeek。
+   * 现在：调用方指定了模型就只用那一家；否则按已配置的 key 依次尝试，
+   * 前一家失败换下一家。
+   */
+  private async generateDomesticText(
+    params: { prompt: string; model?: string; temperature?: number },
+    model: string,
+    maxTokens: number,
+    startedAt: number,
+  ): Promise<AIResponse> {
+    const candidates: Array<{ provider: 'qwen' | 'deepseek'; model: string; key: string }> = [];
+    if (params.model) {
+      const provider = model.includes('deepseek') ? 'deepseek' : 'qwen';
+      candidates.push({ provider, model, key: provider === 'deepseek' ? this.deepseekApiKey : this.qwenApiKey });
+    } else {
+      if (this.qwenApiKey) candidates.push({ provider: 'qwen', model: this.configService.get('QWEN_MODEL', 'qwen-turbo'), key: this.qwenApiKey });
+      if (this.deepseekApiKey) candidates.push({ provider: 'deepseek', model: this.configService.get('DEEPSEEK_MODEL', 'deepseek-chat'), key: this.deepseekApiKey });
+    }
+    const usable = candidates.filter((c) => c.key);
+    if (!usable.length) {
+      throw new Error(`${(candidates[0]?.provider ?? 'qwen').toUpperCase()} API key is not configured`);
     }
 
-    const baseUrl = provider === 'deepseek' 
-      ? 'https://api.deepseek.com/v1' 
-      : 'https://dashscope.aliyuncs.com/api/v1';
-
-    try {
-      const response = await fetch(`${baseUrl}/chat/completions`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${apiKey}`,
-        },
-        body: JSON.stringify({
-          model: model,
-          messages: [
-            { role: 'user', content: params.prompt }
-          ],
-          max_tokens: maxTokens,
-          temperature: params.temperature || 0.7,
-        }),
-      });
-
-      if (!response.ok) {
-        const error = await response.text();
-        throw new Error(`AI API error: ${error}`);
+    const failures: string[] = [];
+    for (const candidate of usable) {
+      try {
+        const response = await fetch(DOMESTIC_CHAT_ENDPOINTS[candidate.provider], {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${candidate.key}` },
+          body: JSON.stringify({
+            model: candidate.model,
+            messages: [{ role: 'user', content: params.prompt }],
+            max_tokens: maxTokens,
+            temperature: params.temperature ?? 0.7,
+          }),
+        });
+        if (!response.ok) {
+          failures.push(`${candidate.provider}:${response.status}`);
+          continue;
+        }
+        const data = await response.json();
+        const content = data?.choices?.[0]?.message?.content || '';
+        if (!content) {
+          failures.push(`${candidate.provider}:empty`);
+          continue;
+        }
+        const usage = {
+          prompt_tokens: data.usage?.prompt_tokens || 0,
+          completion_tokens: data.usage?.completion_tokens || 0,
+          total_tokens: data.usage?.total_tokens || 0,
+        };
+        this.logger.log(`AI generation completed via ${candidate.provider}: ${usage.total_tokens} tokens`);
+        return { content, model: candidate.model, provider: candidate.provider, latency_ms: Date.now() - startedAt, cost_usd: null, usage };
+      } catch (error) {
+        failures.push(`${candidate.provider}:${error instanceof Error ? error.name : 'error'}`);
       }
-
-      const data = await response.json();
-      const content = data.choices[0]?.message?.content || '';
-
-      // 记录使用量
-      const usage = {
-        prompt_tokens: data.usage?.prompt_tokens || 0,
-        completion_tokens: data.usage?.completion_tokens || 0,
-        total_tokens: data.usage?.total_tokens || 0,
-      };
-
-      this.logger.log(`AI generation completed: ${usage.total_tokens} tokens`);
-
-      return { content, model, provider, latency_ms: Date.now() - startedAt, cost_usd: null, usage };
-    } catch (error) {
-      this.logger.error('AI generation failed:', error);
-      throw error;
     }
+    // 不把供应商返回的原文带出去（可能含账户信息），只记失败摘要。
+    this.logger.error(`Domestic AI providers all failed: ${failures.join(', ')}`);
+    throw new Error(`AI API error: ${failures.join(', ')}`);
   }
 
   private registerOpenRouterFailure() {
@@ -402,6 +464,11 @@ ${content}
     style?: string;
     seed?: number;
   }): Promise<{ url: string; revisedPrompt?: string }> {
+    // 国内版一律走通义万相（境内），不论环境里有没有 FAL_API_KEY——
+    // 原来国内版也只会调 fal.ai（境外），给了 key 就出境，不给就永远「未配置」。
+    if (isDomesticMarket(this.marketRegion)) {
+      return this.generateImageDashScope(params);
+    }
     if (!this.falApiKey) {
       throw new Error('FAL_API_KEY not configured');
     }
@@ -500,5 +567,80 @@ ${content}
       this.logger.error('fal.ai image generation failed:', error);
       throw error;
     }
+  }
+
+  /** 通义万相文生图：提交异步任务，轮询到 SUCCEEDED 取结果地址（结果地址约 24 小时有效）。 */
+  private async generateImageDashScope(params: { prompt: string; size?: string; seed?: number }): Promise<{ url: string; revisedPrompt?: string }> {
+    if (!this.qwenApiKey) {
+      throw new Error('国内版图片生成使用通义万相，需要配置 QWEN_API_KEY（DashScope）');
+    }
+    const sizes: Record<string, string> = {
+      '256x256': '512*512', '512x512': '512*512', '1024x1024': '1024*1024',
+      '1280x720': '1280*720', '720x1280': '720*1280',
+    };
+    const size = sizes[params.size || '1024x1024'] ?? '1024*1024';
+    const submit = await fetch(DASHSCOPE_IMAGE_SYNTHESIS, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${this.qwenApiKey}`,
+        'X-DashScope-Async': 'enable',
+      },
+      body: JSON.stringify({
+        model: this.configService.get('DASHSCOPE_IMAGE_MODEL', 'wanx2.1-t2i-turbo'),
+        input: { prompt: params.prompt },
+        parameters: { size, n: 1, ...(params.seed ? { seed: params.seed } : {}) },
+      }),
+    });
+    if (!submit.ok) throw new Error(`通义万相提交失败：${submit.status}`);
+    const taskId = (await submit.json())?.output?.task_id;
+    if (!taskId) throw new Error('通义万相未返回任务编号');
+
+    const attempts = Math.max(1, Number(this.configService.get('DASHSCOPE_IMAGE_POLL_ATTEMPTS', 60)));
+    const intervalMs = Math.max(0, Number(this.configService.get('DASHSCOPE_IMAGE_POLL_INTERVAL_MS', 1000)));
+    for (let i = 0; i < attempts; i += 1) {
+      if (intervalMs) await new Promise((resolve) => setTimeout(resolve, intervalMs));
+      const res = await fetch(`${DASHSCOPE_TASKS}${encodeURIComponent(taskId)}`, {
+        headers: { Authorization: `Bearer ${this.qwenApiKey}` },
+      });
+      if (!res.ok) continue;
+      const output = (await res.json())?.output;
+      if (output?.task_status === 'SUCCEEDED') {
+        const url = output?.results?.find((r: any) => r?.url)?.url;
+        if (!url) throw new Error('通义万相未返回图片地址');
+        return { url, revisedPrompt: output?.results?.[0]?.actual_prompt ?? params.prompt };
+      }
+      if (output?.task_status === 'FAILED' || output?.task_status === 'CANCELED') {
+        throw new Error(`通义万相生成失败：${output?.code ?? output?.task_status}`);
+      }
+    }
+    throw new Error('通义万相生成超时');
+  }
+
+  /**
+   * 短视频分镜脚本。原来在 web-cn 的 Next 路由里直连 openrouter.ai（境外）；
+   * 现在由后端按市场选择供应商（国内版只走境内），并记预算与生成记录。
+   */
+  async generateScript(input: { topic: string; type?: string; platform?: string }): Promise<{
+    title: string;
+    scenes: Array<{ visual: string; subtitle: string; time: number }>;
+  } & Omit<AIResponse, 'content'>> {
+    const result = await this.generateText({
+      prompt: buildScriptPrompt(input.topic, input.type || '爆款解说', input.platform || '抖音'),
+      maxTokens: 2000,
+      temperature: 0.8,
+    });
+    const parsed = parseScriptJson(result.content);
+    const scenes = (Array.isArray(parsed?.scenes) ? parsed.scenes : [])
+      .slice(0, MAX_SCRIPT_SCENES)
+      .map((scene: any) => ({
+        visual: String(scene?.visual ?? '').trim(),
+        subtitle: String(scene?.subtitle ?? '').trim(),
+        time: Math.min(30, Math.max(1, Math.round(Number(scene?.time) || 6))),
+      }))
+      .filter((scene: { visual: string; subtitle: string }) => scene.visual || scene.subtitle);
+    if (!scenes.length) throw new Error('模型未生成任何分镜');
+    const { content: _content, ...meta } = result;
+    return { title: String(parsed?.title || input.topic), scenes, ...meta };
   }
 }

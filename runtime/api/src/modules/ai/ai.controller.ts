@@ -1,4 +1,5 @@
-import { Controller, Post, Get, Body, UseGuards, Request } from '@nestjs/common';
+import { BadRequestException, Controller, Post, Get, Body, UseGuards, Request } from '@nestjs/common';
+import { AI_TEXT_LABEL } from '../../common/ai-content-label';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { AIService } from './ai.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
@@ -46,6 +47,33 @@ export class AIController {
     });
 
     return result;
+  }
+
+  @Post('generate/script')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: '短视频分镜脚本生成' })
+  async generateScript(@Request() req: any, @Body() body: any) {
+    await this.aiService.assertTenantDailyBudget(req.user.tenantId);
+    const topic = String(body?.topic ?? '').trim().slice(0, 200);
+    if (!topic) throw new BadRequestException('请输入创作主题');
+    const type = String(body?.type ?? '爆款解说').slice(0, 50);
+    const platform = String(body?.platform ?? '抖音').slice(0, 20);
+    const result = await this.aiService.generateScript({ topic, type, platform });
+    await this.aiService.recordGeneration(req.user.tenantId, req.user.sub, {
+      generationType: 'script',
+      inputParams: { topic, type, platform },
+      outputContent: JSON.stringify({ title: result.title, scenes: result.scenes }),
+      modelProvider: result.provider,
+      modelName: result.model,
+      tokensInput: result.usage.prompt_tokens,
+      tokensOutput: result.usage.completion_tokens,
+      costAmount: result.cost_usd ?? undefined,
+      durationMs: result.latency_ms,
+      status: 'success',
+    });
+    // 显式标识（《人工智能生成合成内容标识办法》）：随结果返回，前端展示与导出时附上。
+    return { title: result.title, scenes: result.scenes, aiLabel: AI_TEXT_LABEL };
   }
 
   @Post('generate/titles')
