@@ -80,13 +80,15 @@ services:
       CORS_ORIGIN: ${CN_CORS_ORIGIN:?CN_CORS_ORIGIN is required}
       PUBLISH_DISPATCH_WEBHOOK_URL: ${CN_PUBLISH_DISPATCH_WEBHOOK_URL:?CN_PUBLISH_DISPATCH_WEBHOOK_URL is required}
       PUBLISH_DISPATCH_WEBHOOK_SECRET: ${CN_PUBLISH_DISPATCH_WEBHOOK_SECRET:?CN_PUBLISH_DISPATCH_WEBHOOK_SECRET is required}
+      # 国内栈只接境内模型供应商：QWEN 走 DashScope、DEEPSEEK 走
+      # api.deepseek.com，两把至少要有一把——没有的话 AIService 在
+      # 启动阶段就会拒绝（assertDomesticProviderConfigured）。
+      #
+      # 这里**刻意不注入 OPENROUTER_API_KEY**。代码层也拦着：
+      # MARKET_REGION=cn 时 AIService 一律不持有这把 key，
+      # 所以就算有人把它加回 compose 也不会出境（见 market-routing.ts）。
       QWEN_API_KEY: ${QWEN_API_KEY:-}
       DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY:-}
-      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
-      OPENROUTER_MODEL_FAST: ${OPENROUTER_MODEL_FAST:-qwen/qwen3-30b-a3b-instruct-2507}
-      OPENROUTER_MODEL_QUALITY: ${OPENROUTER_MODEL_QUALITY:-deepseek/deepseek-v3.2}
-      OPENROUTER_FALLBACK_MODELS: ${OPENROUTER_FALLBACK_MODELS:-deepseek/deepseek-v3.2,google/gemini-2.5-flash-lite}
-      OPENROUTER_SITE_URL: ${CN_CORS_ORIGIN:?CN_CORS_ORIGIN is required}
       PAYMENT_CALLBACK_SECRET: ${CN_PAYMENT_CALLBACK_SECRET:?CN_PAYMENT_CALLBACK_SECRET is required}
       BANK_TRANSFER_ACCOUNT_NAME: ${BANK_TRANSFER_ACCOUNT_NAME:-}
       BANK_TRANSFER_ACCOUNT_NO: ${BANK_TRANSFER_ACCOUNT_NO:-}
@@ -122,10 +124,10 @@ services:
     build: ./web-cn
     image: contentflow-web-cn:${IMAGE_TAG:?IMAGE_TAG is required}
     environment:
+      MARKET_REGION: cn
       API_INTERNAL_URL: http://api-cn:4000
-      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
-      OPENROUTER_MODEL: ${OPENROUTER_MODEL_FAST:-qwen/qwen3-30b-a3b-instruct-2507}
-      OPENROUTER_FALLBACK_MODELS: ${OPENROUTER_FALLBACK_MODELS:-deepseek/deepseek-v3.2,google/gemini-2.5-flash-lite}
+      # 国内 Web 不直连任何模型供应商，一律经 api-cn。
+      # 此前这里注入 OPENROUTER_API_KEY，等于国内前端自己出境。
     depends_on:
       api-cn: {condition: service_healthy}
     networks: [cn-edge]

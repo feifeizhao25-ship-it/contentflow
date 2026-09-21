@@ -2,6 +2,11 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../database/prisma.service';
 import { parseGeneratedTitles } from './title-parser';
+import {
+  assertDomesticProviderConfigured,
+  isDomesticMarket,
+  resolveTextProvider,
+} from './market-routing';
 
 interface AIResponse {
   content: string;
@@ -86,6 +91,7 @@ export class AIService {
   private readonly deepseekApiKey: string;
   private readonly falApiKey: string;
   private readonly openRouterApiKey: string;
+  private readonly marketRegion: string;
   private openRouterFailures = 0;
   private openRouterOpenUntil = 0;
 
@@ -96,7 +102,20 @@ export class AIService {
     this.qwenApiKey = this.configService.get('QWEN_API_KEY', '');
     this.deepseekApiKey = this.configService.get('DEEPSEEK_API_KEY', '');
     this.falApiKey = this.configService.get('FAL_API_KEY', '');
-    this.openRouterApiKey = this.configService.get('OPENROUTER_API_KEY', '');
+    this.marketRegion = this.configService.get('MARKET_REGION', '');
+    // 国内栈一律不持有这把 key，**即使环境里有**。
+    // 边界写在代码里而不是只靠 compose：compose 删掉了，下一个人
+    // 加回来就又出境了，而且不会有任何报错。
+    this.openRouterApiKey = isDomesticMarket(this.marketRegion)
+      ? ''
+      : this.configService.get('OPENROUTER_API_KEY', '');
+    // 国内栈没有任何境内 key 时，在启动阶段就说清楚，
+    // 而不是等第一个用户点了生成才报。
+    assertDomesticProviderConfigured({
+      marketRegion: this.marketRegion,
+      qwenApiKey: this.qwenApiKey,
+      deepseekApiKey: this.deepseekApiKey,
+    });
   }
 
   async generateText(params: {
@@ -107,10 +126,17 @@ export class AIService {
   }): Promise<AIResponse> {
     const startedAt = Date.now();
     const maxTokens = Math.min(4000, Math.max(1, params.maxTokens || 2000));
-    const model: string = params.model || (this.openRouterApiKey
-      ? this.configService.get<string>('OPENROUTER_MODEL_FAST', 'qwen/qwen3-30b-a3b-instruct-2507')
-      : 'qwen-turbo');
-    if (this.openRouterApiKey) {
+    const decision = resolveTextProvider({
+      marketRegion: this.marketRegion,
+      openRouterApiKey: this.openRouterApiKey,
+      requestedModel: params.model,
+      offshoreDefaultModel: this.configService.get<string>(
+        'OPENROUTER_MODEL_FAST',
+        'qwen/qwen3-30b-a3b-instruct-2507',
+      ),
+    });
+    const model: string = decision.model;
+    if (decision.useOpenRouter) {
       if (Date.now() < this.openRouterOpenUntil) {
         throw new Error('OpenRouter circuit is open; retry after cooldown');
       }
