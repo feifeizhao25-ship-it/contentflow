@@ -1,10 +1,26 @@
 name: contentflow
 
+# ⚠️ tmpfs 必须写成块序列（2026-09-21）
+#
+# 原来写的是 YAML 流式序列：
+#
+#     tmpfs: [/tmp:size=128m,mode=1777, /app/.next/cache:size=128m,mode=1777]
+#
+# 在流式序列里**逗号是元素分隔符**，所以它解析出来是四个元素：
+#
+#     ["/tmp:size=128m", "mode=1777", "/app/.next/cache:size=128m", "mode=1777"]
+#
+# 也就是让 Docker 去把 tmpfs 挂到一个叫 `mode=1777` 的路径上。
+# 那不是绝对路径，容器创建直接失败 —— api-cn / api-int / web-cn / web-int
+# 四个应用容器**一个都起不来**。
+#
+# 块序列里逗号只是普通字符，才是这里要的写法。
 x-api-common: &api-common
   build: ./api
   restart: unless-stopped
   read_only: true
-  tmpfs: [/tmp:size=256m,mode=1777]
+  tmpfs:
+    - /tmp:size=256m,mode=1777
   security_opt: [no-new-privileges:true]
   cap_drop: [ALL]
 
@@ -12,7 +28,9 @@ x-web-common: &web-common
   restart: unless-stopped
   expose: ["3000"]
   read_only: true
-  tmpfs: [/tmp:size=128m,mode=1777, /app/.next/cache:size=128m,mode=1777]
+  tmpfs:
+    - /tmp:size=128m,mode=1777
+    - /app/.next/cache:size=128m,mode=1777
   security_opt: [no-new-privileges:true]
   cap_drop: [ALL]
 
@@ -30,7 +48,7 @@ services:
       interval: 10s
       timeout: 5s
       retries: 10
-    networks: [cn-backend]
+    networks: [cn-data]
 
   redis-cn:
     image: redis:7.4-alpine
@@ -44,7 +62,7 @@ services:
       interval: 10s
       timeout: 5s
       retries: 10
-    networks: [cn-backend]
+    networks: [cn-data]
 
   api-cn:
     <<: *api-common
@@ -97,7 +115,7 @@ services:
       timeout: 5s
       retries: 10
       start_period: 20s
-    networks: [cn-backend]
+    networks: [cn-data, cn-edge]
 
   web-cn:
     <<: *web-common
@@ -110,7 +128,7 @@ services:
       OPENROUTER_FALLBACK_MODELS: ${OPENROUTER_FALLBACK_MODELS:-deepseek/deepseek-v3.2,google/gemini-2.5-flash-lite}
     depends_on:
       api-cn: {condition: service_healthy}
-    networks: [cn-backend]
+    networks: [cn-edge]
 
   postgres-int:
     image: postgres:16-alpine
@@ -125,7 +143,7 @@ services:
       interval: 10s
       timeout: 5s
       retries: 10
-    networks: [int-backend]
+    networks: [int-data]
 
   redis-int:
     image: redis:7.4-alpine
@@ -139,7 +157,7 @@ services:
       interval: 10s
       timeout: 5s
       retries: 10
-    networks: [int-backend]
+    networks: [int-data]
 
   api-int:
     <<: *api-common
@@ -173,7 +191,7 @@ services:
       timeout: 5s
       retries: 10
       start_period: 20s
-    networks: [int-backend]
+    networks: [int-data, int-edge]
 
   web-int:
     <<: *web-common
@@ -183,7 +201,7 @@ services:
       API_INTERNAL_URL: http://api-int:4000
     depends_on:
       api-int: {condition: service_healthy}
-    networks: [int-backend]
+    networks: [int-edge]
 
   gateway:
     image: caddy:2.10-alpine
@@ -200,7 +218,7 @@ services:
     depends_on:
       web-cn: {condition: service_healthy}
       web-int: {condition: service_healthy}
-    networks: [cn-backend, int-backend]
+    networks: [cn-edge, int-edge]
     security_opt: [no-new-privileges:true]
 
 volumes:
@@ -211,8 +229,31 @@ volumes:
   caddy_data:
   caddy_config:
 
+# ⚠️ 网络分层（2026-09-21）
+#
+# 原来只有 cn-backend / int-backend 两个网络，**都是 internal: true**，
+# 而每个服务都只挂在这两个里面。Docker 的 internal 网络没有 NAT 出口，
+# 于是：
+#
+#   · gateway 连不上 Let's Encrypt → **ACME 签发失败，站点拿不到证书**
+#   · api-cn / api-int 连不上模型供应商 → 所有生成请求失败
+#   · api-cn 连不上 openapi.alipay.com / 微信支付 → **付款全线不通**
+#   · PUBLISH_DISPATCH_WEBHOOK_URL 发不出去 → 分发派单静默失败
+#
+# 端口没有 publish 才是"外面进不来"的保证，internal 管的是"里面出不去"。
+# 所以拆成两层：数据层继续 internal（数据库和缓存本来就不该出网），
+# 应用层与网关换到可出网的 edge 网络。
+#
+# 国内 / 国际两套依然完全隔离：api-cn 只在 cn-*，api-int 只在 int-*，
+# 两边没有任何共用网络（gateway 只做反向代理，不承载业务）。
 networks:
-  cn-backend:
+  # 数据层：不出网
+  cn-data:
     internal: true
-  int-backend:
+  int-data:
     internal: true
+  # 应用层与网关：需要访问模型供应商、支付网关、Webhook、ACME
+  cn-edge:
+    driver: bridge
+  int-edge:
+    driver: bridge
