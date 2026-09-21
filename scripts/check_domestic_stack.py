@@ -131,9 +131,14 @@ def load_allowlist() -> set[tuple[str, str]]:
 
 
 def offshore_var(name: str) -> str | None:
+    """变量名里出现供应商标记即命中。
+
+    用**子串**而不是前缀：`NEXT_PUBLIC_SUPABASE_URL` 不以 SUPABASE 开头，
+    第一版用前缀匹配把它整个漏掉了——而那恰恰是把用户数据送出境的那个。
+    """
     upper = name.upper()
-    for prefix, label in OFFSHORE_VAR_PREFIXES.items():
-        if upper.startswith(prefix):
+    for marker, label in OFFSHORE_VAR_PREFIXES.items():
+        if marker in upper:
             return label
     return None
 
