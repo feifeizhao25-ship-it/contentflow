@@ -194,6 +194,20 @@ const read = (p) => (fs.existsSync(p) ? fs.readFileSync(p, 'utf8') : null);
   if (provider && !/auth\/profile/.test(provider)) fail('requireAuth: 未向后端校验令牌');
 }
 
+// ─── 3b. 平台账号只走官方授权 ───
+//
+// 红线：不向用户索要平台的账号密码或 Cookie，不模拟登录。
+// 账号管理页原来让用户「粘贴网页版登录后的 Cookie」。
+
+{
+  const page = read(path.join(WEB_SRC, 'app/(main)/accounts/page.tsx')) || '';
+  const code = page.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+  if (/cookieInput|请粘贴 Cookie|sessionid=|Input\.Password/.test(code)) {
+    fail('账号管理页: 仍在索要平台 Cookie 或密码');
+  }
+  if (!/\/auth-url/.test(code)) fail('账号管理页: 未走官方授权地址');
+}
+
 // ─── 4. 运行时依赖 ───
 
 {

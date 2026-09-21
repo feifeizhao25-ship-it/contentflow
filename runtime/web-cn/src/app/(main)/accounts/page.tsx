@@ -11,10 +11,9 @@ import {
     LinkOutlined,
     SafetyCertificateOutlined
 } from '@ant-design/icons';
-import { Button, Modal, Avatar, Tooltip, message, Input } from 'antd';
+import { Avatar, Tooltip, message } from 'antd';
 import { motion, AnimatePresence } from 'framer-motion';
 import clsx from 'clsx';
-import { useRouter } from 'next/navigation';
 
 interface PlatformAccount {
     id: string;
@@ -41,13 +40,19 @@ const availablePlatforms = [
 export default function AccountsPage() {
     const [accounts, setAccounts] = useState<PlatformAccount[]>([]);
     const [loading, setLoading] = useState<string | null>(null);
-    const [isModalOpen, setIsModalOpen] = useState(false);
-    const [selectedPlatform, setSelectedPlatform] = useState<string | null>(null);
-    const [cookieInput, setCookieInput] = useState('');
-    const [authorizing, setAuthorizing] = useState(false);
+    const [authorizing, setAuthorizing] = useState<string | null>(null);
+    const [accountLimit, setAccountLimit] = useState<number | null>(null);
 
     useEffect(() => {
         fetchAccounts();
+        // 可绑定账号数以当前套餐为准（原来写死 5，而套餐是 1 / 10 / 30 / 不限）
+        fetch('/api/v1/billing/subscription')
+            .then((res) => (res.ok ? res.json() : null))
+            .then((envelope) => {
+                const limit = Number(envelope?.data?.limits?.max_accounts);
+                if (Number.isFinite(limit)) setAccountLimit(limit);
+            })
+            .catch(() => undefined);
     }, []);
 
     const fetchAccounts = async () => {
@@ -79,65 +84,29 @@ export default function AccountsPage() {
         }
     };
 
-    const openAuthorizeModal = (platformKey: string) => {
-        setSelectedPlatform(platformKey);
-        setCookieInput('');
-        setIsModalOpen(true);
-    };
-
-    const handleAuthorize = async () => {
-        if (!selectedPlatform) return;
-        if (!cookieInput.trim()) {
-            message.warning('请输入 Cookie');
-            return;
-        }
-
-        setAuthorizing(true);
+    /**
+     * 只走平台官方开放平台的 OAuth：向后端要授权地址，拿到就跳转；
+     * 没开通时后端会说明原因。
+     *
+     * 红线：不向用户索要账号密码或登录凭证。原来这里让用户「粘贴网页版登录后的 Cookie」——
+     * 那是模拟登录，违反平台规则，也等于把用户的登录凭证交给我们保管。
+     */
+    const handleAuthorize = async (platformKey: string) => {
+        setAuthorizing(platformKey);
         try {
-            // ⚠️ Cookie 绑定在后端**没有对应实现**：AccountController 只有
-            //    GET / 、GET :id 、DELETE :id 、GET :platform/auth-url（OAuth 授权链接），
-            //    没有任何接收 cookie 的端点。此前这里打 /api/accounts/authorize
-            //    得到 404，再被 catch 成一句「授权失败」——看起来像网络问题，
-            //    实际是功能根本不存在。
-            //
-            //    这里保持发请求（后端补上即自动生效），但把失败原因说清楚。
-            const response = await fetch('/api/v1/accounts/authorize', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    platform: selectedPlatform,
-                    cookie: cookieInput
-                }),
-            });
-            if (response.status === 404) {
-                throw new Error('Cookie 绑定功能尚未接入后端，请改用「OAuth 授权」方式');
+            const response = await fetch(`/api/v1/accounts/${encodeURIComponent(platformKey)}/auth-url`);
+            const envelope = await response.json().catch(() => ({}));
+            const url = envelope?.data?.auth_url;
+            if (response.ok && typeof url === 'string' && url.startsWith('https://')) {
+                window.location.href = url;
+                return;
             }
-            const envelope = await response.json();
-            const data = { success: envelope?.success, account: envelope?.data, error: envelope?.message };
-            if (data.success && data.account) {
-                const acc = data.account;
-                const newAccount: PlatformAccount = {
-                    id: acc.id,
-                    platform: acc.platform,
-                    platformName: availablePlatforms.find(p => p.key === acc.platform)?.name || '',
-                    accountName: acc.account_name,
-                    followers: acc.follower_count,
-                    status: 'active',
-                    authType: 'cookie',
-                    expiresAt: '永久',
-                    color: availablePlatforms.find(p => p.key === acc.platform)?.color || '#9ca3af',
-                    avatar: acc.avatar_url,
-                };
-                setAccounts(prev => [newAccount, ...prev]);
-                message.success(`${newAccount.platformName} 账号已成功绑定！`);
-                setIsModalOpen(false);
-            } else {
-                throw new Error(data.error || '授权失败');
-            }
-        } catch (error: any) {
-            message.error(error.message);
+            const reason = Array.isArray(envelope?.message) ? envelope.message[0] : envelope?.message;
+            message.info(typeof reason === 'string' && reason ? reason : '该平台授权暂未开通');
+        } catch {
+            message.error('网络连接失败，请稍后重试');
         } finally {
-            setAuthorizing(false);
+            setAuthorizing(null);
         }
     };
 
@@ -175,7 +144,7 @@ export default function AccountsPage() {
                 <div className="flex gap-4">
                     <div className="glass-card px-4 py-2 rounded-xl flex items-center gap-3 border border-zinc-200 bg-white/50">
                         <span className="text-zinc-500 text-sm">已绑定</span>
-                        <span className="text-xl font-bold text-zinc-900">{accounts.length} / 5</span>
+                        <span className="text-xl font-bold text-zinc-900">{accounts.length} / {accountLimit == null ? '—' : accountLimit === -1 ? '不限' : accountLimit}</span>
                     </div>
                 </div>
             </motion.div>
@@ -216,7 +185,7 @@ export default function AccountsPage() {
                                                 <div className="flex items-center gap-2 text-xs text-zinc-500">
                                                     <span>{account.platformName}</span>
                                                     <span className="w-1 h-1 rounded-full bg-zinc-700" />
-                                                    <span>{account.authType === 'cookie' ? 'Cookie授权' : 'OAuth'}</span>
+                                                    <span>官方授权</span>
                                                 </div>
                                             </div>
                                         </div>
@@ -236,11 +205,6 @@ export default function AccountsPage() {
                                             粉丝数 <span className="text-zinc-900 font-medium ml-1">{account.followers.toLocaleString()}</span>
                                         </div>
                                         <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                            <Tooltip title="更新Cookie">
-                                                <button className="p-2 rounded-lg hover:bg-zinc-100 text-zinc-400 hover:text-zinc-600 transition-colors">
-                                                    <ReloadOutlined />
-                                                </button>
-                                            </Tooltip>
                                             <Tooltip title="解绑">
                                                 <button
                                                     onClick={() => handleUnbind(account.id)}
@@ -281,7 +245,7 @@ export default function AccountsPage() {
                             <div
                                 key={platform.key}
                                 className="flex items-center justify-between p-4 hover:bg-zinc-50 rounded-xl transition-colors group cursor-pointer"
-                                onClick={() => openAuthorizeModal(platform.key)}
+                                onClick={() => authorizing === null && handleAuthorize(platform.key)}
                             >
                                 <div className="flex items-center gap-3">
                                     <div
@@ -292,69 +256,20 @@ export default function AccountsPage() {
                                     </div>
                                     <span className="text-zinc-700 font-medium group-hover:text-zinc-900 transition-colors">{platform.name}</span>
                                 </div>
-                                <PlusOutlined className="text-zinc-400 group-hover:text-zinc-600 transition-colors" />
+                                {authorizing === platform.key
+                                    ? <ReloadOutlined spin className="text-zinc-400" />
+                                    : <PlusOutlined className="text-zinc-400 group-hover:text-zinc-600 transition-colors" />}
                             </div>
                         ))}
                     </div>
 
                     <div className="p-4 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-xs text-indigo-300 leading-relaxed">
                         <span className="font-bold block mb-1">📢 注意事项</span>
-                        当前平台采用手动 Cookie 模式授权。请定期更新 Cookie 以保证发布功能正常使用。
+                        仅支持各平台官方开放平台授权。我们不会向你索要账号密码或登录凭证，也不会模拟登录。
                     </div>
                 </div>
             </div>
 
-            {/* Cookie Modal */}
-            <Modal
-                title={
-                    <div className="flex items-center gap-2 text-white">
-                        <SafetyCertificateOutlined className="text-emerald-400" />
-                        授权 {availablePlatforms.find(p => p.key === selectedPlatform)?.name}
-                    </div>
-                }
-                open={isModalOpen}
-                onCancel={() => !authorizing && setIsModalOpen(false)}
-                footer={null}
-                centered
-                className="glass-modal"
-                width={480}
-            >
-                <div className="space-y-4 pt-4">
-                    <div className="text-zinc-400 text-sm">
-                        为了保障账号安全与稳定性，请手动填入该平台网页版登录后的 Cookie。
-                    </div>
-
-                    <div>
-                        <div className="text-xs font-medium text-zinc-500 mb-1.5 uppercase tracking-wider">Cookie</div>
-                        <Input.TextArea
-                            value={cookieInput}
-                            onChange={(e) => setCookieInput(e.target.value)}
-                            placeholder="请粘贴 Cookie 内容 (例如: sessionid=...)"
-                            rows={6}
-                            className="bg-zinc-900/50 border-white/10 text-zinc-200 placeholder:text-zinc-600 rounded-xl focus:border-indigo-500 hover:border-white/20"
-                            style={{ resize: 'none' }}
-                        />
-                    </div>
-
-                    <div className="flex items-center justify-end gap-3 pt-4 border-t border-white/10 mt-6">
-                        <Button
-                            className="bg-transparent border-white/10 text-zinc-400 hover:text-white hover:border-white/30"
-                            onClick={() => setIsModalOpen(false)}
-                            disabled={authorizing}
-                        >
-                            取消
-                        </Button>
-                        <Button
-                            type="primary"
-                            className="bg-indigo-600 hover:bg-indigo-500 border-none h-9 px-6 font-medium shadow-lg shadow-indigo-500/20"
-                            onClick={handleAuthorize}
-                            loading={authorizing}
-                        >
-                            {authorizing ? '验证中...' : '确认授权'}
-                        </Button>
-                    </div>
-                </div>
-            </Modal>
         </div>
     );
 }
