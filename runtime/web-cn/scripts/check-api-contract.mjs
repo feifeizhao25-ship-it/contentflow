@@ -110,7 +110,8 @@ const read = (p) => (fs.existsSync(p) ? fs.readFileSync(p, 'utf8') : null);
   if (!read(path.join(WEB_SRC, 'app/api/v1/[...path]/route.ts'))) {
     fail('缺少 /api/v1 通用代理');
   }
-  const main = read(path.join(API_SRC, 'main.ts'));
+  // 前缀配置在 bootstrap.ts（main.ts 与测试共用）；两处都认
+  const main = (read(path.join(API_SRC, 'main.ts')) || '') + (read(path.join(API_SRC, 'bootstrap.ts')) || '');
   if (!main || !/setGlobalPrefix\(\s*['"]api\/v1['"]/.test(main)) {
     fail('后端全局前缀不是 api/v1，本脚本的前提已不成立');
   }
@@ -150,60 +151,47 @@ const read = (p) => (fs.existsSync(p) ? fs.readFileSync(p, 'utf8') : null);
   }
 }
 
-// ─── 3. 新补的 AI 端点 ───
+// ─── 3. AI 端点（国内版） ───
+//
+// 国内版只接境内服务商。语音合成、自动字幕、视频生成原来直连 OpenAI / Azure /
+// ElevenLabs / fal.ai（境外），现在一律返回 501 NOT_AVAILABLE_IN_CN；
+// 分镜脚本转给后端（境内模型 + 预算 + AIGC 标识）。
 
 {
-  const ROUTES = [
+  const NOT_IN_CN = [
     'ai/tts/openai',
     'ai/tts/azure',
     'ai/tts/elevenlabs',
     'ai/subtitle/generate',
-    'ai/generate-script',
     'ai/generate-video',
-    'ai/merge-videos',
     'video/generate',
   ];
+  const OFFSHORE = /openai\.com|openrouter\.ai|elevenlabs\.io|microsoft\.com|fal\.(run|media|ai)|@fal-ai|pollinations\.ai/i;
 
-  for (const route of ROUTES) {
+  for (const route of NOT_IN_CN) {
     const src = read(path.join(WEB_SRC, 'app/api', route, 'route.ts'));
-    if (!src) {
-      fail(`${route}: 未实现`);
-      continue;
-    }
-    // 会消耗第三方额度，匿名可调等于把账单敞开
-    if (!src.includes('requireAuth')) fail(`${route}: 未要求登录`);
-    // 依赖可能是 API 密钥，也可能是系统组件（merge-videos 需要 ffmpeg）
-    if (!src.includes('requireKey') && !src.includes('PROVIDER_NOT_CONFIGURED')) {
-      fail(`${route}: 未声明依赖不可用的分支`);
-    }
-    if (/\bmock\b|\bfake\b|假数据|模拟结果/i.test(src)) {
-      fail(`${route}: 出现假数据字样 —— 红线是任何情况下都不返回编造结果`);
-    }
+    if (!src) { fail(`${route}: 未实现`); continue; }
+    if (!src.includes('notAvailableInChina')) fail(`${route}: 国内版应返回 NOT_AVAILABLE_IN_CN`);
+    if (OFFSHORE.test(src)) fail(`${route}: 国内版源码里出现境外服务`);
   }
 
-  for (const route of ['ai/tts/openai', 'ai/tts/azure', 'ai/tts/elevenlabs']) {
+  const script = read(path.join(WEB_SRC, 'app/api/ai/generate-script/route.ts'));
+  if (!script || !script.includes('/api/v1/ai/generate/script')) fail('ai/generate-script: 应转给后端生成');
+  if (script && OFFSHORE.test(script)) fail('ai/generate-script: 国内版源码里出现境外服务');
+
+  for (const route of ['ai/merge-videos', 'ai/export-image']) {
     const src = read(path.join(WEB_SRC, 'app/api', route, 'route.ts'));
-    // 前端是 response.blob()，包一层 JSON 会让音频变成一段文本
-    if (src && !src.includes('upstream.body')) fail(`${route}: 未透传音频字节`);
+    // 只看 cookie 在不在等于没鉴权：必须向后端校验
+    if (src && !src.includes('await requireAuth')) fail(`${route}: 未向后端校验登录态`);
+    if (src && /\bmock\b|\bfake\b|假数据|模拟结果/i.test(src)) fail(`${route}: 出现假数据字样`);
   }
-
-  const azure = read(path.join(WEB_SRC, 'app/api/ai/tts/azure/route.ts'));
-  // SSML 是 XML，一个未转义的 & 就能让请求失败甚至被注入
-  if (azure && !azure.includes('escapeXml')) fail('azure TTS: 未对用户文本做 XML 转义');
-
-  const sub = read(path.join(WEB_SRC, 'app/api/ai/subtitle/generate/route.ts'));
-  // audio_url 由客户端提供，不设防等于开了个内网探测入口
-  if (sub && (!sub.includes('assertSafeAudioUrl') || !sub.includes('169\\.254'))) {
-    fail('字幕端点: SSRF 防护不全（需含云元数据地址 169.254）');
-  }
-
-  const video = read(path.join(WEB_SRC, 'app/api/video/generate/route.ts'));
-  // stepId 编号与前端 initSteps 错位会让进度条永远不动
-  if (video && !video.includes('planSteps')) fail('video/generate: 缺 planSteps');
 
   const merge = read(path.join(WEB_SRC, 'app/api/ai/merge-videos/route.ts'));
   // 服务层有「失败退回第一段」的兜底；用户主动点成片时拿到 5 秒视频比报错更糟
   if (merge && !merge.includes('MERGE_FAILED')) fail('merge-videos: 缺失败码');
+
+  const provider = read(path.join(WEB_SRC, 'app/api/_lib/provider.ts'));
+  if (provider && !/auth\/profile/.test(provider)) fail('requireAuth: 未向后端校验令牌');
 }
 
 // ─── 4. 运行时依赖 ───
@@ -216,19 +204,9 @@ const read = (p) => (fs.existsSync(p) ? fs.readFileSync(p, 'utf8') : null);
   }
 
   const env = read(path.resolve(HERE, '..', '.env.example'));
-  for (const key of [
-    'OPENAI_API_KEY',
-    'OPENROUTER_API_KEY',
-    'AZURE_SPEECH_KEY',
-    'AZURE_SPEECH_REGION',
-    'ELEVENLABS_API_KEY',
-    'FAL_API_KEY',
-  ]) {
-    if (env && !env.includes(key)) fail(`.env.example 缺 ${key}`);
-  }
-  // 带 NEXT_PUBLIC_ 前缀会被打进客户端 bundle，等于公开密钥
-  if (env && /NEXT_PUBLIC_(OPENAI|OPENROUTER|AZURE_SPEECH|ELEVENLABS|FAL)_/.test(env)) {
-    fail('AI 密钥带了 NEXT_PUBLIC_ 前缀 —— 会被打进客户端 bundle');
+  // 国内版不应再出现境外服务商的密钥变量——配上就等于准备出境
+  for (const key of ['OPENAI_API_KEY', 'OPENROUTER_API_KEY', 'AZURE_SPEECH_KEY', 'ELEVENLABS_API_KEY', 'FAL_API_KEY', 'SUPABASE']) {
+    if (env && env.includes(key)) fail(`.env.example 不应包含境外服务变量 ${key}`);
   }
 }
 

@@ -7,7 +7,7 @@ export const runtime = 'nodejs';
 /**
  * AI 生成图片的导出下载：取回图片字节、写入隐式 AI 标识元数据后以下载形式返回。
  *
- * 为什么放在这里而不是让浏览器直连 fal.ai / pollinations 下载：
+ * 为什么放在这里而不是让浏览器直连图片源下载：
  * 《人工智能生成合成内容标识办法》要求媒体文件带隐式标识，
  * 浏览器直接 <a href=外网URL> 下载拿不到写入元数据的机会。
  *
@@ -17,9 +17,13 @@ export const runtime = 'nodejs';
 
 const MAX_IMAGE_BYTES = 20 * 1024 * 1024;
 
-// 图片 URL 由客户端提供，必须同时满足「http(s) + 非内网 + 已知图片来源域」，
-// 否则这个端点就是一个对内网的代理（SSRF 入口）
-const ALLOWED_HOST_SUFFIXES = ['.fal.media', '.fal.run'];
+// 图片 URL 由客户端提供，必须同时满足「https + 非内网 + 已知图片来源域」，
+// 否则这个端点就是一个对内网的代理（SSRF 入口）。
+// 国内版的 AI 图片来自通义万相，结果存放在 DashScope 的阿里云 OSS 桶
+// （dashscope-result-<地域>.oss-<地域>.aliyuncs.com）。原来只放行 fal.ai 与 pollinations（境外）。
+function isAllowedImageHost(host: string): boolean {
+  return /^dashscope-result-[a-z0-9-]+\.oss-[a-z0-9-]+\.aliyuncs\.com$/.test(host);
+}
 
 function assertSafeImageUrl(raw: string): URL {
   let url: URL;
@@ -46,10 +50,7 @@ function assertSafeImageUrl(raw: string): URL {
   if (isPrivate) {
     throw new Error('url 不能指向内网地址');
   }
-  const allowed =
-    host === 'image.pollinations.ai' ||
-    ALLOWED_HOST_SUFFIXES.some((suffix) => host.endsWith(suffix));
-  if (!allowed) {
+  if (url.protocol !== 'https:' || !isAllowedImageHost(host)) {
     throw new Error('url 不是受支持的 AI 图片来源域');
   }
   return url;
@@ -57,7 +58,7 @@ function assertSafeImageUrl(raw: string): URL {
 
 export async function GET(request: NextRequest) {
   try {
-    requireAuth(request);
+    await requireAuth(request);
 
     const raw = request.nextUrl.searchParams.get('url') || '';
     if (!raw) {

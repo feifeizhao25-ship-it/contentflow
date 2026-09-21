@@ -151,81 +151,9 @@ describe('响应信封必须被解开', () => {
 });
 
 
-describe('新补的 AI 端点', () => {
-  const ROUTES = [
-    'ai/tts/openai',
-    'ai/tts/azure',
-    'ai/tts/elevenlabs',
-    'ai/subtitle/generate',
-    'ai/generate-script',
-    'ai/generate-video',
-    'ai/merge-videos',
-    'video/generate',
-  ];
-
-  ROUTES.forEach((route) => {
-    const file = path.join(WEB_SRC, 'app/api', route, 'route.ts');
-
-    it(`${route} 已实现`, () => {
-      expect(fs.existsSync(file)).toBe(true);
-    });
-
-    it(`${route} 要求登录`, () => {
-      // 这些端点会消耗第三方额度，匿名可调等于把账单敞开
-      expect(fs.readFileSync(file, 'utf8')).toContain('requireAuth');
-    });
-
-    it(`${route} 依赖不可用时返回 501 而不是假数据`, () => {
-      const src = fs.readFileSync(file, 'utf8');
-      // 依赖可能是 API 密钥（requireKey），也可能是系统组件
-      // （merge-videos 需要 ffmpeg 二进制），两类都必须显式声明
-      const declaresNotConfigured =
-        src.includes('requireKey') || src.includes('PROVIDER_NOT_CONFIGURED');
-      expect(declaresNotConfigured).toBe(true);
-      // 红线：任何情况下都不许返回编造的结果
-      expect(src).not.toMatch(/mock|fake|假数据|模拟结果/i);
-    });
-  });
-
-  it('TTS 直接透传音频字节，不做 JSON 包装', () => {
-    ['ai/tts/openai', 'ai/tts/azure', 'ai/tts/elevenlabs'].forEach((route) => {
-      const src = fs.readFileSync(path.join(WEB_SRC, 'app/api', route, 'route.ts'), 'utf8');
-      // 前端是 response.blob()，包一层 JSON 会让音频变成一段文本
-      expect(src).toContain('upstream.body');
-    });
-  });
-
-  it('Azure TTS 对用户文本做了 XML 转义', () => {
-    // SSML 是 XML，一个未转义的 & 或 < 就能让请求失败甚至被注入
-    const src = fs.readFileSync(path.join(WEB_SRC, 'app/api/ai/tts/azure/route.ts'), 'utf8');
-    expect(src).toContain('escapeXml');
-  });
-
-  it('字幕端点对 audio_url 做了 SSRF 防护', () => {
-    // audio_url 由客户端提供，不设防等于开了个内网探测入口
-    const src = fs.readFileSync(
-      path.join(WEB_SRC, 'app/api/ai/subtitle/generate/route.ts'),
-      'utf8',
-    );
-    expect(src).toContain('assertSafeAudioUrl');
-    expect(src).toMatch(/169\.254/);   // 云厂商元数据地址
-  });
-
-  it('video/generate 的 stepId 编号与前端 initSteps 同规则', () => {
-    // 编号错位会让进度条永远不动
-    const src = fs.readFileSync(path.join(WEB_SRC, 'app/api/video/generate/route.ts'), 'utf8');
-    expect(src).toContain('planSteps');
-    expect(src).toContain('step-');
-  });
-
-  it('拼接失败时不静默退回单个片段', () => {
-    // 服务层内部有「失败退回第一段」的兜底；用户主动点成片时
-    // 拿到一段 5 秒视频却以为是完整成片，比报错更糟
-    const src = fs.readFileSync(path.join(WEB_SRC, 'app/api/ai/merge-videos/route.ts'), 'utf8');
-    expect(src).toContain('MERGE_FAILED');
-  });
-});
-
+// AI 端点（国内版）的规则见 scripts/check-api-contract.mjs 第 3 节（npm test 实际执行的是那份）：
+// 语音合成、自动字幕、视频生成原来直连境外服务商，国内版返回 501 NOT_AVAILABLE_IN_CN；
+// 分镜脚本转给后端。
 
 describe('运行时依赖已声明', () => {
   it('Dockerfile 安装了 ffmpeg', () => {
@@ -235,16 +163,10 @@ describe('运行时依赖已声明', () => {
     expect(dockerfile).toMatch(/apk add[^\n]*ffmpeg/);
   });
 
-  it('.env.example 列出了新端点所需的全部变量', () => {
+  it('.env.example 不包含境外服务商的密钥变量', () => {
     const env = fs.readFileSync(path.join(WEB_SRC, '..', '.env.example'), 'utf8');
-    [
-      'OPENAI_API_KEY',
-      'OPENROUTER_API_KEY',
-      'AZURE_SPEECH_KEY',
-      'AZURE_SPEECH_REGION',
-      'ELEVENLABS_API_KEY',
-      'FAL_API_KEY',
-    ].forEach((key) => expect(env).toContain(key));
+    ['OPENAI_API_KEY', 'OPENROUTER_API_KEY', 'AZURE_SPEECH_KEY', 'ELEVENLABS_API_KEY', 'FAL_API_KEY', 'SUPABASE']
+      .forEach((key) => expect(env).not.toContain(key));
   });
 
   it('AI 密钥不带 NEXT_PUBLIC_ 前缀', () => {

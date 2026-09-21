@@ -9,8 +9,6 @@ const nextConfig = {
   turbopack: { root: process.cwd() },
   images: {
     remotePatterns: [
-      { protocol: 'https', hostname: 'fal.media' },
-      { protocol: 'https', hostname: 'fal-cdn.com' },
       { protocol: 'https', hostname: 'v1.siliconflow.cn' },
     ],
   },

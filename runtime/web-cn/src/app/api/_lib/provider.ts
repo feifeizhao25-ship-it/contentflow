@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { apiOrigin } from '../../../lib/api-proxy';
 
 /**
  * AI 路由的共享工具。
@@ -37,13 +38,43 @@ export function requireKey(provider: string, envVar: string): string {
   return key;
 }
 
-/** 登录态。这些端点会消耗第三方额度，必须先确认是登录用户。 */
-export function requireAuth(request: NextRequest): string {
+/**
+ * 登录态。这些端点会消耗额度或读取外部资源，必须是有效的登录用户。
+ *
+ * 原来只看 ff_token cookie **在不在**：任何人带一个 `ff_token=x` 就算登录。
+ * 现在拿它去后端 /auth/profile 验一次（验签 + 账号仍有效），不通过即 401。
+ */
+export async function requireAuth(request: NextRequest): Promise<string> {
   const token = request.cookies.get('ff_token')?.value;
-  if (!token) {
-    throw new UnauthorizedError();
+  if (!token) throw new UnauthorizedError();
+  let ok = false;
+  try {
+    const res = await fetch(`${apiOrigin()}/api/v1/auth/profile`, {
+      headers: { authorization: `Bearer ${token}` },
+      cache: 'no-store',
+    });
+    ok = res.ok;
+  } catch {
+    throw new Error('登录状态校验服务暂不可用');
   }
+  if (!ok) throw new UnauthorizedError();
   return token;
+}
+
+/**
+ * 国内版未开通的能力（语音合成、自动字幕、视频生成）。
+ *
+ * 这些端点原来直连 OpenAI、Azure、ElevenLabs、fal.ai（均在境外）。国内版只接境内服务商，
+ * 在接入境内供应商之前如实返回 501，不向境外发送任何数据、也不返回假结果。
+ */
+export function notAvailableInChina(feature: string): NextResponse {
+  return NextResponse.json(
+    {
+      error: `${feature}在国内版暂未开通：需要接入境内服务商后提供`,
+      code: 'NOT_AVAILABLE_IN_CN',
+    },
+    { status: 501 },
+  );
 }
 
 export class UnauthorizedError extends Error {

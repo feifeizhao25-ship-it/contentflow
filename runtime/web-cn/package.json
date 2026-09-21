@@ -8,7 +8,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint src",
-    "test": "npm run check:contract && npm run test:security && npm run test:image-label && npm run test:image-label-browser && npm run test:entitlements && npm run test:editor-security && npm run test:api-proxy && npm run test:domestic-session",
+    "test": "npm run check:contract && npm run test:security && npm run test:image-label && npm run test:image-label-browser && npm run test:entitlements && npm run test:editor-security && npm run test:api-proxy && npm run test:domestic-session && npm run test:ai-routes",
     "test:editor-security": "node scripts/test-editor-security.mjs",
     "check:contract": "node scripts/check-api-contract.mjs",
     "test:security": "node --experimental-strip-types scripts/test-media-path-guard.mjs",
@@ -16,12 +16,12 @@
     "test:image-label-browser": "node --experimental-strip-types scripts/test-ai-image-label-browser.mjs",
     "test:entitlements": "node --experimental-strip-types scripts/test-entitlements.mjs",
     "test:api-proxy": "node --experimental-strip-types scripts/test-api-proxy.mjs",
-    "test:domestic-session": "node --import ./scripts/ts-extensionless.mjs --experimental-strip-types scripts/test-domestic-session.mjs"
+    "test:domestic-session": "node --import ./scripts/ts-extensionless.mjs --experimental-strip-types scripts/test-domestic-session.mjs",
+    "test:ai-routes": "node --import ./scripts/ts-extensionless.mjs --experimental-transform-types scripts/test-ai-routes.mjs"
   },
   "dependencies": {
     "@ant-design/icons": "^5.4.0",
     "@ant-design/nextjs-registry": "^1.0.0",
-    "@fal-ai/client": "^1.10.0",
     "@sentry/nextjs": "^10.69.0",
     "@tiptap/core": "3.31.3",
     "@tiptap/pm": "3.31.3",

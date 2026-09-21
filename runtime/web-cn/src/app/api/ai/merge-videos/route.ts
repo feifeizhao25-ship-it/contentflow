@@ -9,7 +9,7 @@ export const runtime = 'nodejs';
  */
 export async function POST(request: NextRequest) {
   try {
-    requireAuth(request);
+    await requireAuth(request);
     const body = await request.json();
     const urls = Array.isArray(body?.videoUrls)
       ? body.videoUrls.map((url: unknown) => String(url ?? '').trim()).filter(Boolean)
