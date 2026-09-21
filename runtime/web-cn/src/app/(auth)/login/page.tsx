@@ -5,6 +5,7 @@ import { Card, Form, Input, Button, message, Divider, Checkbox } from 'antd';
 import { UserOutlined, LockOutlined, MailOutlined } from '@ant-design/icons';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { safeRedirectTarget } from '@/lib/safe-redirect';
 
 export default function LoginPage() {
     const [loading, setLoading] = useState(false);
@@ -29,7 +30,7 @@ export default function LoginPage() {
             if (res.user) {
                 localStorage.setItem('user_info', JSON.stringify(res.user));
                 message.success('登录成功！');
-                router.push('/overview');
+                router.push(safeRedirectTarget(new URLSearchParams(window.location.search).get('redirect')));
                 return;
             }
 

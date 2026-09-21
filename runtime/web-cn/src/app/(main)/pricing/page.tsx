@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import {
     CheckCircleFilled,
@@ -10,13 +10,58 @@ import {
     SafetyCertificateOutlined,
     GiftFilled
 } from '@ant-design/icons';
-import { Button } from 'antd';
+import { Button, Modal, QRCode, Radio, Alert, message } from 'antd';
 import clsx from 'clsx';
 import { useRouter, useSearchParams } from 'next/navigation';
 import registry from '@/lib/entitlements.json';
 import { buildFallbackPlans } from '@/lib/entitlements';
+import { fetchCurrentUser } from '@/lib/session';
+import {
+    PaymentError,
+    checkoutAction,
+    createCheckoutOrder,
+    fetchSubscriptionSnapshot,
+    isAlipayReturn,
+    newIdempotencyKey,
+    waitForActivation,
+    type PaymentMethod,
+    type SubscriptionSnapshot,
+} from '@/lib/payment-service';
+
+type CheckoutState =
+    | { step: 'choose' }
+    | { step: 'creating' }
+    | { step: 'qrcode'; orderNo: string; amount: number | null; value: string }
+    | { step: 'redirecting'; orderNo: string }
+    | { step: 'waiting'; orderNo?: string }
+    | { step: 'done' }
+    | { step: 'timeout'; orderNo?: string }
+    | { step: 'error'; message: string };
 
 const fallbackPlans = buildFallbackPlans(registry);
+
+// 支付宝收银台是整页跳转，回来时页面已重新加载：把「买的是哪个套餐、付款前的状态」暂存在本标签页。
+const PENDING_KEY = 'contentflow.pendingCheckout';
+type PendingCheckout = { planId: string; orderNo: string; before: SubscriptionSnapshot | null };
+
+function savePendingCheckout(value: PendingCheckout) {
+    try {
+        window.sessionStorage.setItem(PENDING_KEY, JSON.stringify(value));
+    } catch {
+        // 隐私模式等：回来后按「暂未收到支付结果」处理
+    }
+}
+
+function takePendingCheckout(): PendingCheckout | null {
+    try {
+        const raw = window.sessionStorage.getItem(PENDING_KEY);
+        window.sessionStorage.removeItem(PENDING_KEY);
+        const parsed = raw ? JSON.parse(raw) : null;
+        return parsed && typeof parsed.planId === 'string' ? parsed : null;
+    } catch {
+        return null;
+    }
+}
 
 function PricingContent() {
     const searchParams = useSearchParams();
@@ -77,7 +122,8 @@ function PricingContent() {
         description: plan.custom ? '按团队规模与服务范围报价' : '价格与权益由服务端统一管理',
         features: (Array.isArray(plan.features) ? plan.features.map(String) : []) as string[],
         icon: plan.id === 'enterprise' ? <CrownFilled /> : plan.id === 'team' ? <SafetyCertificateOutlined /> : plan.id === 'pro' ? <ThunderboltFilled /> : <RocketFilled />,
-        buttonText: plan.id === 'free' ? '免费使用' : plan.custom ? '联系商务顾问' : '申请开通',
+        buttonText: plan.id === 'free' ? '免费使用' : plan.custom ? '联系商务顾问' : '立即开通',
+        custom: Boolean(plan.custom),
         highlight: plan.id === 'pro',
         disabled: plan.id === 'free',
         color: plan.id === 'pro' ? 'text-indigo-500' : 'text-zinc-500',
@@ -85,10 +131,126 @@ function PricingContent() {
         credits: undefined as string | undefined,
     }));
 
-    const handlePurchase = (id: string) => {
-        setLoadingPlan(id);
-        router.push(`/login?redirect=${encodeURIComponent(`/pricing?plan=${id}`)}`);
+    // ── 下单 ──────────────────────────────────────────────────────────
+    // 原来无论是否登录，点「申请开通」一律跳登录页，登录回来还是这个按钮：没有任何路径能付款。
+    const [checkoutPlan, setCheckoutPlan] = useState<{ id: string; name: string; price: number | null } | null>(null);
+    const [payMethod, setPayMethod] = useState<PaymentMethod>('wechat');
+    const [checkout, setCheckout] = useState<CheckoutState>({ step: 'choose' });
+    const idempotencyKey = useRef<string>('');
+    const baseline = useRef<SubscriptionSnapshot | null>(null);
+    const poller = useRef<AbortController | null>(null);
+
+    const stopPolling = () => {
+        poller.current?.abort();
+        poller.current = null;
     };
+    useEffect(() => stopPolling, []);
+
+    const goLogin = useCallback((id: string) => {
+        router.push(`/login?redirect=${encodeURIComponent(`/pricing?plan=${id}`)}`);
+    }, [router]);
+
+    const startWaiting = useCallback(async (planId: string, orderNo?: string, keepScreen = false) => {
+        stopPolling();
+        const controller = new AbortController();
+        poller.current = controller;
+        if (!keepScreen) setCheckout({ step: 'waiting', orderNo });
+        try {
+            const before = baseline.current ?? { plan: '', renewalDate: null };
+            const ok = await waitForActivation(before, planId, { signal: controller.signal });
+            if (controller.signal.aborted) return;
+            setCheckout(ok ? { step: 'done' } : { step: 'timeout', orderNo });
+            if (ok) message.success('会员已开通');
+        } catch (error) {
+            if (controller.signal.aborted) return;
+            setCheckout({ step: 'error', message: error instanceof Error ? error.message : '查询支付结果失败' });
+        }
+    }, []);
+
+    const handlePurchase = async (id: string) => {
+        const plan = displayedPlans.find((item) => item.id === id);
+        if (!plan || plan.disabled) return;
+        if (plan.custom) {
+            message.info('企业版按团队规模报价，请联系商务顾问');
+            return;
+        }
+        setLoadingPlan(id);
+        try {
+            const user = await fetchCurrentUser();
+            if (!user) {
+                goLogin(id);
+                return;
+            }
+            baseline.current = await fetchSubscriptionSnapshot().catch(() => null);
+            idempotencyKey.current = newIdempotencyKey();
+            setCheckout({ step: 'choose' });
+            setCheckoutPlan({ id: plan.id, name: plan.name, price: plan.price ?? null });
+        } finally {
+            setLoadingPlan(null);
+        }
+    };
+
+    const confirmPayment = async () => {
+        if (!checkoutPlan) return;
+        setCheckout({ step: 'creating' });
+        try {
+            const order = await createCheckoutOrder(
+                { planId: checkoutPlan.id, billingCycle: isYearly ? 'yearly' : 'monthly', paymentMethod: payMethod },
+                idempotencyKey.current,
+            );
+            const action = checkoutAction(order);
+            if (action.kind === 'redirect') {
+                setCheckout({ step: 'redirecting', orderNo: order.orderNo });
+                savePendingCheckout({ planId: checkoutPlan.id, orderNo: order.orderNo, before: baseline.current });
+                window.location.href = action.url;
+                return;
+            }
+            if (action.kind === 'duplicate') {
+                void startWaiting(checkoutPlan.id, order.orderNo);
+                return;
+            }
+            // 二维码一直显示，后台轮询到账后再切到「已开通」
+            setCheckout({ step: 'qrcode', orderNo: order.orderNo, amount: order.amount, value: action.value });
+            void startWaiting(checkoutPlan.id, order.orderNo, true);
+        } catch (error) {
+            if (error instanceof PaymentError && error.status === 401) {
+                goLogin(checkoutPlan.id);
+                return;
+            }
+            setCheckout({ step: 'error', message: error instanceof Error ? error.message : '下单失败，请稍后重试' });
+        }
+    };
+
+    const closeCheckout = () => {
+        stopPolling();
+        setCheckoutPlan(null);
+        setCheckout({ step: 'choose' });
+    };
+
+    // 登录后回到 /pricing?plan=xxx：直接打开该套餐的付款窗口。
+    // 支付宝付款后回到 ALIPAY_RETURN_URL（/pricing?out_trade_no=…）：等后端收到签名通知。
+    const resumed = useRef(false);
+    useEffect(() => {
+        if (resumed.current || !plansLoaded) return;
+        resumed.current = true;
+        if (isAlipayReturn(searchParams)) {
+            const pending = takePendingCheckout();
+            const orderNo = searchParams.get('out_trade_no') || undefined;
+            const plan = pending ? displayedPlans.find((item) => item.id === pending.planId) : undefined;
+            setCheckoutPlan({ id: pending?.planId ?? '', name: plan?.name ?? '会员', price: null });
+            if (!pending || (pending.orderNo && orderNo && pending.orderNo !== orderNo)) {
+                // 换了浏览器或会话：不知道买的是哪个套餐，只能请用户稍后看结果
+                setCheckout({ step: 'timeout', orderNo });
+                return;
+            }
+            baseline.current = pending.before ?? { plan: '', renewalDate: null };
+            void startWaiting(pending.planId, orderNo);
+            return;
+        }
+        const wanted = searchParams.get('plan');
+        if (wanted) void handlePurchase(wanted);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [plansLoaded]);
 
     return (
         <div className="min-h-screen pb-24 relative overflow-hidden">
@@ -195,6 +357,62 @@ function PricingContent() {
                     ))}
 
                 </div>
+
+                <Modal
+                    open={checkoutPlan !== null}
+                    onCancel={closeCheckout}
+                    footer={null}
+                    title={checkoutPlan ? `开通${checkoutPlan.name}` : ''}
+                    destroyOnClose
+                >
+                    {checkout.step === 'choose' || checkout.step === 'creating' ? (
+                        <div className="space-y-5">
+                            {checkoutPlan?.price != null && (
+                                <p className="text-zinc-600">应付金额以订单为准：<span className="text-2xl font-black">¥{checkoutPlan.price}</span> / 月</p>
+                            )}
+                            <Radio.Group value={payMethod} onChange={(e) => setPayMethod(e.target.value)} disabled={checkout.step === 'creating'}>
+                                <Radio.Button value="wechat">微信支付</Radio.Button>
+                                <Radio.Button value="alipay">支付宝</Radio.Button>
+                            </Radio.Group>
+                            <p className="text-xs text-zinc-400">
+                                只有工作区所有者或管理员可以购买。付款成功后由支付平台通知服务端开通，通常几秒内到账。
+                            </p>
+                            <Button type="primary" block size="large" loading={checkout.step === 'creating'} onClick={confirmPayment}>
+                                确认并支付
+                            </Button>
+                        </div>
+                    ) : checkout.step === 'qrcode' ? (
+                        <div className="flex flex-col items-center gap-4">
+                            <QRCode value={checkout.value} size={200} />
+                            <p className="text-zinc-600">请用微信扫码支付{checkout.amount != null ? ` ¥${checkout.amount}` : ''}</p>
+                            <p className="text-xs text-zinc-400">订单号 {checkout.orderNo} · 支付完成后本窗口会自动更新</p>
+                        </div>
+                    ) : checkout.step === 'redirecting' ? (
+                        <p className="text-zinc-600">正在前往支付宝收银台…</p>
+                    ) : checkout.step === 'waiting' ? (
+                        <div className="space-y-2">
+                            <p className="text-zinc-600">正在确认支付结果，请稍候…</p>
+                            {checkout.orderNo && <p className="text-xs text-zinc-400">订单号 {checkout.orderNo}</p>}
+                        </div>
+                    ) : checkout.step === 'done' ? (
+                        <div className="space-y-4">
+                            <Alert type="success" showIcon message="会员已开通" />
+                            <Button block onClick={() => { closeCheckout(); router.push('/dashboard'); }}>开始使用</Button>
+                        </div>
+                    ) : checkout.step === 'timeout' ? (
+                        <Alert
+                            type="warning"
+                            showIcon
+                            message="暂未收到支付结果"
+                            description={`如果已经付款，权益会在支付平台通知到达后自动开通，请稍后刷新本页。${checkout.orderNo ? `如有疑问请提供订单号 ${checkout.orderNo}。` : ''}`}
+                        />
+                    ) : (
+                        <div className="space-y-4">
+                            <Alert type="error" showIcon message="未能下单" description={checkout.message} />
+                            <Button block onClick={() => { idempotencyKey.current = newIdempotencyKey(); setCheckout({ step: 'choose' }); }}>重新选择</Button>
+                        </div>
+                    )}
+                </Modal>
 
                 {/* FAQ Section */}
                 <div className="max-w-4xl mx-auto mb-20">
