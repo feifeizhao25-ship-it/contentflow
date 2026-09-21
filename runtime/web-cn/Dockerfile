@@ -7,13 +7,9 @@ RUN npm config set fetch-retries 5 \
     && npm ci
 COPY . .
 ENV NEXT_TELEMETRY_DISABLED=1
-ARG NEXT_PUBLIC_SUPABASE_URL
-ARG NEXT_PUBLIC_SUPABASE_ANON_KEY
-ENV NEXT_PUBLIC_SUPABASE_URL=$NEXT_PUBLIC_SUPABASE_URL \
-    NEXT_PUBLIC_SUPABASE_ANON_KEY=$NEXT_PUBLIC_SUPABASE_ANON_KEY
-# These are browser-public settings, never a service-role key. Reject fixture
-# hosts here so the release image cannot embed CI's unreachable placeholders.
-RUN node -e 'const u = new URL(process.env.NEXT_PUBLIC_SUPABASE_URL); if (u.protocol !== "https:" || u.hostname.endsWith(".invalid") || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) throw new Error("国内公开后端地址和匿名公钥未正确配置")'
+# 国内版不连 Supabase（境外数据库）：登录、账号、素材一律经 api-cn。
+# 原来这里要求构建时提供 Supabase 地址与匿名公钥，否则拒绝构建——
+# 等于国内版必须接一个境外数据库才能打包。
 RUN npm run build
 
 FROM node:22-alpine AS runtime

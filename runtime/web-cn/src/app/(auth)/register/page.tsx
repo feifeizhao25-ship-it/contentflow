@@ -1,58 +1,46 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Card, Form, Input, Button, message, Divider, Select, Checkbox } from 'antd';
+import { Card, Form, Input, Button, message, Divider, Checkbox } from 'antd';
 import { UserOutlined, LockOutlined, MailOutlined, TeamOutlined } from '@ant-design/icons';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { supabase } from '@/lib/supabase';
 
-const { Option } = Select;
 
-import { apiClient } from '@/lib/api-client';
 
 export default function RegisterPage() {
     const [loading, setLoading] = useState(false);
     const router = useRouter();
 
+    // 注册只走自己的后端（/api/auth/register → NestJS），成功后服务端写入登录 cookie。
+    //
+    // 此前：直接调 /api/v1/auth/register 并多带一个 plan 字段——后端校验管道
+    // forbidNonWhitelisted，**任何注册都是 400**；失败后本应「回退到 Supabase」
+    // 注册到境外数据库。套餐也不该在注册时选（下拉里的价格与服务端套餐不一致），
+    // 注册一律是免费版，付费在「会员方案」页下单。
     const onFinish = async (values: any) => {
         setLoading(true);
         try {
-            // 尝试通过 NestJS 后端注册
-            // 响应被 TransformInterceptor 包成 { success, data, meta }，需解包
-            const res = await apiClient.post<any>('/auth/register', {
-                email: values.email,
-                password: values.password,
-                name: values.name,
-                tenantName: values.tenantName,
-                plan: values.plan
+            const response = await fetch('/api/auth/register', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify({
+                    email: values.email,
+                    password: values.password,
+                    name: values.name,
+                    tenantName: values.tenantName,
+                }),
             });
-
-            if ((res?.data?.token ?? res?.token)) {
-                message.success('注册成功！');
-                router.push('/login');
-                return;
+            const payload = await response.json().catch(() => ({}));
+            if (!response.ok) {
+                const reason = Array.isArray(payload?.message) ? payload.message[0] : payload?.message;
+                throw new Error(typeof reason === 'string' && /[一-鿿]/.test(reason) ? reason : '注册失败，请稍后重试');
             }
-
-            // 回退到 Supabase
-            const { data: authData, error: authError } = await supabase.auth.signUp({
-                email: values.email,
-                password: values.password,
-                options: {
-                    data: {
-                        name: values.name,
-                        tenant_name: values.tenantName,
-                        plan: values.plan,
-                    },
-                },
-            });
-
-            if (authError) throw authError;
-            message.success('注册成功！请查收验证邮件');
-            router.push('/login');
+            message.success('注册成功');
+            router.push('/studio');
         } catch (error: any) {
-            console.error('Register error:', error);
-            message.error(error.message || '注册失败，请重试');
+            message.error(error?.message || '注册失败，请重试');
         } finally {
             setLoading(false);
         }
@@ -139,23 +127,11 @@ export default function RegisterPage() {
                     </Form.Item>
 
                     <Form.Item
-                        name="plan"
-                        initialValue="free"
-                        rules={[{ required: true, message: '请选择套餐' }]}
-                    >
-                        <Select placeholder="选择套餐">
-                            <Option value="free">免费版 - ¥0/月</Option>
-                            <Option value="pro">专业版 - ¥99/月</Option>
-                            <Option value="team">团队版 - ¥299/月</Option>
-                            <Option value="enterprise">企业版 - ¥899/月</Option>
-                        </Select>
-                    </Form.Item>
-
-                    <Form.Item
                         name="password"
                         rules={[
                             { required: true, message: '请输入密码' },
                             { min: 6, message: '密码至少6位' },
+                            { max: 20, message: '密码最多20位' },
                         ]}
                     >
                         <Input.Password

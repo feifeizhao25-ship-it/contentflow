@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { supabase } from '@/lib/supabase';
+import { fetchCurrentUser } from '@/lib/session';
 import { apiClient } from '@/lib/api-client';
 import registry from '@/lib/entitlements.json';
 import type { TierId } from '@/lib/entitlements';
@@ -68,20 +68,16 @@ export function usePermissions() {
         }
     }, []);
 
-    // 获取用户积分
-    const fetchPoints = useCallback(async (userId: string) => {
+    // 获取用户积分（后端 /points/balance；国内版之外没有这个模块时按 0 显示）
+    const fetchPoints = useCallback(async (_userId: string): Promise<UserPoints | null> => {
         try {
-            const { data, error } = await supabase
-                .from('user_points')
-                .select('balance, total_earned, level, experience_points')
-                .eq('user_id', userId)
-                .single();
-
-            if (error || !data) {
-                return { balance: 0, total_earned: 0, level: 1, experience_points: 0 };
-            }
-
-            return data;
+            const data = await apiClient.get<any>('/points/balance');
+            return {
+                balance: Number(data?.balance ?? 0),
+                total_earned: Number(data?.total_earned ?? 0),
+                level: Number(data?.level ?? 1),
+                experience_points: Number(data?.experience_points ?? data?.total_earned ?? 0),
+            };
         } catch (error) {
             console.error('Error fetching points:', error);
             return null;
@@ -93,8 +89,9 @@ export function usePermissions() {
         const init = async () => {
             setLoading(true);
             try {
-                const { data: { user } } = await supabase.auth.getUser();
-                
+                const current = await fetchCurrentUser();
+                const user = current?.profile;
+
                 if (user) {
                     const [sub, pts] = await Promise.all([
                         fetchSubscription(user.id),
@@ -115,7 +112,7 @@ export function usePermissions() {
 
     // 刷新数据
     const refresh = useCallback(async () => {
-        const { data: { user } } = await supabase.auth.getUser();
+        const user = (await fetchCurrentUser())?.profile;
         if (user) {
             const [sub, pts] = await Promise.all([
                 fetchSubscription(user.id),
@@ -232,19 +229,17 @@ export function useAuthCheck() {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
+        let cancelled = false;
         const check = async () => {
-            const { data: { session } } = await supabase.auth.getSession();
-            setIsAuthenticated(!!session);
-            setLoading(false);
+            const current = await fetchCurrentUser();
+            if (!cancelled) {
+                setIsAuthenticated(!!current);
+                setLoading(false);
+            }
         };
 
         check();
-
-        const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-            setIsAuthenticated(!!session);
-        });
-
-        return () => subscription.unsubscribe();
+        return () => { cancelled = true; };
     }, []);
 
     return { isAuthenticated, loading };

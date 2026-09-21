@@ -22,7 +22,7 @@ import {
     CrownFilled,
 } from '@ant-design/icons';
 import type { UploadProps } from 'antd';
-import { supabase } from '@/lib/supabase';
+import { fetchCurrentUser } from '@/lib/session';
 import { getUserMaterials, getStorageUsage, Material } from '@/lib/materials-service';
 import { usePermissions } from '@/hooks/usePermissions';
 import clsx from 'clsx';
@@ -61,7 +61,7 @@ export default function MaterialsPage() {
     // 获取用户ID并加载数据
     useEffect(() => {
         const init = async () => {
-            const { data: { user } } = await supabase.auth.getUser();
+            const user = (await fetchCurrentUser())?.profile;
             if (user) {
                 setUserId(user.id);
                 await loadMaterials(user.id);
@@ -114,7 +114,8 @@ export default function MaterialsPage() {
             }
         } catch (error) {
             console.error('上传失败:', error);
-            message.error('上传失败');
+            // 后端会说明原因（例如对象存储尚未接入），原样展示，不笼统写「上传失败」。
+            message.error(error instanceof Error && error.message ? error.message : '上传失败');
         } finally {
             setLoading(false);
         }
@@ -143,7 +144,7 @@ export default function MaterialsPage() {
                     }
                 } catch (error) {
                     console.error('删除失败:', error);
-                    message.error('删除失败');
+                    message.error(error instanceof Error && error.message ? error.message : '删除失败');
                 }
             },
         });
@@ -165,6 +166,7 @@ export default function MaterialsPage() {
             ));
         } catch (error) {
             console.error('操作失败:', error);
+            message.error(error instanceof Error && error.message ? error.message : '操作失败');
         }
     };
 

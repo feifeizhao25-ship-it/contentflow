@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { Profile, Tenant } from '@/lib/supabase';
+import { fetchCurrentUser, type Profile, type Tenant } from '@/lib/session';
 
 interface AppState {
     // User & Tenant
@@ -39,34 +39,9 @@ export const useAppStore = create<AppState>((set) => ({
 
     // Auth Actions
     initializeAuth: async () => {
-        const { supabase } = await import('@/lib/supabase');
-        const { data: { session } } = await supabase.auth.getSession();
-
-        if (session?.user) {
-            // Fetch Profile
-            const { data: profile } = await supabase
-                .from('profiles')
-                .select('*')
-                .eq('id', session.user.id)
-                .single();
-
-            if (profile) {
-                set({ user: profile as Profile });
-
-                // Fetch Tenant
-                const { data: tenant } = await supabase
-                    .from('tenants')
-                    .select('*')
-                    .eq('id', profile.tenant_id)
-                    .single();
-
-                if (tenant) {
-                    set({ tenant: tenant as Tenant });
-                }
-            }
-        } else {
-            set({ user: null, tenant: null });
-        }
+        // 身份以后端为准（ff_token → /auth/profile），不再读 Supabase 会话。
+        const current = await fetchCurrentUser();
+        set({ user: current?.profile ?? null, tenant: current?.tenant ?? null });
     }
 }));
 

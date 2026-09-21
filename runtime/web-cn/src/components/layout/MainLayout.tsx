@@ -133,9 +133,9 @@ export default function MainLayout({ children }: MainLayoutProps) {
             label: '退出登录',
             danger: true,
             onClick: async () => {
-                const { supabase } = await import('@/lib/supabase');
-                await supabase.auth.signOut();
-                window.location.href = '/login';
+                // 登录态是 httpOnly 的 ff_token，只有服务端能清（原来调的是 Supabase 退出，cookie 还在）。
+                const { logout } = await import('@/lib/session');
+                await logout();
             }
         },
     ];
