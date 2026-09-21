@@ -21,10 +21,24 @@ const nextConfig = {
   },
 };
 
+// 构建期：Sentry 插件默认把 source map 传到 sentry.io，并向 sentry.io 发构建遥测。
+// 国内版只允许传到境内自建 Sentry（SENTRY_URL），遥测一律关闭。
+const sentryUrl = process.env.SENTRY_URL || '';
+const domesticSentry = (() => {
+  try {
+    const url = new URL(sentryUrl);
+    return url.protocol === 'https:' && !/(^|\.)sentry\.io$/i.test(url.hostname);
+  } catch {
+    return false;
+  }
+})();
+
 export default withSentryConfig(nextConfig, {
   silent: true,
+  telemetry: false,
+  sentryUrl: domesticSentry ? sentryUrl : undefined,
   org: process.env.SENTRY_ORG,
   project: process.env.SENTRY_PROJECT,
-  authToken: process.env.SENTRY_AUTH_TOKEN,
-  sourcemaps: { disable: !process.env.SENTRY_AUTH_TOKEN },
+  authToken: domesticSentry ? process.env.SENTRY_AUTH_TOKEN : undefined,
+  sourcemaps: { disable: !(domesticSentry && process.env.SENTRY_AUTH_TOKEN) },
 });
