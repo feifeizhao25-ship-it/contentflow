@@ -1,7 +1,5 @@
 import { withSentryConfig } from '@sentry/nextjs/config';
 
-const apiBase = (process.env.API_INTERNAL_URL || process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:4000').replace(/\/$/, '');
-
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   output: 'standalone',
@@ -19,12 +17,9 @@ const nextConfig = {
       { protocol: 'https', hostname: 'v1.siliconflow.cn' },
     ],
   },
-  async rewrites() {
-    return [
-      { source: '/api/v1/:path*', destination: `${apiBase}/api/v1/:path*` },
-      { source: '/api/health', destination: `${apiBase}/health` },
-    ];
-  },
+  // 不要再加 `/api/v1/:path*` 的 rewrite：它先于 src/app/api/v1/[...path]/route.ts 生效，
+  // 请求就不带 Authorization 直接到后端，所有登录后的接口 401（见该文件头部说明）。
+  // /api/health 由 src/app/api/health/route.ts 处理。
   webpack(config) {
     if (process.env.NEXT_DISABLE_WEBPACK_CACHE === '1') config.cache = false;
     return config;
