@@ -1,5 +1,6 @@
 import { Controller, Post, Body, HttpCode, HttpStatus, Get, UseGuards, Request } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
+import { Throttle } from '@nestjs/throttler';
 import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
@@ -11,6 +12,7 @@ export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
   @Post('register')
+  @Throttle({ default: { ttl: 60_000, limit: 10 } }) // 登录/注册：每个地址每分钟 10 次
   @ApiOperation({ summary: '用户注册' })
   @ApiResponse({ status: 201, description: '注册成功' })
   @ApiResponse({ status: 409, description: '邮箱已被注册' })
@@ -19,6 +21,7 @@ export class AuthController {
   }
 
   @Post('login')
+  @Throttle({ default: { ttl: 60_000, limit: 10 } }) // 登录/注册：每个地址每分钟 10 次
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: '用户登录' })
   @ApiResponse({ status: 200, description: '登录成功' })

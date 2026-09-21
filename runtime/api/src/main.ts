@@ -1,10 +1,9 @@
 import { NestFactory } from '@nestjs/core';
-import { ValidationPipe, Logger } from '@nestjs/common';
+import { Logger } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { ConfigService } from '@nestjs/config';
 import { AppModule } from './app.module';
-import { HttpExceptionFilter } from './common/filters/http-exception.filter';
-import { TransformInterceptor } from './common/interceptors/transform.interceptor';
+import { configureApp } from './bootstrap';
 
 async function bootstrap() {
   const logger = new Logger('Bootstrap');
@@ -19,40 +18,13 @@ async function bootstrap() {
   
   const configService = app.get(ConfigService);
   
-  // 全局前缀
-  app.setGlobalPrefix('api/v1', {
-    exclude: ['health', 'docs'],
-  });
-  
-  // CORS配置
   const allowedOrigins = configService
     .get<string>('CORS_ORIGIN', '')
     .split(',')
     .map((origin) => origin.trim())
     .filter(Boolean);
-  app.enableCors({
-    origin: allowedOrigins.length > 0 ? allowedOrigins : false,
-    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-    credentials: true,
-  });
-  
-  // 全局验证管道
-  app.useGlobalPipes(
-    new ValidationPipe({
-      whitelist: true,
-      forbidNonWhitelisted: true,
-      transform: true,
-      transformOptions: {
-        enableImplicitConversion: true,
-      },
-    }),
-  );
-  
-  // 全局过滤器
-  app.useGlobalFilters(new HttpExceptionFilter());
-  
-  // 全局拦截器
-  app.useGlobalInterceptors(new TransformInterceptor());
+  // 前缀、CORS、校验、异常与响应包装、反向代理信任：见 bootstrap.ts（测试也用同一份配置）。
+  configureApp(app, allowedOrigins);
   
   // Swagger文档
   const swaggerConfig = new DocumentBuilder()

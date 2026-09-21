@@ -116,11 +116,13 @@ export function marketModulesFor(region: string | undefined) {
       validate: validateProductionConfig,
     }),
     
-    // 限流保护
+    // 限流保护。@nestjs/throttler v5 起 ttl 的单位是**毫秒**：原来写的 60 是 60 毫秒，
+    // 即每个地址每 60ms 可以 100 次——等于没有限流（登录可以随便撞库）。
+    // 按地址计数依赖 bootstrap.ts 里的 trust proxy，否则所有人都算成 web-cn 一个地址。
     ThrottlerModule.forRoot([
       {
-        ttl: 60,
-        limit: 100, // 每分钟100次请求
+        ttl: 60_000,
+        limit: 100, // 每个客户端地址每分钟 100 次
       },
     ]),
     
