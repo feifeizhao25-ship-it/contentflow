@@ -4,7 +4,7 @@ import { domesticSentryDsn } from './lib/sentry-dsn';
 export async function register() {
   const dsn = domesticSentryDsn(process.env.SENTRY_DSN);
   if (process.env.SENTRY_DSN && !dsn) {
-    console.warn('SENTRY_DSN 不是境内自建 Sentry 的 https 地址，已停用错误上报');
+    console.warn('SENTRY_DSN 未匹配配置的自建 SENTRY_URL，已停用错误上报');
   }
   Sentry.init({
     dsn,

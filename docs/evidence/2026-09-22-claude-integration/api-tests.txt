@@ -1,0 +1,176 @@
+
+> fenfaxia-api@1.0.0 test
+> jest --runInBand
+
+PASS src/modules/ai/domestic-providers.spec.ts
+[Nest] 9573  - 09/22/2026, 9:39:42 PM     LOG [AIService] AI generation completed via deepseek: 8 tokens
+[Nest] 9573  - 09/22/2026, 9:39:42 PM     LOG [AIService] AI generation completed via qwen: 8 tokens
+[Nest] 9573  - 09/22/2026, 9:39:42 PM     LOG [AIService] AI generation completed via deepseek: 8 tokens
+[Nest] 9573  - 09/22/2026, 9:39:42 PM     LOG [AIService] AI generation completed via deepseek: 8 tokens
+[Nest] 9573  - 09/22/2026, 9:39:42 PM     LOG [AIService] AI generation completed via deepseek: 8 tokens
+[Nest] 9573  - 09/22/2026, 9:39:43 PM   ERROR [HttpExceptionFilter] GET /health/ready - 503: Service Unavailable Exception
+ServiceUnavailableException: Service Unavailable Exception
+    at SystemController.ready (/Users/feifei00/Documents/CodexWorktrees/contentflow-production/runtime/api/src/modules/system/system.controller.ts:54:19)
+    at processTicksAndRejections (node:internal/process/task_queues:104:5)
+[Nest] 9573  - 09/22/2026, 9:39:43 PM   ERROR [HttpExceptionFilter] GET /health/ready - 503: Service Unavailable Exception
+ServiceUnavailableException: Service Unavailable Exception
+    at SystemController.ready (/Users/feifei00/Documents/CodexWorktrees/contentflow-production/runtime/api/src/modules/system/system.controller.ts:54:19)
+    at processTicksAndRejections (node:internal/process/task_queues:104:5)
+[Nest] 9573  - 09/22/2026, 9:39:43 PM   ERROR [HttpExceptionFilter] POST /api/v1/auth/login - 401: 邮箱或密码错误
+UnauthorizedException: 邮箱或密码错误
+    at Object.login (/Users/feifei00/Documents/CodexWorktrees/contentflow-production/runtime/api/src/bootstrap.spec.ts:41:70)
+    at AuthController.login (/Users/feifei00/Documents/CodexWorktrees/contentflow-production/runtime/api/src/modules/auth/auth.controller.ts:30:29)
+    at /Users/feifei00/Documents/CodexWorktrees/contentflow-production/runtime/api/node_modules/@nestjs/core/router/router-execution-context.js:38:29
+    at processTicksAndRejections (node:internal/process/task_queues:104:5)
+[Nest] 9573  - 09/22/2026, 9:39:43 PM   ERROR [HttpExceptionFilter] POST /api/v1/auth/login - 401: 邮箱或密码错误
+UnauthorizedException: 邮箱或密码错误
+    at Object.login (/Users/feifei00/Documents/CodexWorktrees/contentflow-production/runtime/api/src/bootstrap.spec.ts:41:70)
+    at AuthController.login (/Users/feifei00/Documents/CodexWorktrees/contentflow-production/runtime/api/src/modules/auth/auth.controller.ts:30:29)
+    at /Users/feifei00/Documents/CodexWorktrees/contentflow-production/runtime/api/node_modules/@nestjs/core/router/router-execution-context.js:38:29
+    at processTicksAndRejections (node:internal/process/task_queues:104:5)
+[Nest] 9573  - 09/22/2026, 9:39:43 PM   ERROR [HttpExceptionFilter] POST /api/v1/auth/login - 401: 邮箱或密码错误
+UnauthorizedException: 邮箱或密码错误
+    at Object.login (/Users/feifei00/Documents/CodexWorktrees/contentflow-production/runtime/api/src/bootstrap.spec.ts:41:70)
+    at AuthController.login (/Users/feifei00/Documents/CodexWorktrees/contentflow-production/runtime/api/src/modules/auth/auth.controller.ts:30:29)
+    at /Users/feifei00/Documents/CodexWorktrees/contentflow-production/runtime/api/node_modules/@nestjs/core/router/router-execution-context.js:38:29
+    at processTicksAndRejections (node:internal/process/task_queues:104:5)
+[Nest] 9573  - 09/22/2026, 9:39:43 PM   ERROR [HttpExceptionFilter] POST /api/v1/auth/login - 401: 邮箱或密码错误
+UnauthorizedException: 邮箱或密码错误
+    at Object.login (/Users/feifei00/Documents/CodexWorktrees/contentflow-production/runtime/api/src/bootstrap.spec.ts:41:70)
+    at AuthController.login (/Users/feifei00/Documents/CodexWorktrees/contentflow-production/runtime/api/src/modules/auth/auth.controller.ts:30:29)
+    at /Users/feifei00/Documents/CodexWorktrees/contentflow-production/runtime/api/node_modules/@nestjs/core/router/router-execution-context.js:38:29
+    at processTicksAndRejections (node:internal/process/task_queues:104:5)
+[Nest] 9573  - 09/22/2026, 9:39:43 PM   ERROR [HttpExceptionFilter] POST /api/v1/auth/login - 401: 邮箱或密码错误
+UnauthorizedException: 邮箱或密码错误
+    at Object.login (/Users/feifei00/Documents/CodexWorktrees/contentflow-production/runtime/api/src/bootstrap.spec.ts:41:70)
+    at AuthController.login (/Users/feifei00/Documents/CodexWorktrees/contentflow-production/runtime/api/src/modules/auth/auth.controller.ts:30:29)
+    at /Users/feifei00/Documents/CodexWorktrees/contentflow-production/runtime/api/node_modules/@nestjs/core/router/router-execution-context.js:38:29
+    at processTicksAndRejections (node:internal/process/task_queues:104:5)
+[Nest] 9573  - 09/22/2026, 9:39:43 PM   ERROR [HttpExceptionFilter] POST /api/v1/auth/login - 401: 邮箱或密码错误
+UnauthorizedException: 邮箱或密码错误
+    at Object.login (/Users/feifei00/Documents/CodexWorktrees/contentflow-production/runtime/api/src/bootstrap.spec.ts:41:70)
+    at AuthController.login (/Users/feifei00/Documents/CodexWorktrees/contentflow-production/runtime/api/src/modules/auth/auth.controller.ts:30:29)
+    at /Users/feifei00/Documents/CodexWorktrees/contentflow-production/runtime/api/node_modules/@nestjs/core/router/router-execution-context.js:38:29
+    at processTicksAndRejections (node:internal/process/task_queues:104:5)
+[Nest] 9573  - 09/22/2026, 9:39:43 PM   ERROR [HttpExceptionFilter] POST /api/v1/auth/login - 401: 邮箱或密码错误
+UnauthorizedException: 邮箱或密码错误
+    at Object.login (/Users/feifei00/Documents/CodexWorktrees/contentflow-production/runtime/api/src/bootstrap.spec.ts:41:70)
+    at AuthController.login (/Users/feifei00/Documents/CodexWorktrees/contentflow-production/runtime/api/src/modules/auth/auth.controller.ts:30:29)
+    at /Users/feifei00/Documents/CodexWorktrees/contentflow-production/runtime/api/node_modules/@nestjs/core/router/router-execution-context.js:38:29
+    at processTicksAndRejections (node:internal/process/task_queues:104:5)
+[Nest] 9573  - 09/22/2026, 9:39:43 PM   ERROR [HttpExceptionFilter] POST /api/v1/auth/login - 401: 邮箱或密码错误
+UnauthorizedException: 邮箱或密码错误
+    at Object.login (/Users/feifei00/Documents/CodexWorktrees/contentflow-production/runtime/api/src/bootstrap.spec.ts:41:70)
+    at AuthController.login (/Users/feifei00/Documents/CodexWorktrees/contentflow-production/runtime/api/src/modules/auth/auth.controller.ts:30:29)
+    at /Users/feifei00/Documents/CodexWorktrees/contentflow-production/runtime/api/node_modules/@nestjs/core/router/router-execution-context.js:38:29
+    at processTicksAndRejections (node:internal/process/task_queues:104:5)
+[Nest] 9573  - 09/22/2026, 9:39:43 PM   ERROR [HttpExceptionFilter] POST /api/v1/auth/login - 401: 邮箱或密码错误
+UnauthorizedException: 邮箱或密码错误
+    at Object.login (/Users/feifei00/Documents/CodexWorktrees/contentflow-production/runtime/api/src/bootstrap.spec.ts:41:70)
+    at AuthController.login (/Users/feifei00/Documents/CodexWorktrees/contentflow-production/runtime/api/src/modules/auth/auth.controller.ts:30:29)
+    at /Users/feifei00/Documents/CodexWorktrees/contentflow-production/runtime/api/node_modules/@nestjs/core/router/router-execution-context.js:38:29
+    at processTicksAndRejections (node:internal/process/task_queues:104:5)
+[Nest] 9573  - 09/22/2026, 9:39:43 PM   ERROR [HttpExceptionFilter] POST /api/v1/auth/login - 401: 邮箱或密码错误
+UnauthorizedException: 邮箱或密码错误
+    at Object.login (/Users/feifei00/Documents/CodexWorktrees/contentflow-production/runtime/api/src/bootstrap.spec.ts:41:70)
+    at AuthController.login (/Users/feifei00/Documents/CodexWorktrees/contentflow-production/runtime/api/src/modules/auth/auth.controller.ts:30:29)
+    at /Users/feifei00/Documents/CodexWorktrees/contentflow-production/runtime/api/node_modules/@nestjs/core/router/router-execution-context.js:38:29
+    at processTicksAndRejections (node:internal/process/task_queues:104:5)
+[Nest] 9573  - 09/22/2026, 9:39:43 PM   ERROR [HttpExceptionFilter] POST /api/v1/auth/login - 429: ThrottlerException: Too Many Requests
+ThrottlerException: ThrottlerException: Too Many Requests
+    at ThrottlerGuard.throwThrottlingException (/Users/feifei00/Documents/CodexWorktrees/contentflow-production/runtime/api/node_modules/@nestjs/throttler/src/throttler.guard.ts:242:11)
+    at processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at ThrottlerGuard.handleRequest (/Users/feifei00/Documents/CodexWorktrees/contentflow-production/runtime/api/node_modules/@nestjs/throttler/src/throttler.guard.ts:184:7)
+    at ThrottlerGuard.canActivate (/Users/feifei00/Documents/CodexWorktrees/contentflow-production/runtime/api/node_modules/@nestjs/throttler/src/throttler.guard.ts:132:9)
+    at GuardsConsumer.tryActivate (/Users/feifei00/Documents/CodexWorktrees/contentflow-production/runtime/api/node_modules/@nestjs/core/guards/guards-consumer.js:22:17)
+    at canActivateFn (/Users/feifei00/Documents/CodexWorktrees/contentflow-production/runtime/api/node_modules/@nestjs/core/router/router-execution-context.js:138:33)
+    at /Users/feifei00/Documents/CodexWorktrees/contentflow-production/runtime/api/node_modules/@nestjs/core/router/router-execution-context.js:42:31
+    at /Users/feifei00/Documents/CodexWorktrees/contentflow-production/runtime/api/node_modules/@nestjs/core/router/router-proxy.js:9:17
+[Nest] 9573  - 09/22/2026, 9:39:43 PM   ERROR [HttpExceptionFilter] POST /api/v1/auth/login - 429: ThrottlerException: Too Many Requests
+ThrottlerException: ThrottlerException: Too Many Requests
+    at ThrottlerGuard.throwThrottlingException (/Users/feifei00/Documents/CodexWorktrees/contentflow-production/runtime/api/node_modules/@nestjs/throttler/src/throttler.guard.ts:242:11)
+    at processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at ThrottlerGuard.handleRequest (/Users/feifei00/Documents/CodexWorktrees/contentflow-production/runtime/api/node_modules/@nestjs/throttler/src/throttler.guard.ts:184:7)
+    at ThrottlerGuard.canActivate (/Users/feifei00/Documents/CodexWorktrees/contentflow-production/runtime/api/node_modules/@nestjs/throttler/src/throttler.guard.ts:132:9)
+    at GuardsConsumer.tryActivate (/Users/feifei00/Documents/CodexWorktrees/contentflow-production/runtime/api/node_modules/@nestjs/core/guards/guards-consumer.js:22:17)
+    at canActivateFn (/Users/feifei00/Documents/CodexWorktrees/contentflow-production/runtime/api/node_modules/@nestjs/core/router/router-execution-context.js:138:33)
+    at /Users/feifei00/Documents/CodexWorktrees/contentflow-production/runtime/api/node_modules/@nestjs/core/router/router-execution-context.js:42:31
+    at /Users/feifei00/Documents/CodexWorktrees/contentflow-production/runtime/api/node_modules/@nestjs/core/router/router-proxy.js:9:17
+[Nest] 9573  - 09/22/2026, 9:39:43 PM   ERROR [HttpExceptionFilter] POST /api/v1/auth/login - 401: 邮箱或密码错误
+UnauthorizedException: 邮箱或密码错误
+    at Object.login (/Users/feifei00/Documents/CodexWorktrees/contentflow-production/runtime/api/src/bootstrap.spec.ts:41:70)
+    at AuthController.login (/Users/feifei00/Documents/CodexWorktrees/contentflow-production/runtime/api/src/modules/auth/auth.controller.ts:30:29)
+    at /Users/feifei00/Documents/CodexWorktrees/contentflow-production/runtime/api/node_modules/@nestjs/core/router/router-execution-context.js:38:29
+    at processTicksAndRejections (node:internal/process/task_queues:104:5)
+PASS src/bootstrap.spec.ts
+[Nest] 9573  - 09/22/2026, 9:39:43 PM   ERROR [HttpExceptionFilter] GET /api/v1/points/logs - 401: 登录状态已失效，请重新登录
+UnauthorizedException: 登录状态已失效，请重新登录
+    at JwtStrategy.validate (/Users/feifei00/Documents/CodexWorktrees/contentflow-production/runtime/api/src/modules/auth/strategies/jwt.strategy.ts:61:13)
+    at processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at JwtStrategy.callback [as _verify] (/Users/feifei00/Documents/CodexWorktrees/contentflow-production/runtime/api/node_modules/@nestjs/passport/dist/passport/passport.strategy.js:13:44)
+PASS src/modules/auth/strategies/jwt.strategy.spec.ts
+PASS src/modules/ai/market-routing.spec.ts
+PASS src/modules/account/account.service.spec.ts
+PASS src/modules/billing/billing.controller.spec.ts
+PASS src/app.module.spec.ts
+PASS src/modules/publish/publish.service.spec.ts
+[Nest] 9573  - 09/22/2026, 9:39:44 PM   ERROR [ContentPackService] Failed to generate pack: AI provider did not return valid token usage
+[Nest] 9573  - 09/22/2026, 9:39:44 PM   ERROR [ContentPackService] Failed to generate pack: Bad Request Exception
+PASS src/modules/ai/content-pack.service.spec.ts
+PASS src/modules/rewards/rewards.service.spec.ts
+PASS src/modules/billing/wechat-pay.adapter.spec.ts
+PASS src/modules/billing/billing.service.spec.ts
+[Nest] 9573  - 09/22/2026, 9:39:44 PM   ERROR [PublishProcessor] Task task_1 dispatch failed: Dispatcher claimed publication without a remote post ID
+[Nest] 9573  - 09/22/2026, 9:39:44 PM     LOG [ContentPackService] Generating content pack for topic: Topic
+[Nest] 9573  - 09/22/2026, 9:39:44 PM     LOG [ContentPackService] Generating content pack for topic: Topic
+[Nest] 9573  - 09/22/2026, 9:39:44 PM     LOG [ContentPackService] Generating content pack for topic: Topic
+[Nest] 9573  - 09/22/2026, 9:39:44 PM     LOG [ContentPackService] Generating content pack for topic: Topic
+[Nest] 9573  - 09/22/2026, 9:39:44 PM     LOG [ContentPackService] Generating content pack for topic: Topic
+[Nest] 9573  - 09/22/2026, 9:39:44 PM     LOG [ContentPackService] Generating content pack for topic: Topic
+PASS src/modules/publish/publish.processor.spec.ts
+PASS src/modules/publish/publish.controller.spec.ts
+PASS src/modules/ai/ai.service.spec.ts
+PASS src/modules/billing/billing-permissions.spec.ts
+PASS src/common/i18n/market-message.spec.ts
+[Nest] 9573  - 09/22/2026, 9:39:44 PM    WARN [AIService] OpenRouter circuit opened for 60000ms after 2 failures
+PASS src/modules/system/system.controller.spec.ts
+PASS src/modules/system/usage.service.spec.ts
+PASS src/modules/billing/billing-state-races.spec.ts
+PASS src/modules/billing/alipay.adapter.spec.ts
+[Nest] 9573  - 09/22/2026, 9:39:44 PM   ERROR [HttpExceptionFilter] POST /api/v1/test - 400: The request could not be processed
+[Nest] 9573  - 09/22/2026, 9:39:44 PM   ERROR [HttpExceptionFilter] POST /api/v1/test - 401: Authentication is required or the credentials are invalid
+[Nest] 9573  - 09/22/2026, 9:39:44 PM   ERROR [HttpExceptionFilter] POST /api/v1/test - 400: 请先登录
+BadRequestException: 请先登录
+    at Object.<anonymous> (/Users/feifei00/Documents/CodexWorktrees/contentflow-production/runtime/api/src/common/filters/http-exception.filter.spec.ts:43:37)
+    at Promise.then.completed (/Users/feifei00/Documents/CodexWorktrees/contentflow-production/runtime/api/node_modules/jest-circus/build/utils.js:298:28)
+    at new Promise (<anonymous>)
+    at callAsyncCircusFn (/Users/feifei00/Documents/CodexWorktrees/contentflow-production/runtime/api/node_modules/jest-circus/build/utils.js:231:10)
+    at _callCircusTest (/Users/feifei00/Documents/CodexWorktrees/contentflow-production/runtime/api/node_modules/jest-circus/build/run.js:316:40)
+    at _runTest (/Users/feifei00/Documents/CodexWorktrees/contentflow-production/runtime/api/node_modules/jest-circus/build/run.js:252:3)
+    at _runTestsForDescribeBlock (/Users/feifei00/Documents/CodexWorktrees/contentflow-production/runtime/api/node_modules/jest-circus/build/run.js:126:9)
+    at _runTestsForDescribeBlock (/Users/feifei00/Documents/CodexWorktrees/contentflow-production/runtime/api/node_modules/jest-circus/build/run.js:121:9)
+    at run (/Users/feifei00/Documents/CodexWorktrees/contentflow-production/runtime/api/node_modules/jest-circus/build/run.js:71:3)
+    at runAndTransformResultsToJestFormat (/Users/feifei00/Documents/CodexWorktrees/contentflow-production/runtime/api/node_modules/jest-circus/build/legacy-code-todo-rewrite/jestAdapterInit.js:122:21)
+    at jestAdapter (/Users/feifei00/Documents/CodexWorktrees/contentflow-production/runtime/api/node_modules/jest-circus/build/legacy-code-todo-rewrite/jestAdapter.js:79:19)
+    at runTestInternal (/Users/feifei00/Documents/CodexWorktrees/contentflow-production/runtime/api/node_modules/jest-runner/build/runTest.js:367:16)
+    at runTest (/Users/feifei00/Documents/CodexWorktrees/contentflow-production/runtime/api/node_modules/jest-runner/build/runTest.js:444:34)
+PASS src/common/filters/http-exception.filter.spec.ts
+PASS src/modules/ai/content-quality.spec.ts
+PASS src/common/interceptors/transform.interceptor.spec.ts
+PASS src/cache/cache.module.spec.ts
+PASS src/modules/no-fabricated-data.spec.ts
+PASS src/modules/tenant/tenant.service.spec.ts
+PASS src/modules/content/content.service.spec.ts
+PASS src/modules/points/points.service.spec.ts
+PASS src/common/ai-content-label.spec.ts
+PASS src/modules/billing/effective-limits.spec.ts
+PASS src/modules/ai/knowledge-improvement.spec.ts
+PASS src/modules/billing/subscription-period.spec.ts
+PASS src/common/domestic-content-compliance.spec.ts
+PASS src/modules/ai/title-parser.spec.ts
+
+Test Suites: 35 passed, 35 total
+Tests:       182 passed, 182 total
+Snapshots:   0 total
+Time:        4.267 s, estimated 15 s
+Ran all test suites.

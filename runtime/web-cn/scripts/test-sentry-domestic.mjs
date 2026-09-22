@@ -20,12 +20,23 @@ check('sentry.io DSNs are refused', () => {
   assert.equal(domesticSentryDsn('https://abc@o1.ingest.us.sentry.io/2'), undefined);
   assert.equal(domesticSentryDsn('https://abc@sentry.io/2'), undefined);
 });
-check('self-hosted https DSN is kept; http and garbage are refused', () => {
-  assert.equal(domesticSentryDsn('https://k@sentry.example.cn/3'), 'https://k@sentry.example.cn/3');
-  assert.equal(domesticSentryDsn('https://k@notsentry.io.example.cn/3'), 'https://k@notsentry.io.example.cn/3');
-  assert.equal(domesticSentryDsn('http://k@sentry.example.cn/3'), undefined);
-  assert.equal(domesticSentryDsn('not a url'), undefined);
-  assert.equal(domesticSentryDsn(undefined), undefined);
+check('reporting requires an explicitly configured matching https origin', () => {
+  const trusted = 'https://sentry.example.cn';
+  const dsn = 'https://k@sentry.example.cn/3';
+  assert.equal(domesticSentryDsn(dsn, trusted), dsn);
+  for (const raw of [
+    'https://k@unapproved.example.cn/3',
+    'https://k@sentry.example.cn:8443/3',
+    'http://k@sentry.example.cn/3',
+    'https://k:secret@sentry.example.cn/3',
+    'https://k@sentry.example.cn/3?x=1',
+    'not a url', undefined,
+  ]) assert.equal(domesticSentryDsn(raw, trusted), undefined);
+  for (const origin of ['', 'http://sentry.example.cn', 'https://user@sentry.example.cn', 'https://sentry.example.cn?q=1']) {
+    assert.equal(domesticSentryDsn(dsn, origin), undefined);
+  }
+  assert.equal(domesticSentryDsn('https://k@sentry.io./3', 'https://sentry.io.'), undefined);
+  assert.equal(domesticSentryDsn('https://k@o123.ingest.sentry.io/3', 'https://o123.ingest.sentry.io'), undefined);
 });
 check('instrumentation initialises Sentry only with the vetted DSN', () => {
   const src = fs.readFileSync(path.join(ROOT, 'src/instrumentation.ts'), 'utf8');

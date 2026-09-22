@@ -1,22 +1,24 @@
 /**
- * 国内版只允许把错误上报到境内自建的 Sentry。
- *
- * 原来 instrumentation.ts 只要配了 SENTRY_DSN 就上报；运维照着 Sentry 文档填一个
- * `https://…@o123.ingest.sentry.io/…`，服务端报错里的请求路径、参数、用户输入就会出境
- * （sendDefaultPii=false 不影响异常消息与堆栈里的内容）。
- * 这里把 sentry.io 及其子域名一律拒绝，DSN 必须是 https。
+ * Only the explicitly configured self-hosted SENTRY_URL origin may receive events.
+ * Deployment owners must verify that origin is hosted domestically; a domain suffix
+ * cannot establish data residency. Missing configuration disables reporting.
  */
-const OFFSHORE_SENTRY = /(^|\.)sentry\.io$/i;
+const OFFSHORE_SENTRY = /(^|\.)sentry\.io\.?$/i;
 
-export function domesticSentryDsn(raw: string | undefined | null): string | undefined {
-  if (!raw) return undefined;
-  let url: URL;
+export function domesticSentryDsn(
+  raw: string | undefined | null,
+  trustedOrigin: string | undefined = process.env.SENTRY_URL,
+): string | undefined {
+  if (!raw || !trustedOrigin) return undefined;
   try {
-    url = new URL(raw);
+    const url = new URL(raw);
+    const trusted = new URL(trustedOrigin);
+    if (url.protocol !== 'https:' || trusted.protocol !== 'https:') return undefined;
+    if (OFFSHORE_SENTRY.test(url.hostname) || OFFSHORE_SENTRY.test(trusted.hostname)) return undefined;
+    if (trusted.username || trusted.password || trusted.search || trusted.hash) return undefined;
+    if (url.origin !== trusted.origin || url.password || url.search || url.hash) return undefined;
+    return raw;
   } catch {
     return undefined;
   }
-  if (url.protocol !== 'https:') return undefined;
-  if (OFFSHORE_SENTRY.test(url.hostname)) return undefined;
-  return raw;
 }

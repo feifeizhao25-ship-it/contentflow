@@ -1,0 +1,184 @@
+
+> fenfaxia-web@1.0.0 test
+> npm run check:contract && npm run test:security && npm run test:image-label && npm run test:image-label-browser && npm run test:entitlements && npm run test:editor-security && npm run test:api-proxy && npm run test:domestic-session && npm run test:ai-routes && npm run test:checkout && npm run test:sentry-domestic
+
+
+> fenfaxia-web@1.0.0 check:contract
+> node scripts/check-api-contract.mjs
+
+接口契约检查通过
+
+> fenfaxia-web@1.0.0 test:security
+> node --experimental-strip-types scripts/test-media-path-guard.mjs
+
+(node:10578) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/feifei00/Documents/CodexWorktrees/contentflow-production/runtime/web-cn/src/lib/media-path-guard.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/feifei00/Documents/CodexWorktrees/contentflow-production/runtime/web-cn/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+Media path guard tests
+  PASS 站内合法路径解析到 public/ 内
+  PASS /../ 相对穿越被拒绝
+  PASS /../../ 多级穿越被拒绝
+  PASS URL 编码穿越（%2e%2e%2f）被拒绝
+  PASS 空字节注入被拒绝
+  PASS 非 / 开头的路径被拒绝
+  PASS public 内不存在的子路径仍解析在根内（由调用方判存在性）
+Result: PASS
+
+> fenfaxia-web@1.0.0 test:image-label
+> node --experimental-strip-types scripts/test-ai-image-label.mjs
+
+AI image label tests
+  PASS buildAiImageLabel 字段与 API 侧约定一致
+  PASS buildAiImageLabel 带 model 时透传
+  PASS PNG 插入 iTXt(AIGC) chunk，位于 IHDR 之后
+  PASS PNG iTXt 内容可解析且字段完整
+  PASS PNG 所有 chunk CRC 写入后仍有效
+  PASS PNG 重复写入幂等，不产生第二个 AIGC chunk
+  PASS JPEG 在 SOI 后插入 APP1 XMP 段
+  PASS JPEG XMP 属性值做 XML 转义
+  PASS JPEG 重复写入幂等
+  PASS 不支持的格式原样返回并标记 labeled=false
+全部通过
+
+> fenfaxia-web@1.0.0 test:image-label-browser
+> node --experimental-strip-types scripts/test-ai-image-label-browser.mjs
+
+AI image label (browser) tests
+  PASS buildAiImageLabel 字段与服务端约定一致
+  PASS buildAiImageLabel 带 model 时透传
+  PASS PNG 插入 iTXt(AIGC) chunk，位于 IHDR 之后
+  PASS PNG iTXt 内容可解析且字段完整
+  PASS PNG 所有 chunk CRC 写入后仍有效（zlib.crc32 独立校验）
+  PASS 重复写入幂等，不产生第二个 AIGC chunk
+  PASS 与服务端实现交叉幂等：浏览器写入后服务端不再重复写，反之亦然
+  PASS 非 PNG 输入原样返回
+  PASS PNG data URL 写入标识且可往返解码
+  PASS 非 PNG data URL 原样返回
+全部通过
+
+> fenfaxia-web@1.0.0 test:entitlements
+> node --experimental-strip-types scripts/test-entitlements.mjs
+
+(node:10651) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/feifei00/Documents/CodexWorktrees/contentflow-production/runtime/web-cn/src/lib/entitlements.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/feifei00/Documents/CodexWorktrees/contentflow-production/runtime/web-cn/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:10651) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/feifei00/Documents/CodexWorktrees/contentflow-production/runtime/api/src/modules/billing/plans.constant.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/feifei00/Documents/CodexWorktrees/contentflow-production/runtime/api/package.json.
+Entitlements registry & pricing fallback tests
+  PASS 注册表 schema 校验通过
+  PASS 注册表包含 product/version 与全部四档套餐
+  PASS 每档套餐含六个权益维度
+  PASS 缺维度的注册表被拒绝（负例）
+  PASS 注册表价格/配额与后端 CN_PLANS 一致
+  PASS 兜底套餐覆盖全部四档且字段与注册表一致
+  PASS 定价页使用注册表兜底且错误文案为友好中文
+  PASS 定价页无英文角标残留
+  PASS API 客户端统一收敛解析/网络错误为友好中文
+  PASS /api/entitlements 路由返回注册表
+  PASS 存在中文 404 页且带返回首页入口
+  PASS proxy 区分受保护路径与未知路径
+  PASS 权限 Hook 使用注册表完整覆盖团队版和有限付费额度
+
+全部通过
+
+> fenfaxia-web@1.0.0 test:editor-security
+> node scripts/test-editor-security.mjs
+
+PASS 编辑器导入属性不会继承 JSON 注入的事件处理属性
+
+> fenfaxia-web@1.0.0 test:api-proxy
+> node --experimental-strip-types scripts/test-api-proxy.mjs
+
+(node:10706) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/feifei00/Documents/CodexWorktrees/contentflow-production/runtime/web-cn/src/lib/api-proxy.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/feifei00/Documents/CodexWorktrees/contentflow-production/runtime/web-cn/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+API proxy tests
+  PASS next.config.mjs has no /api/v1 rewrite shadowing the proxy route
+  PASS the proxy route exists and uses the shared header builder
+  PASS cookie becomes a Bearer token
+  PASS requests without a cookie are forwarded without Authorization
+  PASS payment signature headers, idempotency key and client address are forwarded
+  PASS raw cookies and client-supplied Authorization are not forwarded
+
+> fenfaxia-web@1.0.0 test:domestic-session
+> node --import ./scripts/ts-extensionless.mjs --experimental-strip-types scripts/test-domestic-session.mjs
+
+Domestic session tests
+  PASS no source file imports Supabase
+  PASS package.json and Dockerfile do not require Supabase
+  PASS register posts only whitelisted fields to /api/auth/register
+  PASS current user comes from the backend profile
+  PASS not logged in yields null instead of throwing
+  PASS logout clears the server cookie
+  PASS materials are listed from the backend
+  PASS upload surfaces the backend reason instead of pretending
+  PASS delete is refused honestly until object storage exists
+(node:10729) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/feifei00/Documents/CodexWorktrees/contentflow-production/runtime/web-cn/src/lib/session.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/feifei00/Documents/CodexWorktrees/contentflow-production/runtime/web-cn/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+> fenfaxia-web@1.0.0 test:ai-routes
+> node --import ./scripts/ts-extensionless.mjs --experimental-transform-types scripts/test-ai-routes.mjs
+
+AI route tests
+  PASS requireAuth rejects a missing cookie without calling the backend
+  PASS requireAuth rejects a forged cookie the backend does not accept
+  PASS requireAuth accepts a token the backend accepts
+  PASS ai/tts/openai answers 501 without leaving the country
+  PASS ai/tts/azure answers 501 without leaving the country
+  PASS ai/tts/elevenlabs answers 501 without leaving the country
+  PASS ai/subtitle/generate answers 501 without leaving the country
+  PASS ai/generate-video answers 501 without leaving the country
+  PASS video/generate answers 501 without leaving the country
+  PASS generate-script forwards to the backend with the bearer token
+  PASS generate-script passes the backend reason through
+  PASS generate-script requires login
+(node:10752) ExperimentalWarning: Transform Types is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:10752) ExperimentalWarning: Transform Types is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:10752) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/feifei00/Documents/CodexWorktrees/contentflow-production/runtime/web-cn/src/app/api/_lib/provider.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/feifei00/Documents/CodexWorktrees/contentflow-production/runtime/web-cn/package.json.
+
+> fenfaxia-web@1.0.0 test:checkout
+> node --import ./scripts/ts-extensionless.mjs --experimental-strip-types scripts/test-checkout.mjs
+
+Checkout tests
+  PASS order is created by the backend with an idempotency key and no client-side amount
+  PASS backend refusal (merchant not configured) is shown as-is, not as success
+  PASS non-manager gets an understandable reason
+  PASS idempotency key fits backend limits (8–128)
+  PASS alipay redirects only to https cashier; wechat renders weixin:// as QR
+  PASS activation = plan becomes the purchased one, or renewal date moves forward
+  PASS polling stops when the backend reports the plan
+  PASS polling times out instead of claiming success
+  PASS polling survives network errors but surfaces an expired login
+  PASS alipay synchronous return is recognised
+  PASS pricing page creates orders instead of always sending users to login
+  PASS ALIPAY_RETURN_URL example path exists and forwards to pricing
+  PASS login returns to the page that sent the user there (pricing checkout resumes)
+All checkout tests passed
+(node:10775) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/feifei00/Documents/CodexWorktrees/contentflow-production/runtime/web-cn/src/lib/payment-service.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/feifei00/Documents/CodexWorktrees/contentflow-production/runtime/web-cn/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+> fenfaxia-web@1.0.0 test:sentry-domestic
+> node --import ./scripts/ts-extensionless.mjs --experimental-strip-types scripts/test-sentry-domestic.mjs
+
+Sentry domestic tests
+  PASS sentry.io DSNs are refused
+  PASS reporting requires an explicitly configured matching https origin
+  PASS instrumentation initialises Sentry only with the vetted DSN
+  PASS build plugin: telemetry off, source maps only to a domestic SENTRY_URL
+All Sentry domestic tests passed
+(node:10798) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/feifei00/Documents/CodexWorktrees/contentflow-production/runtime/web-cn/src/lib/sentry-dsn.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/feifei00/Documents/CodexWorktrees/contentflow-production/runtime/web-cn/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)

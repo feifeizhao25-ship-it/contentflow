@@ -27,7 +27,8 @@ const sentryUrl = process.env.SENTRY_URL || '';
 const domesticSentry = (() => {
   try {
     const url = new URL(sentryUrl);
-    return url.protocol === 'https:' && !/(^|\.)sentry\.io$/i.test(url.hostname);
+    return url.protocol === 'https:' && !url.username && !url.password && !url.search && !url.hash
+      && !/(^|\.)sentry\.io\.?$/i.test(url.hostname);
   } catch {
     return false;
   }

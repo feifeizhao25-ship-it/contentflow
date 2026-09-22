@@ -1,0 +1,89 @@
+
+> fenfaxia-web@1.0.0 build
+> next build
+
+▲ Next.js 16.3.4 (Turbopack)
+✓ Running next.config.mjs took 432ms
+- Experiments (use with caution):
+  · clientTraceMetadata
+
+  Creating an optimized production build ...
+✓ Compiled successfully in 3.7s
+  Running next.config.js provided runAfterProductionCompile ...
+✓ Completed runAfterProductionCompile in 123ms
+  Running TypeScript ...
+  Finished TypeScript in 2.8s ...
+  Collecting page data using 9 workers ...
+  Generating static pages using 9 workers (0/52) ...
+(node:10825) Warning: `--localstorage-file` was provided without a valid path
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:10832) Warning: `--localstorage-file` was provided without a valid path
+(Use `node --trace-warnings ...` to show where the warning was created)
+  Generating static pages using 9 workers (13/52) 
+(node:10824) Warning: `--localstorage-file` was provided without a valid path
+(Use `node --trace-warnings ...` to show where the warning was created)
+  Generating static pages using 9 workers (26/52) 
+  Generating static pages using 9 workers (39/52) 
+✓ Generating static pages using 9 workers (52/52) in 607ms
+  Finalizing page optimization ...
+
+Route (app)
+┌ ○ /
+├ ○ /_not-found
+├ ○ /accounts
+├ ○ /achievements
+├ ○ /ai-create
+├ ○ /analytics
+├ ƒ /api/ai/export-image
+├ ƒ /api/ai/generate-script
+├ ƒ /api/ai/generate-video
+├ ƒ /api/ai/merge-videos
+├ ƒ /api/ai/subtitle/generate
+├ ƒ /api/ai/tts/azure
+├ ƒ /api/ai/tts/elevenlabs
+├ ƒ /api/ai/tts/openai
+├ ƒ /api/auth/login
+├ ƒ /api/auth/logout
+├ ƒ /api/auth/register
+├ ƒ /api/entitlements
+├ ƒ /api/health
+├ ƒ /api/v1/[...path]
+├ ƒ /api/video/generate
+├ ○ /calendar
+├ ○ /community
+├ ○ /competitor
+├ ○ /contents
+├ ○ /create
+├ ○ /dashboard
+├ ○ /developer
+├ ○ /experience-week
+├ ○ /growth
+├ ○ /hot
+├ ○ /login
+├ ○ /materials
+├ ○ /monetization
+├ ○ /my-videos
+├ ○ /overview
+├ ƒ /payment/result
+├ ○ /persona
+├ ○ /points
+├ ○ /pricing
+├ ○ /privacy
+├ ○ /publish
+├ ○ /register
+├ ○ /schedule
+├ ○ /settings
+├ ○ /settings/developer
+├ ○ /skills
+├ ○ /studio
+├ ○ /team
+├ ○ /terms
+├ ○ /traffic-sandwich
+└ ○ /video-studio
+
+
+ƒ Proxy (Middleware)
+
+○  (Static)   prerendered as static content
+ƒ  (Dynamic)  server-rendered on demand
+
