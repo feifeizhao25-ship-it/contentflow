@@ -145,14 +145,25 @@ export class BillingService {
     signatureValid: boolean;
   }) {
     if (!input.signatureValid) throw new BadRequestException('支付回调签名无效');
+    if (!['wechat', 'alipay', 'bank_transfer'].includes(input.provider)) {
+      throw new BadRequestException('不支持的支付回调渠道');
+    }
     return this.prisma.$transaction(async (tx: any) => {
       const duplicate = await tx.paymentWebhookEvent.findUnique({
         where: { provider_provider_event_id: { provider: input.provider, provider_event_id: input.providerEventId } },
       });
-      if (duplicate) return { duplicate: true, event: duplicate };
+      if (duplicate) {
+        if (duplicate.order_no !== input.orderNo) {
+          throw new ConflictException('支付事件编号已用于另一笔订单');
+        }
+        return { duplicate: true, event: duplicate };
+      }
 
       const order = await tx.paymentOrder.findUnique({ where: { order_no: input.orderNo } });
       if (!order) throw new BadRequestException('支付订单不存在');
+      if (order.payment_method !== input.provider) {
+        throw new BadRequestException('支付回调渠道与订单不一致');
+      }
       if (!PAYABLE_ORDER_STATES.includes(order.status)) throw new ConflictException(`订单状态 ${order.status} 不允许支付`);
       if (Number(order.amount) !== input.paidAmount || order.currency !== 'CNY') {
         throw new BadRequestException('支付金额或币种与订单不一致');
@@ -226,6 +237,9 @@ export class BillingService {
       if (order.status !== 'refund_pending') {
         throw new ConflictException(`订单状态 ${order.status} 不允许完成退款`);
       }
+      if (!order.subscription_id) {
+        throw new ConflictException('退款订单未关联订阅，请人工核对');
+      }
       const newerPaidOrder = await tx.paymentOrder.findFirst({
         where: {
           tenant_id: order.tenant_id,
@@ -236,10 +250,11 @@ export class BillingService {
       if (newerPaidOrder) {
         throw new ConflictException('存在更新的已支付订单，退款不能直接撤销当前权益');
       }
-      await tx.subscription.updateMany({
-        where: { id: order.subscription_id },
+      const revoked = await tx.subscription.updateMany({
+        where: { id: order.subscription_id, tenant_id: order.tenant_id },
         data: { status: 'refunded', cancel_at_period_end: true, cancelled_at: new Date() },
       });
+      if (revoked.count !== 1) throw new ConflictException('退款订单与订阅归属不一致，请人工核对');
       await tx.tenant.update({
         where: { id: order.tenant_id },
         data: { plan: 'free', plan_expires_at: new Date() },
