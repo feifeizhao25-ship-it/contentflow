@@ -50,7 +50,10 @@ export class BillingService {
         && existing.billing_cycle === input.billingCycle
         && existing.payment_method === input.paymentMethod;
       if (!sameRequest) throw new ConflictException('该幂等键已用于另一笔订单');
-      return existing;
+      if (existing.status === 'pending' && existing.payment_method !== 'bank_transfer' && !existing.payment_url) {
+        throw new ConflictException('该历史订单缺少支付链接，请核对订单后重新发起购买');
+      }
+      return { ...existing, paymentUrl: existing.status === 'pending' ? existing.payment_url ?? null : null };
     }
 
     this.assertProviderReady(input.paymentMethod);
@@ -75,6 +78,7 @@ export class BillingService {
         currency: 'CNY',
         payment_method: input.paymentMethod,
         status: 'pending',
+        payment_url: payment?.paymentUrl ?? null,
       },
     });
     return { ...order, paymentUrl: payment?.paymentUrl ?? null };
@@ -248,16 +252,15 @@ export class BillingService {
       if (!order.subscription_id) {
         throw new ConflictException('退款订单未关联订阅，请人工核对');
       }
-      const newerPaidOrder = await tx.paymentOrder.findFirst({
+      const otherPaidOrder = await tx.paymentOrder.findFirst({
         where: {
           tenant_id: order.tenant_id,
           order_no: { not: order.order_no },
           status: { in: ['paid', 'refund_pending'] },
-          paid_at: { gte: order.paid_at ?? order.created_at },
         },
       });
-      if (newerPaidOrder) {
-        throw new ConflictException('存在更新的已支付订单，退款不能直接撤销当前权益');
+      if (otherPaidOrder) {
+        throw new ConflictException('存在其他未退清的购买记录，需核对剩余会员时长后处理退款');
       }
       const revoked = await tx.subscription.updateMany({
         where: { id: order.subscription_id, tenant_id: order.tenant_id },

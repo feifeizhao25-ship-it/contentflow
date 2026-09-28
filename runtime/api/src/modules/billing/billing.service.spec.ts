@@ -52,7 +52,7 @@ describe('BillingService', () => {
     const result = await new BillingService(db).createOrder('tenant-1', {
       planId: 'pro', billingCycle: 'monthly', paymentMethod: 'bank_transfer',
     }, 'intent-123456');
-    expect(result).toBe(existing);
+    expect(result).toEqual({ ...existing, paymentUrl: null });
     expect(db.paymentOrder.create).not.toHaveBeenCalled();
   });
 

@@ -78,6 +78,17 @@ describe('refund entitlement ownership', () => {
     expect(tx.tenant.update).not.toHaveBeenCalled();
     expect(tx.paymentOrder.update).not.toHaveBeenCalled();
   });
+  it('preserves earlier purchases when refunding the newest renewal', async () => {
+    const { tx, service } = fixture('sub-1');
+    tx.paymentOrder.findFirst.mockResolvedValue({ order_no: 'older-paid-order' } as any);
+    await expect(service.markRefunded('CF1', 'refund-1')).rejects.toThrow('核对剩余会员时长');
+    expect(tx.paymentOrder.findFirst).toHaveBeenCalledWith({ where: {
+      tenant_id: 'tenant-1', order_no: { not: 'CF1' }, status: { in: ['paid', 'refund_pending'] },
+    } });
+    expect(tx.subscription.updateMany).not.toHaveBeenCalled();
+    expect(tx.tenant.update).not.toHaveBeenCalled();
+    expect(tx.paymentOrder.update).not.toHaveBeenCalled();
+  });
   it('finishes a refund after revoking the linked tenant subscription', async () => {
     const { tx, service } = fixture('sub-1');
     await service.markRefunded('CF1', 'refund-1');

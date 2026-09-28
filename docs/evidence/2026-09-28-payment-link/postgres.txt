@@ -1,0 +1,2 @@
+PASS PostgreSQL migration: new snapshots and payment links round-trip; legacy amount and null fields preserved
+PostgreSQL billing races: 12 scenarios passed; order, entitlement and event checked

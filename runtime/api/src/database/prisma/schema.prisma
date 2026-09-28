@@ -1092,6 +1092,7 @@ model PaymentOrder {
   currency                 String  @default("CNY")
   payment_method           String?
   payment_channel_order_no String?
+  payment_url              String?
 
   status  String    @default("pending")
   paid_at DateTime?
