@@ -1,0 +1,24 @@
+
+> fenfaxia-web@1.0.0 test:checkout
+> node --import ./scripts/ts-extensionless.mjs --experimental-strip-types scripts/test-checkout.mjs
+
+Checkout tests
+  PASS order is created by the backend with an idempotency key and no client-side amount
+  PASS reconciliation sends only the order number and preserves backend refusal
+  PASS backend refusal (merchant not configured) is shown as-is, not as success
+  PASS non-manager gets an understandable reason
+  PASS idempotency key fits backend limits (8–128)
+  PASS alipay redirects only to https cashier; wechat renders weixin:// as QR
+  PASS activation = plan becomes the purchased one, or renewal date moves forward
+  PASS polling stops when the backend reports the plan
+  PASS polling times out instead of claiming success
+  PASS polling survives network errors but surfaces an expired login
+  PASS alipay synchronous return is recognised
+  PASS pricing page creates orders instead of always sending users to login
+  PASS ALIPAY_RETURN_URL example path exists and forwards to pricing
+  PASS login returns to the page that sent the user there (pricing checkout resumes)
+All checkout tests passed
+(node:58083) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/feifei00/Documents/CodexWorktrees/contentflow-production/runtime/web-cn/src/lib/payment-service.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/feifei00/Documents/CodexWorktrees/contentflow-production/runtime/web-cn/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)

@@ -7,7 +7,7 @@ describe('billing conditional state transitions', () => {
     ['closePendingOrder', 'pending', 'closed'],
   ])('%s refuses a stale read without unconditional overwrite', async (method, from, target) => {
     const orders = {
-      findFirst: jest.fn().mockResolvedValue({ status: from }),
+      findFirst: jest.fn().mockResolvedValue({ status: from, payment_method: 'bank_transfer' }),
       updateMany: jest.fn().mockResolvedValue({ count: 0 }),
       update: jest.fn(), findUnique: jest.fn(),
     };

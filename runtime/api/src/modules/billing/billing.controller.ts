@@ -212,6 +212,15 @@ export class BillingController {
     return this.billingService.closePendingOrder(req.user.tenantId, body.orderNo);
   }
 
+  @Post('orders/reconcile')
+  @HttpCode(200)
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
+  async reconcileOrder(@Request() req: any, @Body() body: { orderNo: string }) {
+    await this.requireBillingManager(req);
+    return this.billingService.reconcileOrder(req.user.tenantId, body.orderNo);
+  }
+
   @Post('orders/refund')
   @HttpCode(202)
   @ApiBearerAuth()

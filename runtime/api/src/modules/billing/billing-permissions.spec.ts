@@ -1,6 +1,7 @@
 import { BillingController } from './billing.controller';
 
 const operations = [
+  (controller: BillingController, req: any) => controller.reconcileOrder(req, { orderNo: 'CF1' }),
   (controller: BillingController, req: any) => controller.createOrder(req, 'idempotency-key', { planId: 'pro', billingCycle: 'monthly', paymentMethod: 'alipay' }),
   (controller: BillingController, req: any) => controller.cancelSubscription(req),
   (controller: BillingController, req: any) => controller.closeOrder(req, { orderNo: 'CF1' }),
@@ -10,7 +11,7 @@ const operations = [
 describe('billing mutation permissions', () => {
   const setup = (allowed: boolean) => {
     const findFirst = jest.fn().mockResolvedValue(allowed ? { id: 'actor' } : null);
-    const billing = { createOrder: jest.fn(), requestCancellation: jest.fn(), closePendingOrder: jest.fn(), requestRefund: jest.fn() };
+    const billing = { reconcileOrder: jest.fn(), createOrder: jest.fn(), requestCancellation: jest.fn(), closePendingOrder: jest.fn(), requestRefund: jest.fn() };
     return { controller: new BillingController({ user: { findFirst } } as any, billing as any), findFirst, billing };
   };
 

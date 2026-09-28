@@ -29,6 +29,13 @@ describe('payment callback order binding', () => {
     expect(tx.tenant.update).not.toHaveBeenCalled();
     expect(tx.paymentWebhookEvent.create).not.toHaveBeenCalled();
   });
+  it('acknowledges the same paid transaction arriving via a new verified event', async () => {
+    const { service, tx } = fixture('alipay');
+    tx.paymentOrder.findUnique.mockResolvedValue({ order_no: 'CF1', tenant_id: 'tenant', payment_method: 'alipay', status: 'paid', amount: 99, currency: 'CNY', payment_channel_order_no: 'transaction-1' } as any);
+    expect((await service.markPaid(input)).duplicate).toBe(true);
+    expect(tx.subscription.upsert).not.toHaveBeenCalled();
+    expect(tx.tenant.update).not.toHaveBeenCalled();
+  });
   it('rejects unsupported callback channels before accessing the database', async () => {
     const { service, db } = fixture();
     await expect(service.markPaid({ ...input, provider: 'unknown' })).rejects.toThrow('不支持的支付回调渠道');

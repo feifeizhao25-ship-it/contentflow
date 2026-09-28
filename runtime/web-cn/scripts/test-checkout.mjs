@@ -11,6 +11,7 @@ import {
   PaymentError,
   checkoutAction,
   createCheckoutOrder,
+  reconcileCheckoutOrder,
   isActivated,
   isAlipayReturn,
   newIdempotencyKey,
@@ -43,6 +44,16 @@ await check('order is created by the backend with an idempotency key and no clie
   assert.equal(calls[0].init.headers['idempotency-key'], 'cf-web-12345678');
   assert.deepEqual(JSON.parse(calls[0].init.body), { planId: 'pro', billingCycle: 'monthly', paymentMethod: 'wechat' });
   assert.deepEqual(order, { orderNo: 'CF1', amount: 99, paymentMethod: 'wechat', paymentUrl: 'weixin://wxpay/bizpayurl?pr=abc' });
+});
+
+await check('reconciliation sends only the order number and preserves backend refusal', async () => {
+  const status = await reconcileCheckoutOrder('CF1', async (url, init) => {
+    assert.equal(url, '/api/v1/billing/orders/reconcile');
+    assert.deepEqual(JSON.parse(init.body), { orderNo: 'CF1' });
+    return json(200, { data: { status: 'paid' } });
+  });
+  assert.equal(status, 'paid');
+  await assert.rejects(reconcileCheckoutOrder('CF1', async () => json(503, { message: '暂未确认' })), /暂未确认/);
 });
 
 await check('backend refusal (merchant not configured) is shown as-is, not as success', async () => {

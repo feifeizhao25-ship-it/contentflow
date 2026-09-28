@@ -76,3 +76,32 @@ export function decryptWeChatNotify(body: any): any {
   }
   return transaction;
 }
+
+async function verifiedRequest(method: 'GET' | 'POST', urlPath: string, payload = '') {
+  const response = await fetch(`https://api.mch.weixin.qq.com${urlPath}`, {
+    method, redirect: 'error', signal: AbortSignal.timeout(10000),
+    headers: {
+      authorization: merchantAuthorization(method, urlPath, payload),
+      accept: 'application/json', 'content-type': 'application/json',
+      'Wechatpay-Serial': env('WECHAT_PAY_PLATFORM_SERIAL_NO'),
+    },
+    ...(method === 'POST' ? { body: payload } : {}),
+  });
+  const raw = await response.text();
+  const headers = Object.fromEntries(response.headers.entries());
+  if (!verifyWeChatNotifySignature(Buffer.from(raw), headers)) throw new Error('微信支付响应验签失败');
+  if (!response.ok) throw new Error(`微信支付查询或关单未确认（${response.status}）`);
+  return { status: response.status, data: raw ? JSON.parse(raw) : null };
+}
+export async function queryWeChatOrder(orderNo: string) {
+  const result = await verifiedRequest('GET', `/v3/pay/transactions/out-trade-no/${encodeURIComponent(orderNo)}?mchid=${encodeURIComponent(env('WECHAT_PAY_MCH_ID'))}`);
+  const transaction = result.data;
+  if (transaction?.out_trade_no !== orderNo || transaction.mchid !== env('WECHAT_PAY_MCH_ID') || transaction.appid !== env('WECHAT_PAY_APP_ID')) {
+    throw new Error('微信支付查询订单归属不匹配');
+  }
+  return transaction;
+}
+export async function closeWeChatOrder(orderNo: string): Promise<void> {
+  const result = await verifiedRequest('POST', `/v3/pay/transactions/out-trade-no/${encodeURIComponent(orderNo)}/close`, JSON.stringify({ mchid: env('WECHAT_PAY_MCH_ID') }));
+  if (result.status !== 204) throw new Error('微信支付关单未确认');
+}

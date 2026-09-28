@@ -20,6 +20,7 @@ import {
     PaymentError,
     checkoutAction,
     createCheckoutOrder,
+    reconcileCheckoutOrder,
     fetchSubscriptionSnapshot,
     isAlipayReturn,
     newIdempotencyKey,
@@ -149,6 +150,19 @@ function PricingContent() {
     const goLogin = useCallback((id: string) => {
         router.push(`/login?redirect=${encodeURIComponent(`/pricing?plan=${id}`)}`);
     }, [router]);
+
+    const [rechecking, setRechecking] = useState(false);
+    const recheckPayment = async (orderNo: string) => {
+        if (rechecking) return;
+        setRechecking(true);
+        try {
+            const status = await reconcileCheckoutOrder(orderNo);
+            if (status === 'paid') setCheckout({ step: 'done' });
+            else message.info(status === 'closed' ? '订单已关闭，未开通会员' : '暂未确认付款，请勿重复付款');
+        } catch (error) {
+            message.error(error instanceof Error ? error.message : '查询失败，请稍后重试');
+        } finally { setRechecking(false); }
+    };
 
     const startWaiting = useCallback(async (planId: string, orderNo?: string, keepScreen = false) => {
         stopPolling();
@@ -400,12 +414,14 @@ function PricingContent() {
                             <Button block onClick={() => { closeCheckout(); router.push('/dashboard'); }}>开始使用</Button>
                         </div>
                     ) : checkout.step === 'timeout' ? (
-                        <Alert
+                        <div className="space-y-4"><Alert
                             type="warning"
                             showIcon
                             message="暂未收到支付结果"
                             description={`如果已经付款，权益会在支付平台通知到达后自动开通，请稍后刷新本页。${checkout.orderNo ? `如有疑问请提供订单号 ${checkout.orderNo}。` : ''}`}
                         />
+                        {checkout.orderNo && <Button block loading={rechecking} onClick={() => void recheckPayment(checkout.orderNo!)}>我已付款，重新核对</Button>}
+                        </div>
                     ) : (
                         <div className="space-y-4">
                             <Alert type="error" showIcon message="未能下单" description={checkout.message} />

@@ -178,3 +178,14 @@ export async function waitForActivation(
 export function isAlipayReturn(params: { get(name: string): string | null }): boolean {
   return Boolean(params.get('out_trade_no')) && params.get('method') === 'alipay.trade.page.pay.return';
 }
+
+/** 主动查询仍由后端验签和开通权益，浏览器不能提交付款金额或付款状态。 */
+export async function reconcileCheckoutOrder(orderNo: string, fetchImpl: FetchLike = defaultFetch): Promise<string> {
+  const response = await fetchImpl('/api/v1/billing/orders/reconcile', {
+    method: 'POST', credentials: 'same-origin', headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ orderNo }),
+  });
+  const result = await readEnvelope(response);
+  if (typeof result?.status !== 'string') throw new PaymentError('支付查询结果无效', 502);
+  return result.status;
+}

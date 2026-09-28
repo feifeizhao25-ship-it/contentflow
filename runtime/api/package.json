@@ -22,8 +22,8 @@
     "prisma:studio": "prisma studio"
   },
   "dependencies": {
-    "@nestjs/common": "^11.1.28",
     "@nestjs/bull": "^11.0.4",
+    "@nestjs/common": "^11.1.28",
     "@nestjs/config": "^4.0.4",
     "@nestjs/core": "^11.1.28",
     "@nestjs/jwt": "^11.0.2",
@@ -35,6 +35,7 @@
     "@nestjs/throttler": "^6.5.0",
     "@nestjs/websockets": "^11.1.28",
     "@prisma/client": "^5.7.1",
+    "alipay-sdk": "4.14.0",
     "bcryptjs": "^3.0.2",
     "bull": "^4.16.5",
     "class-transformer": "^0.5.1",
@@ -102,6 +103,7 @@
     "qs": "6.16.0",
     "bull": {
       "uuid": "^11.1.1"
-    }
+    },
+    "urllib": "4.9.1"
   }
 }

@@ -1,5 +1,5 @@
 import { createCipheriv, createSign, createVerify, generateKeyPairSync } from 'crypto';
-import { createWeChatNativePay, decryptWeChatNotify, verifyWeChatNotifySignature } from './wechat-pay.adapter';
+import { queryWeChatOrder, closeWeChatOrder, createWeChatNativePay, decryptWeChatNotify, verifyWeChatNotifySignature } from './wechat-pay.adapter';
 
 describe('WeChat Pay V3 adapter', () => {
   const merchant = generateKeyPairSync('rsa', { modulusLength: 2048 });
@@ -65,4 +65,35 @@ describe('WeChat Pay V3 adapter', () => {
     raw[raw.length - 2] ^= 1;
     expect(verifyWeChatNotifySignature(raw, headers)).toBe(false);
   });
+  function signedResponse(data: unknown, status = 200) {
+    const raw = data === null ? '' : JSON.stringify(data);
+    const timestamp = String(Math.floor(Date.now() / 1000));
+    const nonce = 'response-nonce';
+    const sign = createSign('RSA-SHA256');
+    sign.update(`${timestamp}\n${nonce}\n${raw}\n`); sign.end();
+    return new Response(data === null ? null : raw, { status, headers: {
+      'wechatpay-serial': 'PLATFORMSERIAL', 'wechatpay-timestamp': timestamp,
+      'wechatpay-nonce': nonce, 'wechatpay-signature': sign.sign(platform.privateKey, 'base64'),
+    } });
+  }
+  afterEach(() => jest.restoreAllMocks());
+  it('accepts only a signed query for the configured merchant and requested order', async () => {
+    const record = { out_trade_no: 'CF1', mchid: process.env.WECHAT_PAY_MCH_ID, appid: process.env.WECHAT_PAY_APP_ID, trade_state: 'NOTPAY' };
+    const mock = jest.spyOn(global, 'fetch').mockResolvedValue(signedResponse(record));
+    expect(await queryWeChatOrder('CF1')).toEqual(record);
+    mock.mockResolvedValue(signedResponse({ ...record, out_trade_no: 'CF2' }));
+    await expect(queryWeChatOrder('CF1')).rejects.toThrow('归属不匹配');
+  });
+  it('requires signed 204 confirmation before accepting closure', async () => {
+    const mock = jest.spyOn(global, 'fetch').mockResolvedValue(signedResponse(null, 204));
+    await expect(closeWeChatOrder('CF1')).resolves.toBeUndefined();
+    mock.mockResolvedValue(new Response(null, { status: 204 }));
+    await expect(closeWeChatOrder('CF1')).rejects.toThrow('验签失败');
+  });
+  it('rejects a tampered signed response', async () => {
+    const response = signedResponse({ out_trade_no: 'CF1' });
+    jest.spyOn(global, 'fetch').mockResolvedValue(new Response('{"out_trade_no":"CF2"}', { headers: response.headers }));
+    await expect(queryWeChatOrder('CF1')).rejects.toThrow('验签失败');
+  });
+
 });

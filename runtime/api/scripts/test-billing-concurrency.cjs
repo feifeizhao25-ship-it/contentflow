@@ -10,6 +10,10 @@ const { BillingService } = require('../dist/modules/billing/billing.service');
 const { CN_PLANS } = require('../dist/modules/billing/plans.constant');
 const prisma = new PrismaClient();
 const service = new BillingService(prisma);
+// These races exercise the database; no real merchant API is called.
+const gateway = require('../dist/modules/billing/payment-reconciliation');
+gateway.queryPayment = async () => ({ state: 'pending' });
+gateway.closePayment = async () => {};
 const tenants = [];
 const orders = [];
 
@@ -27,7 +31,7 @@ async function scenario(kind) {
   const results = await Promise.allSettled([
     service.markPaid(input),
     kind === 'close' ? service.closePendingOrder(tenant.id, order.order_no)
-      : service.markPaid({ ...input, providerEventId: `${suffix}-second` }),
+      : service.markPaid({ ...input, providerEventId: `${suffix}-second`, providerOrderNo: `${suffix}-second` }),
   ]);
   assert.equal(results.filter(result => result.status === 'fulfilled').length, 1);
   const loser = results.find(result => result.status === 'rejected');

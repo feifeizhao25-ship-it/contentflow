@@ -1,3 +1,5 @@
+import { createHash } from 'crypto';
+import { queryPayment, closePayment } from './payment-reconciliation';
 import { subscriptionPeriodEnd } from './subscription-period';
 import {
   BadRequestException,
@@ -150,11 +152,43 @@ export class BillingService {
     });
     if (!order) throw new BadRequestException('订单不存在');
     if (order.status !== 'pending') throw new ConflictException(`订单状态 ${order.status} 不允许关闭`);
+    if (!order.payment_method) throw new ConflictException('订单支付渠道缺失，请人工核对');
+    if (order.payment_method !== 'bank_transfer') {
+      try {
+        const state = await queryPayment(order.payment_method, orderNo);
+        if (state.state === 'paid') {
+          await this.reconcileOrder(tenantId, orderNo);
+          throw new ConflictException('订单已付款，不能关闭，请按退款流程处理');
+        }
+        if (state.state !== 'closed') await closePayment(order.payment_method, orderNo);
+      } catch (error) {
+        if (error instanceof ConflictException) throw error;
+        throw new ServiceUnavailableException('支付平台尚未确认关单，订单保持原状态，请稍后核对');
+      }
+    }
     const changed = await this.prisma.paymentOrder.updateMany({
       where: { order_no: orderNo, tenant_id: tenantId, status: 'pending' },
       data: { status: 'closed' },
     });
     if (changed.count !== 1) throw new ConflictException('订单状态已变化，请刷新后重试');
+    return this.prisma.paymentOrder.findUnique({ where: { order_no: orderNo } });
+  }
+
+  async reconcileOrder(tenantId: string, orderNo: string) {
+    const order = await this.prisma.paymentOrder.findFirst({ where: { tenant_id: tenantId, order_no: orderNo } });
+    if (!order) throw new BadRequestException('订单不存在');
+    if (order.status !== 'pending') return order;
+    if (!order.payment_method) throw new ConflictException('订单支付渠道缺失，请人工核对');
+    let state;
+    try { state = await queryPayment(order.payment_method, orderNo); }
+    catch { throw new ServiceUnavailableException('支付平台暂未确认订单状态，请稍后核对'); }
+    if (state.state === 'paid') {
+      await this.markPaid({ orderNo, provider: order.payment_method, providerEventId: `${state.transactionId}:reconciled`,
+        providerOrderNo: state.transactionId!, paidAmount: state.amount!,
+        payloadHash: createHash('sha256').update(JSON.stringify(state)).digest('hex'), signatureValid: true });
+    } else if (state.state === 'closed') {
+      await this.prisma.paymentOrder.updateMany({ where: { tenant_id: tenantId, order_no: orderNo, status: 'pending' }, data: { status: 'closed' } });
+    }
     return this.prisma.paymentOrder.findUnique({ where: { order_no: orderNo } });
   }
 
@@ -191,6 +225,12 @@ export class BillingService {
       if (!order) throw new BadRequestException('支付订单不存在');
       if (order.payment_method !== input.provider) {
         throw new BadRequestException('支付回调渠道与订单不一致');
+      }
+
+      if (['paid', 'refund_pending', 'refunded'].includes(order.status)
+        && order.payment_channel_order_no === input.providerOrderNo
+        && Number(order.amount) === input.paidAmount && order.currency === 'CNY') {
+        return { duplicate: true, event: null };
       }
       if (!PAYABLE_ORDER_STATES.includes(order.status)) throw new ConflictException(`订单状态 ${order.status} 不允许支付`);
       if (Number(order.amount) !== input.paidAmount || order.currency !== 'CNY') {
