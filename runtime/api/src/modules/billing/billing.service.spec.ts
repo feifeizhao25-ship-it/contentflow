@@ -84,6 +84,7 @@ describe('BillingService', () => {
 
   it.each([false, true])('activates purchased entitlement in one transaction (snapshot=%s)', async (hasSnapshot) => {
     const tx = {
+      $queryRaw: jest.fn().mockResolvedValue([]),
       paymentWebhookEvent: {
         findUnique: jest.fn().mockResolvedValue(null),
         create: jest.fn().mockResolvedValue({ id: 'event-1' }),
@@ -119,6 +120,7 @@ describe('BillingService', () => {
   it('treats a repeated refund notification with the same refund number as success', async () => {
     const refunded = { order_no: 'CF1', status: 'refunded', payment_channel_order_no: 'refund-1' };
     const tx = {
+      $queryRaw: jest.fn().mockResolvedValue([]),
       paymentOrder: { findUnique: jest.fn().mockResolvedValue(refunded), findFirst: jest.fn(), update: jest.fn() },
       subscription: { updateMany: jest.fn() }, tenant: { update: jest.fn() },
     };

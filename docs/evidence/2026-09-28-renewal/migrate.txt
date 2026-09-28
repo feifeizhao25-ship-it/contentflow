@@ -1,0 +1,20 @@
+Prisma schema loaded from src/database/prisma/schema.prisma
+Datasource "db": PostgreSQL database "contentflow_ci", schema "public" at "127.0.0.1:55438"
+
+3 migrations found in prisma/migrations
+
+Applying migration `202607270001_init`
+Applying migration `202608220001_payment_state_machine`
+Applying migration `20260905130000_order_plan_snapshot`
+
+The following migration(s) have been applied:
+
+migrations/
+  └─ 202607270001_init/
+    └─ migration.sql
+  └─ 202608220001_payment_state_machine/
+    └─ migration.sql
+  └─ 20260905130000_order_plan_snapshot/
+    └─ migration.sql
+
+All migrations have been successfully applied.

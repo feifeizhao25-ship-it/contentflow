@@ -10,6 +10,7 @@ describe('payment callback order binding', () => {
   };
   function fixture(method = 'wechat', event: unknown = null) {
     const tx = {
+      $queryRaw: jest.fn().mockResolvedValue([]),
       paymentWebhookEvent: { findUnique: jest.fn().mockResolvedValue(event), create: jest.fn() },
       paymentOrder: {
         findUnique: jest.fn().mockResolvedValue({ order_no: 'CF1', payment_method: method, status: 'pending', amount: 99, currency: 'CNY' }),
@@ -53,6 +54,7 @@ describe('payment callback order binding', () => {
 describe('refund entitlement ownership', () => {
   function fixture(subscriptionId: string | null, changed = 1) {
     const tx = {
+      $queryRaw: jest.fn().mockResolvedValue([]),
       paymentOrder: {
         findUnique: jest.fn().mockResolvedValue({ order_no: 'CF1', tenant_id: 'tenant-1', subscription_id: subscriptionId, status: 'refund_pending' }),
         findFirst: jest.fn().mockResolvedValue(null), update: jest.fn(),

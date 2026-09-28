@@ -159,6 +159,11 @@ export class BillingService {
         return { duplicate: true, event: duplicate };
       }
 
+      const initial = await tx.paymentOrder.findUnique({ where: { order_no: input.orderNo } });
+      if (!initial) throw new BadRequestException('支付订单不存在');
+      // Serialize different orders that mutate the same tenant's entitlement.
+      // Re-read after waiting: a concurrent refund/payment may have changed state.
+      await tx.$queryRaw`SELECT id FROM "Tenant" WHERE id = ${initial.tenant_id} FOR UPDATE`;
       const order = await tx.paymentOrder.findUnique({ where: { order_no: input.orderNo } });
       if (!order) throw new BadRequestException('支付订单不存在');
       if (order.payment_method !== input.provider) {
@@ -229,6 +234,9 @@ export class BillingService {
 
   async markRefunded(orderNo: string, providerRefundNo: string) {
     return this.prisma.$transaction(async (tx: any) => {
+      const initial = await tx.paymentOrder.findUnique({ where: { order_no: orderNo } });
+      if (!initial) throw new BadRequestException('退款订单不存在');
+      await tx.$queryRaw`SELECT id FROM "Tenant" WHERE id = ${initial.tenant_id} FOR UPDATE`;
       const order = await tx.paymentOrder.findUnique({ where: { order_no: orderNo } });
       if (!order) throw new BadRequestException('退款订单不存在');
       if (order.status === 'refunded' && order.payment_channel_order_no === providerRefundNo) {
@@ -243,8 +251,9 @@ export class BillingService {
       const newerPaidOrder = await tx.paymentOrder.findFirst({
         where: {
           tenant_id: order.tenant_id,
-          status: 'paid',
-          paid_at: { gt: order.paid_at ?? order.created_at },
+          order_no: { not: order.order_no },
+          status: { in: ['paid', 'refund_pending'] },
+          paid_at: { gte: order.paid_at ?? order.created_at },
         },
       });
       if (newerPaidOrder) {

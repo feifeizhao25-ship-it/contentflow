@@ -20,6 +20,7 @@ describe('billing conditional state transitions', () => {
 
   it('does not activate entitlement if another operation has claimed the order', async () => {
     const tx = {
+      $queryRaw: jest.fn().mockResolvedValue([]),
       paymentWebhookEvent: { findUnique: jest.fn().mockResolvedValue(null), create: jest.fn() },
       paymentOrder: {
         findUnique: jest.fn().mockResolvedValue({ order_no: 'CF1', tenant_id: 'tenant', status: 'pending', payment_method: 'alipay', amount: 99, currency: 'CNY', plan_id: 'pro', plan_snapshot: CN_PLANS[1] }),

@@ -1,0 +1,18 @@
+Temporary generated-code mutation: tenant row locks removed; source unchanged.
+Exit code: 1
+AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
++ actual - expected
+
++ '2030-02-15T00:00:00.000Z'
+- '2030-03-15T00:00:00.000Z'
+         ^
+
+    at crossOrderScenario (/Users/feifei00/Documents/CodexWorktrees/contentflow-production/runtime/api/scripts/test-billing-concurrency.cjs:79:12)
+    at async /Users/feifei00/Documents/CodexWorktrees/contentflow-production/runtime/api/scripts/test-billing-concurrency.cjs:106:7 {
+  generatedMessage: true,
+  code: 'ERR_ASSERTION',
+  actual: '2030-02-15T00:00:00.000Z',
+  expected: '2030-03-15T00:00:00.000Z',
+  operator: 'strictEqual',
+  diff: 'simple'
+}

@@ -50,13 +50,63 @@ async function scenario(kind) {
   }
 }
 
+async function crossOrderScenario(kind) {
+  const suffix = randomUUID();
+  const tenant = await prisma.tenant.create({ data: { name: 'CI cross-order race', slug: `cross-order-${suffix}` } });
+  tenants.push(tenant.id);
+  async function order(label) {
+    const created = await prisma.paymentOrder.create({ data: {
+      tenant_id: tenant.id, order_no: `${label}-${suffix}`, idempotency_key: `${label}-${suffix}`,
+      plan_id: 'pro', plan_snapshot: CN_PLANS[1], billing_cycle: 'monthly',
+      order_type: 'subscription', amount: 99, currency: 'CNY', payment_method: 'alipay',
+    } });
+    orders.push(created.order_no);
+    return created;
+  }
+  const pay = row => service.markPaid({ orderNo: row.order_no, provider: 'alipay', providerEventId: row.order_no,
+    providerOrderNo: row.order_no, paidAmount: 99, payloadHash: 'ci-fixture', signatureValid: true });
+  const seed = await order('seed');
+  await pay(seed);
+  if (kind === 'renewals') {
+    const baseline = new Date('2030-01-15T00:00:00Z');
+    await prisma.subscription.update({ where: { tenant_id: tenant.id }, data: { current_period_end: baseline } });
+    await prisma.tenant.update({ where: { id: tenant.id }, data: { plan_expires_at: baseline } });
+    const first = await order('renewal-a');
+    const second = await order('renewal-b');
+    await Promise.all([pay(first), pay(second)]);
+    const subscription = await prisma.subscription.findUniqueOrThrow({ where: { tenant_id: tenant.id } });
+    const finalTenant = await prisma.tenant.findUniqueOrThrow({ where: { id: tenant.id } });
+    assert.equal(subscription.current_period_end.toISOString(), '2030-03-15T00:00:00.000Z');
+    assert.equal(finalTenant.plan_expires_at.toISOString(), subscription.current_period_end.toISOString());
+    assert.equal(await prisma.paymentOrder.count({ where: { tenant_id: tenant.id, status: 'paid' } }), 3);
+  } else {
+    await service.requestRefund(tenant.id, seed.order_no);
+    const next = await order('new-payment');
+    const [refund, payment] = await Promise.allSettled([
+      service.markRefunded(seed.order_no, `refund-${suffix}`), pay(next),
+    ]);
+    assert.equal(payment.status, 'fulfilled');
+    if (refund.status === 'rejected') assert.equal(refund.reason.getStatus(), 409);
+    const subscription = await prisma.subscription.findUniqueOrThrow({ where: { tenant_id: tenant.id } });
+    const finalTenant = await prisma.tenant.findUniqueOrThrow({ where: { id: tenant.id } });
+    assert.equal(subscription.status, 'active');
+    assert.equal(finalTenant.plan, 'pro');
+    assert.equal(finalTenant.plan_expires_at.toISOString(), subscription.current_period_end.toISOString());
+    const refundedOrder = await prisma.paymentOrder.findUniqueOrThrow({ where: { order_no: seed.order_no } });
+    assert.equal(refundedOrder.status, refund.status === 'fulfilled' ? 'refunded' : 'refund_pending');
+    assert.equal((await prisma.paymentOrder.findUniqueOrThrow({ where: { order_no: next.order_no } })).status, 'paid');
+  }
+}
+
 (async () => {
   try {
     for (let repeat = 0; repeat < 3; repeat++) {
       await scenario('close');
       await scenario('duplicate-payment');
+      await crossOrderScenario('renewals');
+      await crossOrderScenario('refund-payment');
     }
-    console.log('PostgreSQL billing races: 6 scenarios passed; order, entitlement and event checked');
+    console.log('PostgreSQL billing races: 12 scenarios passed; order, entitlement and event checked');
   } finally {
     await prisma.paymentWebhookEvent.deleteMany({ where: { order_no: { in: orders } } });
     await prisma.paymentOrder.deleteMany({ where: { order_no: { in: orders } } });
