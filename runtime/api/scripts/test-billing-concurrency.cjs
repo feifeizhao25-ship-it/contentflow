@@ -98,6 +98,28 @@ async function crossOrderScenario(kind) {
   }
 }
 
+async function checkoutScenario() {
+  const suffix = randomUUID();
+  const tenant = await prisma.tenant.create({ data: { name: 'CI checkout race', slug: `checkout-${suffix}` } });
+  tenants.push(tenant.id);
+  const oldName = process.env.BANK_TRANSFER_ACCOUNT_NAME;
+  const oldAccount = process.env.BANK_TRANSFER_ACCOUNT_NO;
+  process.env.BANK_TRANSFER_ACCOUNT_NAME = 'CI isolated fixture';
+  process.env.BANK_TRANSFER_ACCOUNT_NO = 'ci-not-a-real-account';
+  try {
+    const request = { planId: 'pro', billingCycle: 'monthly', paymentMethod: 'bank_transfer' };
+    const results = await Promise.all(Array.from({ length: 5 }, () => service.createOrder(tenant.id, request, suffix)));
+    orders.push(results[0].order_no);
+    assert.equal(new Set(results.map(result => result.order_no)).size, 1);
+    assert.equal(await prisma.paymentOrder.count({ where: { tenant_id: tenant.id } }), 1);
+    assert.equal(results[0].status, 'pending');
+    await assert.rejects(service.createOrder(tenant.id, { ...request, planId: 'team' }, suffix), error => error.getStatus() === 409);
+  } finally {
+    if (oldName === undefined) delete process.env.BANK_TRANSFER_ACCOUNT_NAME; else process.env.BANK_TRANSFER_ACCOUNT_NAME = oldName;
+    if (oldAccount === undefined) delete process.env.BANK_TRANSFER_ACCOUNT_NO; else process.env.BANK_TRANSFER_ACCOUNT_NO = oldAccount;
+  }
+}
+
 (async () => {
   try {
     for (let repeat = 0; repeat < 3; repeat++) {
@@ -105,8 +127,9 @@ async function crossOrderScenario(kind) {
       await scenario('duplicate-payment');
       await crossOrderScenario('renewals');
       await crossOrderScenario('refund-payment');
+      await checkoutScenario();
     }
-    console.log('PostgreSQL billing races: 12 scenarios passed; order, entitlement and event checked');
+    console.log('PostgreSQL billing races: 15 scenarios passed; order, entitlement and event checked');
   } finally {
     await prisma.paymentWebhookEvent.deleteMany({ where: { order_no: { in: orders } } });
     await prisma.paymentOrder.deleteMany({ where: { order_no: { in: orders } } });

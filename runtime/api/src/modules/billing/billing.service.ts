@@ -42,46 +42,65 @@ export class BillingService {
     const amount = input.billingCycle === 'yearly' ? plan.priceYearlyCny : plan.priceMonthlyCny;
     if (amount == null || amount <= 0) throw new BadRequestException('套餐价格未配置');
 
-    const existing = await this.prisma.paymentOrder.findFirst({
-      where: { tenant_id: tenantId, idempotency_key: idempotencyKey },
-    });
-    if (existing) {
+    const replay = (existing: any) => {
       const sameRequest = existing.plan_id === input.planId
         && existing.billing_cycle === input.billingCycle
         && existing.payment_method === input.paymentMethod;
       if (!sameRequest) throw new ConflictException('该幂等键已用于另一笔订单');
       if (existing.status === 'pending' && existing.payment_method !== 'bank_transfer' && !existing.payment_url) {
-        throw new ConflictException('该历史订单缺少支付链接，请核对订单后重新发起购买');
+        throw new ConflictException('订单支付链接正在生成或需要核对，请勿重复购买');
       }
       return { ...existing, paymentUrl: existing.status === 'pending' ? existing.payment_url ?? null : null };
-    }
+    };
+    const where = { tenant_id: tenantId, idempotency_key: idempotencyKey };
+    const existing = await this.prisma.paymentOrder.findFirst({ where });
+    if (existing) return replay(existing);
 
     this.assertProviderReady(input.paymentMethod);
     const orderNo = `CF${Date.now()}${randomUUID().replace(/-/g, '').slice(0, 10)}`;
-    const payment = input.paymentMethod === 'alipay'
-      ? createAlipayPagePay({ orderNo, amount, subject: plan.name })
-      : input.paymentMethod === 'wechat'
-        ? await createWeChatNativePay({ orderNo, amount, description: plan.name })
-        : null;
-    const order = await this.prisma.paymentOrder.create({
-      data: {
-        tenant_id: tenantId,
-        order_no: orderNo,
-        idempotency_key: idempotencyKey,
-        market: 'cn',
-        plan_id: plan.id,
-        billing_cycle: input.billingCycle,
-        order_type: 'subscription',
-        product_name: plan.name,
-        plan_snapshot: { version: CN_PLAN_VERSION, ...plan },
-        amount,
-        currency: 'CNY',
-        payment_method: input.paymentMethod,
-        status: 'pending',
-        payment_url: payment?.paymentUrl ?? null,
-      },
-    });
-    return { ...order, paymentUrl: payment?.paymentUrl ?? null };
+    let order;
+    try {
+      order = await this.prisma.paymentOrder.create({
+        data: {
+          tenant_id: tenantId,
+          order_no: orderNo,
+          idempotency_key: idempotencyKey,
+          market: 'cn',
+          plan_id: plan.id,
+          billing_cycle: input.billingCycle,
+          order_type: 'subscription',
+          product_name: plan.name,
+          plan_snapshot: { version: CN_PLAN_VERSION, ...plan },
+          amount,
+          currency: 'CNY',
+          payment_method: input.paymentMethod,
+          status: 'pending',
+          payment_url: null,
+        },
+      });
+    } catch (error) {
+      // Only the winning insert may contact the provider. A unique-key loser
+      // replays the persisted order rather than creating a second merchant order.
+      if ((error as { code?: string }).code === 'P2002') {
+        const winner = await this.prisma.paymentOrder.findFirst({ where });
+        if (winner) return replay(winner);
+      }
+      throw error;
+    }
+    if (input.paymentMethod === 'bank_transfer') return { ...order, paymentUrl: null };
+    try {
+      const payment = input.paymentMethod === 'alipay'
+        ? createAlipayPagePay({ orderNo, amount, subject: plan.name })
+        : await createWeChatNativePay({ orderNo, amount, description: plan.name });
+      // Keep the already committed order even if the provider or this write fails.
+      // A later signed callback can still reconcile this exact merchant order.
+      const saved = await this.prisma.paymentOrder.update({
+        where: { order_no: orderNo }, data: { payment_url: payment.paymentUrl },
+      });
+      return { ...saved, paymentUrl: saved.status === 'pending' ? saved.payment_url : null };
+    } catch {
+      throw new ServiceUnavailableException('支付结果暂未确认，订单已保留，请核对该订单，勿重复购买');
+    }
   }
 
   private assertProviderReady(method: PaymentMethod) {
