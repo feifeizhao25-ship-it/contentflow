@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import {
     Card, Tabs, Form, Input, Button, Avatar, Space, Tag, Select,
-    Divider, message, Switch, List, InputNumber, Row, Col, Typography, Progress
+    Divider, message, Switch, List, InputNumber, Row, Col, Typography, Progress, Modal, Checkbox, Alert
 } from 'antd';
 import {
     UserOutlined,
@@ -16,8 +16,18 @@ import {
     CalendarOutlined,
     ClockCircleOutlined,
     ThunderboltOutlined,
+    DownloadOutlined,
+    DeleteOutlined,
 } from '@ant-design/icons';
 import { useAppStore } from '@/store/appStore';
+import {
+    AccountError,
+    deleteMyAccount,
+    fetchMyDataExport,
+    savePreferences,
+    saveProfile,
+} from '@/lib/account-service';
+import { logout } from '@/lib/session';
 
 const { Option } = Select;
 const { Text, Title, Paragraph } = Typography;
@@ -57,13 +67,17 @@ export default function SettingsPage() {
         }
     }, [user, tenant, profileForm, tenantForm]);
 
+    const errorText = (error: unknown, fallback: string) =>
+        error instanceof AccountError ? error.message : fallback;
+
+    // 原来这里 await 一个 1 秒的定时器就提示「已更新」——什么都没保存。
     const handleUpdateProfile = async (values: any) => {
         setLoading(true);
         try {
-            await new Promise(resolve => setTimeout(resolve, 1000));
+            await saveProfile(String(values.name ?? '').trim());
             message.success('个人资料已更新');
         } catch (error) {
-            message.error('更新失败');
+            message.error(errorText(error, '更新失败，请稍后重试'));
         } finally {
             setLoading(false);
         }
@@ -72,14 +86,73 @@ export default function SettingsPage() {
     const handleUpdateSchedule = async (values: any) => {
         setLoading(true);
         try {
-            console.log('Schedule Preferences:', values);
-            await new Promise(resolve => setTimeout(resolve, 1000));
+            await savePreferences({ schedule: values });
             message.success('创作频率与计划偏好已保存');
         } catch (error) {
-            message.error('保存失败');
+            message.error(errorText(error, '保存失败，请稍后重试'));
         } finally {
             setLoading(false);
         }
+    };
+
+    const [notify, setNotify] = useState<Record<string, boolean>>({
+        publish: true, team: true, drift: true, system: false,
+    });
+    const toggleNotify = async (key: string, on: boolean) => {
+        const previous = notify;
+        setNotify({ ...notify, [key]: on });
+        try {
+            await savePreferences({ notifications: { ...notify, [key]: on } });
+        } catch (error) {
+            setNotify(previous);
+            message.error(errorText(error, '保存失败，请稍后重试'));
+        }
+    };
+
+    // ── 账号与数据 ──
+    const [exporting, setExporting] = useState(false);
+    const handleExport = async () => {
+        setExporting(true);
+        try {
+            const { filename, text } = await fetchMyDataExport();
+            const url = URL.createObjectURL(new Blob([text], { type: 'application/json;charset=utf-8' }));
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            a.click();
+            URL.revokeObjectURL(url);
+            message.success('已导出，文件里不含密码与平台授权凭据');
+        } catch (error) {
+            message.error(errorText(error, '导出失败，请稍后重试'));
+        } finally {
+            setExporting(false);
+        }
+    };
+
+    const [deleteOpen, setDeleteOpen] = useState(false);
+    const [understood, setUnderstood] = useState(false);
+    const [deletePassword, setDeletePassword] = useState('');
+    const [deleting, setDeleting] = useState(false);
+    const [deleteError, setDeleteError] = useState<string | null>(null);
+    const openDelete = () => {
+        setUnderstood(false);
+        setDeletePassword('');
+        setDeleteError(null);
+        setDeleteOpen(true);
+    };
+    const handleDelete = async () => {
+        setDeleting(true);
+        setDeleteError(null);
+        try {
+            await deleteMyAccount(deletePassword || undefined);
+        } catch (error) {
+            // 密码错误 / 工作区还有成员 / 服务不可用：留在弹窗里说清楚，保持登录，数据没有改动
+            setDeleteError(errorText(error, '注销未完成，你的数据没有任何改动，请稍后重试'));
+            setDeleting(false);
+            return;
+        }
+        // 账号已注销：清 cookie 并回到登录页
+        await logout();
     };
 
     const tabItems = [
@@ -92,7 +165,7 @@ export default function SettingsPage() {
                         <div style={{ marginBottom: 24, textAlign: 'center' }}>
                             <Avatar size={100} src={user?.avatar_url} icon={<UserOutlined />} />
                             <div style={{ marginTop: 16 }}>
-                                <Button size="small">更换头像</Button>
+                                <Button size="small" disabled title="头像上传暂未开放">更换头像</Button>
                             </div>
                         </div>
                         <Form form={profileForm} layout="vertical" onFinish={handleUpdateProfile}>
@@ -274,18 +347,73 @@ export default function SettingsPage() {
                         <List
                             itemLayout="horizontal"
                             dataSource={[
-                                { title: '发布状态通知', desc: '当内容发布成功或失败时发送通知', default: true },
-                                { title: '团队动态', desc: '当有新成员加入或被移除时提醒', default: true },
-                                { title: '计划偏移提醒', desc: '当内容生成不符合预设频率时发送提醒', default: true },
-                                { title: '系统更新', desc: '重要版本更新和功能上线提醒', default: false },
+                                { key: 'publish', title: '发布状态通知', desc: '当内容发布成功或失败时发送通知' },
+                                { key: 'team', title: '团队动态', desc: '当有新成员加入或被移除时提醒' },
+                                { key: 'drift', title: '计划偏移提醒', desc: '当内容生成不符合预设频率时发送提醒' },
+                                { key: 'system', title: '系统更新', desc: '重要版本更新和功能上线提醒' },
                             ]}
                             renderItem={(item) => (
-                                <List.Item actions={[<Switch key="enabled" defaultChecked={item.default} />]}>
+                                <List.Item actions={[<Switch key="enabled" checked={!!notify[item.key]} onChange={(on) => toggleNotify(item.key, on)} />]}>
                                     <List.Item.Meta title={item.title} description={item.desc} />
                                 </List.Item>
                             )}
                         />
                     </Card>
+                </div>
+            ),
+        },
+        {
+            key: 'data',
+            label: (<span><SafetyOutlined /> 账号与数据</span>),
+            children: (
+                <div style={{ maxWidth: 720, padding: '24px 0' }}>
+                    <Card bordered={false} title="导出我的数据">
+                        <Paragraph style={{ color: '#64748b' }}>
+                            下载一份 JSON 文件：你的账号资料、个人数据，以及你名下工作区的内容、平台账号、素材与 AI 生成记录。
+                            文件里不含密码和平台授权凭据。
+                        </Paragraph>
+                        <Button icon={<DownloadOutlined />} loading={exporting} onClick={handleExport}>导出</Button>
+                    </Card>
+                    <Card bordered={false} title="注销账号" style={{ marginTop: 16 }}>
+                        <Paragraph>注销后，以下内容会被<Text strong type="danger">永久删除，无法恢复</Text>：</Paragraph>
+                        <ul style={{ color: '#475569', lineHeight: 1.9 }}>
+                            <li>个人资料、登录记录、通知、积分与成长记录</li>
+                            <li>如果你是工作区里唯一的成员：工作区的全部内容、平台账号及其授权、素材、AI 生成记录和 API 密钥</li>
+                        </ul>
+                        <Paragraph>依法保留（不再与可识别的个人关联）：</Paragraph>
+                        <ul style={{ color: '#475569', lineHeight: 1.9 }}>
+                            <li>订单、订阅与支付记录（交易凭证，保存不少于三年）</li>
+                            <li>操作日志（保存不少于六个月）</li>
+                        </ul>
+                        <Paragraph type="secondary">
+                            如果工作区里还有其他成员，所有者需要先转让所有权或移除成员，才能注销。
+                        </Paragraph>
+                        <Button danger icon={<DeleteOutlined />} onClick={openDelete}>注销账号</Button>
+                    </Card>
+                    <Modal
+                        title="确认注销账号"
+                        open={deleteOpen}
+                        onCancel={() => !deleting && setDeleteOpen(false)}
+                        okText="确认注销"
+                        okButtonProps={{ danger: true, disabled: !understood, loading: deleting }}
+                        cancelText="先不注销"
+                        onOk={handleDelete}
+                        maskClosable={false}
+                    >
+                        <Space direction="vertical" style={{ width: '100%' }} size={12}>
+                            <Alert type="warning" showIcon message="此操作不可撤销" />
+                            <Input.Password
+                                placeholder="请输入当前登录密码"
+                                value={deletePassword}
+                                onChange={(e) => setDeletePassword(e.target.value)}
+                                autoComplete="current-password"
+                            />
+                            <Checkbox checked={understood} onChange={(e) => setUnderstood(e.target.checked)}>
+                                我已了解：账号与个人数据将被永久删除
+                            </Checkbox>
+                            {deleteError && <Alert type="error" showIcon message={deleteError} />}
+                        </Space>
+                    </Modal>
                 </div>
             ),
         },
