@@ -62,7 +62,12 @@ export class UserService {
     const patch: { name?: string; avatar_url?: string; preferences?: any } = {};
     if (data.name !== undefined) patch.name = data.name;
     if (data.avatar_url !== undefined) patch.avatar_url = data.avatar_url;
-    if (data.preferences !== undefined) patch.preferences = data.preferences;
+    if (data.preferences !== undefined) {
+      // 浅合并：设置页的不同分区各改各的键（例如 schedule），不能互相覆盖
+      const current = await this.prisma.user.findUnique({ where: { id }, select: { preferences: true } });
+      const existing = current?.preferences && typeof current.preferences === 'object' && !Array.isArray(current.preferences) ? (current.preferences as Record<string, unknown>) : {};
+      patch.preferences = { ...existing, ...data.preferences };
+    }
     return this.prisma.user.update({ where: { id }, data: patch, select: UserService.SAFE_SELECT });
   }
 

@@ -16,6 +16,7 @@ const request = require('supertest');
 import { configureApp } from '../../bootstrap';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { PrismaService } from '../../database/prisma.service';
+import { AccountErasureService } from './account-erasure.service';
 import { UserController } from './user.controller';
 import { UserService } from './user.service';
 
@@ -37,7 +38,7 @@ describe('users 接口', () => {
     prisma.user.update.mockImplementation(async ({ data }: any) => ({ id: ME.id, ...data }));
     const moduleRef = await Test.createTestingModule({
       controllers: [UserController],
-      providers: [UserService, { provide: PrismaService, useValue: prisma }],
+      providers: [UserService, AccountErasureService, { provide: PrismaService, useValue: prisma }],
     })
       .overrideGuard(JwtAuthGuard)
       .useValue({
@@ -75,6 +76,12 @@ describe('users 接口', () => {
     const arg = prisma.user.update.mock.calls[0][0];
     expect(arg.where).toEqual({ id: 'u-me' });
     expect(Object.keys(arg.data).sort()).toEqual(['avatar_url', 'name', 'preferences']);
+  });
+
+  it('PUT /users/me：preferences 与已有的浅合并，设置页各分区互不覆盖', async () => {
+    prisma.user.findUnique.mockResolvedValue({ preferences: { theme: 'dark', schedule: { freq: 3 } } });
+    await request(app.getHttpServer()).put('/api/v1/users/me').send({ preferences: { schedule: { freq: 5 } } }).expect(200);
+    expect(prisma.user.update.mock.calls[0][0].data.preferences).toEqual({ theme: 'dark', schedule: { freq: 5 } });
   });
 
   it('PUT /users/me：头像必须是 https 链接（不能是 javascript: 之类）', async () => {

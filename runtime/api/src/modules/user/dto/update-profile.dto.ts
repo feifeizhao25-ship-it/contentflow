@@ -1,4 +1,5 @@
-import { IsIn, IsObject, IsOptional, IsString, IsUrl, MaxLength } from 'class-validator';
+import { Transform } from 'class-transformer';
+import { Equals, IsObject, IsOptional, IsString, IsUrl, MaxLength } from 'class-validator';
 
 /**
  * 「更新我的资料」允许改的字段——只有这三个。
@@ -26,9 +27,14 @@ export class UpdateProfileDto {
 }
 
 export class DeleteAccountDto {
-  /** 必须明确传 true：防止误调用 */
-  @IsIn([true], { message: '请先确认已了解注销后果' })
-  confirm!: true;
+  /**
+   * 必须是布尔值 true：防止误调用。
+   * 全局 ValidationPipe 开着 enableImplicitConversion，字符串 "yes" / "false" 会被当成
+   * Boolean(...) === true 悄悄通过，所以这里用 Transform 取原始值再比较。
+   */
+  @Transform(({ obj }) => obj.confirm)
+  @Equals(true, { message: '请先确认已了解注销后果' })
+  confirm!: boolean;
 
   /** 有密码的账号必须再输一次密码 */
   @IsOptional()
