@@ -2,6 +2,7 @@ import { Controller, Get, Put, Delete, Param, Body, UseGuards, Request } from '@
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { UserService } from './user.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
+import { UpdateProfileDto } from './dto/update-profile.dto';
 
 @ApiTags('users')
 @Controller('users')
@@ -19,7 +20,7 @@ export class UserController {
 
   @Put('me')
   @ApiOperation({ summary: '更新当前用户信息' })
-  async updateProfile(@Request() req: any, @Body() data: { name?: string; avatar_url?: string; preferences?: any }) {
+  async updateProfile(@Request() req: any, @Body() data: UpdateProfileDto) {
     const user = await this.userService.update(req.user.sub, data);
     return { user };
   }
@@ -33,8 +34,8 @@ export class UserController {
 
   @Get(':id')
   @ApiOperation({ summary: '获取用户详情' })
-  async getById(@Param('id') id: string) {
-    const user = await this.userService.findById(id);
+  async getById(@Request() req: any, @Param('id') id: string) {
+    const user = await this.userService.findInTenant(id, req.user.tenantId);
     return { user };
   }
 }
