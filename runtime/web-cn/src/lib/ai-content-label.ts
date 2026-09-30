@@ -20,3 +20,18 @@ export const AI_MEDIA_METADATA_ARGS: string[] = [
     `-metadata generator=${AI_GENERATOR_NAME}`,
     '-metadata comment=AI-generated content',
 ];
+
+/**
+ * 给 AI 生成的文本加显式标识（与 API 侧 labelAiGeneratedText 一致）。
+ * 幂等：已带标识的内容不会重复添加；空内容只返回标识本身。
+ */
+export function labelAiGeneratedText(content: string, label: string = AI_TEXT_LABEL): string {
+    const body = (content || '').trim();
+    if (body.startsWith(label)) return body;
+    return body.length > 0 ? `${label}\n${body}` : label;
+}
+
+/** 内容是否来自 AI 生成：正文带显式标识，或生成流程里做过标记。 */
+export function isAiGeneratedText(content: string, flaggedByFlow = false): boolean {
+    return flaggedByFlow || (content || '').includes(AI_TEXT_LABEL);
+}

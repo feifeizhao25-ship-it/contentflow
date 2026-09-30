@@ -463,7 +463,7 @@ ${content}
     size?: string;
     style?: string;
     seed?: number;
-  }): Promise<{ url: string; revisedPrompt?: string }> {
+  }): Promise<{ url: string; revisedPrompt?: string; provider: string; model: string }> {
     // 国内版一律走通义万相（境内），不论环境里有没有 FAL_API_KEY——
     // 原来国内版也只会调 fal.ai（境外），给了 key 就出境，不给就永远「未配置」。
     if (isDomesticMarket(this.marketRegion)) {
@@ -562,6 +562,8 @@ ${content}
       return {
         url: imageUrl,
         revisedPrompt: enhancedPrompt,
+        provider: 'fal.ai',
+        model: 'nano-banana-pro',
       };
     } catch (error) {
       this.logger.error('fal.ai image generation failed:', error);
@@ -570,7 +572,7 @@ ${content}
   }
 
   /** 通义万相文生图：提交异步任务，轮询到 SUCCEEDED 取结果地址（结果地址约 24 小时有效）。 */
-  private async generateImageDashScope(params: { prompt: string; size?: string; seed?: number }): Promise<{ url: string; revisedPrompt?: string }> {
+  private async generateImageDashScope(params: { prompt: string; size?: string; seed?: number }): Promise<{ url: string; revisedPrompt?: string; provider: string; model: string }> {
     if (!this.qwenApiKey) {
       throw new Error('国内版图片生成使用通义万相，需要配置 QWEN_API_KEY（DashScope）');
     }
@@ -579,6 +581,7 @@ ${content}
       '1280x720': '1280*720', '720x1280': '720*1280',
     };
     const size = sizes[params.size || '1024x1024'] ?? '1024*1024';
+    const model = this.configService.get('DASHSCOPE_IMAGE_MODEL', 'wanx2.1-t2i-turbo');
     const submit = await fetch(DASHSCOPE_IMAGE_SYNTHESIS, {
       method: 'POST',
       headers: {
@@ -587,7 +590,7 @@ ${content}
         'X-DashScope-Async': 'enable',
       },
       body: JSON.stringify({
-        model: this.configService.get('DASHSCOPE_IMAGE_MODEL', 'wanx2.1-t2i-turbo'),
+        model,
         input: { prompt: params.prompt },
         parameters: { size, n: 1, ...(params.seed ? { seed: params.seed } : {}) },
       }),
@@ -608,7 +611,7 @@ ${content}
       if (output?.task_status === 'SUCCEEDED') {
         const url = output?.results?.find((r: any) => r?.url)?.url;
         if (!url) throw new Error('通义万相未返回图片地址');
-        return { url, revisedPrompt: output?.results?.[0]?.actual_prompt ?? params.prompt };
+        return { url, revisedPrompt: output?.results?.[0]?.actual_prompt ?? params.prompt, provider: 'dashscope', model };
       }
       if (output?.task_status === 'FAILED' || output?.task_status === 'CANCELED') {
         throw new Error(`通义万相生成失败：${output?.code ?? output?.task_status}`);

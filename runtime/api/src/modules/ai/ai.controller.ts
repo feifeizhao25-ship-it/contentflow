@@ -1,5 +1,5 @@
 import { BadRequestException, Controller, Post, Get, Body, UseGuards, Request } from '@nestjs/common';
-import { AI_TEXT_LABEL } from '../../common/ai-content-label';
+import { AI_TEXT_LABEL, buildAiMediaMetadata, labelAiGeneratedText } from '../../common/ai-content-label';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { AIService } from './ai.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
@@ -32,11 +32,15 @@ export class AIController {
       keywords,
     });
 
+    // 显式标识（《人工智能生成合成内容标识办法》）：正文本身带「AI 生成」，
+    // 复制、保存、分发时不会丢；留存的生成记录里也是带标识的版本。
+    const labelled = labelAiGeneratedText(result.content);
+
     // 记录使用
     await this.aiService.recordGeneration(req.user.tenantId, req.user.sub, {
       generationType: 'article',
       inputParams: { topic, style, platform, keywords },
-      outputContent: result.content,
+      outputContent: labelled,
       modelProvider: result.provider,
       modelName: result.model,
       tokensInput: result.usage.prompt_tokens,
@@ -46,7 +50,7 @@ export class AIController {
       status: 'success',
     });
 
-    return result;
+    return { ...result, content: labelled, aiGenerated: true, aiLabel: AI_TEXT_LABEL };
   }
 
   @Post('generate/script')
@@ -115,10 +119,11 @@ export class AIController {
   @Post('generate/image')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'AI图片生成 (nano-banana-pro)' })
+  @ApiOperation({ summary: 'AI图片生成' })
   async generateImage(@Request() req: any, @Body() body: any) {
+    await this.aiService.assertTenantDailyBudget(req.user.tenantId);
     const { prompt, size, style, seed } = body;
-    
+
     const result = await this.aiService.generateImage({
       prompt,
       size,
@@ -131,11 +136,17 @@ export class AIController {
       generationType: 'image',
       inputParams: { prompt, size, style, seed },
       outputContent: result.url,
-      modelProvider: 'fal.ai',
-      modelName: 'nano-banana-pro',
+      modelProvider: result.provider,
+      modelName: result.model,
       status: 'success',
     });
 
-    return result;
+    // 显式标识 + 隐式标识元数据随结果返回：前端展示「AI 生成」，导出图片时写入文件元数据。
+    return {
+      ...result,
+      aiGenerated: true,
+      aiLabel: AI_TEXT_LABEL,
+      aiMetadata: buildAiMediaMetadata({ mediaType: 'image', model: result.model }),
+    };
   }
 }

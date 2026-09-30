@@ -13,6 +13,7 @@ import { useAchievementStore } from '@/store/appStore';
 import { trackEvent } from '@/lib/analytics';
 import { PLACEHOLDER_IMAGES } from '@/lib/placeholders';
 import { safeErrorText } from '@/lib/api-error';
+import { isAiGeneratedText } from '@/lib/ai-content-label';
 
 const { TextArea } = Input;
 
@@ -37,6 +38,9 @@ function StudioContent() {
   const [selectedTitle, setSelectedTitle] = useState('');
   const [script, setScript] = useState('');
   const [coverUrl, setCoverUrl] = useState('');
+  // 本次会话里的内容 / 封面是 AI 生成的：保存到内容库时标记 source=ai，分发时才会保留 AI 生成标识
+  const [scriptIsAi, setScriptIsAi] = useState(false);
+  const [coverIsAi, setCoverIsAi] = useState(false);
   const [visualPrompts, setVisualPrompts] = useState<string[]>([]);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isGeneratingImage, setIsGeneratingImage] = useState(false);
@@ -154,6 +158,7 @@ function StudioContent() {
 
       const articleData = articleRes?.data || articleRes;
       setScript(articleData?.content || '');
+      setScriptIsAi(true);
       setVisualPrompts(articleData?.visualPrompts || []);
 
       const titleRes: any = await apiClient.post('/ai/generate/titles', {
@@ -195,6 +200,7 @@ function StudioContent() {
       });
       const imageData = res?.data || res;
       setCoverUrl(imageData?.url || '');
+      setCoverIsAi(true);
       await refreshBalance();
       trackEvent('cover_generated', {
         style,
@@ -257,6 +263,7 @@ function StudioContent() {
         cover_url: coverUrl || undefined,
         media_urls: coverUrl ? [coverUrl] : [],
         tags: ['内容工作室'],
+        source: isAiGeneratedText(script, scriptIsAi || coverIsAi) ? 'ai' : 'manual',
       });
       const contentId = contentRes?.data?.id || contentRes?.content?.id || contentRes?.id;
       if (!contentId) {
@@ -500,6 +507,9 @@ function StudioContent() {
                       unoptimized
                       className="w-full h-full object-cover"
                     />
+                    {coverUrl && coverIsAi && (
+                      <div className="absolute left-2 top-2 rounded bg-black/60 px-2 py-0.5 text-[11px] text-white">AI 生成</div>
+                    )}
                     {!coverUrl && (
                       <div className="absolute inset-0 bg-black/30 flex flex-col items-center justify-center text-xs text-white text-center p-4">
                         <ImageIcon className="w-8 h-8 mb-2 opacity-50" />

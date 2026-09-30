@@ -299,7 +299,7 @@ function ContentsContent() {
             title: '创建渠道',
             dataIndex: 'source',
             key: 'source',
-            render: (source) => source === 'ai_generated' ? <Tag color="purple">AI 生成</Tag> : <Tag>手动创建</Tag>,
+            render: (source) => source === 'ai' ? <Tag color="purple">AI 生成</Tag> : <Tag>手动创建</Tag>,
         },
         {
             title: '创建时间',

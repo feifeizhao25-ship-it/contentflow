@@ -6,6 +6,7 @@ import { ThunderboltOutlined, CopyOutlined, CheckCircleOutlined, StarOutlined } 
 import { motion, AnimatePresence } from 'framer-motion';
 import { useOnboardingStore, DOMAIN_NAMES } from '@/store/onboardingStore';
 import { safeErrorText } from '@/lib/api-error';
+import { labelAiGeneratedText } from '@/lib/ai-content-label';
 
 interface FirstScriptGuideProps {
   onScriptGenerated?: (scriptId: string) => void;
@@ -51,12 +52,13 @@ export default function FirstScriptGuide({ onScriptGenerated, isGenerating }: Fi
       }
       const scenes = Array.isArray(payload?.scenes) ? payload.scenes : [];
       if (scenes.length === 0) throw new Error('生成结果没有有效分镜');
-      const content = scenes
+      // 显式标识（《人工智能生成合成内容标识办法》）：脚本正文本身带「AI 生成」，复制出去也不会丢
+      const content = labelAiGeneratedText(scenes
         .map(
           (scene: { subtitle?: unknown; visual?: unknown; time?: unknown }, index: number) =>
             `【分镜 ${index + 1}】\n${String(scene.subtitle || '')}\n画面：${String(scene.visual || '')}（${Number(scene.time) || 0}秒）`,
         )
-        .join('\n\n');
+        .join('\n\n'));
       const scriptId = `script_${Date.now()}`;
       sessionStorage.setItem(
         'contentflow:onboarding-script',
