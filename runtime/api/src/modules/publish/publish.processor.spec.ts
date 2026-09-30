@@ -6,6 +6,7 @@ describe('PublishProcessor', () => {
     publishTask: {
       findFirst: jest.fn(),
       update: jest.fn(),
+      updateMany: jest.fn(),
     },
   } as any;
 
@@ -34,6 +35,7 @@ describe('PublishProcessor', () => {
       },
     });
     prisma.publishTask.update.mockImplementation(({ data }: any) => Promise.resolve(data));
+    prisma.publishTask.updateMany.mockResolvedValue({ count: 1 });
   });
 
   function processor(values: Record<string, string>) {

@@ -2,6 +2,8 @@ import { Controller, Post, Get, Body, Param, Query, UseGuards, Request } from '@
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { PublishService } from './publish.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
+import { normalizePaging } from '../../common/pagination';
+import { CreatePublishTaskDto } from './dto/create-publish-task.dto';
 
 @ApiTags('publish')
 @Controller('publish')
@@ -12,8 +14,8 @@ export class PublishController {
 
   @Post('tasks')
   @ApiOperation({ summary: '创建发布任务' })
-  async createTask(@Request() req: any, @Body() body: any) {
-    return this.publishService.createTask(req.user.tenantId, req.user.sub, body);
+  async createTask(@Request() req: any, @Body() body: CreatePublishTaskDto) {
+    return this.publishService.createTask(req.user.tenantId, req.user.sub, body as Parameters<PublishService['createTask']>[2]);
   }
 
   @Get('tasks')
@@ -24,7 +26,8 @@ export class PublishController {
     @Query('page') page?: number,
     @Query('pageSize') pageSize?: number,
   ) {
-    return this.publishService.getTasks(req.user.tenantId, { status, page, pageSize });
+    const paging = normalizePaging(page, pageSize);
+    return this.publishService.getTasks(req.user.tenantId, { status, page: paging.page, pageSize: paging.pageSize });
   }
 
   @Post('tasks/:id/retry')
