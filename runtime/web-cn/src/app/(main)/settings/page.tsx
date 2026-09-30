@@ -28,6 +28,9 @@ import {
     saveProfile,
 } from '@/lib/account-service';
 import { logout } from '@/lib/session';
+import Link from 'next/link';
+import { apiClient } from '@/lib/api-client';
+import { describePlan, type PlanView } from '@/lib/page-data';
 
 const { Option } = Select;
 const { Text, Title, Paragraph } = Typography;
@@ -35,6 +38,7 @@ const { Text, Title, Paragraph } = Typography;
 export default function SettingsPage() {
     const { user, tenant } = useAppStore();
     const [loading, setLoading] = useState(false);
+    const [planView, setPlanView] = useState<PlanView | null>(null);
     const [profileForm] = Form.useForm();
     const [tenantForm] = Form.useForm();
     const [scheduleForm] = Form.useForm();
@@ -66,6 +70,15 @@ export default function SettingsPage() {
             });
         }
     }, [user, tenant, profileForm, tenantForm]);
+
+    // 套餐与用量：来自后端的工作区限额与用量（原来是写死的 2/5、450/1000 与 2024 年账单日）
+    useEffect(() => {
+        let cancelled = false;
+        apiClient.get<any>('/users/me')
+            .then((res) => { if (!cancelled) setPlanView(describePlan(res?.user?.tenant)); })
+            .catch(() => { if (!cancelled) setPlanView(null); });
+        return () => { cancelled = true; };
+    }, []);
 
     const errorText = (error: unknown, fallback: string) =>
         error instanceof AccountError ? error.message : fallback;
@@ -278,7 +291,7 @@ export default function SettingsPage() {
                     <Card bordered={false}>
                         <Form form={tenantForm} layout="vertical">
                             <Form.Item label="团队名称" name="tenantName" rules={[{ required: true }]}>
-                                <Input prefix={<TeamOutlined />} />
+                                <Input prefix={<TeamOutlined />} disabled />
                             </Form.Item>
                             <Form.Item label="当前版本" name="plan">
                                 <Select disabled>
@@ -288,11 +301,7 @@ export default function SettingsPage() {
                                     <Option value="enterprise">企业版</Option>
                                 </Select>
                             </Form.Item>
-                            <Form.Item>
-                                <Button type="primary" icon={<SaveOutlined />}>
-                                    更新团队信息
-                                </Button>
-                            </Form.Item>
+                            <Text type="secondary">团队名称暂不支持在线修改，如需变更请联系客服。</Text>
                         </Form>
                     </Card>
                 </div>
@@ -304,35 +313,38 @@ export default function SettingsPage() {
             children: (
                 <div style={{ padding: '24px 0' }}>
                     <Space direction="vertical" style={{ width: '100%' }} size="large">
-                        <Card title="当前版本" extra={<Button type="primary">升级版本</Button>}>
+                        <Card title="当前版本" extra={<Link href="/pricing"><Button type="primary">升级版本</Button></Link>}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                 <div>
-                                    <h2 style={{ margin: 0 }}>{tenant?.plan === 'pro' ? '专业版' : '免费版'}</h2>
-                                    <p style={{ color: '#6b7280' }}>下次账单日期：2024年1月31日</p>
+                                    <h2 style={{ margin: 0 }}>{planView?.name ?? (tenant?.plan === 'pro' ? '专业版' : '免费版')}</h2>
+                                    <p style={{ color: '#6b7280' }}>{planView ? planView.renewText : '正在读取套餐信息…'}</p>
                                 </div>
-                                <Tag color="blue" style={{ padding: '4px 12px', fontSize: 14 }}>运行中</Tag>
+                                <Tag color="blue" style={{ padding: '4px 12px', fontSize: 14 }}>使用中</Tag>
                             </div>
                         </Card>
                         <Card title="资源使用情况">
-                            <List
-                                itemLayout="horizontal"
-                                dataSource={[
-                                    { title: '账号绑定', current: 2, limit: 5, unit: '个' },
-                                    { title: 'AI 生成额度', current: 450, limit: 1000, unit: '次' },
-                                    { title: '存储空间', current: 0.2, limit: 1, unit: 'GB' },
-                                ]}
-                                renderItem={(item) => (
-                                    <List.Item>
-                                        <div style={{ width: '100%' }}>
-                                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
-                                                <span>{item.title}</span>
-                                                <span>{item.current} / {item.limit} {item.unit}</span>
+                            {planView && planView.usage.length > 0 ? (
+                                <List
+                                    itemLayout="horizontal"
+                                    dataSource={planView.usage}
+                                    renderItem={(item) => (
+                                        <List.Item>
+                                            <div style={{ width: '100%' }}>
+                                                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+                                                    <span>{item.title}</span>
+                                                    <span>{item.current} / {item.limit} {item.unit}</span>
+                                                </div>
+                                                <Progress percent={Math.min(100, (item.current / item.limit) * 100)} showInfo={false} strokeColor="#6366f1" />
                                             </div>
-                                            <Progress percent={(item.current / item.limit) * 100} showInfo={false} strokeColor="#6366f1" />
-                                        </div>
-                                    </List.Item>
-                                )}
-                            />
+                                        </List.Item>
+                                    )}
+                                />
+                            ) : (
+                                <Text type="secondary">{planView ? '暂无用量数据' : '正在读取用量…'}</Text>
+                            )}
+                            {planView?.aiCallsThisMonth != null && (
+                                <Paragraph style={{ marginTop: 12, marginBottom: 0, color: '#64748b' }}>本月 AI 调用 {planView.aiCallsThisMonth} 次</Paragraph>
+                            )}
                         </Card>
                     </Space>
                 </div>

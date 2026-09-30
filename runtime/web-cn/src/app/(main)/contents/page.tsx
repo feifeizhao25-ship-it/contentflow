@@ -14,6 +14,7 @@ import {
 } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 import { apiClient } from '@/lib/api-client';
+import { parseContentList } from '@/lib/page-data';
 import { PLACEHOLDER_IMAGES } from '@/lib/placeholders';
 import { safeErrorText } from '@/lib/api-error';
 
@@ -99,16 +100,8 @@ function ContentsContent() {
         setLoading(true);
         try {
             const result: any = await apiClient.get('/contents');
-            if (result?.success) {
-                const payload = result.data || result;
-                const items = payload.contents || [];
-                setData(items.map((item: any) => ({
-                    ...item,
-                    key: item.id,
-                    type: item.content_type,
-                    created_at: new Date(item.created_at).toLocaleString()
-                })));
-            }
+            // apiClient 已解开 { success, data } 信封，拿到的就是 { contents, pagination }
+            setData(parseContentList(result) as any);
         } catch {
             message.error('获取内容列表失败');
         } finally {
@@ -157,13 +150,10 @@ function ContentsContent() {
 
     const handleDelete = async (id: string) => {
         try {
-            const result: any = await apiClient.delete(`/contents/${id}`);
-            if (result?.success) {
-                message.success('内容已删除');
-                fetchContents();
-            } else {
-                throw new Error('删除失败，请稍后重试');
-            }
+            // 失败会抛出（apiClient 对非 2xx 抛错），走到这里就是删除成功
+            await apiClient.delete(`/contents/${id}`);
+            message.success('内容已删除');
+            fetchContents();
         } catch (error: any) {
             message.error('删除失败：' + safeErrorText(error, '请稍后重试'));
         }

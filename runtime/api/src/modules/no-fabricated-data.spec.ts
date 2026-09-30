@@ -28,6 +28,8 @@ const FABRICATED_PATTERNS: Array<{ re: RegExp; why: string }> = [
   { re: /engagementRate:\s*0?\.\d+/, why: '写死的互动率' },
   { re: /contentCount:\s*\d{2,}/, why: '写死的内容数' },
   { re: /currentPhase:\s*\d/, why: '写死的阶段值' },
+  { re: /\bheat:\s*\d{4,}/, why: '写死的热度值' },
+  { re: /\b(success|failed|total)\s*:\s*0\s*,\s*\/\//, why: '写死为 0 的统计值（注释里写着「需计算」）' },
 ];
 
 function serviceFiles(): string[] {
@@ -63,6 +65,19 @@ describe('service 不得返回编造的业务数据', () => {
       expect(queries && queries.length > 0 ? '' : `${rel} 没有任何数据库查询`).toBe('');
     },
   );
+
+  it('所有 service 文件都没有写死的业务指标（原来只查 growth 与 competitor 两个，其余 service 全部空转）', () => {
+    const offenders: string[] = [];
+    for (const file of files) {
+      // 注释先不剥离：写死为 0 的统计值靠行尾注释识别
+      const raw = fs.readFileSync(file, 'utf8');
+      const code = stripComments(raw);
+      for (const { re, why } of FABRICATED_PATTERNS) {
+        if (re.test(code) || (why.includes('注释') && re.test(raw))) offenders.push(`${path.relative(MODULES_DIR, file)}: ${why}`);
+      }
+    }
+    expect(offenders).toEqual([]);
+  });
 
   it.each(['growth/growth.service.ts', 'competitor/competitor.service.ts'])(
     '%s 没有写死的业务指标',

@@ -117,6 +117,79 @@ const read = (p) => (fs.existsSync(p) ? fs.readFileSync(p, 'utf8') : null);
   }
 }
 
+// ─── 1b. apiClient 的每个调用都要有后端路由 ───
+//
+// 第 1 节只查 fetch('/api/…')。而页面里绝大多数调用是 apiClient.get('/xxx')（实际请求 /api/v1/xxx）：
+// 路径拼错、后端没实现，页面上只会看到一句「服务响应异常」。热点页调的 /ai/hot-topics、
+// /ai/analyze-viral 后端根本没有（真实路由是 /hot/list、/ai/analyze/viral），于是热点页
+// 永远走「写死的假热点」兜底。
+//
+// 下面这张表是**已知尚未实现、界面上已经如实提示**的调用：新增一条要写清原因；
+// 修好一条要删掉一条（多余的条目同样会让检查失败，避免表越攒越长）。
+
+const KNOWN_UNIMPLEMENTED = {
+  'GET /contents/:id/assets': '内容素材清单：后端未实现，页面按无素材处理',
+  'POST /contents/:id/assets': '内容素材清单：后端未实现，工作室保存时忽略失败',
+  'GET /contents/:id/versions': '内容版本历史：后端未实现（需要新表）',
+  'GET /contents/:id/compare': '内容版本对比：后端未实现（需要新表）',
+  'POST /contents/:id/clone': '内容复用：后端未实现',
+  'POST /contents/:id/rollback': '内容回滚：后端未实现（需要新表）',
+  'POST /contents/:id/review/generate': 'AI 内容复盘：后端未实现',
+  'GET /analytics/funnel': '转化漏斗：后端未实现，卡片按零值展示',
+  'POST /ai/generate/video': '视频生成：国内版暂未开通（境外服务商），页面提示暂未开通',
+};
+
+function backendRoutes() {
+  const out = [];
+  const dir = path.join(API_SRC, 'modules');
+  const stack = [dir];
+  while (stack.length) {
+    const d = stack.pop();
+    if (!fs.existsSync(d)) continue;
+    for (const e of fs.readdirSync(d, { withFileTypes: true })) {
+      const full = path.join(d, e.name);
+      if (e.isDirectory()) stack.push(full);
+      else if (/\.controller\.ts$/.test(e.name)) {
+        const src = stripComments(fs.readFileSync(full, 'utf8'));
+        const base = (src.match(/@Controller\(\s*['"]([^'"]*)['"]/) || [, ''])[1];
+        for (const m of src.matchAll(/@(Get|Post|Put|Patch|Delete)\(\s*(?:['"]([^'"]*)['"])?\s*\)/g)) {
+          const segs = `${base}/${m[2] || ''}`.split('/').filter(Boolean);
+          out.push({ method: m[1].toUpperCase(), segs });
+        }
+      }
+    }
+  }
+  return out;
+}
+
+{
+  const routes = backendRoutes();
+  if (routes.length < 30) fail(`后端路由只扫到 ${routes.length} 条，疑似扫描路径不对`);
+  const used = new Set();
+  const seen = new Set();
+  for (const file of walk(WEB_SRC)) {
+    const src = stripComments(fs.readFileSync(file, 'utf8'));
+    for (const m of src.matchAll(/apiClient\.(get|post|put|patch|delete)(?:<[^>]*>)?\(\s*([`'"])(\/[^`'"]*)\2/g)) {
+      const method = m[1].toUpperCase();
+      // 查询串（含 ${query} 拼接）不参与匹配；路径里其余的 ${…} 是动态段
+      const rawPath = m[3].split('?')[0].replace(/(?<=[^/])\$\{[^}]*\}$/, '');
+      const segs = rawPath.split('/').filter(Boolean);
+      const dyn = (x) => /\$\{[^}]*\}/.test(x);
+      const hit = routes.find((r) => r.method === method && r.segs.length === segs.length
+        && r.segs.every((rs, i) => rs.startsWith(':') || dyn(segs[i]) || rs === segs[i]));
+      if (hit) continue;
+      const key = `${method} ${rawPath.replace(/\$\{[^}]*\}/g, ':id')}`;
+      const known = Object.keys(KNOWN_UNIMPLEMENTED).find((k) => k === key);
+      if (known) { used.add(known); continue; }
+      const id = `${key}  <- ${path.relative(WEB_SRC, file)}`;
+      if (!seen.has(id)) { seen.add(id); fail(`后端没有这个路由: ${id}`); }
+    }
+  }
+  for (const k of Object.keys(KNOWN_UNIMPLEMENTED)) {
+    if (!used.has(k)) fail(`KNOWN_UNIMPLEMENTED 里的「${k}」已经没有调用了（或后端已实现），请从表里删掉`);
+  }
+}
+
 // ─── 2. 响应信封必须被解开 ───
 
 {

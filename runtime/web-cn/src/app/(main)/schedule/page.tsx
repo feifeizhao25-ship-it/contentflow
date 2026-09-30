@@ -24,7 +24,9 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { useThemeStore } from '@/store/themeStore';
 import { apiClient } from '@/lib/api-client';
+import { mapPublishTasks, type CalendarTask } from '@/lib/page-data';
 import { useSearchParams } from 'next/navigation';
+import Link from 'next/link';
 import clsx from 'clsx';
 import dayjs from 'dayjs';
 
@@ -32,16 +34,14 @@ const { TextArea } = Input;
 const { Option } = Select;
 
 // ==================== Types ====================
-interface PublishTask {
-    id: string;
-    title: string;
-    date: string;
-    time: string;
-    platforms: string[];
-    status: 'scheduled' | 'published' | 'failed';
-    thumbnail?: string;
-    account?: string;
-}
+type PublishTask = CalendarTask;
+
+const STATUS_BADGE: Record<CalendarTask['status'], { badge: 'processing' | 'success' | 'error' | 'default'; text: string }> = {
+    scheduled: { badge: 'processing', text: '待发布' },
+    published: { badge: 'success', text: '已发布' },
+    failed: { badge: 'error', text: '发布失败' },
+    cancelled: { badge: 'default', text: '已取消' },
+};
 
 const PLATFORMS = [
     { id: 'xhs', name: '小红书', color: '#ef4444', icon: '📕' },
@@ -86,9 +86,6 @@ export default function SchedulePage() {
     const [tasks, setTasks] = useState<PublishTask[]>([]);
     const [selectedDate, setSelectedDate] = useState<string | null>(dayjs().format('YYYY-MM-DD'));
     const [filterPlatform, setFilterPlatform] = useState<string>('all');
-    const [isModalOpen, setIsModalOpen] = useState(false);
-    const [editingTask, setEditingTask] = useState<PublishTask | null>(null);
-    const [form] = Form.useForm();
 
     useEffect(() => {
         const view = searchParams.get('view');
@@ -100,21 +97,9 @@ export default function SchedulePage() {
     const fetchTasks = useCallback(async () => {
         setIsLoading(true);
         try {
-            const res = await apiClient.get<any>(`/publish/tasks?status=${filterPlatform === 'all' ? '' : filterPlatform}`);
-            if (res.data) {
-                const mapped: PublishTask[] = res.data.map((t: any) => ({
-                    id: t.id,
-                    title: t.content?.title || '未命名内容',
-                    date: dayjs(t.scheduled_at).format('YYYY-MM-DD'),
-                    time: dayjs(t.scheduled_at).format('HH:mm'),
-                    platforms: [t.platform],
-                    status: t.status === 'pending' ? 'scheduled' : t.status === 'published' ? 'published' : 'failed',
-                    thumbnail: t.content?.thumbnail_url
-                }));
-                setTasks(mapped);
-            } else {
-                setTasks([]);
-            }
+            // 平台筛选在前端做（filterPlatform 是平台，不是任务状态）；后端返回 { tasks, pagination }
+            const res = await apiClient.get<any>('/publish/tasks?pageSize=100');
+            setTasks(mapPublishTasks(res));
         } catch (e) {
             console.error('Failed to fetch tasks', e);
             message.error('发布任务加载失败，请稍后重试');
@@ -122,13 +107,13 @@ export default function SchedulePage() {
         } finally {
             setIsLoading(false);
         }
-    }, [filterPlatform]);
+    }, []);
 
     useEffect(() => {
         void fetchTasks();
     }, [fetchTasks]);
 
-    const filteredTasks = tasks;
+    const filteredTasks = filterPlatform === 'all' ? tasks : tasks.filter(t => t.platforms.includes(filterPlatform));
     const calendarDays = getCalendarDays(currentMonth);
 
     const getTasksForDate = (date: string | null) => filteredTasks.filter(task => task.date === date);
@@ -139,18 +124,6 @@ export default function SchedulePage() {
 
     const handleDateClick = (date: string | null) => {
         if (date) setSelectedDate(date);
-    };
-
-    const handleSubmit = async () => {
-        const values = await form.validateFields();
-        if (editingTask) {
-            setTasks(tasks.map(t => t.id === editingTask.id ? { ...t, ...values } : t));
-            message.success('任务已更新');
-        } else {
-            setTasks([...tasks, { id: Date.now().toString(), ...values, status: 'scheduled' }]);
-            message.success('任务已排期');
-        }
-        setIsModalOpen(false);
     };
 
     // Monthly View
@@ -235,8 +208,8 @@ export default function SchedulePage() {
                 {
                     title: '状态',
                     dataIndex: 'status',
-                    render: (status) => (
-                        <Badge status={status === 'scheduled' ? 'processing' : 'success'} text={status === 'scheduled' ? '待发布' : '已发布'} />
+                    render: (status: CalendarTask['status']) => (
+                        <Badge status={STATUS_BADGE[status].badge} text={STATUS_BADGE[status].text} />
                     )
                 }
             ]}
@@ -255,7 +228,8 @@ export default function SchedulePage() {
                         {PLATFORMS.map(p => <Option key={p.id} value={p.id}>{p.icon} {p.name}</Option>)}
                     </Select>
                     <Segmented value={viewMode} onChange={(v) => setViewMode(v as any)} options={[{ label: '日历', value: 'month', icon: <CalendarOutlined /> }, { label: '列表', value: 'list', icon: <UnorderedListOutlined /> }]} />
-                    <Button type="primary" icon={<PlusOutlined />} onClick={() => { setEditingTask(null); setIsModalOpen(true); }} className="bg-indigo-600 rounded-xl">新建排期</Button>
+                    {/* 排期必须绑定真实内容与平台账号，由内容工作室创建发布任务；这里不再有只存在于页面内存里、刷新即消失的「假排期」。 */}
+                    <Link href="/studio"><Button type="primary" icon={<PlusOutlined />} className="bg-indigo-600 rounded-xl">去内容工作室排期</Button></Link>
                 </div>
             </header>
 
@@ -274,17 +248,6 @@ export default function SchedulePage() {
                     </Card>
                 </div>
             </div>
-
-            <Modal title={editingTask ? '编辑排期' : '新建排期'} open={isModalOpen} onCancel={() => setIsModalOpen(false)} onOk={handleSubmit} okText="确认" cancelText="取消">
-                <Form form={form} layout="vertical" initialValues={{ date: selectedDate, time: '10:00' }}>
-                    <Form.Item name="title" label="标题" rules={[{ required: true }]}><Input /></Form.Item>
-                    <div className="grid grid-cols-2 gap-4">
-                        <Form.Item name="date" label="日期"><Input type="date" /></Form.Item>
-                        <Form.Item name="time" label="时间"><Input type="time" /></Form.Item>
-                    </div>
-                    <Form.Item name="platforms" label="平台"><Select mode="multiple">{PLATFORMS.map(p => <Option key={p.id} value={p.id}>{p.icon} {p.name}</Option>)}</Select></Form.Item>
-                </Form>
-            </Modal>
 
             <style jsx global>{`
                 .glass-card { background: rgba(255,255,255,0.7); backdrop-filter: blur(10px); border-radius: 16px; }

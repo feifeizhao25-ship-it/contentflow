@@ -7,14 +7,15 @@ export class AnalyticsService {
 
   async getDashboard(tenantId: string, dateRange: { start: Date; end: Date }) {
     // 汇总数据
-    const [publishStats, contentStats, accountStats] = await Promise.all([
-      this.prisma.publishTask.aggregate({
-        where: {
-          tenant_id: tenantId,
-          created_at: { gte: dateRange.start, lte: dateRange.end },
-        },
-        _count: true,
-        _sum: { retry_count: true },
+    const publishWhere = {
+      tenant_id: tenantId,
+      created_at: { gte: dateRange.start, lte: dateRange.end },
+    };
+    const [publishByStatus, contentStats, accountStats] = await Promise.all([
+      this.prisma.publishTask.groupBy({
+        by: ['status'],
+        where: publishWhere,
+        _count: { _all: true },
       }),
       this.prisma.content.findMany({
         where: {
@@ -29,11 +30,14 @@ export class AnalyticsService {
       }),
     ]);
 
+    // 成功 / 失败按任务的真实状态统计（原来这两个数字写死为 0，图表永远显示「没有成功也没有失败」）
+    const countOf = (...statuses: string[]) =>
+      publishByStatus.filter((row) => statuses.includes(row.status)).reduce((sum, row) => sum + row._count._all, 0);
     return {
       publish: {
-        total: publishStats._count,
-        success: 0, // 需从任务状态计算
-        failed: 0,
+        total: publishByStatus.reduce((sum, row) => sum + row._count._all, 0),
+        success: countOf('published'),
+        failed: countOf('failed'),
       },
       content: {
         total: contentStats.length,
