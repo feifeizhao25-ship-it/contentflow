@@ -15,6 +15,7 @@ import clsx from 'clsx';
 import { motion, AnimatePresence } from 'framer-motion';
 
 import { apiClient } from '@/lib/api-client';
+import { safeErrorText } from '@/lib/api-error';
 
 type PublishTask = {
     id: string;
@@ -68,7 +69,7 @@ export const PublishTaskList = () => {
             setTasks(current => current.map(item => item.id === task.id ? { ...item, status: action === 'retry' ? 'queued' : 'cancelled' } : item));
             setExpandedRow(null);
         } catch (error) {
-            message.error(error instanceof Error ? error.message : '操作失败，请稍后重试');
+            message.error(safeErrorText(error, '操作失败，请稍后重试'));
         }
     };
 

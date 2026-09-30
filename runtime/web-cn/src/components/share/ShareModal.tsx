@@ -5,6 +5,7 @@ import { Alert, Modal, message } from 'antd';
 import { CopyOutlined, QqOutlined, WechatOutlined, WeiboOutlined } from '@ant-design/icons';
 import { motion } from 'framer-motion';
 import { generateShareConfig, shareContent, type SharePlatform } from '@/lib/referral-service';
+import { safeErrorText } from '@/lib/api-error';
 
 interface ShareModalProps {
   visible: boolean;
@@ -43,7 +44,7 @@ export default function ShareModal({
         message.warning(result.message);
       }
     } catch (error) {
-      message.error(error instanceof Error ? error.message : '分享操作失败，请重试');
+      message.error(safeErrorText(error, '分享操作失败，请重试'));
     } finally {
       setSharing(null);
     }

@@ -8,6 +8,29 @@ import {
 } from '@nestjs/common';
 import { Request, Response } from 'express';
 
+const CJK = /[\u3400-\u9fff]/;
+const containsCjk = (value: unknown): boolean =>
+  CJK.test(typeof value === 'string' ? value : JSON.stringify(value ?? ''));
+
+function genericChinese(status: number): string {
+  if (status === HttpStatus.UNAUTHORIZED) return '请先登录，或登录已失效，请重新登录';
+  if (status === HttpStatus.FORBIDDEN) return '当前账号无权执行该操作';
+  if (status === HttpStatus.NOT_FOUND) return '请求的内容不存在';
+  if (status === HttpStatus.CONFLICT) return '操作与已有数据冲突，请刷新后重试';
+  if (status === HttpStatus.TOO_MANY_REQUESTS) return '操作太频繁，请稍后再试';
+  if (status >= HttpStatus.INTERNAL_SERVER_ERROR) return '服务暂时出错，请稍后重试';
+  return '请求参数不正确，请检查后重试';
+}
+
+/** 只保留含中文的消息；一条都没有就用该状态码对应的通用中文提示。 */
+function chineseOnly(message: string | string[], status: number): string | string[] {
+  if (Array.isArray(message)) {
+    const kept = message.filter((item) => typeof item === 'string' && containsCjk(item));
+    return kept.length ? kept : genericChinese(status);
+  }
+  return containsCjk(message) ? message : genericChinese(status);
+}
+
 @Catch()
 export class HttpExceptionFilter implements ExceptionFilter {
   private readonly logger = new Logger(HttpExceptionFilter.name);
@@ -52,9 +75,6 @@ export class HttpExceptionFilter implements ExceptionFilter {
     }
 
     const globalMarket = process.env.MARKET_REGION === 'global';
-    const containsCjk = (value: unknown) => /[\u3400-\u9fff]/.test(
-      typeof value === 'string' ? value : JSON.stringify(value ?? ''),
-    );
     if (globalMarket && containsCjk(message)) {
       message = status === HttpStatus.UNAUTHORIZED
         ? 'Authentication is required or the credentials are invalid'
@@ -69,6 +89,13 @@ export class HttpExceptionFilter implements ExceptionFilter {
                 : 'The request could not be processed';
     }
     if (globalMarket && containsCjk(details)) details = undefined;
+    if (!globalMarket) {
+      // 国内版：界面只允许中文。框架自带的英文（Unauthorized、Cannot GET /x、
+      // "email must be an email"、Internal server error）一律换成对应的中文；
+      // 业务代码写的中文原样保留。异常原文只进下面的日志，不进响应。
+      message = chineseOnly(message, status);
+      if (details !== undefined && !containsCjk(details)) details = undefined;
+    }
     const sanitizedMessage = Array.isArray(message) ? message.join('; ') : message;
     const safeStack = exception instanceof Error && !(globalMarket && containsCjk(exception.stack))
       ? exception.stack

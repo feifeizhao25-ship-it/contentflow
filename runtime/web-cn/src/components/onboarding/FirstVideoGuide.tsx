@@ -11,6 +11,7 @@ import {
   ClockCircleOutlined
 } from '@ant-design/icons';
 import { motion } from 'framer-motion';
+import { safeErrorText } from '@/lib/api-error';
 
 interface FirstVideoGuideProps {
   onVideoGenerated?: (videoId: string) => void;
@@ -90,7 +91,7 @@ export default function FirstVideoGuide({ onVideoGenerated, isGenerating }: Firs
       onVideoGenerated?.(videoId);
       message.success({ content: '🎬 首个视频片段生成成功！', duration: 3 });
     } catch (error) {
-      message.error(error instanceof Error ? error.message : '视频生成失败，请重试');
+      message.error(safeErrorText(error, '视频生成失败，请重试'));
     } finally {
       setIsCreating(false);
     }

@@ -11,6 +11,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { apiClient } from '@/lib/api-client';
 import clsx from 'clsx';
+import { safeErrorText } from '@/lib/api-error';
 
 interface CheckInModalProps {
   visible: boolean;
@@ -97,7 +98,7 @@ export default function CheckInModal({ visible, onClose }: CheckInModalProps) {
         duration: 3,
       });
     } catch (error) {
-      message.error(error instanceof Error ? error.message : '签到失败，请稍后重试');
+      message.error(safeErrorText(error, '签到失败，请稍后重试'));
     } finally {
       setIsAnimating(false);
     }

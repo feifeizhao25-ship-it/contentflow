@@ -5,6 +5,7 @@ import { Button, Input, message } from 'antd';
 import { ThunderboltOutlined, CopyOutlined, CheckCircleOutlined, StarOutlined } from '@ant-design/icons';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useOnboardingStore, DOMAIN_NAMES } from '@/store/onboardingStore';
+import { safeErrorText } from '@/lib/api-error';
 
 interface FirstScriptGuideProps {
   onScriptGenerated?: (scriptId: string) => void;
@@ -70,7 +71,7 @@ export default function FirstScriptGuide({ onScriptGenerated, isGenerating }: Fi
       onScriptGenerated?.(scriptId);
       message.success({ content: '✨ 脚本生成成功！', duration: 3 });
     } catch (error) {
-      message.error(error instanceof Error ? error.message : '脚本生成失败，请重试');
+      message.error(safeErrorText(error, '脚本生成失败，请重试'));
     } finally {
       setIsCreating(false);
     }

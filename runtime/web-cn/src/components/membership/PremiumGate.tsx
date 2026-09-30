@@ -20,6 +20,7 @@ import clsx from 'clsx';
 import { useRouter } from 'next/navigation';
 import { apiClient } from '@/lib/api-client';
 import { generateShareConfig, shareContent, type SharePlatform } from '@/lib/referral-service';
+import { safeErrorText } from '@/lib/api-error';
 
 interface UserSubscription {
     plan: 'free' | 'pro' | 'enterprise';
@@ -513,7 +514,7 @@ export function ShareToUnlock({ onClose }: { onClose?: () => void }) {
         } catch (error) {
             Modal.error({
                 title: '分享操作失败',
-                content: error instanceof Error ? error.message : '请稍后重试',
+                content: safeErrorText(error, '请稍后重试'),
             });
         }
     };

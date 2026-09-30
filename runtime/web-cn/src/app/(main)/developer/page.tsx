@@ -33,6 +33,7 @@ import {
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { apiClient } from '@/lib/api-client';
+import { safeErrorText } from '@/lib/api-error';
 
 const { Title, Text, Paragraph } = Typography;
 const { TextArea } = Input;
@@ -62,7 +63,7 @@ export default function DeveloperSettings() {
             const data = await apiClient.get<ApiKey[]>('/developer/keys');
             setKeys(Array.isArray(data) ? data : []);
         } catch (e: any) {
-            message.error(e?.message || '加载 API Key 列表失败');
+            message.error(safeErrorText(e, '加载 API Key 列表失败'));
             setKeys([]);
         } finally {
             setLoading(false);
@@ -92,7 +93,7 @@ export default function DeveloperSettings() {
             setNewKeyName('');
             await loadKeys();
         } catch (e: any) {
-            message.error(e?.message || '创建 API Key 失败');
+            message.error(safeErrorText(e, '创建 API Key 失败'));
         } finally {
             setLoading(false);
         }

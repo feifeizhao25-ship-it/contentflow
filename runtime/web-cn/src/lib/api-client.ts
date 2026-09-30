@@ -3,6 +3,8 @@
  * Handles authentication headers, base URL, and common fetch logic.
  */
 
+import { apiErrorText } from './api-error';
+
 const BASE_URL = '/api/v1';
 
 /**
@@ -79,11 +81,9 @@ class ApiClient {
         }
 
         if (!response.ok) {
-            throw new FriendlyApiError(
-                typeof data?.message === 'string' && /[一-鿿]/.test(data.message)
-                    ? data.message
-                    : '服务响应异常，请稍后重试',
-            );
+            // 后端的错误在 error.message 里（信封 { success:false, error:{ message } }），
+            // 只认中文；没有中文原因才用通用提示。
+            throw new FriendlyApiError(apiErrorText(data) ?? '服务响应异常，请稍后重试');
         }
 
         // The NestJS backend wraps successful payloads in { success, data,

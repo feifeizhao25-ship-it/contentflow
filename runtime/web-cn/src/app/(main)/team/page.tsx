@@ -12,6 +12,7 @@ import {
     MailOutlined,
 } from '@ant-design/icons';
 import { useSearchParams } from 'next/navigation';
+import { apiErrorText } from '@/lib/api-error';
 
 const { Option } = Select;
 const { Text } = Typography;
@@ -52,7 +53,7 @@ function TeamContent() {
             if (envelope?.success) {
                 setMembers(envelope.data ?? []);
             } else {
-                message.error(envelope?.message || '获取成员列表失败');
+                message.error(apiErrorText(envelope) ?? '获取成员列表失败');
             }
         } catch (error) {
             message.error('获取成员列表失败');
@@ -133,7 +134,7 @@ function TeamContent() {
                 body: JSON.stringify(values),
             });
             const envelope = await res.json();
-            const data = { success: envelope?.success, error: envelope?.message };
+            const data = { success: envelope?.success, error: apiErrorText(envelope) ?? '邀请失败，请稍后重试' };
             if (data.success) {
                 message.success(`已成功邀请 ${values.email}`);
                 setInviteModalVisible(false);
@@ -164,7 +165,7 @@ function TeamContent() {
                         return;
                     }
                     const envelope = await res.json();
-                    const data = { success: envelope?.success, error: envelope?.message };
+                    const data = { success: envelope?.success, error: apiErrorText(envelope) ?? '移除失败，请稍后重试' };
                     if (data.success) {
                         message.success('成员已移除');
                         fetchMembers();

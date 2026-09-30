@@ -28,6 +28,7 @@ import {
     type PaymentMethod,
     type SubscriptionSnapshot,
 } from '@/lib/payment-service';
+import { safeErrorText } from '@/lib/api-error';
 
 type CheckoutState =
     | { step: 'choose' }
@@ -160,7 +161,7 @@ function PricingContent() {
             if (status === 'paid') setCheckout({ step: 'done' });
             else message.info(status === 'closed' ? '订单已关闭，未开通会员' : '暂未确认付款，请勿重复付款');
         } catch (error) {
-            message.error(error instanceof Error ? error.message : '查询失败，请稍后重试');
+            message.error(safeErrorText(error, '查询失败，请稍后重试'));
         } finally { setRechecking(false); }
     };
 
@@ -177,7 +178,7 @@ function PricingContent() {
             if (ok) message.success('会员已开通');
         } catch (error) {
             if (controller.signal.aborted) return;
-            setCheckout({ step: 'error', message: error instanceof Error ? error.message : '查询支付结果失败' });
+            setCheckout({ step: 'error', message: safeErrorText(error, '查询支付结果失败') });
         }
     }, []);
 
@@ -231,7 +232,7 @@ function PricingContent() {
                 goLogin(checkoutPlan.id);
                 return;
             }
-            setCheckout({ step: 'error', message: error instanceof Error ? error.message : '下单失败，请稍后重试' });
+            setCheckout({ step: 'error', message: safeErrorText(error, '下单失败，请稍后重试') });
         }
     };
 

@@ -6,6 +6,7 @@
  */
 
 import { useState, useCallback, useRef } from 'react';
+import { safeErrorText } from '@/lib/api-error';
 
 export type GenerationStatus = 'idle' | 'preparing' | 'generating' | 'paused' | 'stopped' | 'completed' | 'error';
 
@@ -283,7 +284,7 @@ export function useVideoGeneration(): UseVideoGenerationReturn {
                 setError('生成已停止');
             } else {
                 setStatus('error');
-                setError(err instanceof Error ? err.message : '生成失败');
+                setError(safeErrorText(err, '生成失败'));
             }
         } finally {
             abortControllerRef.current = null;

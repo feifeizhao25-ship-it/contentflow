@@ -41,12 +41,17 @@ await check('package.json and Dockerfile do not require Supabase', () => {
   assert.ok(!/SUPABASE/.test(fs.readFileSync(path.join(ROOT, 'Dockerfile'), 'utf8')));
 });
 
-await check('register posts only whitelisted fields to /api/auth/register', () => {
-  const src = fs.readFileSync(path.join(ROOT, 'src/app/(auth)/register/page.tsx'), 'utf8');
-  assert.match(src, /fetch\('\/api\/auth\/register'/);
-  const body = /JSON\.stringify\(\{([\s\S]*?)\}\)/.exec(src)[1];
-  const keys = [...body.matchAll(/(\w+):/g)].map((m) => m[1]).sort();
-  assert.deepEqual(keys, ['email', 'name', 'password', 'tenantName']);
+await check('register posts only whitelisted fields to /api/auth/register', async () => {
+  const page = fs.readFileSync(path.join(ROOT, 'src/app/(auth)/register/page.tsx'), 'utf8');
+  assert.match(page, /registerWithEmail\(/);
+  const { registerWithEmail } = await import('../src/lib/auth-service.ts');
+  const seen = [];
+  await registerWithEmail(
+    { email: 'a@b.cn', password: '123456', name: '甲', tenantName: '乙' },
+    async (url, init) => { seen.push({ url, body: JSON.parse(init.body) }); return new Response(JSON.stringify({ user: { id: 'u1' } }), { status: 200 }); },
+  );
+  assert.equal(seen[0].url, '/api/auth/register');
+  assert.deepEqual(Object.keys(seen[0].body).sort(), ['email', 'name', 'password', 'tenantName']);
 });
 
 const session = await import('../src/lib/session.ts');

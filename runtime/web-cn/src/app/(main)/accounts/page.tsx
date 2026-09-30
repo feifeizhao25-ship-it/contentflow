@@ -14,6 +14,7 @@ import {
 import { Avatar, Tooltip, message } from 'antd';
 import { motion, AnimatePresence } from 'framer-motion';
 import clsx from 'clsx';
+import { apiErrorText, safeErrorText } from '@/lib/api-error';
 
 interface PlatformAccount {
     id: string;
@@ -101,8 +102,7 @@ export default function AccountsPage() {
                 window.location.href = url;
                 return;
             }
-            const reason = Array.isArray(envelope?.message) ? envelope.message[0] : envelope?.message;
-            message.info(typeof reason === 'string' && reason ? reason : '该平台授权暂未开通');
+            message.info(apiErrorText(envelope) ?? '该平台授权暂未开通');
         } catch {
             message.error('网络连接失败，请稍后重试');
         } finally {
@@ -117,7 +117,7 @@ export default function AccountsPage() {
                 method: 'DELETE',
             });
             const envelope = await response.json();
-            const data = { success: envelope?.success, error: envelope?.message };
+            const data = { success: envelope?.success, error: apiErrorText(envelope) ?? '解绑失败，请稍后重试' };
             if (data.success) {
                 setAccounts(prev => prev.filter(a => a.id !== id));
                 message.success('账号已成功解绑');
@@ -125,7 +125,7 @@ export default function AccountsPage() {
                 throw new Error(data.error || '解绑失败');
             }
         } catch (error: any) {
-            message.error(error.message);
+            message.error(safeErrorText(error, '解绑失败，请稍后重试'));
         }
     };
 

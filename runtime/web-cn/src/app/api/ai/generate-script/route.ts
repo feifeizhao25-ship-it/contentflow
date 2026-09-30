@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { apiErrorText } from '../../../../lib/api-error';
 import { apiOrigin, buildUpstreamHeaders } from '../../../../lib/api-proxy';
 
 /**
@@ -27,9 +28,9 @@ export async function POST(request: NextRequest) {
   }
   const payload = await upstream.json().catch(() => ({}));
   if (!upstream.ok) {
-    const message = Array.isArray(payload?.message) ? payload.message[0] : payload?.message;
+    // 后端的错误信封在 error.message；只认中文，没有就用兜底
     return NextResponse.json(
-      { error: typeof message === 'string' && message ? message : '脚本生成失败，请稍后重试' },
+      { error: apiErrorText(payload) ?? '脚本生成失败，请稍后重试' },
       { status: upstream.status },
     );
   }

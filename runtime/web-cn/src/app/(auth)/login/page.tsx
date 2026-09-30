@@ -6,6 +6,8 @@ import { UserOutlined, LockOutlined, MailOutlined } from '@ant-design/icons';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { safeRedirectTarget } from '@/lib/safe-redirect';
+import { loginWithPassword } from '@/lib/auth-service';
+import { safeErrorText } from '@/lib/api-error';
 
 export default function LoginPage() {
     const [loading, setLoading] = useState(false);
@@ -14,30 +16,12 @@ export default function LoginPage() {
     const onFinish = async (values: { email: string; password: string; remember: boolean }) => {
         setLoading(true);
         try {
-            // 首先尝试通过 NestJS 后端登录
-            const response = await fetch('/api/auth/login', {
-                method: 'POST',
-                headers: { 'content-type': 'application/json' },
-                credentials: 'include',
-                body: JSON.stringify({
-                email: values.email,
-                password: values.password
-                }),
-            });
-            const res = await response.json();
-            if (!response.ok) throw new Error(res.message || '登录失败');
-
-            if (res.user) {
-                localStorage.setItem('user_info', JSON.stringify(res.user));
-                message.success('登录成功！');
-                router.push(safeRedirectTarget(new URLSearchParams(window.location.search).get('redirect')));
-                return;
-            }
-
-            throw new Error('登录响应无效');
-        } catch (error: any) {
-            console.error('Login error:', error);
-            message.error(error.message || '登录失败，请检查邮箱和密码');
+            const user = await loginWithPassword({ email: values.email, password: values.password });
+            localStorage.setItem('user_info', JSON.stringify(user));
+            message.success('登录成功！');
+            router.push(safeRedirectTarget(new URLSearchParams(window.location.search).get('redirect')));
+        } catch (error) {
+            message.error(safeErrorText(error, '登录失败，请检查邮箱和密码'));
         } finally {
             setLoading(false);
         }

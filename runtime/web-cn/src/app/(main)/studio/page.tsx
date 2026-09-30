@@ -12,6 +12,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useAchievementStore } from '@/store/appStore';
 import { trackEvent } from '@/lib/analytics';
 import { PLACEHOLDER_IMAGES } from '@/lib/placeholders';
+import { safeErrorText } from '@/lib/api-error';
 
 const { TextArea } = Input;
 
@@ -174,7 +175,7 @@ function StudioContent() {
       message.success({ content: '内容包生成完成', key: 'gen' });
     } catch (e: any) {
       console.error('Generation Error Detail:', e);
-      message.error({ content: `生成失败: ${e.message || '未知错误'}`, key: 'gen' });
+      message.error({ content: `生成失败: ${safeErrorText(e, '未知错误')}`, key: 'gen' });
     } finally {
       setIsGenerating(false);
     }
@@ -200,7 +201,7 @@ function StudioContent() {
       });
       message.success({ content: '封面已生成', key: 'cover' });
     } catch (e: any) {
-      message.error({ content: e.message || '封面生成失败', key: 'cover' });
+      message.error({ content: safeErrorText(e, '封面生成失败'), key: 'cover' });
     } finally {
       setIsGeneratingImage(false);
     }
@@ -230,7 +231,7 @@ function StudioContent() {
       await refreshBalance();
       message.success('视频内容包生成成功');
     } catch (e: any) {
-      message.error(`视频生成失败: ${e.message}`);
+      message.error(`视频生成失败：${safeErrorText(e, '请稍后重试')}`);
       setVideoLogs(prev => [...prev, '❌ 生成中断，请检查模型状态或余额。']);
     } finally {
       setIsGeneratingVideo(false);
@@ -330,7 +331,7 @@ function StudioContent() {
 
       window.location.href = '/publish';
     } catch (e: any) {
-      message.error({ content: e.message || '发布失败', key: 'publish' });
+      message.error({ content: safeErrorText(e, '发布失败'), key: 'publish' });
     }
   };
 

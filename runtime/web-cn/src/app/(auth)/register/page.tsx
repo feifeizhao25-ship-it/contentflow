@@ -5,6 +5,8 @@ import { Card, Form, Input, Button, message, Divider, Checkbox } from 'antd';
 import { UserOutlined, LockOutlined, MailOutlined, TeamOutlined } from '@ant-design/icons';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { registerWithEmail } from '@/lib/auth-service';
+import { safeErrorText } from '@/lib/api-error';
 
 
 
@@ -21,26 +23,16 @@ export default function RegisterPage() {
     const onFinish = async (values: any) => {
         setLoading(true);
         try {
-            const response = await fetch('/api/auth/register', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                credentials: 'include',
-                body: JSON.stringify({
-                    email: values.email,
-                    password: values.password,
-                    name: values.name,
-                    tenantName: values.tenantName,
-                }),
+            await registerWithEmail({
+                email: values.email,
+                password: values.password,
+                name: values.name,
+                tenantName: values.tenantName,
             });
-            const payload = await response.json().catch(() => ({}));
-            if (!response.ok) {
-                const reason = Array.isArray(payload?.message) ? payload.message[0] : payload?.message;
-                throw new Error(typeof reason === 'string' && /[一-鿿]/.test(reason) ? reason : '注册失败，请稍后重试');
-            }
             message.success('注册成功');
             router.push('/studio');
-        } catch (error: any) {
-            message.error(error?.message || '注册失败，请重试');
+        } catch (error) {
+            message.error(safeErrorText(error, '注册失败，请重试'));
         } finally {
             setLoading(false);
         }

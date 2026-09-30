@@ -11,6 +11,7 @@ import {
     TTSProvider,
     VoiceGender
 } from '@/lib/tts-service';
+import { safeErrorText } from '@/lib/api-error';
 
 interface VoiceoverPanelProps {
     script: string;
@@ -69,7 +70,7 @@ export default function VoiceoverPanel({
             onVoiceoverGenerated?.(result.audioUrl, result.duration, result.cost);
         } catch (err) {
             setProgress(0);
-            setError(err instanceof Error ? err.message : '配音生成失败');
+            setError(safeErrorText(err, '配音生成失败'));
         } finally {
             setIsGenerating(false);
         }

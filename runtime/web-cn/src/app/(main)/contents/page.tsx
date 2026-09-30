@@ -15,6 +15,7 @@ import {
 import type { ColumnsType } from 'antd/es/table';
 import { apiClient } from '@/lib/api-client';
 import { PLACEHOLDER_IMAGES } from '@/lib/placeholders';
+import { safeErrorText } from '@/lib/api-error';
 
 const { Search } = Input;
 const { Option } = Select;
@@ -161,10 +162,10 @@ function ContentsContent() {
                 message.success('内容已删除');
                 fetchContents();
             } else {
-                throw new Error(result?.error || '删除失败');
+                throw new Error('删除失败，请稍后重试');
             }
         } catch (error: any) {
-            message.error('删除失败: ' + error.message);
+            message.error('删除失败：' + safeErrorText(error, '请稍后重试'));
         }
     };
 
@@ -199,7 +200,7 @@ function ContentsContent() {
             const targetId = clonedId || activeContentId;
             window.location.href = `/studio?contentId=${targetId}`;
         } catch (e: any) {
-            message.error(e.message || '复用失败');
+            message.error(safeErrorText(e, '复用失败'));
         } finally {
             setAssetLoading(false);
         }
@@ -215,7 +216,7 @@ function ContentsContent() {
             const payload = res?.data || res;
             setDiffData(payload);
         } catch (e: any) {
-            setDiffData({ error: e.message || '对比失败' });
+            setDiffData({ error: safeErrorText(e, '对比失败') });
         } finally {
             setDiffLoading(false);
         }
@@ -231,7 +232,7 @@ function ContentsContent() {
                 window.location.href = `/studio?contentId=${rollbackId}`;
             }
         } catch (e: any) {
-            message.error(e.message || '回滚失败');
+            message.error(safeErrorText(e, '回滚失败'));
         } finally {
             setAssetLoading(false);
         }
@@ -244,7 +245,7 @@ function ContentsContent() {
             const report = res?.data?.report || res?.report;
             setReviewReport(report);
         } catch (e: any) {
-            setReviewReport({ raw: e.message || '复盘生成失败' });
+            setReviewReport({ raw: safeErrorText(e, '复盘生成失败') });
         } finally {
             setAssetLoading(false);
         }

@@ -26,6 +26,7 @@ import { fetchCurrentUser } from '@/lib/session';
 import { getUserMaterials, getStorageUsage, Material } from '@/lib/materials-service';
 import { usePermissions } from '@/hooks/usePermissions';
 import clsx from 'clsx';
+import { safeErrorText } from '@/lib/api-error';
 
 const { Search } = Input;
 const { Title, Text, Paragraph } = Typography;
@@ -115,7 +116,7 @@ export default function MaterialsPage() {
         } catch (error) {
             console.error('上传失败:', error);
             // 后端会说明原因（例如对象存储尚未接入），原样展示，不笼统写「上传失败」。
-            message.error(error instanceof Error && error.message ? error.message : '上传失败');
+            message.error(safeErrorText(error, '上传失败'));
         } finally {
             setLoading(false);
         }
@@ -144,7 +145,7 @@ export default function MaterialsPage() {
                     }
                 } catch (error) {
                     console.error('删除失败:', error);
-                    message.error(error instanceof Error && error.message ? error.message : '删除失败');
+                    message.error(safeErrorText(error, '删除失败'));
                 }
             },
         });
@@ -166,7 +167,7 @@ export default function MaterialsPage() {
             ));
         } catch (error) {
             console.error('操作失败:', error);
-            message.error(error instanceof Error && error.message ? error.message : '操作失败');
+            message.error(safeErrorText(error, '操作失败'));
         }
     };
 

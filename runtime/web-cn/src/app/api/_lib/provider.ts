@@ -92,18 +92,16 @@ export function toErrorResponse(e: unknown): NextResponse {
   if (e instanceof ProviderNotConfiguredError) {
     // 501 而非 500：这不是故障，是功能没开通。
     // 运维看到 500 会去查日志找 bug，看到 501 才知道该去配密钥。
+    // 环境变量名、供应商名只进服务端日志，不给浏览器（技术栈信息）。
+    console.warn(`[provider] ${e.message}`);
     return NextResponse.json(
-      {
-        error: e.message,
-        code: 'PROVIDER_NOT_CONFIGURED',
-        provider: e.provider,
-        required_env: e.envVar,
-      },
+      { error: '该功能所需的服务尚未配置，请联系管理员开通', code: 'PROVIDER_NOT_CONFIGURED' },
       { status: 501 },
     );
   }
-  const message = e instanceof Error ? e.message : String(e);
-  return NextResponse.json({ error: message }, { status: 502 });
+  // 其余异常（含上游返回的原文）只进服务端日志；给用户的永远是中文通用提示。
+  console.error('[provider] 未预期的异常:', e instanceof Error ? e.message : String(e));
+  return NextResponse.json({ error: '服务暂时不可用，请稍后重试', code: 'UPSTREAM_FAILED' }, { status: 502 });
 }
 
 /** 上游返回非 2xx 时，把原始状态与响应体带出来，不要糊成一句「失败」。 */
