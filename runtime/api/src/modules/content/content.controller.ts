@@ -1,7 +1,11 @@
-import { Controller, Get, Post, Put, Delete, Body, Param, Query, UseGuards, Request } from '@nestjs/common';
+import { Controller, Get, Post, Put, Delete, Body, Param, Query, UseGuards, Request, ForbiddenException } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { ContentService } from './content.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
+import { CreateContentDto, ReviewContentDto, UpdateContentDto } from './dto/content.dto';
+
+/** 能批准内容发布的角色。JwtStrategy 每次请求都以数据库里当前的角色为准。 */
+const REVIEWER_ROLES = ['owner', 'admin'];
 
 @ApiTags('contents')
 @Controller('contents')
@@ -30,13 +34,13 @@ export class ContentController {
 
   @Post()
   @ApiOperation({ summary: '创建内容' })
-  async create(@Request() req: any, @Body() data: any) {
+  async create(@Request() req: any, @Body() data: CreateContentDto) {
     return this.contentService.create(req.user.tenantId, req.user.sub, data);
   }
 
   @Put(':id')
   @ApiOperation({ summary: '更新内容' })
-  async update(@Param('id') id: string, @Request() req: any, @Body() data: any) {
+  async update(@Param('id') id: string, @Request() req: any, @Body() data: UpdateContentDto) {
     return this.contentService.update(id, req.user.tenantId, req.user.sub, data);
   }
 
@@ -57,8 +61,11 @@ export class ContentController {
   async review(
     @Param('id') id: string,
     @Request() req: any,
-    @Body() data: { action: 'approve' | 'reject'; comment?: string },
+    @Body() data: ReviewContentDto,
   ) {
+    if (!REVIEWER_ROLES.includes(req.user.role)) {
+      throw new ForbiddenException('仅工作区所有者或管理员可以审核内容');
+    }
     return this.contentService.review(id, req.user.tenantId, req.user.sub, data.action, data.comment);
   }
 }
