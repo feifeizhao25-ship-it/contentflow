@@ -25,11 +25,8 @@ export class QuestController {
     return { success: true, data: dailyQuests };
   }
 
-  @Post('progress')
-  async updateQuestProgress(@Request() req: any, @Body() body: { questId: string; increment: number }) {
-    await this.questService.updateQuestProgress(req.user.id, body.questId, body.increment);
-    return { success: true, message: '进度已更新' };
-  }
+  // 不提供 POST /progress：任务进度由服务端在真实业务事件里推进（QuestService.updateQuestProgress），
+  // 不能让客户端自报 increment —— 进度刷满 → 领积分 → 兑换 VIP，等于免费领会员。
 
   @Post('claim')
   async claimQuestReward(@Request() req: any, @Body() body: { questId: string }) {

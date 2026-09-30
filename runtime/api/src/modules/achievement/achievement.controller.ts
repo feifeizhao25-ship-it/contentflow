@@ -25,11 +25,7 @@ export class AchievementController {
     return { success: true, data: stats };
   }
 
-  @Post('progress')
-  async updateAchievementProgress(@Request() req: any, @Body() body: { conditionType: string; increment: number }) {
-    await this.achievementService.updateAchievementProgress(req.user.id, body.conditionType, body.increment);
-    return { success: true, message: '进度已更新' };
-  }
+  // 不提供 POST /progress：理由同 quest.controller.ts，成就进度只由服务端事件推进。
 
   @Post('claim')
   async claimAchievementReward(@Request() req: any, @Body() body: { achievementId: string }) {

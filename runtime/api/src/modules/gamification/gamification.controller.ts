@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, UseGuards, Request, ForbiddenException } from '@nestjs/common';
+import { Controller, Get, Post, UseGuards, Request } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { GamificationService } from './gamification.service';
@@ -35,28 +35,9 @@ export class GamificationController {
         return await this.gamificationService.getUserStatus(req.user.id);
     }
 
-    /**
-     * 增加经验值。
-     *
-     * 注意：XP 的发放必须由服务端在业务事件（发布成功、连续签到等）
-     * 中触发，不应开放为客户端可直接调用的接口。此处保留端点是为了
-     * 兼容既有调用方，但已限制为「只能给自己加」且来源受控 ——
-     * 真正的加固是把它改成内部调用。
-     */
-    @Post('xp')
-    @ApiOperation({ summary: '为当前用户增加经验值' })
-    async addXp(@Request() req: any, @Body() body: { amount: number; source: string }) {
-        const amount = Number(body?.amount);
-        if (!Number.isFinite(amount) || amount <= 0) {
-            throw new ForbiddenException('amount must be a positive number');
-        }
-        // 单次发放上限，避免一次调用直接顶到高等级
-        const MAX_XP_PER_CALL = 1000;
-        if (amount > MAX_XP_PER_CALL) {
-            throw new ForbiddenException(`amount exceeds per-call limit (${MAX_XP_PER_CALL})`);
-        }
-        return await this.gamificationService.addXp(req.user.id, amount, body?.source ?? 'api');
-    }
+    // 不提供「客户端自己加经验」的接口：XP 必须由服务端在真实业务事件（发布成功、连续签到等）
+    // 中调用 GamificationService.addXp。原来的 POST /gamification/xp 让登录用户想加多少加多少（单次
+    // 上限 1000 但次数不限），等于免费刷等级。前端从未调用过它。
 
     @Post('streak')
     @ApiOperation({ summary: '更新当前用户的连续签到' })
