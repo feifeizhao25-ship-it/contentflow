@@ -139,9 +139,53 @@ const KNOWN_UNIMPLEMENTED = {
   'POST /ai/generate/video': '视频生成：国内版暂未开通（境外服务商），页面提示暂未开通',
 };
 
+// 只有真正挂到 AppModule 上的控制器才算「后端有这个路由」。
+// 此前只要 modules/ 下有 *.controller.ts 就算：developer 模块写了控制器却没有加进 AppModule，
+// 开发者页调 /developer/keys 实际是 404，而检查是绿的（它没有发现这个断链）。
+function mountedControllerNames() {
+  const modules = new Map(); // 模块类名 → { imports, controllers }
+  const stack = [path.join(API_SRC, 'modules'), API_SRC];
+  const files = [];
+  while (stack.length) {
+    const d = stack.pop();
+    if (!fs.existsSync(d)) continue;
+    for (const e of fs.readdirSync(d, { withFileTypes: true })) {
+      const full = path.join(d, e.name);
+      if (e.isDirectory()) { if (d !== API_SRC) stack.push(full); }
+      else if (/\.module\.ts$/.test(e.name)) files.push(full);
+    }
+  }
+  const idents = (text) => [...text.matchAll(/\b([A-Z][A-Za-z0-9]*(?:Module|Controller))\b/g)].map((m) => m[1]);
+  for (const file of files) {
+    const src = stripComments(fs.readFileSync(file, 'utf8'));
+    const name = (src.match(/export class (\w+)/) || [])[1];
+    if (!name) continue;
+    const list = (key) => {
+      const m = src.match(new RegExp(`${key}\\s*:\\s*\\[([\\s\\S]*?)\\]\\s*[,}]`));
+      return m ? idents(m[1]) : [];
+    };
+    // app.module.ts 里还有 DOMESTIC_ONLY_MODULES 等常量数组：整个文件里出现的 *Module 都算它引入的
+    const imports = name === 'AppModule' ? idents(src).filter((n) => n !== 'AppModule') : list('imports');
+    modules.set(name, { imports, controllers: list('controllers') });
+  }
+  const seenModules = new Set();
+  const controllers = new Set();
+  const visit = (name) => {
+    if (seenModules.has(name) || !modules.has(name)) return;
+    seenModules.add(name);
+    const mod = modules.get(name);
+    mod.controllers.forEach((c) => controllers.add(c));
+    mod.imports.forEach(visit);
+  };
+  visit('AppModule');
+  return { controllers, mountedModules: seenModules, allModules: new Set(modules.keys()) };
+}
+
 function backendRoutes() {
   const out = [];
   const dir = path.join(API_SRC, 'modules');
+  const { controllers: mounted, mountedModules } = mountedControllerNames();
+  if (mountedModules.size < 10) fail(`AppModule 只解析出 ${mountedModules.size} 个已挂载模块，疑似解析失败`);
   const stack = [dir];
   while (stack.length) {
     const d = stack.pop();
@@ -151,6 +195,8 @@ function backendRoutes() {
       if (e.isDirectory()) stack.push(full);
       else if (/\.controller\.ts$/.test(e.name)) {
         const src = stripComments(fs.readFileSync(full, 'utf8'));
+        const className = (src.match(/export class (\w+)/) || [])[1];
+        if (!className || !mounted.has(className)) continue; // 没挂载的控制器不算
         const base = (src.match(/@Controller\(\s*['"]([^'"]*)['"]/) || [, ''])[1];
         for (const m of src.matchAll(/@(Get|Post|Put|Patch|Delete)\(\s*(?:['"]([^'"]*)['"])?\s*\)/g)) {
           const segs = `${base}/${m[2] || ''}`.split('/').filter(Boolean);

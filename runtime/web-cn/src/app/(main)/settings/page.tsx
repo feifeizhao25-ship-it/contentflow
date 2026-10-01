@@ -367,6 +367,13 @@ export default function SettingsPage() {
             children: (
                 <div style={{ padding: '24px 0' }}>
                     <Card bordered={false}>
+                        <Alert
+                            type="info"
+                            showIcon
+                            style={{ marginBottom: 16 }}
+                            message="通知发送渠道暂未开通"
+                            description="下面的开关会保存您的偏好，渠道开通后按偏好发送；目前不会收到站内信、短信或邮件通知。"
+                        />
                         <List
                             itemLayout="horizontal"
                             dataSource={[

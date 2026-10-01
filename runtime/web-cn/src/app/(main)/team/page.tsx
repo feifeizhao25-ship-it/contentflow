@@ -423,7 +423,7 @@ function TeamContent() {
 
 export default function TeamPage() {
     return (
-        <React.Suspense fallback={<div>Loading team...</div>}>
+        <React.Suspense fallback={<div>团队加载中…</div>}>
             <TeamContent />
         </React.Suspense>
     );

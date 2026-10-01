@@ -15,8 +15,8 @@ export default function Loading() {
             </div>
 
             <div className="mt-8 text-center space-y-2">
-                <h3 className="text-xl font-bold text-white tracking-widest animate-pulse">FENFA AI</h3>
-                <p className="text-sm text-indigo-400 font-medium">Loading Experience...</p>
+                <h3 className="text-xl font-bold text-white tracking-widest animate-pulse">分发侠</h3>
+                <p className="text-sm text-indigo-400 font-medium">加载中…</p>
             </div>
         </div>
     );

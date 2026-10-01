@@ -53,7 +53,7 @@ export const CalendarBoard = () => {
         ]);
     }, []);
 
-    if (!currentDate) return <div className="flex-1 h-full bg-zinc-50/30 flex items-center justify-center text-zinc-400">Loading calendar...</div>;
+    if (!currentDate) return <div className="flex-1 h-full bg-zinc-50/30 flex items-center justify-center text-zinc-400">日历加载中…</div>;
 
     // Week Logic
     const startOfWeek = currentDate.startOf('week');

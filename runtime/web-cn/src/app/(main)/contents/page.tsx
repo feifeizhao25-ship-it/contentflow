@@ -518,7 +518,7 @@ function ContentsContent() {
 
 export default function ContentsPage() {
     return (
-        <React.Suspense fallback={<div>Loading contents...</div>}>
+        <React.Suspense fallback={<div>内容加载中…</div>}>
             <ContentsContent />
         </React.Suspense>
     );

@@ -29,7 +29,7 @@ export const HeaderStats = () => {
             {/* XP Bar */}
             <div className="flex flex-col w-24 gap-0.5">
                 <div className="flex justify-between text-[10px] text-zinc-500 font-bold leading-none">
-                    <span>Exp</span>
+                    <span>经验</span>
                     <span>{xp}/{nextLevelXp}</span>
                 </div>
                 <Progress

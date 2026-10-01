@@ -120,6 +120,11 @@ await check('设置页：有「账号与数据」页签，注销必须勾选确�
   assert.doesNotMatch(src, /defaultChecked=\{item\.default\}/);
 });
 
+await check('通知设置如实说明：开关只保存偏好，发送渠道暂未开通（目前没有任何代码会发通知）', () => {
+  const src = fs.readFileSync(path.join(ROOT, 'src/app/(main)/settings/page.tsx'), 'utf8');
+  assert.match(src, /通知发送渠道暂未开通/);
+});
+
 await check('隐私政策：写的与设置页实际提供的一致（自助导出、注销；订单与日志依法保留）', () => {
   const src = fs.readFileSync(path.join(ROOT, 'src/app/privacy/page.tsx'), 'utf8');
   assert.match(src, /账号与数据/);
