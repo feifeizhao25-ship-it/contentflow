@@ -41,7 +41,8 @@ export function createAlipayPagePay(input: {
     notify_url: notifyUrl,
     return_url: returnUrl,
     sign_type: 'RSA2',
-    timestamp: new Date().toISOString().replace('T', ' ').slice(0, 19),
+    // 支付宝要求北京时间 yyyy-MM-dd HH:mm:ss。原来用 UTC，整整慢 8 小时。
+    timestamp: new Date(Date.now() + 8 * 3600_000).toISOString().replace('T', ' ').slice(0, 19),
     version: '1.0',
   };
   // 请求签名包含 sign_type；异步通知验签按支付宝规范排除 sign_type。

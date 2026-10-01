@@ -45,7 +45,13 @@ export class BillingController {
     if (!rawBody || !verifyWeChatNotifySignature(rawBody, headers)) {
       throw new UnauthorizedException('微信支付回调签名无效');
     }
-    const transaction = decryptWeChatNotify(body);
+    let transaction: any;
+    try {
+      transaction = decryptWeChatNotify(body);
+    } catch {
+      // 解密失败 / 商户或应用不匹配：内容无效，应是 4xx（原来是 500，还把内部错误文字带进响应）
+      throw new BadRequestException('微信支付回调内容无效');
+    }
     if (transaction.trade_state !== 'SUCCESS') return { code: 'SUCCESS', message: '成功' };
     const totalFen = Number(transaction.amount?.total);
     if (!transaction.out_trade_no || !transaction.transaction_id || !Number.isInteger(totalFen)

@@ -23,6 +23,16 @@ describe('支付宝 RSA2 适配器', () => {
     expect(verifier.verify(process.env.ALIPAY_PUBLIC_KEY!, params.sign, 'base64')).toBe(true);
   });
 
+  it('请求时间戳是北京时间（GMT+8）：支付宝按北京时间校验，UTC 时间会慢 8 小时被判为无效时间戳', () => {
+    jest.useFakeTimers().setSystemTime(new Date('2026-10-01T00:30:05Z'));
+    try {
+      const url = new URL(createAlipayPagePay({ orderNo: 'CF1', amount: 1, subject: 'x' }).paymentUrl);
+      expect(url.searchParams.get('timestamp')).toBe('2026-10-01 08:30:05');
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
   it('只接受支付宝公钥验证通过的通知', () => {
     const payload: Record<string, string> = { app_id: process.env.ALIPAY_APP_ID!, out_trade_no: 'CF1001', trade_no: 'ALI1', trade_status: 'TRADE_SUCCESS', total_amount: '128.00', seller_id: 'seller-1' };
     const signer = createSign('RSA-SHA256'); signer.update(canonicalAlipayParams(payload)); signer.end();
