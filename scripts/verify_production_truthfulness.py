@@ -177,18 +177,17 @@ forbid(
     "runtime/web-cn/src/components/onboarding/FirstVideoGuide.tsx",
     ("via.placeholder.com", "模拟视频生成进度", "高清画质 1080P", "setTimeout(resolve"),
 )
-for workflow in (".github/workflows/ci.yml",):
-    require(workflow, ("--dart-define=API_BASE_URL=https://contentflow-ci.invalid/api/v1",))
+# 注：此前这里还检查 .github/workflows/ci.yml（本仓库快照里没有 .github 目录，CI 配置在树外），
+# 也要求视频路由「用 FAL_API_KEY 并先 requireAuth」。国内版 2026-09-21 的口径是境外视频 / TTS / 字幕
+# 一律返回「暂未开通」，不接 fal.ai；那两条要求与口径相反，按口径改成下面的样子。
 
-# SDK 本身不是风险边界：Supabase 可用于真实身份认证，Fal 也可以只在
-# Next.js 服务端路由运行。真正需要阻断的是把供应商密钥暴露到浏览器、绕过
-# 服务端鉴权，或者未接入的平台凭空返回“发布成功”。
+# 国内版的境外能力路由只能返回「暂未开通」，不得带任何境外供应商的密钥或主机。
 for route in (
     "runtime/web-cn/src/app/api/ai/generate-video/route.ts",
     "runtime/web-cn/src/app/api/video/generate/route.ts",
 ):
-    require(route, ("requireAuth(request)", "process.env.FAL_API_KEY"))
-    forbid(route, ("NEXT_PUBLIC_FAL", "NEXT_PUBLIC_OPENROUTER"))
+    require(route, ("notAvailableInChina",))
+    forbid(route, ("FAL_API_KEY", "fal.run", "fal.ai", "NEXT_PUBLIC_FAL", "NEXT_PUBLIC_OPENROUTER"))
 
 for adapter in (
     "runtime/api/src/modules/publish/adapters/douyin.adapter.ts",
@@ -204,19 +203,13 @@ for env_file in (
     if (ROOT / env_file).is_file():
         forbid(env_file, ("NEXT_PUBLIC_FAL", "NEXT_PUBLIC_OPENROUTER"))
 
+# 国内版不连 Supabase（境外托管数据库）：这两个客户端文件已删除，不得回来。
 for supabase_client in (
     "runtime/web-cn/src/lib/supabase.ts",
     "runtime/web-cn/src/lib/supabase-server.ts",
 ):
-    require(
-        supabase_client,
-        (
-            "process.env.NODE_ENV === 'production'",
-            "Supabase production configuration is required",
-            "supabase-development.invalid",
-        ),
-    )
-    forbid(supabase_client, ("mock-supabase", "mock-key"))
+    if (ROOT / supabase_client).exists():
+        errors.append(f"{supabase_client}: 国内版不得保留 Supabase 客户端")
 
 # 国内内容生成与发布必须共用固定顺序、带版本和来源的六道闸。
 # 该静态门禁不替代动态规则库，但可防止生产代码退化回“命中后替换星号并继续发布”。

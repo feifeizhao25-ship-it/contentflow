@@ -44,8 +44,11 @@
 
 ## 用法
 
-    python3 scripts/check_domestic_stack.py
+    python3 scripts/check_domestic_stack.py                       # 默认扫 DEFAULT_SOURCE_ROOTS
     python3 scripts/check_domestic_stack.py --source-roots runtime/web-cn/src
+
+不带参数时也扫源码：此前默认源码目录是空列表，输出「0 个源码目录」，
+这条门禁对源码实际是空转的（只扫了 compose 与 .env 样例）。
 """
 from __future__ import annotations
 
@@ -61,6 +64,9 @@ except ImportError:  # pragma: no cover
     sys.exit("需要 PyYAML：pip install pyyaml")
 
 REPO = pathlib.Path(__file__).resolve().parent.parent
+# 国内版的源码目录。api 是国内 / 国际共用的一份代码（按 MARKET_REGION 分流），
+# 其中国际版才用得上的境外主机必须写进 allowlist 并说明为什么不会在国内版生效。
+DEFAULT_SOURCE_ROOTS = ["runtime/web-cn/src", "runtime/api/src"]
 ALLOWLIST = REPO / "scripts" / "domestic_stack_allowlist.json"
 
 SKIP_DIRS = {"node_modules", ".git", ".next", "dist", "build", "vendor-refs", "__pycache__"}
@@ -235,11 +241,14 @@ def check_source_root(root: pathlib.Path, allow: set[tuple[str, str]]) -> list[s
     problems: list[str] = []
     if not root.is_dir():
         return [f"{root}: 指定的源码目录不存在"]
-    for path in sorted(root.rglob("*")):
-        if path.suffix not in {".ts", ".tsx", ".js", ".jsx", ".mjs", ".py"}:
-            continue
-        if any(part in SKIP_DIRS for part in path.parts):
-            continue
+    files = [
+        p for p in sorted(root.rglob("*"))
+        if p.suffix in {".ts", ".tsx", ".js", ".jsx", ".mjs", ".py"} and not any(part in SKIP_DIRS for part in p.parts)
+    ]
+    if not files:
+        # 目录在但一个源文件都没扫到：多半是路径写错或后缀变了，门禁空转，必须报错而不是通过
+        return [f"{root}: 目录里没有可扫描的源文件，门禁没有检查任何东西"]
+    for path in files:
         rel = str(path.relative_to(REPO))
         text = path.read_text(encoding="utf-8", errors="replace")
         seen: set[str] = set()
@@ -253,7 +262,6 @@ def check_source_root(root: pathlib.Path, allow: set[tuple[str, str]]) -> list[s
         for host in OFFSHORE_HOSTS:
             if host in text and (rel, host) not in allow:
                 problems.append(f"{rel}: 国内源码里出现境外主机 {host}")
-                break
     return problems
 
 
@@ -262,8 +270,8 @@ def main() -> int:
     ap.add_argument(
         "--source-roots",
         nargs="*",
-        default=[],
-        help="国内版源码目录（相对仓库根），例如 runtime/web-cn/src",
+        default=DEFAULT_SOURCE_ROOTS,
+        help="国内版源码目录（相对仓库根），默认 " + " ".join(DEFAULT_SOURCE_ROOTS),
     )
     args = ap.parse_args()
 

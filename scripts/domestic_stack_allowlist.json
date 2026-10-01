@@ -1,0 +1,25 @@
+{
+  "allow": [
+    {
+      "where": "runtime/api/src/modules/ai/market-routing.ts",
+      "what": "openrouter.ai",
+      "why": "国际版（MARKET_REGION=global）才使用的路由常量；国内版 AIService 不持有 OPENROUTER_API_KEY，且 market-routing.spec.ts 断言 cn 下不会走该主机"
+    },
+    {
+      "where": "runtime/api/src/modules/ai/ai.service.ts",
+      "what": "openrouter.ai",
+      "why": "国际版调用路径；国内版在构造时拒绝持有 OpenRouter 密钥，见 market-routing.ts 的边界与对应测试"
+    },
+    {
+      "where": "runtime/api/src/modules/ai/market-routing.spec.ts",
+      "what": "openrouter.ai",
+      "why": "测试里断言国内版不会请求该主机，需要写出主机名"
+    },
+    {
+      "where": "runtime/api/src/modules/ai/ai.service.ts",
+      "what": "fal.run",
+      "why": "国际版图片生成路径；generateImage 在国内版（isDomesticMarket）先返回通义万相，不会走到 fal.run"
+    }
+  ],
+  "_说明": "每条必须写 why；没有理由的例外等于没有门禁。"
+}

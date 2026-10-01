@@ -15,7 +15,7 @@ REQUIRED_COMPOSE = (
     "postgres-cn:", "postgres-int:", "redis-cn:", "redis-int:",
     "api-cn:", "api-int:", "MARKET_REGION: cn", "MARKET_REGION: global",
     "API_INTERNAL_URL: http://api-cn:4000", "API_INTERNAL_URL: http://api-int:4000",
-    "networks: [cn-backend]", "networks: [int-backend]",
+    "networks: [cn-data]", "networks: [int-data]",
     "CN_POSTGRES_PASSWORD", "INT_POSTGRES_PASSWORD",
     "CN_REDIS_PASSWORD", "INT_REDIS_PASSWORD",
     "CN_JWT_SECRET", "INT_JWT_SECRET",
@@ -41,15 +41,21 @@ def main() -> int:
         failures.append("API modules are not selected by MARKET_REGION")
     if "region === 'global' ? [] : DOMESTIC_ONLY_MODULES" not in API_MODULE_SOURCE:
         failures.append("Global API does not fail closed against domestic-only modules")
-    if COMPOSE.count("networks: [cn-backend]") < 4:
-        failures.append("CN database, cache, API and web must all stay on cn-backend")
-    if COMPOSE.count("networks: [int-backend]") < 4:
-        failures.append("Global database, cache, API and web must all stay on int-backend")
+    # 数据网络（数据库、缓存、api）与边缘网络（web、api）分开：库与缓存只在 *-data，web 只在 *-edge。
+    # 这里的网络名以 docker-compose.production.yml 现状为准（此前写成 cn-backend / int-backend，早已不存在，
+    # 导致这条门禁永远红、没人再看它）。
+    for region in ("cn", "int"):
+        if COMPOSE.count(f"networks: [{region}-data]") != 2:
+            failures.append(f"{region} database and cache must stay on {region}-data only")
+        if COMPOSE.count(f"networks: [{region}-data, {region}-edge]") != 1:
+            failures.append(f"{region} API must join only {region}-data and {region}-edge")
+        if COMPOSE.count(f"networks: [{region}-edge]") != 1:
+            failures.append(f"{region} web must stay on {region}-edge only")
     global_required = (
         "name: contentflow-global", "MARKET_REGION: global",
         "internal: true", "external: true", "IMAGE_TAG:?",
         "CORS_ORIGIN:?", "OPENROUTER_SITE_URL:?", 'ENABLE_API_DOCS: "false"',
-        "http://127.0.0.1:4000/api/v1/health/ready",
+        "http://127.0.0.1:4000/health/ready",
     )
     failures += [
         f"missing isolated global production contract: {token}"
@@ -73,11 +79,14 @@ def main() -> int:
         f"missing ContentFlow edge routing contract: {token}"
         for token in edge_required if token not in GLOBAL_EDGE_ROUTE
     ]
-    expected_readiness = "http://127.0.0.1:4000/api/v1/health/ready"
+    # 健康检查路径：控制器是 /health/ready，bootstrap.ts 把它排除在 api/v1 前缀之外。
+    # 此前这里要求带前缀的 /api/v1/health/ready —— 那个路径不存在（404），容器永远 unhealthy。
+    # 路径是否真的返回 200 由 api/src/bootstrap.spec.ts 在 HTTP 层验证。
+    expected_readiness = "http://127.0.0.1:4000/health/ready"
     if COMPOSE.count(expected_readiness) != 2:
-        failures.append("CN and Global API health checks must use the prefixed readiness route")
-    if "http://127.0.0.1:4000/health/ready" in COMPOSE + GLOBAL_COMPOSE:
-        failures.append("Unprefixed readiness route is invalid for the API controller")
+        failures.append("CN and Global API health checks must use /health/ready")
+    if "/api/v1/health/ready" in COMPOSE + GLOBAL_COMPOSE:
+        failures.append("Prefixed readiness route /api/v1/health/ready does not exist (404)")
     if failures:
         print("Region isolation gate: FAIL")
         for failure in failures:
