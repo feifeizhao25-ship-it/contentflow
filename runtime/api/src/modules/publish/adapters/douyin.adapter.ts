@@ -63,7 +63,7 @@ export class DouyinAdapter implements PlatformAdapter {
                 retryable: false,
                 errorMessage:
                     'Douyin Open Platform API is not integrated. Configure DOUYIN_CLIENT_KEY / DOUYIN_CLIENT_SECRET and implement the upload flow.',
-                humanMessage: '抖音发布通道尚未开通，请先在「账号管理」中完成抖音授权。',
+                humanMessage: '抖音发布通道尚未开通（需先完成开放平台接入），暂时无法发布。',
             };
         }
 

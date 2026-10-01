@@ -63,7 +63,7 @@ export class BilibiliAdapter implements PlatformAdapter {
             retryable: false,
             errorMessage:
                 'Bilibili Open Platform API is not integrated. Configure BILIBILI_CLIENT_ID / BILIBILI_CLIENT_SECRET and implement the upload flow.',
-            humanMessage: 'B 站投稿通道尚未开通，请先在「账号管理」中完成 B 站授权。',
+            humanMessage: 'B 站投稿通道尚未开通（需先完成开放平台接入），暂时无法发布。',
         };
     }
 

@@ -169,10 +169,15 @@ forbid(
     "runtime/web-cn/src/lib/video-service.ts",
     ("simulateVideoGeneration", "via.placeholder.com", "example.com/videos", "resolution: '1080p'"),
 )
-forbid(
+# 配音面板、TTS 客户端、音乐库曾经是「列着 OpenAI / Azure / ElevenLabs、声音列表和音乐库是写死的模拟数据」的
+# 无人引用的代码（路由本身一律返回暂未开通）。已删除；接入境内供应商时重新写，不要把它们请回来。
+for removed in (
     "runtime/web-cn/src/components/video/VoiceoverPanel.tsx",
-    ("模拟进度", "setInterval(() =>", "生成中... {progress}%"),
-)
+    "runtime/web-cn/src/lib/tts-service.ts",
+    "runtime/web-cn/src/lib/music-service.ts",
+):
+    if (ROOT / removed).exists():
+        errors.append(f"{removed}: 境外供应商 / 模拟数据的遗留代码不得恢复")
 forbid(
     "runtime/web-cn/src/components/onboarding/FirstVideoGuide.tsx",
     ("via.placeholder.com", "模拟视频生成进度", "高清画质 1080P", "setTimeout(resolve"),
