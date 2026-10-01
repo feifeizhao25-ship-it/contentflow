@@ -1,10 +1,11 @@
-import { Injectable, NotFoundException, BadRequestException, InternalServerErrorException, Logger } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, ForbiddenException, InternalServerErrorException, Logger } from '@nestjs/common';
 import { PrismaService } from '../../database/prisma.service';
 import { PublishQueueService } from '../../queue/publish-queue.service';
 import { TenantService } from '../tenant/tenant.service';
 import { AdapterRegistry } from './adapters/adapter.registry';
 import { ConfigService } from '@nestjs/config';
 import { evaluateDomesticContent } from '../../common/domestic-content-compliance';
+import { isRealNameRequiredForPublish } from '../auth/real-name/real-name.verifier';
 
 @Injectable()
 export class PublishService {
@@ -17,6 +18,25 @@ export class PublishService {
     private readonly adapterRegistry: AdapterRegistry,
     private readonly config: ConfigService,
   ) {}
+
+  /**
+   * 发布信息类服务要求实名：REAL_NAME_REQUIRED_FOR_PUBLISH 打开时，必须已验证手机号并完成实名认证。
+   * 实名认证服务是外部资质、尚未接入，所以打开开关后在接入之前没有人能发布——这是刻意的。
+   */
+  private async assertRealNameIfRequired(userId: string): Promise<void> {
+    if (!isRealNameRequiredForPublish(this.config.get('REAL_NAME_REQUIRED_FOR_PUBLISH'))) return;
+    const user = (await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { phone_verified: true, status: true, real_name_verified: true } as any,
+    })) as any;
+    if (!user || user.status !== 'active') throw new ForbiddenException('账号不存在或已注销');
+    if (!user.phone_verified) {
+      throw new ForbiddenException({ code: 'PHONE_REQUIRED', message: '发布内容前请先绑定并验证手机号' });
+    }
+    if (!user.real_name_verified) {
+      throw new ForbiddenException({ code: 'REAL_NAME_REQUIRED', message: '发布内容前需要完成实名认证' });
+    }
+  }
 
   async createTask(tenantId: string, userId: string, data: {
     contentId: string;
@@ -32,6 +52,7 @@ export class PublishService {
     if (data.publishType === 'scheduled' && (!scheduledAt || Number.isNaN(scheduledAt.getTime()) || scheduledAt.getTime() <= Date.now())) {
       throw new BadRequestException('定时发布时间必须晚于当前时间');
     }
+    await this.assertRealNameIfRequired(userId);
     // 检查内容是否存在且已审核通过
     const content = await this.prisma.content.findFirst({
       where: { id: data.contentId, tenant_id: tenantId },

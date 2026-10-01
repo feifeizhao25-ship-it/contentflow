@@ -70,8 +70,28 @@ import { QuestModule } from './modules/quest/quest.module';
 import { AchievementModule } from './modules/achievement/achievement.module';
 import { SystemModule } from './modules/system/system.module';
 
+/**
+ * 短信服务：可以不配（发送时明确报「短信服务未配置」），但不能配错——
+ *   - SMS_PROVIDER=dev 是固定验证码的开发实现，生产环境禁止；
+ *   - 选了 aliyun 就要配全，且验证码哈希密钥单独配置、不与 JWT_SECRET 相同。
+ */
+function validateSmsConfig(config: Record<string, unknown>) {
+  const provider = String(config.SMS_PROVIDER ?? '').trim().toLowerCase();
+  if (!provider) return;
+  if (provider === 'dev') throw new Error('SMS_PROVIDER=dev 只能用于开发环境，生产环境禁止使用');
+  if (provider !== 'aliyun') throw new Error(`SMS_PROVIDER 只支持 aliyun（收到：${provider}）`);
+  const missing = [
+    'ALIYUN_SMS_ACCESS_KEY_ID', 'ALIYUN_SMS_ACCESS_KEY_SECRET', 'ALIYUN_SMS_SIGN_NAME',
+    'ALIYUN_SMS_TEMPLATE_CODE', 'SMS_CODE_HMAC_SECRET',
+  ].filter((key) => !config[key]);
+  if (missing.length) throw new Error(`SMS_PROVIDER=aliyun requires: ${missing.join(', ')}`);
+  if (String(config.SMS_CODE_HMAC_SECRET).length < 32) throw new Error('SMS_CODE_HMAC_SECRET must contain at least 32 characters');
+  if (config.SMS_CODE_HMAC_SECRET === config.JWT_SECRET) throw new Error('SMS_CODE_HMAC_SECRET 不得与 JWT_SECRET 相同');
+}
+
 export function validateProductionConfig(config: Record<string, unknown>) {
   if (config.NODE_ENV !== 'production') return config;
+  validateSmsConfig(config);
   const required = [
     'DATABASE_URL', 'REDIS_HOST', 'JWT_SECRET', 'JWT_REFRESH_SECRET',
     'MARKET_REGION', 'CORS_ORIGIN', 'PUBLISH_DISPATCH_WEBHOOK_URL',

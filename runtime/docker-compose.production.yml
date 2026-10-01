@@ -107,6 +107,17 @@ services:
       ALIPAY_NOTIFY_URL: ${ALIPAY_NOTIFY_URL:-}
       ALIPAY_RETURN_URL: ${ALIPAY_RETURN_URL:-}
       ALIPAY_GATEWAY_URL: ${ALIPAY_GATEWAY_URL:-https://openapi.alipay.com/gateway.do}
+      # 手机号 + 短信验证码登录。SMS_PROVIDER 留空 = 短信服务未配置（发送验证码时明确报错，不会假装成功）；
+      # 填 aliyun 就必须配全下面五项，缺一项 api 启动失败。生产环境禁止 dev（固定验证码的开发实现）。
+      SMS_PROVIDER: ${CN_SMS_PROVIDER:-}
+      SMS_CODE_HMAC_SECRET: ${CN_SMS_CODE_HMAC_SECRET:-}
+      ALIYUN_SMS_ACCESS_KEY_ID: ${CN_ALIYUN_SMS_ACCESS_KEY_ID:-}
+      ALIYUN_SMS_ACCESS_KEY_SECRET: ${CN_ALIYUN_SMS_ACCESS_KEY_SECRET:-}
+      ALIYUN_SMS_SIGN_NAME: ${CN_ALIYUN_SMS_SIGN_NAME:-}
+      ALIYUN_SMS_TEMPLATE_CODE: ${CN_ALIYUN_SMS_TEMPLATE_CODE:-}
+      # 发布信息类服务要求实名：打开后，未完成手机号验证与实名认证的用户不能创建发布任务。
+      # 实名认证服务（公安 / 运营商二要素）尚未接入，打开后在接入之前没有人能发布。
+      REAL_NAME_REQUIRED_FOR_PUBLISH: ${CN_REAL_NAME_REQUIRED_FOR_PUBLISH:-false}
       ENABLE_API_DOCS: "false"
     depends_on:
       postgres-cn: {condition: service_healthy}

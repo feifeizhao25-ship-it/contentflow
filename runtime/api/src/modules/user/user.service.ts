@@ -1,5 +1,6 @@
 import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
 import { PrismaService } from '../../database/prisma.service';
+import { publicEmail } from '../auth/phone-account';
 
 @Injectable()
 export class UserService {
@@ -40,11 +41,11 @@ export class UserService {
       select: { id: true, email: true, name: true, avatar_url: true, role: true, created_at: true },
     });
     if (!user) throw new NotFoundException('用户不存在');
-    return user;
+    return { ...user, email: publicEmail(user.email) };
   }
 
   async findByTenant(tenantId: string) {
-    return this.prisma.user.findMany({
+    const members = await this.prisma.user.findMany({
       where: { tenant_id: tenantId, status: 'active' },
       select: {
         id: true,
@@ -55,6 +56,7 @@ export class UserService {
         created_at: true,
       },
     });
+    return members.map((m) => ({ ...m, email: publicEmail(m.email) }));
   }
 
   async update(id: string, data: { name?: string; avatar_url?: string; preferences?: any }) {

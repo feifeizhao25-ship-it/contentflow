@@ -47,11 +47,11 @@ await check('register posts only whitelisted fields to /api/auth/register', asyn
   const { registerWithEmail } = await import('../src/lib/auth-service.ts');
   const seen = [];
   await registerWithEmail(
-    { email: 'a@b.cn', password: '123456', name: '甲', tenantName: '乙' },
+    { email: 'a@b.cn', password: '123456', name: '甲', tenantName: '乙', agreedToTerms: true },
     async (url, init) => { seen.push({ url, body: JSON.parse(init.body) }); return new Response(JSON.stringify({ user: { id: 'u1' } }), { status: 200 }); },
   );
   assert.equal(seen[0].url, '/api/auth/register');
-  assert.deepEqual(Object.keys(seen[0].body).sort(), ['email', 'name', 'password', 'tenantName']);
+  assert.deepEqual(Object.keys(seen[0].body).sort(), ['agreedToTerms', 'email', 'name', 'password', 'tenantName']);
 });
 
 const session = await import('../src/lib/session.ts');
@@ -64,6 +64,19 @@ await check('current user comes from the backend profile', async () => {
   assert.equal(current.profile.id, 'u1');
   assert.equal(current.profile.tenant_id, 't1');
   assert.equal(current.tenant.plan, 'pro');
+});
+
+await check('phone-only account (no email) still yields a profile, with masked phone and verification flags', async () => {
+  respond = (url) => url.endsWith('/api/v1/auth/profile')
+    ? { status: 200, body: { success: true, data: { user: { id: 'u9', email: '', phone: '138****5678', phone_verified: true, real_name_verified: false, name: '乙', role: 'owner', tenant: { id: 't9', name: '工作室', plan: 'free' } } } } }
+    : { status: 404, body: {} };
+  const current = await session.fetchCurrentUser();
+  assert.ok(current, 'phone-registered users must not be treated as logged out');
+  assert.equal(current.profile.id, 'u9');
+  assert.equal(current.profile.email, '');
+  assert.equal(current.profile.phone, '138****5678');
+  assert.equal(current.profile.phone_verified, true);
+  assert.equal(current.profile.real_name_verified, false);
 });
 
 await check('not logged in yields null instead of throwing', async () => {

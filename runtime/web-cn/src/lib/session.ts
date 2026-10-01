@@ -17,7 +17,12 @@ export interface Tenant {
 export interface Profile {
     id: string;
     tenant_id: string;
+    /** 手机号注册的账号没有邮箱：为空字符串 */
     email: string;
+    /** 脱敏后的手机号（138****5678） */
+    phone?: string;
+    phone_verified?: boolean;
+    real_name_verified?: boolean;
     name?: string;
     avatar_url?: string;
     role: string;
@@ -27,6 +32,9 @@ interface ProfileResponse {
     user?: {
         id?: string;
         email?: string;
+        phone?: string;
+        phone_verified?: boolean;
+        real_name_verified?: boolean;
         name?: string;
         role?: string;
         avatar_url?: string;
@@ -42,7 +50,8 @@ export async function fetchCurrentUser(): Promise<{ profile: Profile; tenant: Te
         return null;
     }
     const user = data?.user;
-    if (!user?.id || !user.email) return null;
+    // 手机号注册的账号没有邮箱，只认 id
+    if (!user?.id) return null;
     const tenant = user.tenant?.id
         ? { id: user.tenant.id, name: user.tenant.name ?? '', plan: user.tenant.plan ?? 'free' }
         : null;
@@ -50,7 +59,10 @@ export async function fetchCurrentUser(): Promise<{ profile: Profile; tenant: Te
         profile: {
             id: user.id,
             tenant_id: tenant?.id ?? '',
-            email: user.email,
+            email: user.email ?? '',
+            phone: user.phone || undefined,
+            phone_verified: !!user.phone_verified,
+            real_name_verified: !!user.real_name_verified,
             name: user.name ?? undefined,
             avatar_url: user.avatar_url ?? undefined,
             role: user.role ?? 'viewer',

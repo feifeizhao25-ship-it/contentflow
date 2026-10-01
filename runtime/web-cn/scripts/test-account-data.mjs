@@ -127,5 +127,23 @@ await check('隐私政策：写的与设置页实际提供的一致（自助导�
   assert.match(src, /六个月/);
 });
 
+await check('隐私政策：写明手机号与短信验证码的处理、实名认证属敏感信息并单独同意、注销时一并清除手机号', () => {
+  const src = fs.readFileSync(path.join(ROOT, 'src/app/privacy/page.tsx'), 'utf8');
+  assert.match(src, /手机号/);
+  assert.match(src, /短信验证码/);
+  assert.match(src, /5 分钟/);
+  assert.match(src, /敏感个人信息/);
+  assert.match(src, /单独同意/);
+  assert.match(src, /尚未开通/); // 实名认证目前没有，政策不能写成已经在收集
+  assert.match(src, /手机号及验证码记录/);
+});
+
+await check('注册页的同意由后端留痕：两种注册都把 agreedToTerms 提交给后端', () => {
+  const lib = fs.readFileSync(path.join(ROOT, 'src/lib/auth-service.ts'), 'utf8');
+  assert.equal((lib.match(/agreedToTerms: input\.agreedToTerms/g) || []).length, 2);
+  const page = fs.readFileSync(path.join(ROOT, 'src/app/(auth)/register/page.tsx'), 'utf8');
+  assert.equal((page.match(/agreedToTerms: values\.agreement === true/g) || []).length, 2);
+});
+
 if (failures) { console.error(`\n${failures} failed`); process.exit(1); }
 console.log('\nAll account-data tests passed');

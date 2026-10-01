@@ -1,17 +1,19 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Card, Form, Input, Button, message, Divider, Checkbox } from 'antd';
-import { UserOutlined, LockOutlined, MailOutlined, TeamOutlined } from '@ant-design/icons';
+import { Card, Form, Input, Button, message, Divider, Checkbox, Tabs } from 'antd';
+import { UserOutlined, LockOutlined, MailOutlined, TeamOutlined, MobileOutlined } from '@ant-design/icons';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { registerWithEmail } from '@/lib/auth-service';
+import { isValidChinaMobile, registerWithEmail, registerWithPhone, sendSmsCode } from '@/lib/auth-service';
+import { SmsCodeInput } from '@/components/auth/SmsCodeInput';
 import { safeErrorText } from '@/lib/api-error';
 
 
 
 export default function RegisterPage() {
     const [loading, setLoading] = useState(false);
+    const [smsForm] = Form.useForm();
     const router = useRouter();
 
     // 注册只走自己的后端（/api/auth/register → NestJS），成功后服务端写入登录 cookie。
@@ -28,6 +30,7 @@ export default function RegisterPage() {
                 password: values.password,
                 name: values.name,
                 tenantName: values.tenantName,
+                agreedToTerms: values.agreement === true,
             });
             message.success('注册成功');
             router.push('/studio');
@@ -37,6 +40,42 @@ export default function RegisterPage() {
             setLoading(false);
         }
     };
+
+    // 手机号 + 验证码注册：验证码由后端校验（一次性、5 分钟有效、错 5 次作废），同意协议由后端留痕。
+    const onPhoneFinish = async (values: any) => {
+        setLoading(true);
+        try {
+            await registerWithPhone({
+                phone: values.phone,
+                code: values.code,
+                name: values.name || undefined,
+                tenantName: values.tenantName || undefined,
+                agreedToTerms: values.agreement === true,
+            });
+            message.success('注册成功');
+            router.push('/studio');
+        } catch (error) {
+            message.error(safeErrorText(error, '注册失败，请重试'));
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const agreementItem = (
+        <Form.Item
+            name="agreement"
+            valuePropName="checked"
+            rules={[{
+                validator: (_, value) => value
+                    ? Promise.resolve()
+                    : Promise.reject(new Error('请先阅读并同意用户协议和隐私政策')),
+            }]}
+        >
+            <Checkbox>
+                我已阅读并同意 <Link href="/terms" target="_blank">《用户协议》</Link> 和 <Link href="/privacy" target="_blank">《隐私政策》</Link>
+            </Checkbox>
+        </Form.Item>
+    );
 
     return (
         <div
@@ -78,13 +117,50 @@ export default function RegisterPage() {
                     <p style={{ color: '#6b7280', marginTop: 8 }}>开始您的内容分发之旅</p>
                 </div>
 
-                <Form
-                    name="register"
-                    onFinish={onFinish}
-                    autoComplete="off"
-                    layout="vertical"
-                    size="large"
-                >
+                <Tabs
+                    defaultActiveKey="phone"
+                    centered
+                    items={[
+                        {
+                            key: 'phone',
+                            label: '手机号注册',
+                            children: (
+                                <Form form={smsForm} name="register-phone" onFinish={onPhoneFinish} autoComplete="off" layout="vertical" size="large">
+                                    <Form.Item
+                                        name="phone"
+                                        rules={[
+                                            { required: true, message: '请输入手机号' },
+                                            { validator: (_, value) => (!value || isValidChinaMobile(value) ? Promise.resolve() : Promise.reject(new Error('请输入正确的 11 位手机号'))) },
+                                        ]}
+                                    >
+                                        <Input prefix={<MobileOutlined />} placeholder="手机号" inputMode="tel" maxLength={16} />
+                                    </Form.Item>
+                                    <Form.Item name="code" rules={[{ required: true, message: '请输入验证码' }, { pattern: /^\d{6}$/, message: '验证码为 6 位数字' }]}>
+                                        <SmsCodeInput
+                                            getPhone={() => String(smsForm.getFieldValue('phone') ?? '')}
+                                            send={(phone) => sendSmsCode({ phone, purpose: 'register' })}
+                                        />
+                                    </Form.Item>
+                                    <Form.Item name="name">
+                                        <Input prefix={<UserOutlined />} placeholder="姓名（选填）" maxLength={50} />
+                                    </Form.Item>
+                                    <Form.Item name="tenantName">
+                                        <Input prefix={<TeamOutlined />} placeholder="团队/公司名称（选填）" maxLength={100} />
+                                    </Form.Item>
+                                    {agreementItem}
+                                    <Form.Item>
+                                        <Button type="primary" htmlType="submit" block loading={loading}>
+                                            注册
+                                        </Button>
+                                    </Form.Item>
+                                </Form>
+                            ),
+                        },
+                        {
+                            key: 'email',
+                            label: '邮箱注册',
+                            children: (
+                                <Form name="register" onFinish={onFinish} autoComplete="off" layout="vertical" size="large">
                     <Form.Item
                         name="name"
                         rules={[{ required: true, message: '请输入您的姓名' }]}
@@ -153,19 +229,7 @@ export default function RegisterPage() {
                         />
                     </Form.Item>
 
-                    <Form.Item
-                        name="agreement"
-                        valuePropName="checked"
-                        rules={[{
-                            validator: (_, value) => value
-                                ? Promise.resolve()
-                                : Promise.reject(new Error('请先阅读并同意用户协议和隐私政策')),
-                        }]}
-                    >
-                        <Checkbox>
-                            我已阅读并同意 <Link href="/terms" target="_blank">《用户协议》</Link> 和 <Link href="/privacy" target="_blank">《隐私政策》</Link>
-                        </Checkbox>
-                    </Form.Item>
+                    {agreementItem}
 
                     <Form.Item>
                         <Button type="primary" htmlType="submit" block loading={loading}>
@@ -173,15 +237,20 @@ export default function RegisterPage() {
                         </Button>
                     </Form.Item>
 
-                    <Divider plain>或</Divider>
+                                </Form>
+                            ),
+                        },
+                    ]}
+                />
 
-                    <div style={{ textAlign: 'center' }}>
-                        <span style={{ color: '#6b7280' }}>已有账号？</span>
-                        <Link href="/login" style={{ marginLeft: 8, color: '#6366f1', fontWeight: 500 }}>
-                            立即登录
-                        </Link>
-                    </div>
-                </Form>
+                <Divider plain>或</Divider>
+
+                <div style={{ textAlign: 'center' }}>
+                    <span style={{ color: '#6b7280' }}>已有账号？</span>
+                    <Link href="/login" style={{ marginLeft: 8, color: '#6366f1', fontWeight: 500 }}>
+                        立即登录
+                    </Link>
+                </div>
             </Card>
         </div>
     );

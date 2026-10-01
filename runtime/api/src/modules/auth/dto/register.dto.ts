@@ -1,4 +1,5 @@
-import { IsEmail, IsString, MinLength, MaxLength, IsOptional } from 'class-validator';
+import { Transform } from 'class-transformer';
+import { Equals, IsBoolean, IsEmail, IsString, MinLength, MaxLength, IsOptional } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class RegisterDto {
@@ -23,4 +24,11 @@ export class RegisterDto {
   @IsOptional()
   @MaxLength(100)
   tenantName?: string;
+
+  @ApiProperty({ description: '已阅读并同意《用户协议》《隐私政策》' })
+  // 隐式类型转换会把字符串 'false' 变成 true：取原始值，只认布尔 true
+  @Transform(({ obj }) => obj.agreedToTerms)
+  @IsBoolean({ message: '请先阅读并同意用户协议和隐私政策' })
+  @Equals(true, { message: '请先阅读并同意用户协议和隐私政策' })
+  agreedToTerms: boolean;
 }

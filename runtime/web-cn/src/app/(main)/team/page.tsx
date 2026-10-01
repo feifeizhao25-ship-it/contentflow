@@ -187,8 +187,8 @@ function TeamContent() {
                 <Space>
                     <Avatar icon={<UserOutlined />} src={record.avatar_url} />
                     <div>
-                        <div style={{ fontWeight: 500 }}>{record.name || record.email.split('@')[0]}</div>
-                        <div style={{ fontSize: 12, color: '#9ca3af' }}>{record.email}</div>
+                        <div style={{ fontWeight: 500 }}>{record.name || record.email.split('@')[0] || '未命名成员'}</div>
+                        {record.email && <div style={{ fontSize: 12, color: '#9ca3af' }}>{record.email}</div>}
                     </div>
                 </Space>
             ),

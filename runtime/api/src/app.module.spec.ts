@@ -58,4 +58,46 @@ describe('production configuration', () => {
     expect(() => validateProductionConfig({ ...valid, PUBLISH_DISPATCH_WEBHOOK_URL: 'http://automation.local/publish' })).toThrow('HTTPS');
     expect(() => validateProductionConfig({ ...valid, PUBLISH_DISPATCH_WEBHOOK_SECRET: '' })).toThrow('PUBLISH_DISPATCH_WEBHOOK_SECRET');
   });
+
+  describe('短信服务配置', () => {
+    const aliyun = {
+      ...valid,
+      SMS_PROVIDER: 'aliyun',
+      SMS_CODE_HMAC_SECRET: 'd'.repeat(32),
+      ALIYUN_SMS_ACCESS_KEY_ID: 'id',
+      ALIYUN_SMS_ACCESS_KEY_SECRET: 'secret',
+      ALIYUN_SMS_SIGN_NAME: '签名',
+      ALIYUN_SMS_TEMPLATE_CODE: 'SMS_000',
+    };
+
+    it('不配短信服务也能启动（发送时明确报「短信服务未配置」，而不是启动失败）', () => {
+      expect(validateProductionConfig(valid)).toEqual(valid);
+    });
+
+    it('生产环境禁止开发用的固定验证码实现（SMS_PROVIDER=dev）', () => {
+      expect(() => validateProductionConfig({ ...valid, SMS_PROVIDER: 'dev' })).toThrow('SMS_PROVIDER=dev');
+      expect(() => validateProductionConfig({ ...valid, SMS_PROVIDER: ' DEV ' })).toThrow('SMS_PROVIDER=dev');
+    });
+
+    it('非生产环境允许 dev', () => {
+      const dev = { NODE_ENV: 'development', SMS_PROVIDER: 'dev' };
+      expect(validateProductionConfig(dev)).toEqual(dev);
+    });
+
+    it('选了阿里云就必须配全：密钥、签名、模板、验证码哈希密钥（≥32 位）', () => {
+      expect(validateProductionConfig(aliyun)).toEqual(aliyun);
+      for (const key of ['ALIYUN_SMS_ACCESS_KEY_ID', 'ALIYUN_SMS_ACCESS_KEY_SECRET', 'ALIYUN_SMS_SIGN_NAME', 'ALIYUN_SMS_TEMPLATE_CODE', 'SMS_CODE_HMAC_SECRET']) {
+        expect(() => validateProductionConfig({ ...aliyun, [key]: '' })).toThrow(key);
+      }
+      expect(() => validateProductionConfig({ ...aliyun, SMS_CODE_HMAC_SECRET: 'short' })).toThrow('at least 32');
+    });
+
+    it('验证码哈希密钥不得与 JWT_SECRET 相同（一把泄露不能连带另一把）', () => {
+      expect(() => validateProductionConfig({ ...aliyun, SMS_CODE_HMAC_SECRET: valid.JWT_SECRET })).toThrow('SMS_CODE_HMAC_SECRET');
+    });
+
+    it('不认识的 SMS_PROVIDER 值直接拒绝（拼错了不能悄悄变成未配置）', () => {
+      expect(() => validateProductionConfig({ ...valid, SMS_PROVIDER: 'aliyunn' })).toThrow('SMS_PROVIDER');
+    });
+  });
 });

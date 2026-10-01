@@ -3,10 +3,13 @@ import {
   Injectable,
   Logger,
   NotFoundException,
+  Optional,
   UnauthorizedException,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import * as bcrypt from 'bcryptjs';
 import { PrismaService } from '../../database/prisma.service';
+import { smsHmacSecret, smsPhoneHash } from '../auth/sms/sms-hash';
 
 /**
  * 注销账号与导出个人信息。
@@ -82,6 +85,14 @@ export const TENANT_OWNED_TABLES: ReadonlyArray<string> = [
   'ApiKey',
 ];
 
+/**
+ * 按手机号（而不是 user_id）索引的表：短信验证码记录。只存手机号的 HMAC 哈希，
+ * 注销时在手机号被清空之前，按该手机号的哈希删除。
+ */
+export const PHONE_KEYED_TABLES: ReadonlyArray<{ table: string; column: string }> = [
+  { table: 'SmsVerificationCode', column: 'phone_hash' },
+];
+
 /** 依法保留的表（只在这里登记，注销语句里不得出现对它们的 DELETE）。 */
 export const RETAINED_TABLES: ReadonlyArray<{ table: string; why: string }> = [
   { table: 'PaymentOrder', why: '订单，交易凭证' },
@@ -101,11 +112,12 @@ export const RETAINED_TABLES: ReadonlyArray<{ table: string; why: string }> = [
  *   user          用户自己的个人数据，按 user_id 删
  *   tenant        工作区拥有的业务数据，工作区唯一在职成员注销时删
  *   cascade       随上级表的外键级联删除（写明上级）
+ *   phone         按手机号哈希索引的表（短信验证码），注销时按该手机号的哈希删
  *   identity      Tenant / User 行本身：匿名化，不删（订单外键指向它们）
  *   retained      依法保留
  *   global        与任何用户无关的全局数据（写明理由）
  */
-export const TABLE_CLASSIFICATION: Readonly<Record<string, { kind: 'user' | 'tenant' | 'cascade' | 'identity' | 'retained' | 'global'; note?: string }>> = {
+export const TABLE_CLASSIFICATION: Readonly<Record<string, { kind: 'user' | 'tenant' | 'cascade' | 'identity' | 'retained' | 'global' | 'phone'; note?: string }>> = {
   Tenant: { kind: 'identity' },
   User: { kind: 'identity' },
   UserSession: { kind: 'user' },
@@ -139,6 +151,7 @@ export const TABLE_CLASSIFICATION: Readonly<Record<string, { kind: 'user' | 'ten
   PublishTask: { kind: 'cascade', note: 'Content' },
   ContentStats: { kind: 'cascade', note: 'PublishTask' },
   ReviewLog: { kind: 'cascade', note: 'Content' },
+  SmsVerificationCode: { kind: 'phone', note: '只存手机号 HMAC 哈希与验证码哈希' },
   PaymentOrder: { kind: 'retained' },
   Subscription: { kind: 'retained' },
   PaymentWebhookEvent: { kind: 'retained' },
@@ -168,7 +181,10 @@ export interface ErasureResult {
 export class AccountErasureService {
   private readonly logger = new Logger(AccountErasureService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    @Optional() private readonly config?: Pick<ConfigService, 'get'>,
+  ) {}
 
   private get runner(): TxRunner {
     return this.prisma as unknown as TxRunner;
@@ -189,8 +205,8 @@ export class AccountErasureService {
 
   async erase(userId: string): Promise<ErasureResult> {
     const result = await this.runner.$transaction(async (tx) => {
-      const rows = await tx.$queryRawUnsafe<Array<{ id: string; tenant_id: string; role: string; status: string }>>(
-        'SELECT id, tenant_id, role, status FROM "User" WHERE id = $1 FOR UPDATE',
+      const rows = await tx.$queryRawUnsafe<Array<{ id: string; tenant_id: string; role: string; status: string; phone: string | null }>>(
+        'SELECT id, tenant_id, role, status, phone FROM "User" WHERE id = $1 FOR UPDATE',
         userId,
       );
       const me = rows[0];
@@ -215,6 +231,15 @@ export class AccountErasureService {
         personalRows += await tx.$executeRawUnsafe(`DELETE FROM "${table}" WHERE ${column} = $1`, userId);
       }
 
+      // 手机号验证码记录：必须在下面把手机号清空之前按它的哈希删掉
+      const secret = this.config ? smsHmacSecret(this.config) : null;
+      if (me.phone && secret) {
+        const phoneHash = smsPhoneHash(secret, me.phone);
+        for (const { table, column } of PHONE_KEYED_TABLES) {
+          personalRows += await tx.$executeRawUnsafe(`DELETE FROM "${table}" WHERE ${column} = $1`, phoneHash);
+        }
+      }
+
       if (soleMember) {
         for (const table of TENANT_OWNED_TABLES) {
           await tx.$executeRawUnsafe(`DELETE FROM "${table}" WHERE tenant_id = $1`, me.tenant_id);
@@ -236,6 +261,7 @@ export class AccountErasureService {
         `UPDATE "User" SET email = 'deleted-' || id || '@deleted.invalid', phone = NULL, password_hash = NULL,
            name = NULL, avatar_url = NULL, oauth_providers = '{}'::jsonb, preferences = '{}'::jsonb,
            permissions = '[]'::jsonb, email_verified = FALSE, phone_verified = FALSE,
+           real_name_verified = FALSE, consent_version = NULL, consent_at = NULL,
            status = 'deleted', updated_at = NOW() WHERE id = $1`,
         userId,
       );

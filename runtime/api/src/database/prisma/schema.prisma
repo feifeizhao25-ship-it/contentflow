@@ -73,6 +73,11 @@ model User {
   // 认证信息
   email_verified  Boolean   @default(false)
   phone_verified  Boolean   @default(false)
+  // 实名认证：只能由实名认证服务（公安/运营商二要素，外部资质，尚未接入）置为 true。
+  real_name_verified Boolean @default(false)
+  // 注册时同意的《用户协议》《隐私政策》版本与时间（个人信息处理同意的留痕）
+  consent_version String?
+  consent_at      DateTime?
   last_login_at   DateTime?
   login_count     Int       @default(0)
   oauth_providers Json      @default("{}")
@@ -87,6 +92,24 @@ model User {
   // 关系
   @@unique([tenant_id, email])
   @@index([tenant_id])
+}
+
+// 短信验证码。只存哈希，不存明文验证码，也不存明文手机号（phone_hash 是带密钥的 HMAC）。
+// 一次性（consumed_at）、有过期（expires_at）、限次（attempts）。
+model SmsVerificationCode {
+  id              String    @id @default(uuid())
+  phone_hash      String
+  purpose         String // register | login | bind
+  code_hash       String
+  attempts        Int       @default(0)
+  expires_at      DateTime
+  consumed_at     DateTime?
+  request_ip_hash String?
+  created_at      DateTime  @default(now())
+
+  @@index([phone_hash, purpose, created_at])
+  @@index([request_ip_hash, created_at])
+  @@index([expires_at])
 }
 
 model UserSession {

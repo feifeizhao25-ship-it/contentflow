@@ -15,6 +15,7 @@ import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { PrismaService } from '../../database/prisma.service';
 import {
   AccountErasureService,
+  PHONE_KEYED_TABLES,
   RETAINED_TABLES,
   TABLE_CLASSIFICATION,
   TENANT_OWNED_TABLES,
@@ -52,6 +53,7 @@ describe('注销登记门禁：schema.prisma 里每张表都要回答「用户�
     expect(USER_OWNED_TABLES.map((t) => t.table).sort()).toEqual(of('user'));
     expect([...TENANT_OWNED_TABLES].sort()).toEqual(of('tenant'));
     expect(RETAINED_TABLES.map((t) => t.table).sort()).toEqual(of('retained'));
+    expect(PHONE_KEYED_TABLES.map((t) => t.table).sort()).toEqual(of('phone'));
   });
 
   it('依法保留的表，绝不出现在删除清单里', () => {
@@ -177,5 +179,76 @@ describe('POST /users/me/delete-account 与 GET /users/me/export（接口层）'
     const res = await request(app.getHttpServer()).get('/api/v1/users/me/export');
     expect(res.status).toBe(404);
     expect(prisma.user.findFirst).not.toHaveBeenCalled();
+  });
+});
+
+describe('注销时手机号相关数据（验证码记录、同意记录、实名标记）', () => {
+  const PHONE = '13800138000';
+  const run = async (config: any) => {
+    const calls: Array<{ sql: string; params: unknown[] }> = [];
+    const tx = {
+      $queryRawUnsafe: jest.fn(async (sql: string, ...params: unknown[]) => {
+        calls.push({ sql, params });
+        if (/FROM "User" WHERE id = \$1 FOR UPDATE/.test(sql)) {
+          return [{ id: 'u-1', tenant_id: 't-1', role: 'owner', status: 'active', phone: PHONE }];
+        }
+        return [];
+      }),
+      $executeRawUnsafe: jest.fn(async (sql: string, ...params: unknown[]) => {
+        calls.push({ sql, params });
+        return 0;
+      }),
+    };
+    const runner = { $transaction: async (fn: any) => fn(tx) };
+    const service = new AccountErasureService(runner as any, config);
+    await service.erase('u-1');
+    return calls;
+  };
+
+  it('按手机号哈希删除该手机号的全部验证码记录，且在手机号被清空之前', async () => {
+    const config = { get: (k: string) => ({ SMS_CODE_HMAC_SECRET: 'x'.repeat(32), NODE_ENV: 'production' } as any)[k] };
+    const calls = await run(config);
+    const del = calls.findIndex((c) => /DELETE FROM "SmsVerificationCode" WHERE phone_hash = \$1/.test(c.sql));
+    const anonymise = calls.findIndex((c) => /UPDATE "User" SET/.test(c.sql));
+    expect(del).toBeGreaterThanOrEqual(0);
+    expect(anonymise).toBeGreaterThan(del);
+    // 参数是哈希，不是明文手机号
+    expect(calls[del].params).toHaveLength(1);
+    expect(String(calls[del].params[0])).toMatch(/^[0-9a-f]{64}$/);
+    expect(JSON.stringify(calls[del].params)).not.toContain(PHONE);
+  });
+
+  it('匿名化 User 时一并清掉手机号、实名标记与同意记录', async () => {
+    const config = { get: (k: string) => ({ SMS_CODE_HMAC_SECRET: 'x'.repeat(32) } as any)[k] };
+    const calls = await run(config);
+    const update = calls.find((c) => /UPDATE "User" SET/.test(c.sql))!;
+    expect(update.sql).toMatch(/phone = NULL/);
+    expect(update.sql).toMatch(/real_name_verified = FALSE/);
+    expect(update.sql).toMatch(/consent_version = NULL/);
+    expect(update.sql).toMatch(/consent_at = NULL/);
+  });
+
+  it('没配置短信密钥时没有验证码可删：不报错，也不拿空密钥算哈希', async () => {
+    const calls = await run({ get: () => undefined });
+    expect(calls.some((c) => /SmsVerificationCode/.test(c.sql))).toBe(false);
+  });
+});
+
+describe('导出个人信息包含手机号', () => {
+  it('账号块来自整行 to_jsonb(u)，只排除口令哈希、第三方登录、权限，手机号与同意记录会导出', () => {
+    const src = fs.readFileSync(path.join(__dirname, 'account-erasure.service.ts'), 'utf8');
+    expect(src).toMatch(/to_jsonb\(u\) - 'password_hash' - 'oauth_providers' - 'permissions'/);
+  });
+
+  it('导出结果里确有 phone / consent_version（行为测试）', async () => {
+    const row = { id: 'u-1', tenant_id: 't-1', phone: '13800138000', phone_verified: true, consent_version: '2026-08-22' };
+    const tx = {
+      $queryRawUnsafe: jest.fn(async (sql: string) => (/to_jsonb\(u\)/.test(sql) ? [{ row }] : [])),
+      $executeRawUnsafe: jest.fn(),
+    };
+    const service = new AccountErasureService({ $transaction: async (fn: any) => fn(tx) } as any);
+    const out: any = await service.export('u-1');
+    expect(out.account.phone).toBe('13800138000');
+    expect(out.account.consent_version).toBe('2026-08-22');
   });
 });

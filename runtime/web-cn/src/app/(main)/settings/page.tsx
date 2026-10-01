@@ -31,12 +31,13 @@ import { logout } from '@/lib/session';
 import Link from 'next/link';
 import { apiClient } from '@/lib/api-client';
 import { describePlan, type PlanView } from '@/lib/page-data';
+import { PhoneBinding } from '@/components/auth/PhoneBinding';
 
 const { Option } = Select;
 const { Text, Title, Paragraph } = Typography;
 
 export default function SettingsPage() {
-    const { user, tenant } = useAppStore();
+    const { user, tenant, setUser } = useAppStore();
     const [loading, setLoading] = useState(false);
     const [planView, setPlanView] = useState<PlanView | null>(null);
     const [profileForm] = Form.useForm();
@@ -185,15 +186,25 @@ export default function SettingsPage() {
                             <Form.Item label="姓名" name="name" rules={[{ required: true }]}>
                                 <Input prefix={<UserOutlined />} />
                             </Form.Item>
-                            <Form.Item label="电子邮箱" name="email">
-                                <Input prefix={<UserOutlined />} disabled />
-                            </Form.Item>
+                            {user?.email ? (
+                                <Form.Item label="电子邮箱" name="email">
+                                    <Input prefix={<UserOutlined />} disabled />
+                                </Form.Item>
+                            ) : null}
                             <Form.Item>
                                 <Button type="primary" htmlType="submit" loading={loading} icon={<SaveOutlined />}>
                                     保存修改
                                 </Button>
                             </Form.Item>
                         </Form>
+                    </Card>
+                    <Card bordered={false} title="手机号与实名" style={{ marginTop: 16 }}>
+                        <PhoneBinding
+                            phone={user?.phone}
+                            phoneVerified={user?.phone_verified}
+                            realNameVerified={user?.real_name_verified}
+                            onBound={(maskedPhone) => user && setUser({ ...user, phone: maskedPhone, phone_verified: true })}
+                        />
                     </Card>
                 </div>
             ),
