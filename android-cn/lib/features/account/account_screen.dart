@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/providers.dart';
 import '../../data/models.dart';
+import '../../core/error_text.dart';
+import 'package:flutter/services.dart';
+import '../../config/cn_config.dart';
 
 class AccountScreen extends ConsumerWidget {
   const AccountScreen({super.key});
@@ -16,7 +19,7 @@ class AccountScreen extends ConsumerWidget {
         child: userAsync.when(
           data: (user) => _buildContent(context, ref, user),
           loading: () => const Center(child: CircularProgressIndicator()),
-          error: (e, _) => Center(child: Text('加载失败: $e')),
+          error: (e, _) => Center(child: Text(friendlyError(e))),
         ),
       ),
     );
@@ -54,6 +57,16 @@ class AccountScreen extends ConsumerWidget {
         SliverToBoxAdapter(
           child: _buildMenuItem(context, Icons.info_outline, '关于我们', ''),
         ),
+
+        // 隐私与账号：原来 App 里没有隐私政策链接，也没有注销入口
+        SliverToBoxAdapter(child: _buildSectionTitle('隐私与账号')),
+        SliverToBoxAdapter(
+          child: _buildLinkItem(context, Icons.privacy_tip_outlined, '隐私政策', AppConfig.privacyUrl),
+        ),
+        SliverToBoxAdapter(
+          child: _buildLinkItem(context, Icons.description_outlined, '用户协议', AppConfig.termsUrl),
+        ),
+        SliverToBoxAdapter(child: _buildDeleteAccountItem(context, ref)),
 
         SliverToBoxAdapter(child: _buildLogoutButton(context, ref)),
 
@@ -303,6 +316,113 @@ class AccountScreen extends ConsumerWidget {
         },
       ),
     );
+  }
+
+  /// 隐私政策 / 用户协议：显示网页地址并可复制（App 暂未引入浏览器跳转依赖）。
+  Widget _buildLinkItem(BuildContext context, IconData icon, String title, String url) {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
+      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12)),
+      child: ListTile(
+        leading: Icon(icon, color: Theme.of(context).primaryColor),
+        title: Text(title),
+        subtitle: Text(url, maxLines: 1, overflow: TextOverflow.ellipsis),
+        trailing: const Icon(Icons.chevron_right, color: Colors.grey),
+        onTap: () => showDialog(
+          context: context,
+          builder: (dialogContext) => AlertDialog(
+            title: Text(title),
+            content: SelectableText('请在浏览器中打开：\n$url'),
+            actions: [
+              TextButton(
+                onPressed: () async {
+                  await Clipboard.setData(ClipboardData(text: url));
+                  if (dialogContext.mounted) Navigator.pop(dialogContext);
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('链接已复制')));
+                  }
+                },
+                child: const Text('复制链接'),
+              ),
+              TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('关闭')),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// 注销账号：调用后端已有的注销接口（不可恢复）。手机号注册或需要短信验证的账号，引导到网页端注销。
+  Widget _buildDeleteAccountItem(BuildContext context, WidgetRef ref) {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
+      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12)),
+      child: ListTile(
+        leading: const Icon(Icons.person_remove_outlined, color: Colors.red),
+        title: const Text('注销账号', style: TextStyle(color: Colors.red)),
+        subtitle: const Text('永久删除账号与个人信息，不可恢复'),
+        trailing: const Icon(Icons.chevron_right, color: Colors.grey),
+        onTap: () => _confirmDeleteAccount(context, ref),
+      ),
+    );
+  }
+
+  Future<void> _confirmDeleteAccount(BuildContext context, WidgetRef ref) async {
+    final passwordController = TextEditingController();
+    var acknowledged = false;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (dialogContext, setState) => AlertDialog(
+          title: const Text('注销账号'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('注销后账号、内容与个人信息将被删除且无法恢复；订单与支付记录依法保留。'),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: passwordController,
+                  obscureText: true,
+                  decoration: const InputDecoration(labelText: '登录密码（手机号注册的账号可不填）', border: OutlineInputBorder()),
+                ),
+                CheckboxListTile(
+                  contentPadding: EdgeInsets.zero,
+                  value: acknowledged,
+                  onChanged: (v) => setState(() => acknowledged = v ?? false),
+                  title: const Text('我已了解注销后果'),
+                ),
+                const SizedBox(height: 4),
+                SelectableText('也可以在网页端「设置 → 账号与数据」中注销：${AppConfig.accountSettingsUrl}',
+                    style: const TextStyle(fontSize: 12, color: Colors.grey)),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(dialogContext, false), child: const Text('取消')),
+            TextButton(
+              onPressed: acknowledged ? () => Navigator.pop(dialogContext, true) : null,
+              child: const Text('确认注销', style: TextStyle(color: Colors.red)),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (confirmed != true) return;
+    try {
+      await ref.read(apiClientProvider).deleteAccount(password: passwordController.text);
+      ref.invalidate(authStateProvider);
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('账号已注销')));
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(friendlyError(e, fallback: '注销失败，请稍后重试，或到网页端「设置 → 账号与数据」注销'))),
+        );
+      }
+    }
   }
 
   Widget _buildLogoutButton(BuildContext context, WidgetRef ref) {

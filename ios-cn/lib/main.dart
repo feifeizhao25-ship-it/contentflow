@@ -9,6 +9,7 @@ import 'features/assets/assets_screen.dart';
 import 'features/insights/insights_screen.dart';
 import 'features/account/account_screen.dart';
 import 'features/auth/login_screen.dart';
+import 'core/error_text.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -61,7 +62,7 @@ class AuthGate extends ConsumerWidget {
       data: (isAuthed) => isAuthed ? const MainScreen() : const LoginScreen(),
       loading: () =>
           const Scaffold(body: Center(child: CircularProgressIndicator())),
-      error: (error, _) => Scaffold(body: Center(child: Text('认证失败: $error'))),
+      error: (error, _) => Scaffold(body: Center(child: Text(friendlyError(error, fallback: '登录状态读取失败，请重新打开应用')))),
     );
   }
 }

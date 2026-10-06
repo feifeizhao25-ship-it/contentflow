@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import '../../core/providers.dart';
 import '../../data/models.dart';
+import '../../core/error_text.dart';
 
 class TodayScreen extends ConsumerWidget {
   const TodayScreen({super.key});
@@ -38,7 +39,7 @@ class TodayScreen extends ConsumerWidget {
                   child: Center(child: CircularProgressIndicator()),
                 ),
                 error: (e, _) =>
-                    SliverToBoxAdapter(child: Center(child: Text('加载失败: $e'))),
+                    SliverToBoxAdapter(child: Center(child: Text(friendlyError(e)))),
               ),
 
               // Analytics Summary

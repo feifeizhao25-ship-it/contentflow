@@ -9,9 +9,13 @@ class ApiException implements Exception {
   factory ApiException.fromDio(DioException error) {
     final statusCode = error.response?.statusCode;
     final data = error.response?.data;
+    // 后端信封是 { success: false, error: { message } }，message 可能是字符串或字符串数组；
+    // 只取中文，英文原文不上屏。
     if (data is Map<String, dynamic>) {
-      final msg = data['message'] ?? data['error'];
-      if (msg is String && msg.isNotEmpty) {
+      final err = data['error'];
+      final raw = err is Map ? err['message'] : (data['message'] ?? err);
+      final msg = raw is List ? raw.whereType<String>().join('；') : raw;
+      if (msg is String && RegExp(r'[\u4e00-\u9fff]').hasMatch(msg)) {
         return ApiException(msg, statusCode: statusCode);
       }
     }

@@ -177,6 +177,22 @@ class ApiClient {
     );
   }
 
+  /// 注销账号：调用后端已有的 POST /users/me/delete-account（不可恢复）。
+  /// 有密码的账号必须再输一次密码；手机号注册（无密码）的账号由后端判断。
+  Future<void> deleteAccount({String? password}) async {
+    await _handle(
+      () => _dio.post(
+        '/users/me/delete-account',
+        data: {
+          'confirm': true,
+          if (password != null && password.isNotEmpty) 'password': password,
+        },
+      ),
+      (data) => data,
+    );
+    await clearToken();
+  }
+
   Future<void> persistToken(String token) {
     return _tokenStorage.writeToken(token);
   }

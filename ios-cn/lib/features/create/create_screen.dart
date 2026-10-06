@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/providers.dart';
 import '../../data/models.dart';
+import '../../core/error_text.dart';
 
 class CreateScreen extends ConsumerStatefulWidget {
   const CreateScreen({super.key});
@@ -45,7 +46,7 @@ class _CreateScreenState extends ConsumerState<CreateScreen> {
       if (mounted) {
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(SnackBar(content: Text('生成失败: $e')));
+        ).showSnackBar(SnackBar(content: Text(friendlyError(e, fallback: '生成失败，请稍后重试'))));
       }
     } finally {
       if (mounted) {
@@ -70,7 +71,7 @@ class _CreateScreenState extends ConsumerState<CreateScreen> {
       if (mounted) {
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(SnackBar(content: Text('保存失败：$error')));
+        ).showSnackBar(SnackBar(content: Text(friendlyError(error, fallback: '保存失败，请稍后重试'))));
       }
     }
   }

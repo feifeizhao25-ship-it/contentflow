@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../core/providers.dart';
 import '../../data/models.dart';
+import '../../core/error_text.dart';
 
 class AssetsScreen extends ConsumerWidget {
   const AssetsScreen({super.key});
@@ -28,7 +29,7 @@ class AssetsScreen extends ConsumerWidget {
               child: assetsAsync.when(
                 data: (assets) => _buildAssetsGrid(context, assets),
                 loading: () => const Center(child: CircularProgressIndicator()),
-                error: (e, _) => Center(child: Text('加载失败: $e')),
+                error: (e, _) => Center(child: Text(friendlyError(e))),
               ),
             ),
           ],
@@ -477,7 +478,7 @@ class AssetsScreen extends ConsumerWidget {
       if (context.mounted) {
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(SnackBar(content: Text('上传失败: $e')));
+        ).showSnackBar(SnackBar(content: Text(friendlyError(e, fallback: '上传失败，请稍后重试'))));
       }
     }
   }
