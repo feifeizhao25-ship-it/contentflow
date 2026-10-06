@@ -17,6 +17,6 @@ export class ContentPackController {
     @ApiResponse({ status: 403, description: '额度不足' })
     async generate(@Request() req: any, @Body() dto: GenerateContentPackDto) {
         const tenantId = req.user.tenantId;
-        return this.contentPackService.generatePack(tenantId, dto);
+        return this.contentPackService.generatePack(tenantId, dto, req.user.sub);
     }
 }

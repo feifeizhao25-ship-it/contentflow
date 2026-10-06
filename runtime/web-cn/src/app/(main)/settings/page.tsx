@@ -75,8 +75,11 @@ export default function SettingsPage() {
     // 套餐与用量：来自后端的工作区限额与用量（原来是写死的 2/5、450/1000 与 2024 年账单日）
     useEffect(() => {
         let cancelled = false;
-        apiClient.get<any>('/users/me')
-            .then((res) => { if (!cancelled) setPlanView(describePlan(res?.user?.tenant)); })
+        Promise.all([
+            apiClient.get<any>('/users/me'),
+            apiClient.get<any>('/billing/subscription').catch(() => null),
+        ])
+            .then(([res, sub]) => { if (!cancelled) setPlanView(describePlan(res?.user?.tenant, sub?.data ?? sub)); })
             .catch(() => { if (!cancelled) setPlanView(null); });
         return () => { cancelled = true; };
     }, []);
@@ -353,9 +356,7 @@ export default function SettingsPage() {
                             ) : (
                                 <Text type="secondary">{planView ? '暂无用量数据' : '正在读取用量…'}</Text>
                             )}
-                            {planView?.aiCallsThisMonth != null && (
-                                <Paragraph style={{ marginTop: 12, marginBottom: 0, color: '#64748b' }}>本月 AI 调用 {planView.aiCallsThisMonth} 次</Paragraph>
-                            )}
+                            <Paragraph style={{ marginTop: 12, marginBottom: 0, color: '#64748b' }}>额度按北京时间自然月计算，每月 1 日恢复。</Paragraph>
                         </Card>
                     </Space>
                 </div>

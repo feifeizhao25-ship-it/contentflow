@@ -7,6 +7,8 @@ describe('ContentPackService token accounting', () => {
   const ai = {
     generateTitlesWithUsage: jest.fn(),
     generateText: jest.fn(),
+    assertTenantDailyBudget: jest.fn(),
+    recordGeneration: jest.fn(),
   };
   const usage = {
     checkQuota: jest.fn(),

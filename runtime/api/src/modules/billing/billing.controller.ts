@@ -1,4 +1,5 @@
 import { ForbiddenException, BadRequestException, Body, Controller, Get, Headers, HttpCode, Post, UseGuards, Request, NotFoundException, Query, ServiceUnavailableException, UnauthorizedException, Res, Req, RawBodyRequest } from '@nestjs/common';
+import { chinaMonthPeriod } from '../../common/china-period';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { effectiveEntitlements } from './effective-limits';
 import { CN_PLANS, PLANS } from './plans.constant';
@@ -159,7 +160,7 @@ export class BillingController {
   @ApiOperation({ summary: '获取当前租户的订阅状态与用量' })
   async getSubscription(@Request() req: any) {
     const tenantId = req.user.tenantId;
-    const period = new Date().toISOString().substring(0, 7); // YYYY-MM
+    const period = chinaMonthPeriod(); // YYYY-MM，北京时间自然月（与 UsageService 记账口径一致）
 
     const tenant = await this.prisma.tenant.findUnique({ where: { id: tenantId } });
     const meter = await this.prisma.usageMeter.findFirst({

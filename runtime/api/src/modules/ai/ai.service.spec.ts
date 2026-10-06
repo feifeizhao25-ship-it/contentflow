@@ -57,7 +57,7 @@ describe('AIService OpenRouter routing', () => {
     const config = { get: jest.fn((key: string, fallback: unknown) => key === 'AI_TENANT_DAILY_BUDGET_USD' ? 1 : fallback) };
     const prisma = { aIGeneration: { aggregate: jest.fn().mockResolvedValue({ _sum: { cost_amount: 1.01 } }) } };
     const service = new AIService(prisma as never, config as never);
-    await expect(service.assertTenantDailyBudget('tenant-1')).rejects.toThrow('daily budget exceeded');
+    await expect(service.assertTenantDailyBudget('tenant-1')).rejects.toThrow('今日 AI 用量已达上限');
   });
 
   it('reports the 80 percent budget warning level', async () => {

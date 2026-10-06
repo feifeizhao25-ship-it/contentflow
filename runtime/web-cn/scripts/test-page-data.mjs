@@ -91,13 +91,14 @@ await check('套餐与用量：用真实的工作区限额与用量，日期来�
     plan: 'pro', plan_expires_at: '2026-12-31T00:00:00.000Z',
     limits: { max_accounts: 5, max_publishes_monthly: 300, max_storage_gb: 10 },
     usage_stats: { accounts_count: 2, publishes_this_month: 41, storage_used_mb: 512, ai_calls_this_month: 17 },
-  });
+  }, { monthlyQuota: 2500000, usedQuota: 1234 });
   assert.equal(plan.name, '专业版');
   assert.match(plan.renewText, /2026年12月31日/);
   assert.deepEqual(plan.usage.map((u) => [u.title, u.current, u.limit]), [
-    ['账号绑定', 2, 5], ['本月发布', 41, 300], ['存储空间', 0.5, 10],
+    ['账号绑定', 2, 5], ['本月发布', 41, 300], ['存储空间', 0.5, 10], ['本月 AI 令牌', 1234, 2500000],
   ]);
-  assert.equal(plan.aiCallsThisMonth, 17);
+  // 从未累加的 ai_calls_this_month 不再上屏
+  assert.equal('aiCallsThisMonth' in plan, false);
 });
 
 await check('套餐与用量：免费版没有到期日，如实写「无账单」；缺数据时不编数字', () => {
@@ -105,7 +106,6 @@ await check('套餐与用量：免费版没有到期日，如实写「无账单�
   assert.equal(plan.name, '免费版');
   assert.match(plan.renewText, /无|不会/);
   assert.deepEqual(plan.usage, []);
-  assert.equal(plan.aiCallsThisMonth, null);
 });
 
 await check('设置页：不再写死账单日期与用量，不再有点了没反应的按钮', () => {

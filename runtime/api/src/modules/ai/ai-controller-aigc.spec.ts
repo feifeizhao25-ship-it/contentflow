@@ -16,6 +16,8 @@ import { AI_TEXT_LABEL } from '../../common/ai-content-label';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { AIController } from './ai.controller';
 import { AIService } from './ai.service';
+import { AiAllowanceService } from './ai-allowance.service';
+import { UsageService } from '../system/usage.service';
 
 describe('AI 接口的 AIGC 标识', () => {
   let app: INestApplication;
@@ -25,17 +27,19 @@ describe('AI 接口的 AIGC 标识', () => {
     generateImage: jest.fn(),
     recordGeneration: jest.fn(),
   };
+  const usage = { checkQuota: jest.fn(), trackUsage: jest.fn() };
   const previousRegion = process.env.MARKET_REGION;
 
   beforeEach(async () => {
     jest.resetAllMocks();
     process.env.MARKET_REGION = 'cn';
     ai.assertTenantDailyBudget.mockResolvedValue(undefined);
+    usage.checkQuota.mockResolvedValue(true);
     ai.generateArticle.mockResolvedValue({ content: '一篇正文', visualPrompts: [], usage: { prompt_tokens: 1, completion_tokens: 2, total_tokens: 3 }, provider: 'dashscope', model: 'qwen-plus', latency_ms: 5, cost_usd: null });
     ai.generateImage.mockResolvedValue({ url: 'https://dashscope-result.oss-cn-beijing.aliyuncs.com/a.png', provider: 'dashscope', model: 'wanx2.1-t2i-turbo' });
     const moduleRef = await Test.createTestingModule({
       controllers: [AIController],
-      providers: [{ provide: AIService, useValue: ai }],
+      providers: [{ provide: AIService, useValue: ai }, { provide: UsageService, useValue: usage }, AiAllowanceService],
     })
       .overrideGuard(JwtAuthGuard)
       .useValue({

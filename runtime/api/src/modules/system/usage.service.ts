@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { effectiveEntitlements } from '../billing/effective-limits';
 import { PrismaService } from '../../database/prisma.service';
+import { chinaMonthPeriod } from '../../common/china-period';
 
 export enum ResourceType {
     TOKENS = 'ai_tokens',
@@ -17,7 +18,7 @@ export class UsageService {
     constructor(private readonly prisma: PrismaService) { }
 
     async trackUsage(tenantId: string, resource: ResourceType, amount: number, metadata?: any) {
-        const period = new Date().toISOString().substring(0, 7); // YYYY-MM
+        const period = chinaMonthPeriod(); // YYYY-MM，北京时间自然月
 
         // 查找或创建当前周期的额度统计
         let meter = await this.getMeter(tenantId, period);
@@ -45,7 +46,7 @@ export class UsageService {
     }
 
     async checkQuota(tenantId: string, resource: ResourceType): Promise<boolean> {
-        const period = new Date().toISOString().substring(0, 7);
+        const period = chinaMonthPeriod();
         const meter = await this.getMeter(tenantId, period);
         const tenant = await this.prisma.tenant.findUnique({ where: { id: tenantId } });
 

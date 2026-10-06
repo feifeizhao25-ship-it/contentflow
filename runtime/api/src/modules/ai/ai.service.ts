@@ -1,7 +1,9 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { HttpException, HttpStatus, Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../database/prisma.service';
 import { parseGeneratedTitles } from './title-parser';
+import { estimateImageCost, estimateTextCost } from './model-pricing';
+import { chinaDayStart } from '../../common/china-period';
 import {
   assertDomesticProviderConfigured,
   isDomesticMarket,
@@ -280,7 +282,10 @@ export class AIService {
           total_tokens: data.usage?.total_tokens || 0,
         };
         this.logger.log(`AI generation completed via ${candidate.provider}: ${usage.total_tokens} tokens`);
-        return { content, model: candidate.model, provider: candidate.provider, latency_ms: Date.now() - startedAt, cost_usd: null, usage };
+        // 境内接口只回 token 数、不回金额：按集中价目表折算，否则每日预算永远统计为 0。
+        const cost = estimateTextCost(candidate.model, usage.prompt_tokens, usage.completion_tokens);
+        if (!cost.known) this.logger.warn(`模型 ${candidate.model} 不在价目表中，已按最高单价计费，请补充 model-pricing.ts`);
+        return { content, model: candidate.model, provider: candidate.provider, latency_ms: Date.now() - startedAt, cost_usd: cost.usd, usage };
       } catch (error) {
         failures.push(`${candidate.provider}:${error instanceof Error ? error.name : 'error'}`);
       }
@@ -385,15 +390,19 @@ ${content}
   async assertTenantDailyBudget(tenantId: string): Promise<void> {
     const usage = await this.getTenantDailyBudgetUsage(tenantId);
     if (usage.limit_usd > 0 && usage.spent_usd >= usage.limit_usd) {
-      throw new Error(`AI tenant daily budget exceeded (${usage.spent_usd.toFixed(4)}/${usage.limit_usd.toFixed(2)} USD)`);
+      // 原来抛英文 Error，经全局过滤器后只剩「服务暂时出错」，用户不知道是额度用完了。
+      this.logger.warn(`AI tenant daily budget exceeded (${usage.spent_usd.toFixed(4)}/${usage.limit_usd.toFixed(2)} USD) tenant=${tenantId}`);
+      throw new HttpException(
+        { message: '今日 AI 用量已达上限，请明天再试', error: 'AI_DAILY_LIMIT' },
+        HttpStatus.TOO_MANY_REQUESTS,
+      );
     }
   }
 
   async getTenantDailyBudgetUsage(tenantId: string) {
     const budgetUsd = Math.max(0, this.configService.get<number>('AI_TENANT_DAILY_BUDGET_USD', 20));
     if (budgetUsd === 0) return { spent_usd: 0, limit_usd: 0, remaining_usd: -1, usage_ratio: 0, warning_level: 'disabled' };
-    const nowInChina = new Date(Date.now() + 8 * 60 * 60 * 1000);
-    const dayStart = new Date(Date.UTC(nowInChina.getUTCFullYear(), nowInChina.getUTCMonth(), nowInChina.getUTCDate()) - 8 * 60 * 60 * 1000);
+    const dayStart = chinaDayStart();
     const aggregate = await this.prisma.aIGeneration.aggregate({
       where: { tenant_id: tenantId, status: 'success', created_at: { gte: dayStart } },
       _sum: { cost_amount: true },
@@ -463,7 +472,7 @@ ${content}
     size?: string;
     style?: string;
     seed?: number;
-  }): Promise<{ url: string; revisedPrompt?: string; provider: string; model: string }> {
+  }): Promise<{ url: string; revisedPrompt?: string; provider: string; model: string; cost_usd?: number | null }> {
     // 国内版一律走通义万相（境内），不论环境里有没有 FAL_API_KEY——
     // 原来国内版也只会调 fal.ai（境外），给了 key 就出境，不给就永远「未配置」。
     if (isDomesticMarket(this.marketRegion)) {
@@ -572,7 +581,7 @@ ${content}
   }
 
   /** 通义万相文生图：提交异步任务，轮询到 SUCCEEDED 取结果地址（结果地址约 24 小时有效）。 */
-  private async generateImageDashScope(params: { prompt: string; size?: string; seed?: number }): Promise<{ url: string; revisedPrompt?: string; provider: string; model: string }> {
+  private async generateImageDashScope(params: { prompt: string; size?: string; seed?: number }): Promise<{ url: string; revisedPrompt?: string; provider: string; model: string; cost_usd: number }> {
     if (!this.qwenApiKey) {
       throw new Error('国内版图片生成使用通义万相，需要配置 QWEN_API_KEY（DashScope）');
     }
@@ -611,7 +620,7 @@ ${content}
       if (output?.task_status === 'SUCCEEDED') {
         const url = output?.results?.find((r: any) => r?.url)?.url;
         if (!url) throw new Error('通义万相未返回图片地址');
-        return { url, revisedPrompt: output?.results?.[0]?.actual_prompt ?? params.prompt, provider: 'dashscope', model };
+        return { url, revisedPrompt: output?.results?.[0]?.actual_prompt ?? params.prompt, provider: 'dashscope', model, cost_usd: estimateImageCost(model, 1).usd };
       }
       if (output?.task_status === 'FAILED' || output?.task_status === 'CANCELED') {
         throw new Error(`通义万相生成失败：${output?.code ?? output?.task_status}`);

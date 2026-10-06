@@ -1,6 +1,7 @@
-import { Injectable, Logger, InternalServerErrorException, HttpException } from '@nestjs/common';
+import { Injectable, Logger, InternalServerErrorException, HttpException, HttpStatus } from '@nestjs/common';
 import { AIService } from './ai.service';
 import { UsageService, ResourceType } from '../system/usage.service';
+import { AI_MONTHLY_QUOTA_MESSAGE } from './ai-allowance.service';
 import { ComplianceService } from './compliance.service';
 import { GenerateContentPackDto } from './dto/generate-content-pack.dto';
 import { labelAiGeneratedText, buildAiMediaMetadata } from '../../common/ai-content-label';
@@ -17,11 +18,13 @@ export class ContentPackService {
         private readonly ragPolicyService: RagPolicyService,
     ) { }
 
-    async generatePack(tenantId: string, dto: GenerateContentPackDto) {
-        // 1. Quota Check
+    async generatePack(tenantId: string, dto: GenerateContentPackDto, userId?: string) {
+        // 1. 额度闸：与其它 AI 生成接口一致——先查每日成本预算，再查套餐月度 AI 令牌额度。
+        //    原来只查月度额度，且额度不足抛的是普通 Error（被全局过滤器换成「服务暂时出错」）。
+        await this.aiService.assertTenantDailyBudget(tenantId);
         const hasQuota = await this.usageService.checkQuota(tenantId, ResourceType.TOKENS);
         if (!hasQuota) {
-            throw new Error('额度不足，请升级套餐');
+            throw new HttpException({ message: AI_MONTHLY_QUOTA_MESSAGE, error: 'AI_MONTHLY_QUOTA' }, HttpStatus.TOO_MANY_REQUESTS);
         }
 
         this.logger.log(`Generating content pack for topic: ${dto.topic}`);
@@ -55,6 +58,21 @@ export class ContentPackService {
                 topic: dto.topic,
                 type: 'content_pack'
             });
+            // 计入每日成本预算：原来内容包从不写生成记录，日预算统计里看不到这部分花费。
+            if (userId) {
+                const cost = [titleResult.cost_usd, scriptData.cost_usd].reduce<number>((sum, value) => sum + (Number(value) || 0), 0);
+                await this.aiService.recordGeneration(tenantId, userId, {
+                    generationType: 'content_pack',
+                    inputParams: { topic: dto.topic, platforms: dto.platforms },
+                    outputContent: script,
+                    modelProvider: scriptData.provider,
+                    modelName: scriptData.model,
+                    tokensInput: (titleResult.usage.prompt_tokens || 0) + (scriptData.usage.prompt_tokens || 0),
+                    tokensOutput: (titleResult.usage.completion_tokens || 0) + (scriptData.usage.completion_tokens || 0),
+                    costAmount: cost || undefined,
+                    status: 'success',
+                });
+            }
 
             return {
                 success: true,

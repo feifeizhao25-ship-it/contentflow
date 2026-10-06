@@ -60,7 +60,6 @@ export class AuthService {
         accounts_count: 0,
         members_count: 1,
         publishes_this_month: 0,
-        ai_calls_this_month: 0,
         storage_used_mb: 0,
       },
     };

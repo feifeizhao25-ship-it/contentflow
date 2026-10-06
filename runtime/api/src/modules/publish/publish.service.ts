@@ -81,7 +81,8 @@ export class PublishService {
     }
 
     // 检查配额
-    const canPublish = await this.tenantService.checkQuota(tenantId, 'publish');
+    // 一次发到 N 个账号计 N 条；按北京时间自然月计数（见 TenantService.currentUsageStats）。
+    const canPublish = await this.tenantService.checkQuota(tenantId, 'publish', accountIds.length);
     if (!canPublish) {
       throw new BadRequestException('发布次数已达上限，请升级套餐');
     }

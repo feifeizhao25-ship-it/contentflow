@@ -7,11 +7,12 @@ import { ContentPackController } from './content-pack.controller';
 import { ContentPackService } from './content-pack.service';
 import { ComplianceService } from './compliance.service';
 import { RagPolicyService } from './rag-policy.service';
+import { AiAllowanceService } from './ai-allowance.service';
 
 @Module({
   imports: [QueueModule, SystemModule],
-  providers: [AIService, ContentPackService, ComplianceService, RagPolicyService],
+  providers: [AIService, AiAllowanceService, ContentPackService, ComplianceService, RagPolicyService],
   controllers: [AIController, ContentPackController],
-  exports: [AIService, ContentPackService, RagPolicyService],
+  exports: [AIService, AiAllowanceService, ContentPackService, RagPolicyService],
 })
 export class AIModule {}

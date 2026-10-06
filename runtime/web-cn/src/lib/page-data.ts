@@ -80,11 +80,14 @@ export interface PlanView {
   name: string;
   renewText: string;
   usage: Array<{ title: string; current: number; limit: number; unit: string }>;
-  aiCallsThisMonth: number | null;
 }
 
-/** 设置页「套餐与用量」：只用后端返回的工作区限额与用量，缺什么就不显示什么。 */
-export function describePlan(tenant: any): PlanView {
+/**
+ * 设置页「套餐与用量」：只用后端返回的工作区限额与用量，缺什么就不显示什么。
+ * `subscription` 是 GET /billing/subscription 的结果：AI 令牌按月记在 usage_meters，
+ * 原来这里读的 usage_stats.ai_calls_this_month 从来没人累加，永远显示「本月 AI 调用 0 次」。
+ */
+export function describePlan(tenant: any, subscription?: any): PlanView {
   const plan = String(tenant?.plan ?? 'free');
   const expires = tenant?.plan_expires_at ? dayjs(tenant.plan_expires_at) : null;
   const renewText = plan === 'free' || !expires || !expires.isValid()
@@ -102,6 +105,8 @@ export function describePlan(tenant: any): PlanView {
     add('本月发布', used.publishes_this_month, limits.max_publishes_monthly, '次');
     add('存储空间', used.storage_used_mb, limits.max_storage_gb, 'GB', 1024);
   }
-  const ai = Number(used?.ai_calls_this_month);
-  return { name: PLAN_NAMES[plan] ?? plan, renewText, usage, aiCallsThisMonth: used && Number.isFinite(ai) ? ai : null };
+  if (subscription && typeof subscription === 'object') {
+    add('本月 AI 令牌', subscription.usedQuota, subscription.monthlyQuota, '个');
+  }
+  return { name: PLAN_NAMES[plan] ?? plan, renewText, usage };
 }
