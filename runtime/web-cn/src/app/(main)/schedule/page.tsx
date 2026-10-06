@@ -36,18 +36,20 @@ const { Option } = Select;
 // ==================== Types ====================
 type PublishTask = CalendarTask;
 
-const STATUS_BADGE: Record<CalendarTask['status'], { badge: 'processing' | 'success' | 'error' | 'default'; text: string }> = {
+const STATUS_BADGE: Record<CalendarTask['status'], { badge: 'processing' | 'success' | 'error' | 'default' | 'warning'; text: string }> = {
     scheduled: { badge: 'processing', text: '待发布' },
     published: { badge: 'success', text: '已发布' },
     failed: { badge: 'error', text: '发布失败' },
     cancelled: { badge: 'default', text: '已取消' },
+    manual_pending: { badge: 'warning', text: '待人工发布' },
+    manual_done: { badge: 'success', text: '已人工发布' },
 };
 
 const PLATFORMS = [
     { id: 'xhs', name: '小红书', color: '#ef4444', icon: '📕' },
     { id: 'douyin', name: '抖音', color: '#1a1a1a', icon: '🎵' },
     { id: 'weixin', name: '视频号', color: '#07c160', icon: '💬' },
-    { id: 'weibo', name: '微博', color: '#f59e0b', icon: '👁️' },
+    { id: 'wechat_mp', name: '公众号', color: '#16a34a', icon: '📰' },
     { id: 'bilibili', name: 'B站', color: '#00a1d6', icon: '📺' },
     { id: 'zhihu', name: '知乎', color: '#0066ff', icon: '💡' },
 ];

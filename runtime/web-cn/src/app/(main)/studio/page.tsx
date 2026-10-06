@@ -15,6 +15,7 @@ import { PLACEHOLDER_IMAGES } from '@/lib/placeholders';
 import { safeErrorText } from '@/lib/api-error';
 import { isAiGeneratedText } from '@/lib/ai-content-label';
 import { ComplianceReviewNotice } from '@/components/compliance/ComplianceReviewNotice';
+import { isManualPlatform, PUBLISH_CHANNEL_NOTICE } from '@/lib/manual-publish';
 
 const { TextArea } = Input;
 
@@ -23,7 +24,7 @@ const PLATFORMS = [
   { id: 'douyin', name: '抖音', color: '#111111', icon: '🎵' },
   { id: 'weixin', name: '视频号', color: '#07c160', icon: '💬' },
   { id: 'bilibili', name: 'B站', color: '#00a1d6', icon: '📺' },
-  { id: 'weibo', name: '微博', color: '#f59e0b', icon: '👁️' },
+  { id: 'wechat_mp', name: '公众号', color: '#16a34a', icon: '📰' },
 ];
 
 function StudioContent() {
@@ -283,12 +284,29 @@ function StudioContent() {
         console.warn('Failed to append assets', e);
       }
 
+      const contentStatus = contentRes?.data?.status || contentRes?.content?.status || contentRes?.status;
+      // 新内容是草稿：自动发布和人工确认发布都要求内容先审核通过（后端会拒绝）。
+      // 原来这里照样去建发布任务，必然失败；现在如实告诉用户下一步。
+      if (contentStatus !== 'approved' && contentStatus !== 'published') {
+        message.info({ content: '内容已保存为草稿。提交审核并通过后，可在内容库创建发布任务（小红书、视频号、公众号走人工确认发布）。', key: 'publish', duration: 6 });
+        router.push('/contents');
+        return;
+      }
+
       const scheduleAt = publishType === 'scheduled' && scheduledDate && scheduledTime
         ? dayjs(`${scheduledDate.format('YYYY-MM-DD')} ${scheduledTime.format('HH:mm')}`).toISOString()
         : undefined;
 
+      // 小红书 / 视频号 / 公众号：人工确认发布（复制文案、下载带 AI 标识的封面、手动发出后确认）
+      const manualPlatforms = selectedPlatforms.filter(isManualPlatform);
+      if (manualPlatforms.length) {
+        await apiClient.post('/publish/manual-tasks', { contentId, platforms: manualPlatforms, scheduledAt: scheduleAt });
+      }
+
+      // 抖音 / B 站：只有完成开放平台授权、绑定了账号才能自动发布
+      const autoPlatforms = selectedPlatforms.filter((p) => !isManualPlatform(p));
       let nextAccounts = accounts;
-      if (!nextAccounts.length) {
+      if (autoPlatforms.length && !nextAccounts.length) {
         try {
           const accountRes: any = await apiClient.get('/accounts');
           nextAccounts = accountRes?.data || accountRes?.accounts || [];
@@ -297,33 +315,22 @@ function StudioContent() {
           console.warn('Failed to refresh accounts before publish', e);
         }
       }
-
-      const validTargets = selectedPlatforms
-        .map((platform) => ({ platform, account: nextAccounts.find((a) => a.platform === platform) }))
-        .filter((item) => item.account);
-
-      if (!validTargets.length) {
-        if (nextAccounts.length > 0) {
-          const fallback = nextAccounts[0];
-          validTargets.push({ platform: fallback.platform, account: fallback });
-          message.info('已自动选择可用的平台账号用于发布');
-        } else {
-          message.warning('请选择已绑定的平台账号后再创建发布任务');
-          return;
-        }
+      const autoAccounts = autoPlatforms
+        .map((platform) => nextAccounts.find((a) => a.platform === platform))
+        .filter(Boolean) as any[];
+      if (autoAccounts.length) {
+        await apiClient.post('/publish/tasks', {
+          contentId,
+          platformAccountIds: autoAccounts.map((a) => a.id),
+          publishType,
+          scheduledAt: scheduleAt,
+        });
+      } else if (autoPlatforms.length) {
+        message.warning('抖音、B 站需要先完成开放平台授权，本次没有为它们创建任务');
       }
 
-      await Promise.all(validTargets.map(({ platform, account }) => apiClient.post('/publish/tasks', {
-        contentId,
-        platform,
-        accountId: account.id,
-        publishType,
-        scheduledAt: scheduleAt,
-        idempotencyKey: `studio_${contentId}_${platform}_${Date.now()}`,
-      })));
-
       trackEvent('publish_task_created', {
-        platforms: validTargets.map((item) => item.platform),
+        platforms: [...manualPlatforms, ...autoAccounts.map((a) => a.platform)],
         publishType,
       });
       message.success({ content: '发布任务已创建', key: 'publish' });
@@ -366,7 +373,7 @@ function StudioContent() {
           items={[
             { title: '主题与平台', description: '定义核心方向' },
             { title: '内容生成', description: 'AI 文案/图片/视频' },
-            { title: '分发排期', description: '多平台一键搞定' },
+            { title: '分发排期', description: '自动发布或人工确认发布' },
           ]}
         />
       </Card>
@@ -536,7 +543,7 @@ function StudioContent() {
                     ) : (
                       <div className="text-center p-6 space-y-2">
                         <PlayCircle className="w-10 h-10 text-zinc-700 mx-auto" />
-                        <div className="text-xs text-zinc-600 italic">点击左侧“生成视频”<br />见证 AI 电影工厂</div>
+                        <div className="text-xs text-zinc-600">视频生成后在这里预览</div>
                       </div>
                     )}
                   </div>
@@ -554,7 +561,7 @@ function StudioContent() {
               <CalendarClock className="w-4 h-4 text-amber-600" />
               发布草案
             </h3>
-            <p className="text-xs text-zinc-500 mt-2">生成后即可一键多平台发布或排期。</p>
+            <p className="text-xs text-zinc-500 mt-2">{PUBLISH_CHANNEL_NOTICE}。</p>
           </div>
           <div className="flex items-center gap-2">
             <Select value={publishType} onChange={setPublishType} options={[

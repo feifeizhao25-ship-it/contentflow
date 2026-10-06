@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Card, Table, Button, Space, Tag, Input, Select, Modal, message, Typography } from 'antd';
+import { Card, Table, Button, Space, Tag, Input, Select, Modal, message, Typography, Checkbox, Alert } from 'antd';
 import { useSearchParams } from 'next/navigation';
 import Image from 'next/image';
 const { Text } = Typography;
@@ -18,6 +18,7 @@ import { parseContentList } from '@/lib/page-data';
 import { PLACEHOLDER_IMAGES } from '@/lib/placeholders';
 import { safeErrorText } from '@/lib/api-error';
 import { CONTENT_STATUS_COLORS, contentStatusText, contentTypeText } from '@/lib/status-labels';
+import { MANUAL_PLATFORMS, PUBLISH_CHANNEL_NOTICE } from '@/lib/manual-publish';
 
 const { Search } = Input;
 const { Option } = Select;
@@ -124,6 +125,26 @@ function ContentsContent() {
     }, [searchParams]);
 
     const statusColors = CONTENT_STATUS_COLORS;
+
+    // 人工确认发布（小红书 / 视频号 / 公众号）：只对已通过审核的内容开放
+    const [manualFor, setManualFor] = useState<any>(null);
+    const [manualPlatforms, setManualPlatforms] = useState<string[]>(['xhs']);
+    const [creatingManual, setCreatingManual] = useState(false);
+    const canPublish = (record: any) => record.status === 'approved' || record.status === 'published';
+    const createManualTasks = async () => {
+        if (!manualFor || !manualPlatforms.length) return;
+        setCreatingManual(true);
+        try {
+            await apiClient.post('/publish/manual-tasks', { contentId: manualFor.id, platforms: manualPlatforms });
+            message.success('已创建人工发布任务，去发布中心复制文案、下载封面');
+            setManualFor(null);
+            window.location.href = '/publish';
+        } catch (error: any) {
+            message.error(safeErrorText(error, '创建失败，请稍后重试'));
+        } finally {
+            setCreatingManual(false);
+        }
+    };
 
     const filteredData = statusFilter === 'all'
         ? data
@@ -295,6 +316,7 @@ function ContentsContent() {
                 <Space size="small">
                     <Button type="link" size="small" icon={<EyeOutlined />} onClick={() => window.open(record.media_urls?.[0] || PLACEHOLDER_IMAGES.content, '_blank')}>预览</Button>
                     <Button type="link" size="small" onClick={() => handleOpenAssets(record)}>资产</Button>
+                    {canPublish(record) && <Button type="link" size="small" onClick={() => setManualFor(record)}>发布</Button>}
                     <Button type="link" size="small" icon={<EditOutlined />}>编辑</Button>
                     <Button type="link" size="small" danger icon={<DeleteOutlined />} onClick={() => handleDelete(record.id)}>删除</Button>
                 </Space>
@@ -350,6 +372,7 @@ function ContentsContent() {
             <div className="mt-3 flex flex-wrap gap-x-1 border-t border-zinc-100 pt-2">
                 <Button type="link" size="small" icon={<EyeOutlined />} onClick={() => window.open(record.media_urls?.[0] || PLACEHOLDER_IMAGES.content, '_blank')}>预览</Button>
                 <Button type="link" size="small" onClick={() => handleOpenAssets(record)}>资产</Button>
+                {canPublish(record) && <Button type="link" size="small" onClick={() => setManualFor(record)}>发布</Button>}
                 <Button type="link" size="small" danger icon={<DeleteOutlined />} onClick={() => handleDelete(record.id)}>删除</Button>
             </div>
         </div>
@@ -428,6 +451,25 @@ function ContentsContent() {
                 />
                 </div>
             </Card>
+
+            <Modal
+                open={manualFor !== null}
+                title={`发布：${manualFor?.title || '未命名内容'}`}
+                okText="创建人工发布任务"
+                cancelText="取消"
+                confirmLoading={creatingManual}
+                okButtonProps={{ disabled: manualPlatforms.length === 0 }}
+                onOk={() => void createManualTasks()}
+                onCancel={() => setManualFor(null)}
+                style={{ maxWidth: 'calc(100vw - 32px)' }}
+            >
+                <Alert type="info" showIcon className="mb-4" message={PUBLISH_CHANNEL_NOTICE} />
+                <Checkbox.Group
+                    value={manualPlatforms}
+                    onChange={(v) => setManualPlatforms(v as string[])}
+                    options={MANUAL_PLATFORMS.map((p) => ({ label: `${p.icon} ${p.name}`, value: p.id }))}
+                />
+            </Modal>
 
             <Modal
                 open={assetOpen}

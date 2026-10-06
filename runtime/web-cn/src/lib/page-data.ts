@@ -26,7 +26,7 @@ export interface CalendarTask {
   date: string;
   time: string;
   platforms: string[];
-  status: 'scheduled' | 'published' | 'failed' | 'cancelled';
+  status: 'scheduled' | 'published' | 'failed' | 'cancelled' | 'manual_pending' | 'manual_done';
   thumbnail?: string;
   account?: string;
 }
@@ -39,11 +39,14 @@ export function mapPublishTasks(result: unknown): CalendarTask[] {
     title: t.content?.title || '未命名内容',
     date: dayjs(t.scheduled_at).format('YYYY-MM-DD'),
     time: dayjs(t.scheduled_at).format('HH:mm'),
-    platforms: t.platform_account?.platform ? [t.platform_account.platform] : [],
+    platforms: t.platform_account?.platform ? [t.platform_account.platform]
+      : t.platform_content?.platform ? [t.platform_content.platform] : [],
     status: t.status === 'published' ? 'published'
       : t.status === 'failed' ? 'failed'
         : t.status === 'cancelled' ? 'cancelled'
-          : 'scheduled',
+          : t.status === 'manual_pending' ? 'manual_pending'
+            : t.status === 'manual_done' ? 'manual_done'
+              : 'scheduled',
     thumbnail: t.content?.cover_url ?? undefined,
     account: t.platform_account?.account_nickname || t.platform_account?.account_name || undefined,
   }));

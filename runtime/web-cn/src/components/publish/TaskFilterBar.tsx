@@ -15,7 +15,7 @@ export const TaskFilterBar = () => {
                 <Input
                     placeholder="搜索任务标题..."
                     prefix={<SearchOutlined className="text-zinc-400" />}
-                    className="w-64 rounded-xl"
+                    className="w-full sm:w-64 rounded-xl"
                 />
 
                 <Select
@@ -28,6 +28,7 @@ export const TaskFilterBar = () => {
                     <Option value="douyin">🎵 抖音</Option>
                     <Option value="xhs">📕 小红书</Option>
                     <Option value="weixin">💬 视频号</Option>
+                    <Option value="wechat_mp">📰 公众号</Option>
                 </Select>
 
                 <Select
@@ -38,6 +39,8 @@ export const TaskFilterBar = () => {
                     <Option value="success">✅ 成功</Option>
                     <Option value="publishing">🔄 正在发布</Option>
                     <Option value="failed">❌ 失败</Option>
+                    <Option value="manual_pending">待人工发布</Option>
+                    <Option value="manual_done">已人工发布</Option>
                 </Select>
 
                 <RangePicker className="rounded-xl" />

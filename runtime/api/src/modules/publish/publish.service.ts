@@ -6,6 +6,8 @@ import { AdapterRegistry } from './adapters/adapter.registry';
 import { ConfigService } from '@nestjs/config';
 import { evaluateDomesticContent } from '../../common/domestic-content-compliance';
 import { isRealNameRequiredForPublish } from '../auth/real-name/real-name.verifier';
+import { labelAiGeneratedText, AI_TEXT_LABEL } from '../../common/ai-content-label';
+import { MANUAL_DONE, MANUAL_PENDING, MANUAL_PLATFORMS, isManualPlatform, normalizeManualPostUrl } from './manual-publish';
 
 @Injectable()
 export class PublishService {
@@ -147,6 +149,116 @@ export class PublishService {
     return tasks;
   }
 
+  /** 发布前的共同检查：内容存在、已审核通过、过国内版六道闸。 */
+  private async loadPublishableContent(tenantId: string, contentId: string) {
+    const content = await this.prisma.content.findFirst({ where: { id: contentId, tenant_id: tenantId } });
+    if (!content) throw new NotFoundException('内容不存在');
+    if (content.status !== 'approved' && content.status !== 'published') throw new BadRequestException('内容未通过审核');
+    if (this.config.get<string>('MARKET_REGION', 'cn') === 'cn') {
+      const compliance = evaluateDomesticContent([content.title, content.body, content.body_html].filter(Boolean).join('\n'));
+      if (!compliance.passed) {
+        throw new BadRequestException({
+          code: 'CONTENT_COMPLIANCE_BLOCKED',
+          message: '内容未通过国内版发布前六道闸检查',
+          ruleSetVersion: compliance.ruleSetVersion,
+          hits: compliance.hits,
+        });
+      }
+    }
+    return content;
+  }
+
+  /**
+   * 人工确认发布：小红书 / 视频号 / 公众号。不进发布队列、不调用任何平台接口，
+   * 只记录任务（manual_pending），由用户复制文案、下载封面后自己到平台发出。
+   * 计入每月发布条数（与自动发布同一口径）。
+   */
+  async createManualTasks(tenantId: string, userId: string, data: { contentId: string; platforms: string[]; scheduledAt?: Date }) {
+    const platforms = [...new Set(data.platforms || [])];
+    if (!platforms.length) throw new BadRequestException('请至少选择一个平台');
+    const unsupported = platforms.filter((p) => !isManualPlatform(p));
+    if (unsupported.length) throw new BadRequestException('人工确认发布只支持小红书、视频号、公众号');
+    const scheduledAt = data.scheduledAt ? new Date(data.scheduledAt) : new Date();
+    if (Number.isNaN(scheduledAt.getTime())) throw new BadRequestException('计划发布时间格式不正确');
+    await this.assertRealNameIfRequired(userId);
+    const content = await this.loadPublishableContent(tenantId, data.contentId);
+    if (!(await this.tenantService.checkQuota(tenantId, 'publish', platforms.length))) {
+      throw new BadRequestException('本月发布次数已达上限，请升级套餐或下月再发');
+    }
+    const aiGenerated = content.source === 'ai';
+    const body = content.body || '';
+    const tasks = [];
+    for (const platform of platforms) {
+      // 按平台留一份文案快照（AI 生成的内容必须带显式标识）
+      const platformContent = await this.prisma.platformContent.upsert({
+        where: { content_id_platform: { content_id: content.id, platform } },
+        create: { content_id: content.id, platform, title: content.title, body: aiGenerated ? labelAiGeneratedText(body) : body, cover_url: content.cover_url },
+        update: { title: content.title, body: aiGenerated ? labelAiGeneratedText(body) : body, cover_url: content.cover_url },
+      });
+      tasks.push(await this.prisma.publishTask.create({
+        data: {
+          tenant_id: tenantId,
+          content_id: content.id,
+          platform_content_id: platformContent.id,
+          created_by: userId,
+          publish_type: 'manual',
+          scheduled_at: scheduledAt,
+          status: MANUAL_PENDING,
+        },
+      }));
+    }
+    await this.tenantService.incrementUsage(tenantId, 'publish', tasks.length);
+    return tasks;
+  }
+
+  /** 「复制文案」「下载封面」用的发布素材。 */
+  async getManualKit(taskId: string, tenantId: string) {
+    const task = await this.prisma.publishTask.findFirst({
+      where: { id: taskId, tenant_id: tenantId },
+      include: { content: { select: { title: true, body: true, cover_url: true, source: true } }, platform_content: true },
+    });
+    if (!task) throw new NotFoundException('任务不存在');
+    const platform = task.platform_content?.platform ?? '';
+    if (!isManualPlatform(platform)) throw new BadRequestException('该任务不是人工确认发布任务');
+    const aiGenerated = task.content?.source === 'ai';
+    const rawBody = task.platform_content?.body ?? task.content?.body ?? '';
+    return {
+      platform,
+      platformName: MANUAL_PLATFORMS[platform].name,
+      guide: MANUAL_PLATFORMS[platform].guide,
+      title: task.platform_content?.title ?? task.content?.title ?? '',
+      // AI 生成的内容：复制出去的文案必须带「AI 生成」显式标识，不能弱化
+      body: aiGenerated ? labelAiGeneratedText(rawBody) : rawBody,
+      coverUrl: task.platform_content?.cover_url ?? task.content?.cover_url ?? null,
+      aiGenerated,
+      aiLabel: aiGenerated ? AI_TEXT_LABEL : null,
+      status: task.status,
+      postUrl: task.platform_post_url,
+    };
+  }
+
+  /** 用户确认已在平台手动发布；可回填作品链接（只保存，不抓取）。 */
+  async confirmManualPublished(taskId: string, tenantId: string, postUrl?: string) {
+    const task = await this.prisma.publishTask.findFirst({
+      where: { id: taskId, tenant_id: tenantId },
+      include: { platform_content: { select: { platform: true } } },
+    });
+    if (!task) throw new NotFoundException('任务不存在');
+    const platform = task.platform_content?.platform ?? '';
+    if (!isManualPlatform(platform)) throw new BadRequestException('该任务不是人工确认发布任务');
+    if (task.status !== MANUAL_PENDING && task.status !== MANUAL_DONE) throw new BadRequestException('当前状态不能标记为已手动发布');
+    let url: string | null;
+    try {
+      url = normalizeManualPostUrl(platform, postUrl);
+    } catch (error) {
+      throw new BadRequestException(error instanceof Error ? error.message : '作品链接格式不正确');
+    }
+    return this.prisma.publishTask.update({
+      where: { id: taskId },
+      data: { status: MANUAL_DONE, platform_post_url: url ?? task.platform_post_url ?? null, completed_at: task.completed_at ?? new Date() },
+    });
+  }
+
   async getTasks(tenantId: string, options: { status?: string; page?: number; pageSize?: number }) {
     const { status, page = 1, pageSize = 20 } = options;
     const skip = (page - 1) * pageSize;
@@ -163,6 +275,7 @@ export class PublishService {
         include: {
           content: { select: { title: true } },
           platform_account: { select: { platform: true, account_name: true, account_nickname: true } },
+          platform_content: { select: { platform: true } },
         },
       }),
       this.prisma.publishTask.count({ where }),
@@ -220,7 +333,7 @@ export class PublishService {
       throw new NotFoundException('任务不存在');
     }
 
-    if (!['pending', 'queued', 'failed'].includes(task.status)) {
+    if (!['pending', 'queued', 'failed', MANUAL_PENDING].includes(task.status)) {
       throw new BadRequestException('当前状态无法取消');
     }
 
