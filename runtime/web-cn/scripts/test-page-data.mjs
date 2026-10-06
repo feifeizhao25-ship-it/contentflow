@@ -14,7 +14,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { parseContentList, mapPublishTasks, parseHotTopics, describePlan } from '../src/lib/page-data.ts';
+import { parseContentList, mapPublishTasks, parseHotTopics, describePlan, parseAnalyticsOverview } from '../src/lib/page-data.ts';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const src = (rel) => fs.readFileSync(path.join(ROOT, 'src', rel), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/[^\n]*/g, '$1');
@@ -125,6 +125,33 @@ await check('日历页：用 mapPublishTasks，不再把平台筛选当 status �
   const page = src('app/(main)/schedule/page.tsx');
   assert.match(page, /mapPublishTasks\(/);
   assert.doesNotMatch(page, /status=\$\{filterPlatform/);
+});
+
+await check('数据分析：只解析自有数据；互动数据不可用时只给「接通平台授权后显示」', () => {
+  const o = parseAnalyticsOverview({
+    week: { start: '2026-10-04T16:00:00.000Z', publish: { total: 4, published: 1, failed: 1, inProgress: 0, manualPending: 1, manualDone: 1, cancelled: 0 }, ai: { generations: 5, byType: [{ type: 'titles', label: '标题', count: 5 }], savedAsContent: 2, approvedOrPublished: 1 } },
+    month: { start: '2026-09-30T16:00:00.000Z', publish: { total: 9 }, ai: { generations: 7, byType: [{ type: 'x', label: 'Other', count: 1 }] } },
+    failureReasons: [{ reason: '抖音开放平台尚未接入', count: 2 }, { reason: 'ECONNREFUSED', count: 1 }],
+    engagement: { available: false, message: '接通平台授权后显示', detail: '说明' },
+  });
+  assert.equal(o.week.publish.manualDone, 1);
+  assert.equal(o.month.publish.failed, 0);
+  assert.equal(o.month.ai.byType[0].label, '其他', '英文类型名不上屏');
+  assert.deepEqual(o.failureReasons, [{ reason: '抖音开放平台尚未接入', count: 2 }], '英文失败原因不上屏');
+  assert.equal(o.engagement.available, false);
+  assert.equal(o.engagement.message, '接通平台授权后显示');
+  assert.equal(parseAnalyticsOverview(null), null);
+  assert.equal(parseAnalyticsOverview({ engagement: { available: true, message: 'x' } }), null);
+});
+
+await check('数据分析页：读 /analytics/overview，不再引用写死的三个组件', () => {
+  const page = src('app/(main)/analytics/page.tsx');
+  assert.match(page, /'\/analytics\/overview'/);
+  assert.doesNotMatch(page, /ConclusionHero|ContentRankList|ReplayPanel/);
+  for (const gone of ['ConclusionHero', 'ContentRankList', 'ReplayPanel', 'ConversionFunnelCard']) {
+    assert.ok(!fs.existsSync(path.join(ROOT, 'src/components/analytics', `${gone}.tsx`)), `${gone}.tsx 仍在`);
+  }
+  assert.match(src('components/analytics/OwnDataOverview.tsx'), /engagement\.message/);
 });
 
 if (failures) { console.error(`${failures} failed`); process.exit(1); }

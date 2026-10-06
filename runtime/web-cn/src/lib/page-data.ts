@@ -110,3 +110,75 @@ export function describePlan(tenant: any, subscription?: any): PlanView {
   }
   return { name: PLAN_NAMES[plan] ?? plan, renewText, usage };
 }
+
+export interface PublishCounts {
+  total: number;
+  published: number;
+  failed: number;
+  inProgress: number;
+  manualPending: number;
+  manualDone: number;
+  cancelled: number;
+}
+
+export interface AnalyticsPeriod {
+  start: string;
+  publish: PublishCounts;
+  ai: {
+    generations: number;
+    byType: Array<{ type: string; label: string; count: number }>;
+    savedAsContent: number;
+    approvedOrPublished: number;
+  };
+}
+
+export interface AnalyticsOverview {
+  week: AnalyticsPeriod;
+  month: AnalyticsPeriod;
+  failureReasons: Array<{ reason: string; count: number }>;
+  engagement: { available: boolean; message: string; detail: string };
+}
+
+const num = (value: unknown) => (Number.isFinite(Number(value)) ? Number(value) : 0);
+const CJK_TEXT = /[㐀-鿿]/;
+
+function parsePeriod(raw: any): AnalyticsPeriod {
+  const p = raw?.publish ?? {};
+  const ai = raw?.ai ?? {};
+  return {
+    start: String(raw?.start ?? ''),
+    publish: {
+      total: num(p.total), published: num(p.published), failed: num(p.failed), inProgress: num(p.inProgress),
+      manualPending: num(p.manualPending), manualDone: num(p.manualDone), cancelled: num(p.cancelled),
+    },
+    ai: {
+      generations: num(ai.generations),
+      byType: asArray(ai.byType).map((r) => ({ type: String(r.type ?? ''), label: CJK_TEXT.test(String(r.label)) ? String(r.label) : '其他', count: num(r.count) })),
+      savedAsContent: num(ai.savedAsContent),
+      approvedOrPublished: num(ai.approvedOrPublished),
+    },
+  };
+}
+
+/**
+ * 数据分析页：GET /analytics/overview。只有自有数据（发布任务、内容、AI 生成记录）；
+ * 互动数据在接通平台授权前一律不给数字，页面显示「接通平台授权后显示」。
+ */
+export function parseAnalyticsOverview(result: unknown): AnalyticsOverview | null {
+  const payload = unwrap(result);
+  if (!payload || typeof payload !== 'object' || !payload.week || !payload.month) return null;
+  const engagement = payload.engagement ?? {};
+  return {
+    week: parsePeriod(payload.week),
+    month: parsePeriod(payload.month),
+    failureReasons: asArray(payload.failureReasons)
+      .filter((r) => CJK_TEXT.test(String(r?.reason ?? '')))
+      .map((r) => ({ reason: String(r.reason), count: num(r.count) })),
+    engagement: {
+      // 只有后端明确说可用时才可能显示互动数字；当前后端恒为不可用
+      available: engagement.available === true,
+      message: CJK_TEXT.test(String(engagement.message ?? '')) ? String(engagement.message) : '接通平台授权后显示',
+      detail: CJK_TEXT.test(String(engagement.detail ?? '')) ? String(engagement.detail) : '',
+    },
+  };
+}

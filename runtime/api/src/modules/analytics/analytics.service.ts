@@ -1,5 +1,13 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../database/prisma.service';
+import {
+  AI_TYPE_TEXT,
+  ENGAGEMENT_UNAVAILABLE,
+  PublishSummary,
+  failureReasonText,
+  overviewWindows,
+  summarizePublish,
+} from './own-data-overview';
 
 @Injectable()
 export class AnalyticsService {
@@ -50,6 +58,81 @@ export class AnalyticsService {
         total: accountStats.length,
         totalFollowers: accountStats.reduce((sum, a) => sum + (a.follower_count || 0), 0),
       },
+    };
+  }
+
+  /**
+   * 「数据分析」页：本周 / 本月（北京时间）的发布任务、失败原因、AI 生成与采纳情况。
+   * 只读自有数据；平台互动数据在接通授权前不提供（engagement.available=false）。
+   */
+  async getOverview(tenantId: string, now: Date | number = Date.now()) {
+    const windows = overviewWindows(now);
+    const taskWindow = (range: { start: Date; end: Date }) => ({
+      tenant_id: tenantId,
+      OR: [
+        { scheduled_at: { gte: range.start, lt: range.end } },
+        { scheduled_at: null, created_at: { gte: range.start, lt: range.end } },
+      ],
+    });
+    const publishFor = async (range: { start: Date; end: Date }): Promise<PublishSummary> => {
+      const rows = await this.prisma.publishTask.groupBy({
+        by: ['status'],
+        where: taskWindow(range),
+        _count: { _all: true },
+      });
+      return summarizePublish(rows.map((r: any) => ({ status: r.status, n: r._count._all })));
+    };
+    const aiFor = async (range: { start: Date; end: Date }) => {
+      const rows = await this.prisma.aIGeneration.groupBy({
+        by: ['generation_type'],
+        where: { tenant_id: tenantId, status: 'success', created_at: { gte: range.start, lt: range.end } },
+        _count: { _all: true },
+      });
+      const byType = rows
+        .map((r: any) => ({ type: r.generation_type, label: AI_TYPE_TEXT[r.generation_type] ?? '其他', count: r._count._all }))
+        .sort((a: any, b: any) => b.count - a.count);
+      const contentWhere = { tenant_id: tenantId, source: 'ai', created_at: { gte: range.start, lt: range.end } };
+      const [savedAsContent, approvedOrPublished] = await Promise.all([
+        this.prisma.content.count({ where: contentWhere }),
+        this.prisma.content.count({ where: { ...contentWhere, status: { in: ['approved', 'published'] } } }),
+      ]);
+      return {
+        generations: byType.reduce((s: number, r: any) => s + r.count, 0),
+        byType,
+        // 采纳：AI 生成后保存进内容库的篇数，以及其中已通过审核 / 已发布的篇数
+        savedAsContent,
+        approvedOrPublished,
+      };
+    };
+
+    const failedRows = await this.prisma.publishTask.findMany({
+      where: { ...taskWindow(windows.month), status: 'failed' },
+      select: { error_code: true, error_message: true },
+      take: 500,
+    });
+    const reasons = new Map<string, number>();
+    for (const row of failedRows) {
+      const text = failureReasonText(row.error_code, row.error_message);
+      reasons.set(text, (reasons.get(text) ?? 0) + 1);
+    }
+
+    const [weekPublish, monthPublish, weekAi, monthAi] = await Promise.all([
+      publishFor(windows.week),
+      publishFor(windows.month),
+      aiFor(windows.week),
+      aiFor(windows.month),
+    ]);
+
+    return {
+      timezone: 'Asia/Shanghai',
+      generatedAt: new Date(now).toISOString(),
+      week: { start: windows.week.start.toISOString(), publish: weekPublish, ai: weekAi },
+      month: { start: windows.month.start.toISOString(), publish: monthPublish, ai: monthAi },
+      failureReasons: [...reasons.entries()]
+        .map(([reason, count]) => ({ reason, count }))
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 5),
+      engagement: ENGAGEMENT_UNAVAILABLE,
     };
   }
 }

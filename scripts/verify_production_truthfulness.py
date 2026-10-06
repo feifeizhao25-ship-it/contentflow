@@ -248,6 +248,41 @@ forbid(
     (".replace(regex, '***')", ".replace(regex, \"***\")"),
 )
 
+# 「数据分析」页（审计 P0-2）：原来 ConclusionHero / ContentRankList / ReplayPanel 全部写死
+# （「本周发布 12」「互动率 8.5%」「本周涨粉 893」「10.2w」、播放曲线到 102000）。
+# 规则：analytics 页面与组件里不得出现写死的指标数字——所有数字只能来自 /analytics/overview。
+import re
+
+ANALYTICS_SURFACES = [ROOT / "runtime/web-cn/src/app/(main)/analytics/page.tsx"]
+_analytics_dir = ROOT / "runtime/web-cn/src/components/analytics"
+if _analytics_dir.is_dir():
+    ANALYTICS_SURFACES += sorted(_analytics_dir.glob("*.tsx")) + sorted(_analytics_dir.glob("*.ts"))
+HARDCODED_METRIC_PATTERNS = (
+    (re.compile(r"\d+(?:\.\d+)?\s*(?:%|％|w\b|W\b|万|k\b|K\b)"), "带单位的写死数字（如 8.5%、10.2w、3万）"),
+    (re.compile(r">\s*[+-]?\d[\d,.]*\s*<"), "JSX 文本里的写死数字"),
+    (re.compile(r"\b(?:value|views|likes|plays|followers|comments|shares|rate|count|total|fans)\s*[:=]\s*\{?\s*[+-]?\d+(?:\.\d+)?\b"), "指标字段赋了写死的数字"),
+    (re.compile(r"mock", re.I), "Mock 数据"),
+)
+
+
+def _strip_comments(source: str) -> str:
+    source = re.sub(r"/\*.*?\*/", "", source, flags=re.S)
+    return re.sub(r"(^|[^:])//[^\n]*", r"\1", source)
+
+
+for surface in ANALYTICS_SURFACES:
+    if not surface.is_file():
+        errors.append(f"{surface.relative_to(ROOT)}: missing")
+        continue
+    body = _strip_comments(surface.read_text(encoding="utf-8"))
+    for pattern, why in HARDCODED_METRIC_PATTERNS:
+        hit = pattern.search(body)
+        if hit:
+            errors.append(f"{surface.relative_to(ROOT)}: {why}：{hit.group(0)!r}（数据分析只能展示接口返回的自有数据）")
+for removed in ("ConclusionHero.tsx", "ContentRankList.tsx", "ReplayPanel.tsx", "ConversionFunnelCard.tsx"):
+    if (_analytics_dir / removed).exists():
+        errors.append(f"runtime/web-cn/src/components/analytics/{removed}: 写死假数据的组件不得恢复")
+
 if errors:
     print("Production truthfulness gate failed:")
     for error in errors:

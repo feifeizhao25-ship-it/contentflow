@@ -135,7 +135,6 @@ const KNOWN_UNIMPLEMENTED = {
   'POST /contents/:id/clone': '内容复用：后端未实现',
   'POST /contents/:id/rollback': '内容回滚：后端未实现（需要新表）',
   'POST /contents/:id/review/generate': 'AI 内容复盘：后端未实现',
-  'GET /analytics/funnel': '转化漏斗：后端未实现，卡片按零值展示',
   'POST /ai/generate/video': '视频生成：国内版暂未开通（境外服务商），页面提示暂未开通',
 };
 

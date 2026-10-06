@@ -10,6 +10,12 @@ import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 export class AnalyticsController {
   constructor(private readonly analyticsService: AnalyticsService) {}
 
+  @Get('overview')
+  @ApiOperation({ summary: '数据分析页：本周 / 本月的发布任务、失败原因、AI 生成与采纳（只含自有数据）' })
+  async getOverview(@Request() req: any) {
+    return this.analyticsService.getOverview(req.user.tenantId);
+  }
+
   @Get('dashboard')
   @ApiOperation({ summary: '获取数据看板' })
   async getDashboard(@Request() req: any, @Query('start') start?: string, @Query('end') end?: string) {
