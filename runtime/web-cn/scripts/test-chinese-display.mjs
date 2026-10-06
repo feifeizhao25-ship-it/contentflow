@@ -70,5 +70,13 @@ check('已登录访问首页显示「进入工作台」，不再只给登录 / �
   assert.match(home, /signedIn \? <Link href="\/studio"[^>]*>进入工作台/);
 });
 
+check('合规资料过期时，创作工作室显示「合规规则资料需要人工复核」（读后端时效状态，不在前端猜）', () => {
+  const notice = read('src/components/compliance/ComplianceReviewNotice.tsx');
+  assert.match(notice, /'\/ai\/compliance-sources\/status'/);
+  assert.match(notice, /合规规则资料需要人工复核/);
+  assert.match(notice, /needsReview/);
+  assert.match(read('src/app/(main)/studio/page.tsx'), /<ComplianceReviewNotice \/>/);
+});
+
 if (failures) { console.error(`\n${failures} 项失败`); process.exit(1); }
 console.log('All Chinese display tests passed');

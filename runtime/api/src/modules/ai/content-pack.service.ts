@@ -38,6 +38,8 @@ export class ContentPackService {
 
             // Step B: Script/Body
             const policySources = await this.ragPolicyService.select(dto.platforms || [], dto.topic);
+            // 资料过期时如实告诉用户「合规规则资料需要人工复核」，而不是笼统的「未引用」。
+            const freshness = policySources.length ? null : await this.ragPolicyService.freshnessReport?.().catch(() => null);
             const scriptPrompt = `请根据主题 "${dto.topic}" 和标题 "${titles[0]}" 创作一篇深度脚本。要求：逻辑清晰、使用普通人能理解的表达；如资料包含合规要求，在结尾增加发布前核对清单。${this.ragPolicyService.buildContext(policySources)}`;
             const scriptData = await this.aiService.generateText({ prompt: scriptPrompt });
             let script = scriptData.content;
@@ -80,8 +82,12 @@ export class ContentPackService {
                     titles,
                     script,
                     sources: policySources.map(source => ({ id: source.id, source_url: source.source_url, source_name: source.source_name, published_at: source.published_at, retrieved_at: source.retrieved_at, jurisdiction: source.jurisdiction, source_tier: source.source_tier })),
-                    sources_status: policySources.length ? 'verified' : 'none',
-                    sources_note: policySources.length ? '以上资料已加入本次模型上下文；仍需发布者按最新平台页面人工复核' : '本次生成未引用有效的外部合规资料；仅供草稿使用，发布前请核对最新平台规则',
+                    sources_status: policySources.length ? 'verified' : freshness?.needsReview ? 'review_required' : 'none',
+                    sources_note: policySources.length
+                        ? '以上资料已加入本次模型上下文；仍需发布者按最新平台页面人工复核'
+                        : freshness?.needsReview
+                            ? (freshness.notice ?? '合规规则资料需要人工复核')
+                            : '本次生成未引用有效的外部合规资料；仅供草稿使用，发布前请核对最新平台规则',
                     metadata: {
                         usage: { tokens: totalTokens },
                         platforms: dto.platforms,

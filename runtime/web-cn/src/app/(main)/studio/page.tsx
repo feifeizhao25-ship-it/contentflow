@@ -14,6 +14,7 @@ import { trackEvent } from '@/lib/analytics';
 import { PLACEHOLDER_IMAGES } from '@/lib/placeholders';
 import { safeErrorText } from '@/lib/api-error';
 import { isAiGeneratedText } from '@/lib/ai-content-label';
+import { ComplianceReviewNotice } from '@/components/compliance/ComplianceReviewNotice';
 
 const { TextArea } = Input;
 
@@ -356,6 +357,8 @@ function StudioContent() {
           </div>
         </div>
       </div>
+
+      <ComplianceReviewNotice />
 
       <Card className="rounded-[24px] border-none">
         <Steps

@@ -139,3 +139,15 @@ describe('ContentPackService token accounting', () => {
     expect(usage.trackUsage).not.toHaveBeenCalled();
   });
 });
+
+describe('合规资料过期时如实提示', () => {
+  it('没有可用资料且资料过期：sources_status=review_required，提示「合规规则资料需要人工复核」', async () => {
+    const ai = { assertTenantDailyBudget: jest.fn(), recordGeneration: jest.fn(), generateTitlesWithUsage: jest.fn().mockResolvedValue({ titles: ['T'], usage: { prompt_tokens: 1, completion_tokens: 1, total_tokens: 2 } }), generateText: jest.fn().mockResolvedValue({ content: '正文', usage: { prompt_tokens: 1, completion_tokens: 1, total_tokens: 2 } }) };
+    const usage = { checkQuota: jest.fn().mockResolvedValue(true), trackUsage: jest.fn() };
+    const rag = { select: jest.fn().mockResolvedValue([]), buildContext: jest.fn().mockReturnValue(''), freshnessReport: jest.fn().mockResolvedValue({ needsReview: true, notice: '合规规则资料需要人工复核：平台规则资料超过 30 天未核对' }) };
+    const service = new ContentPackService(ai as any, usage as any, { scrubOutput: async (v: string) => v } as any, rag as any);
+    const result = await service.generatePack('t', { topic: '主题' } as any, 'u');
+    expect(result.data.sources_status).toBe('review_required');
+    expect(result.data.sources_note).toContain('合规规则资料需要人工复核');
+  });
+});
