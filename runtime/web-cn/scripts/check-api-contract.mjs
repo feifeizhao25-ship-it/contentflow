@@ -249,11 +249,6 @@ function backendRoutes() {
   // 修好后不能回退的位置
   const regressions = [
     {
-      file: 'components/membership/PremiumGate.tsx',
-      bad: /const\s+data\s*=\s*await\s+apiClient\.get<[^>]*>\(\s*['"]\/billing\/subscription/,
-      why: '把信封当订阅对象用 → plan 永远 undefined → 所有付费用户被当成 free',
-    },
-    {
       file: 'store/gamificationStore.ts',
       bad: /statusData\s*=\s*await\s+statusRes\.json\(\)/,
       why: '未解包 → 等级/经验/连续天数全部渲染成空',

@@ -14,7 +14,7 @@ import { Button, Modal, QRCode, Radio, Alert, message } from 'antd';
 import clsx from 'clsx';
 import { useRouter, useSearchParams } from 'next/navigation';
 import registry from '@/lib/entitlements.json';
-import { buildFallbackPlans } from '@/lib/entitlements';
+import { buildFallbackPlans, comingSoonEntitlements, isComingSoonFeature, TIER_IDS, type EntitlementsRegistry, type TierId } from '@/lib/entitlements';
 import { fetchCurrentUser } from '@/lib/session';
 import {
     PaymentError,
@@ -40,7 +40,11 @@ type CheckoutState =
     | { step: 'timeout'; orderNo?: string }
     | { step: 'error'; message: string };
 
-const fallbackPlans = buildFallbackPlans(registry);
+const typedRegistry = registry as unknown as EntitlementsRegistry;
+const fallbackPlans = buildFallbackPlans(typedRegistry);
+// 「即将上线」以权益注册表为准（价格接口只给价格与卖点，不知道哪些权益还没有执行点）。
+const comingSoonFor = (id: string): string[] =>
+    (TIER_IDS as readonly string[]).includes(id) ? comingSoonEntitlements(typedRegistry, id as TierId) : [];
 
 // 支付宝收银台是整页跳转，回来时页面已重新加载：把「买的是哪个套餐、付款前的状态」暂存在本标签页。
 const PENDING_KEY = 'contentflow.pendingCheckout';
@@ -69,7 +73,8 @@ function PricingContent() {
     const searchParams = useSearchParams();
     const initialTab = searchParams.get('tab') || 'plans';
     const [activeTab, setActiveTab] = useState(initialTab);
-    const [isYearly] = useState(false);
+    // 年付：后端下单与开通都已支持 yearly 周期（billing.service / subscription-period），这里接通切换。
+    const [isYearly, setIsYearly] = useState(searchParams.get('cycle') === 'yearly');
     const [loadingPlan, setLoadingPlan] = useState<string | null>(null);
     const [canonicalPlans, setCanonicalPlans] = useState<any[]>(fallbackPlans);
     const [plansLoaded, setPlansLoaded] = useState(false);
@@ -123,6 +128,7 @@ function PricingContent() {
         price: isYearly ? plan.priceYearlyCny : plan.priceMonthlyCny,
         description: plan.custom ? '按团队规模与服务范围报价' : '价格与权益由服务端统一管理',
         features: (Array.isArray(plan.features) ? plan.features.map(String) : []) as string[],
+        comingSoon: comingSoonFor(String(plan.id)),
         icon: plan.id === 'enterprise' ? <CrownFilled /> : plan.id === 'team' ? <SafetyCertificateOutlined /> : plan.id === 'pro' ? <ThunderboltFilled /> : <RocketFilled />,
         buttonText: plan.id === 'free' ? '免费使用' : plan.custom ? '联系商务顾问' : '立即开通',
         custom: Boolean(plan.custom),
@@ -149,8 +155,8 @@ function PricingContent() {
     useEffect(() => stopPolling, []);
 
     const goLogin = useCallback((id: string) => {
-        router.push(`/login?redirect=${encodeURIComponent(`/pricing?plan=${id}`)}`);
-    }, [router]);
+        router.push(`/login?redirect=${encodeURIComponent(`/pricing?plan=${id}${isYearly ? '&cycle=yearly' : ''}`)}`);
+    }, [router, isYearly]);
 
     const [rechecking, setRechecking] = useState(false);
     const recheckPayment = async (orderNo: string) => {
@@ -296,6 +302,19 @@ function PricingContent() {
                     </motion.div>
                 </div>
 
+                <div className="flex justify-center mb-10">
+                    <Radio.Group
+                        value={isYearly ? 'yearly' : 'monthly'}
+                        onChange={(e) => setIsYearly(e.target.value === 'yearly')}
+                        optionType="button"
+                        buttonStyle="solid"
+                        size="large"
+                    >
+                        <Radio.Button value="monthly">按月付费</Radio.Button>
+                        <Radio.Button value="yearly">按年付费</Radio.Button>
+                    </Radio.Group>
+                </div>
+
                 {/* Plans Grid */}
                 <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 items-stretch mb-20">
                     {plansFailed && (
@@ -334,7 +353,7 @@ function PricingContent() {
                             <div className="mb-8 p-4 rounded-xl bg-zinc-50 dark:bg-zinc-800/50">
                                 <div className="flex items-baseline gap-1">
                                     <span className="text-4xl font-black tracking-tight">{plan.price == null ? '按需报价' : `¥${plan.price}`}</span>
-                                    <span className="text-zinc-400 font-medium">/月</span>
+                                    <span className="text-zinc-400 font-medium">{isYearly ? '/年' : '/月'}</span>
                                 </div>
                                 {plan.credits && (
                                     <div className="mt-2 text-xs font-bold text-indigo-600 flex items-center gap-1">
@@ -347,10 +366,21 @@ function PricingContent() {
                                 {plan.features.map((f, i) => (
                                     <li key={i} className="flex items-start gap-3 text-sm font-medium text-zinc-600 dark:text-zinc-300">
                                         <CheckCircleFilled className={clsx("mt-0.5", plan.highlight ? "text-indigo-500" : "text-zinc-300")} />
-                                        {f}
+                                        <span>
+                                            {f}
+                                            {isComingSoonFeature(typedRegistry, f) && (
+                                                <span className="ml-2 rounded-full bg-amber-50 px-2 py-0.5 text-xs font-bold text-amber-700">即将上线</span>
+                                            )}
+                                        </span>
                                     </li>
                                 ))}
                             </ul>
+                            {plan.comingSoon.length > 0 && (
+                                <div className="mb-8 rounded-xl border border-dashed border-zinc-200 dark:border-zinc-700 p-3">
+                                    <p className="text-xs font-bold text-amber-700 mb-1">即将上线（暂未开通，不影响当前价格）</p>
+                                    <p className="text-xs leading-5 text-zinc-500">{plan.comingSoon.join('；')}</p>
+                                </div>
+                            )}
 
                             <Button
                                 type="primary"
@@ -383,7 +413,7 @@ function PricingContent() {
                     {checkout.step === 'choose' || checkout.step === 'creating' ? (
                         <div className="space-y-5">
                             {checkoutPlan?.price != null && (
-                                <p className="text-zinc-600">应付金额以订单为准：<span className="text-2xl font-black">¥{checkoutPlan.price}</span> / 月</p>
+                                <p className="text-zinc-600">应付金额以订单为准：<span className="text-2xl font-black">¥{checkoutPlan.price}</span> / {isYearly ? '年（一次支付 12 个月）' : '月'}</p>
                             )}
                             <Radio.Group value={payMethod} onChange={(e) => setPayMethod(e.target.value)} disabled={checkout.step === 'creating'}>
                                 <Radio.Button value="wechat">微信支付</Radio.Button>

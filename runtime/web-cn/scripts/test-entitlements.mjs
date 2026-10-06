@@ -15,6 +15,8 @@ import {
     TIER_IDS,
     validateEntitlements,
     buildFallbackPlans,
+    entitlementKeys,
+    comingSoonEntitlements,
 } from '../src/lib/entitlements.ts';
 import { CN_PLANS } from '../../api/src/modules/billing/plans.constant.ts';
 
@@ -58,6 +60,98 @@ check('缺维度的注册表被拒绝（负例）', () => {
     const broken = JSON.parse(JSON.stringify(registry));
     delete broken.tiers.pro.export;
     assert.ok(validateEntitlements(broken).length > 0);
+});
+
+// ---------- 门禁：每条权益要么有执行点，要么标「即将上线」 ----------
+// 审计（P0-3 / 第 6 点）：视频分钟、席位、水印、批量导出、审批流、人设数在注册表里写着，
+// 后端没有任何执行点。卖了没执行的权益必须在界面上标「即将上线」。
+const apiRoot = path.join(root, '..', 'api');
+check('门禁：注册表每条权益都登记了执行状态（enforced 或 coming_soon）', () => {
+    const keys = entitlementKeys(registry);
+    assert.ok(keys.length >= 20, `权益键太少：${keys.length}`);
+    for (const key of keys) {
+        const entry = registry.entitlementStatus?.[key];
+        assert.ok(entry, `${key} 未登记执行状态`);
+        assert.ok(['enforced', 'coming_soon'].includes(entry.status), `${key} status=${entry.status}`);
+        assert.ok(entry.label && /[\u4e00-\u9fff]/.test(entry.label), `${key} 缺中文名称`);
+    }
+});
+
+check('门禁：标 enforced 的权益在 runtime/api 源码（非测试文件）里真有执行点', () => {
+    for (const [key, entry] of Object.entries(registry.entitlementStatus)) {
+        if (entry.status !== 'enforced') continue;
+        const rel = entry.enforcedAt?.file ?? '';
+        assert.ok(rel.startsWith('src/') && !/\.spec\.ts$/.test(rel), `${key} 执行点必须是 api 的非测试源码：${rel}`);
+        const file = path.join(apiRoot, rel);
+        assert.ok(fs.existsSync(file), `${key} 执行点文件不存在：${rel}`);
+        assert.ok(fs.readFileSync(file, 'utf8').includes(entry.enforcedAt.contains), `${key} 执行点代码不存在：${rel} 中没有「${entry.enforcedAt.contains}」`);
+    }
+});
+
+check('门禁：审计点名的 6 项没有执行点的权益都标为 coming_soon', () => {
+    for (const key of ['quotas.videoMinutesMonthly', 'collaboration.seats', 'collaboration.approvalWorkflow', 'export.watermark', 'export.batchExport', 'personalization.personaCount']) {
+        assert.equal(registry.entitlementStatus[key]?.status, 'coming_soon', key);
+    }
+});
+
+check('门禁负例：删掉一条权益的状态、或把执行点指向不存在的代码，都会被拦', () => {
+    const missing = JSON.parse(JSON.stringify(registry));
+    delete missing.entitlementStatus['export.batchExport'];
+    assert.ok(validateEntitlements(missing).some((e) => e.includes('export.batchExport')));
+    const noRef = JSON.parse(JSON.stringify(registry));
+    noRef.entitlementStatus['export.batchExport'] = { label: '批量导出', status: 'enforced' };
+    assert.ok(validateEntitlements(noRef).some((e) => e.includes('没有写执行点')));
+});
+
+check('即将上线的权益会出现在套餐卡上（专业版：视频时长、去水印、批量导出、人设数）', () => {
+    const pro = comingSoonEntitlements(registry, 'pro').join('|');
+    assert.match(pro, /视频生成时长：每月 120 分钟/);
+    assert.match(pro, /去水印/);
+    assert.match(pro, /批量导出/);
+    assert.match(pro, /人设数量：5 个/);
+    const free = comingSoonEntitlements(registry, 'free').join('|');
+    assert.doesNotMatch(free, /去水印|批量导出/, '免费版没有的权益不该列出');
+    const team = buildFallbackPlans(registry).find((p) => p.id === 'team');
+    assert.ok(team.comingSoonFeatures.includes('团队协作与审批'));
+});
+
+check('定价页与首页把未执行的权益标「即将上线」', () => {
+    for (const rel of ['src/app/(main)/pricing/page.tsx', 'src/app/page.tsx']) {
+        const src = readSrc(rel);
+        assert.ok(src.includes('即将上线'), `${rel} 缺「即将上线」标注`);
+        assert.ok(/comingSoon/.test(src), `${rel} 未读取注册表里的即将上线权益`);
+    }
+});
+
+check('团队页：后端邀请未接通时，「邀请成员」按钮不可点并标「即将上线」', () => {
+    const teamService = fs.readFileSync(path.join(apiRoot, 'src/modules/team/team.service.ts'), 'utf8');
+    const page = readSrc('src/app/(main)/team/page.tsx');
+    if (teamService.includes('尚未配置')) {
+        assert.match(page, /const TEAM_INVITE_AVAILABLE = false;/, '后端邀请未接通，前端却放开了邀请按钮');
+        assert.match(page, /disabled=\{!TEAM_INVITE_AVAILABLE\}/, '邀请按钮没有按开关置灰');
+        assert.match(page, /即将上线/);
+        assert.equal(registry.entitlementStatus['collaboration.seats'].status, 'coming_soon');
+    }
+});
+
+check('旧付费弹窗（¥49/划线 ¥59/无限 AI/4K/去水印/7 天无理由、写死 16/20 的额度条）已删除', () => {
+    assert.ok(!fs.existsSync(path.join(root, 'src/components/membership/PremiumGate.tsx')), 'PremiumGate.tsx 仍在');
+    const walk = (dir) => fs.readdirSync(dir, { withFileTypes: true }).flatMap((d) => d.isDirectory() ? walk(path.join(dir, d.name)) : [path.join(dir, d.name)]);
+    for (const file of walk(path.join(root, 'src')).filter((f) => /\.(tsx?|jsx?)$/.test(f))) {
+        const src = fs.readFileSync(file, 'utf8');
+        assert.ok(!/UpgradeModal|ShareToUnlock|QuotaDisplay\b/.test(src.replace(/showUpgradeModal|setShowUpgradeModal/g, '')), `${path.relative(root, file)} 仍引用旧付费组件`);
+        assert.ok(!/无限 ?AI ?生成|7 ?天无理由/.test(src), `${path.relative(root, file)} 仍有与套餐不符的宣传`);
+    }
+});
+
+check('定价页可选按年付费，并把周期传给下单接口', () => {
+    const src = readSrc('src/app/(main)/pricing/page.tsx');
+    assert.match(src, /setIsYearly/, '没有年付切换');
+    assert.match(src, /按年付费/);
+    assert.match(src, /billingCycle: isYearly \? 'yearly' : 'monthly'/);
+    assert.doesNotMatch(src, /const \[isYearly\] = useState\(false\)/, '年付仍被写死为 false');
+    const home = readSrc('src/app/page.tsx');
+    if (/按年订阅/.test(home)) assert.match(home, /cycle=yearly/, '首页展示年付却没有可购买的入口');
 });
 
 // ---------- 与后端 CN_PLANS 同源 ----------

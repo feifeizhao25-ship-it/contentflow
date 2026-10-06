@@ -245,14 +245,25 @@ function TeamContent() {
             label: '团队成员',
             children: (
                 <div>
-                    <div style={{ marginBottom: 16 }}>
+                    {/* 后端邀请接口在签名邀请邮件与接受流程接通前一律返回「尚未配置」（team.service.ts）。
+                        按钮在接通前置灰并如实说明，而不是让用户填完表单再看到失败。 */}
+                    <div style={{ marginBottom: 16, display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 12 }}>
                         <Button
                             type="primary"
                             icon={<UserAddOutlined />}
+                            disabled={!TEAM_INVITE_AVAILABLE}
                             onClick={() => setInviteModalVisible(true)}
                         >
                             邀请成员
                         </Button>
+                        {!TEAM_INVITE_AVAILABLE && (
+                            <Tag color="gold">即将上线</Tag>
+                        )}
+                        {!TEAM_INVITE_AVAILABLE && (
+                            <span style={{ color: '#64748b', fontSize: 13 }}>
+                                邀请成员功能即将上线：需要先接通邀请邮件与接受流程，目前还不能添加成员。
+                            </span>
+                        )}
                     </div>
                     <Table
                         columns={columns as any}
@@ -420,6 +431,10 @@ function TeamContent() {
         </div>
     );
 }
+
+
+/** 团队邀请是否已接通。接通签名邀请邮件与接受流程后改为 true（同时去掉权益注册表里 collaboration.seats 的 coming_soon）。 */
+const TEAM_INVITE_AVAILABLE = false;
 
 export default function TeamPage() {
     return (

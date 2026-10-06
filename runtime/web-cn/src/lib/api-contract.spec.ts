@@ -123,11 +123,6 @@ describe('响应信封必须被解开', () => {
   // 曾经直接读字段、绕过信封的位置。修好后不能回退。
   const REGRESSIONS: Array<{ file: string; forbidden: RegExp; why: string }> = [
     {
-      file: 'components/membership/PremiumGate.tsx',
-      forbidden: /const\s+data\s*=\s*await\s+apiClient\.get<[^>]*>\(\s*['"]\/billing\/subscription/,
-      why: '直接把信封当订阅对象用，plan 永远 undefined → 所有付费用户被当成 free',
-    },
-    {
       file: 'store/gamificationStore.ts',
       forbidden: /statusData\s*=\s*await\s+statusRes\.json\(\)/,
       why: '未解包，等级/经验/连续天数全部渲染成空',

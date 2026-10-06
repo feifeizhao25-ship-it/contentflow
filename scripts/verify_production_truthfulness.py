@@ -149,10 +149,10 @@ forbid(
     "runtime/web-cn/src/components/share/ShareModal.tsx",
     ("Math.random()", "模拟统计数据", "message.success('分享成功！')"),
 )
-forbid(
-    "runtime/web-cn/src/components/membership/PremiumGate.tsx",
-    ("模拟分享成功", "您已获得 3 天专业版体验", "?ref=${Date.now()}"),
-)
+# 旧付费弹窗（¥49、划线价 ¥59、「无限 AI 生成」「4K」「去水印」「7 天无理由退款」、写死 16/20 的额度条、
+# 「模拟分享成功」送 3 天体验）与套餐不符且无人引用，已整文件删除，不得恢复。
+if (ROOT / "runtime/web-cn/src/components/membership/PremiumGate.tsx").exists():
+    errors.append("runtime/web-cn/src/components/membership/PremiumGate.tsx: 与套餐不符的旧付费弹窗不得恢复")
 require(
     "runtime/web-cn/src/app/(main)/traffic-sandwich/page.tsx",
     ("String(res?.content || '')", "router.push('/studio')", "完播率需发布后数据"),

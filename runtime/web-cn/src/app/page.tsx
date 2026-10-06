@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import registry from '@/lib/entitlements.json';
-import { buildFallbackPlans } from '@/lib/entitlements';
+import { buildFallbackPlans, type EntitlementsRegistry } from '@/lib/entitlements';
 
 export default function Home() {
   const capabilities = [
@@ -9,10 +9,12 @@ export default function Home() {
     ['审批后再发布', '草稿、审核、排期、发布和失败重试全程留痕；默认不让 AI 绕过人工确认。'],
     ['数据驱动复盘', '只根据已接入平台的真实数据做归因；数据不足时明确显示“暂无结论”。'],
   ];
-  const plans = buildFallbackPlans(registry).map((plan) => ({
+  // 年付链接直达定价页的「按年付费」（后端已支持 yearly 周期）；未执行的权益标「即将上线」。
+  const plans = buildFallbackPlans(registry as unknown as EntitlementsRegistry).map((plan) => ({
     ...plan,
     price: plan.custom ? '联系咨询' : `¥${plan.priceMonthlyCny}${plan.priceMonthlyCny ? '/月' : ''}`,
     note: plan.priceYearlyCny ? `按年订阅 ¥${plan.priceYearlyCny}/年` : '查看完整额度与开通条件',
+    href: plan.priceYearlyCny ? '/pricing?cycle=yearly' : '/pricing',
     recommended: plan.id === 'team',
   }));
 
@@ -33,7 +35,7 @@ export default function Home() {
 
         <section id="workflow" className="px-4 py-20"><div className="mx-auto max-w-6xl"><h2 className="text-3xl font-black sm:text-4xl">三步完成一次可靠分发</h2><div className="mt-10 grid gap-5 md:grid-cols-3">{[['1','建立内容任务','选择受众、目标、平台和截止时间。'],['2','生成并逐项审核','查看平台适配、引用、风险提示和预览。'],['3','排期与复盘','批准后发布，并用真实表现数据更新下次建议。']].map(([n,title,body]) => <article key={n} className="rounded-2xl bg-slate-950 p-6 text-white"><span className="text-sm font-black text-violet-300">步骤 {n}</span><h3 className="mt-4 text-xl font-black">{title}</h3><p className="mt-3 leading-7 text-slate-300">{body}</p></article>)}</div></div></section>
 
-        <section id="plans" className="bg-white px-4 py-20"><div className="mx-auto max-w-6xl"><div className="max-w-2xl"><p className="text-sm font-black tracking-widest text-indigo-600">会员方案</p><h2 className="mt-3 text-3xl font-black sm:text-4xl">从个人创作到企业协作</h2><p className="mt-4 text-slate-600">与会员方案页共用价格和权益配置，付款确认后开通对应服务。</p></div><div className="mt-10 grid gap-5 md:grid-cols-2 xl:grid-cols-4">{plans.map((plan) => <article key={plan.name} className={`relative rounded-2xl border p-6 ${plan.recommended ? 'border-indigo-500 shadow-xl shadow-indigo-100' : 'border-slate-200'}`}>{plan.recommended && <span className="absolute -top-3 left-5 rounded-full bg-indigo-600 px-3 py-1 text-xs font-bold text-white">团队协作方案</span>}<h3 className="text-xl font-black">{plan.name}</h3><p className="mt-3 text-3xl font-black">{plan.price}</p><p className="mt-2 text-sm text-slate-500">{plan.note}</p><ul className="mt-5 space-y-3 text-sm text-slate-700">{plan.features.map((feature) => <li key={feature}>✓ {feature}</li>)}</ul><Link href="/pricing" className={`mt-6 block rounded-xl px-4 py-2.5 text-center text-sm font-bold ${plan.recommended ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-800'}`}>查看{plan.name}权益</Link></article>)}</div></div></section>
+        <section id="plans" className="bg-white px-4 py-20"><div className="mx-auto max-w-6xl"><div className="max-w-2xl"><p className="text-sm font-black tracking-widest text-indigo-600">会员方案</p><h2 className="mt-3 text-3xl font-black sm:text-4xl">从个人创作到企业协作</h2><p className="mt-4 text-slate-600">与会员方案页共用价格和权益配置，付款确认后开通对应服务。</p></div><div className="mt-10 grid gap-5 md:grid-cols-2 xl:grid-cols-4">{plans.map((plan) => <article key={plan.name} className={`relative rounded-2xl border p-6 ${plan.recommended ? 'border-indigo-500 shadow-xl shadow-indigo-100' : 'border-slate-200'}`}>{plan.recommended && <span className="absolute -top-3 left-5 rounded-full bg-indigo-600 px-3 py-1 text-xs font-bold text-white">团队协作方案</span>}<h3 className="text-xl font-black">{plan.name}</h3><p className="mt-3 text-3xl font-black">{plan.price}</p>{plan.priceYearlyCny ? <Link href={plan.href} className="mt-2 block text-sm text-indigo-600 hover:underline">{plan.note}</Link> : <p className="mt-2 text-sm text-slate-500">{plan.note}</p>}<ul className="mt-5 space-y-3 text-sm text-slate-700">{plan.features.map((feature) => <li key={feature}>✓ {feature}{plan.comingSoonFeatures.includes(feature) && <span className="ml-2 rounded-full bg-amber-50 px-2 py-0.5 text-xs font-bold text-amber-700">即将上线</span>}</li>)}</ul>{plan.comingSoon.length > 0 && <p className="mt-4 text-xs leading-5 text-slate-500"><span className="font-bold text-amber-700">即将上线：</span>{plan.comingSoon.join('；')}</p>}<Link href="/pricing" className={`mt-6 block rounded-xl px-4 py-2.5 text-center text-sm font-bold ${plan.recommended ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-800'}`}>查看{plan.name}权益</Link></article>)}</div></div></section>
 
         <section className="bg-gradient-to-r from-indigo-600 to-violet-600 px-4 py-16 text-white"><div className="mx-auto flex max-w-6xl flex-col items-start justify-between gap-6 md:flex-row md:items-center"><div><h2 className="text-3xl font-black">今天先减少一次重复发布。</h2><p className="mt-2 text-indigo-100">免费体验基础内容创建与发布检查，按需升级团队协作。</p></div><Link href="/register" className="rounded-xl bg-white px-6 py-3 font-black text-indigo-700">免费注册</Link></div></section>
       </main>

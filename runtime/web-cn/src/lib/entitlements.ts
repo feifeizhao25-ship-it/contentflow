@@ -37,10 +37,74 @@ export interface TierEntitlement {
     service: Record<string, unknown>;
 }
 
+export interface EntitlementStatusEntry {
+    label: string;
+    /** enforced：后端有执行点（enforcedAt 指向 runtime/api 下的文件与代码片段）；coming_soon：尚未执行，界面标「即将上线」。 */
+    status: 'enforced' | 'coming_soon';
+    enforcedAt?: { file: string; contains: string };
+    note?: string;
+}
+
 export interface EntitlementsRegistry {
     product: string;
     version: string;
     tiers: Record<TierId, TierEntitlement>;
+    /** 键为「维度.权益」，例如 quotas.monthlyPosts。每条权益都必须登记。 */
+    entitlementStatus?: Record<string, EntitlementStatusEntry>;
+    /** 套餐卖点（features）里依赖尚未上线权益的条目，界面上标「即将上线」。 */
+    comingSoonFeatures?: string[];
+}
+
+/** 列出所有套餐里出现过的权益键（维度.权益）。 */
+export function entitlementKeys(registry: EntitlementsRegistry): string[] {
+    const keys = new Set<string>();
+    for (const id of TIER_IDS) {
+        const tier = registry.tiers[id];
+        if (!tier) continue;
+        for (const dim of DIMENSIONS) {
+            for (const key of Object.keys((tier as unknown as Record<string, Record<string, unknown>>)[dim] ?? {})) {
+                keys.add(`${dim}.${key}`);
+            }
+        }
+    }
+    return [...keys];
+}
+
+export function isComingSoonFeature(registry: EntitlementsRegistry, feature: string): boolean {
+    return (registry.comingSoonFeatures ?? []).includes(feature);
+}
+
+function describeValue(key: string, label: string, value: unknown): string | null {
+    if (value === false || value === null || value === undefined || value === 0) {
+        // 「水印」是反向的：watermark=false 才是卖点「去水印」
+        return key === 'export.watermark' && value === false ? label : null;
+    }
+    if (key === 'export.watermark') return null; // watermark=true 是限制，不是权益
+    if (value === true) return label;
+    if (value === -1) return `${label}：不限`;
+    if (Array.isArray(value)) return value.length ? `${label}：${value.join('、')}` : null;
+    if (key === 'quotas.videoMinutesMonthly') return `${label}：每月 ${value} 分钟`;
+    if (key === 'quotas.storageGb') return `${label}：${value} GB`;
+    if (key === 'quotas.platformAccounts') return `${label}：${value} 个`;
+    if (key === 'collaboration.seats') return `${label}：${value} 人`;
+    if (key === 'personalization.personaCount') return `${label}：${value} 个`;
+    return `${label}：${String(value)}`;
+}
+
+/** 某档套餐里「即将上线」的权益，按可读文案返回（值为 false/0 的不列）。 */
+export function comingSoonEntitlements(registry: EntitlementsRegistry, tierId: TierId): string[] {
+    const tier = registry.tiers[tierId];
+    const statuses = registry.entitlementStatus ?? {};
+    if (!tier) return [];
+    const out: string[] = [];
+    for (const [key, entry] of Object.entries(statuses)) {
+        if (entry.status !== 'coming_soon') continue;
+        const [dim, name] = key.split('.');
+        const value = (tier as unknown as Record<string, Record<string, unknown>>)[dim]?.[name];
+        const text = describeValue(key, entry.label, value);
+        if (text) out.push(text);
+    }
+    return out;
 }
 
 /** 校验注册表 schema，返回错误列表（空数组 = 通过）。 */
@@ -81,6 +145,25 @@ export function validateEntitlements(input: unknown): string[] {
             errors.push(`${id}: custom 与定制报价（priceMonthlyCny 为 null）不一致`);
         }
     }
+    if (errors.length) return errors;
+    // 每条权益都要登记执行状态：要么后端有执行点，要么标「即将上线」。
+    const statuses = (r as EntitlementsRegistry).entitlementStatus;
+    if (!statuses || typeof statuses !== 'object') {
+        errors.push('缺少 entitlementStatus（每条权益的执行状态）');
+        return errors;
+    }
+    for (const key of entitlementKeys(r as EntitlementsRegistry)) {
+        const entry = statuses[key];
+        if (!entry) {
+            errors.push(`${key}: 未登记执行状态`);
+            continue;
+        }
+        if (entry.status === 'enforced') {
+            if (!entry.enforcedAt?.file || !entry.enforcedAt?.contains) errors.push(`${key}: 标为 enforced 但没有写执行点`);
+        } else if (entry.status !== 'coming_soon') {
+            errors.push(`${key}: status 只能是 enforced 或 coming_soon`);
+        }
+    }
     return errors;
 }
 
@@ -91,6 +174,10 @@ export interface FallbackPlan {
     priceYearlyCny: number | null;
     custom: boolean;
     features: string[];
+    /** features 中依赖未上线权益的条目 */
+    comingSoonFeatures: string[];
+    /** 本档套餐里尚未执行、界面需标「即将上线」的权益 */
+    comingSoon: string[];
 }
 
 /** 定价页静态兜底套餐：接口失败/加载中时保证全部套餐卡可渲染。 */
@@ -104,6 +191,8 @@ export function buildFallbackPlans(registry: EntitlementsRegistry): FallbackPlan
             priceYearlyCny: tier.priceYearlyCny,
             custom: tier.custom,
             features: [...tier.features],
+            comingSoonFeatures: tier.features.filter((f) => isComingSoonFeature(registry, f)),
+            comingSoon: comingSoonEntitlements(registry, id),
         };
     });
 }

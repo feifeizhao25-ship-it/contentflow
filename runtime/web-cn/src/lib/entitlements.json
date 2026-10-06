@@ -188,5 +188,106 @@
         "privateDeployment": false
       }
     }
-  }
+  },
+  "entitlementStatus": {
+    "quotas.platformAccounts": {
+      "label": "平台账号数",
+      "status": "coming_soon",
+      "note": "抖音、B 站开放平台授权尚未开通；接通授权时同步加数量校验"
+    },
+    "quotas.monthlyPosts": {
+      "label": "每月发布条数",
+      "status": "enforced",
+      "enforcedAt": {
+        "file": "src/modules/publish/publish.service.ts",
+        "contains": "checkQuota(tenantId, 'publish'"
+      }
+    },
+    "quotas.monthlyAiTokens": {
+      "label": "每月 AI 令牌",
+      "status": "enforced",
+      "enforcedAt": {
+        "file": "src/modules/ai/ai-allowance.service.ts",
+        "contains": "checkQuota(tenantId, ResourceType.TOKENS)"
+      }
+    },
+    "quotas.videoMinutesMonthly": {
+      "label": "视频生成时长",
+      "status": "coming_soon"
+    },
+    "quotas.storageGb": {
+      "label": "素材存储空间",
+      "status": "coming_soon",
+      "note": "对象存储尚未开通"
+    },
+    "knowledge.platformRules": {
+      "label": "平台规则库分级",
+      "status": "coming_soon"
+    },
+    "knowledge.hotspotLibrary": {
+      "label": "热点库",
+      "status": "coming_soon",
+      "note": "热点数据源尚未接入"
+    },
+    "knowledge.templateLibrary": {
+      "label": "模板库分级",
+      "status": "coming_soon"
+    },
+    "personalization.personaCount": {
+      "label": "人设数量",
+      "status": "coming_soon"
+    },
+    "personalization.stylePresets": {
+      "label": "风格预设分级",
+      "status": "coming_soon"
+    },
+    "personalization.recommendation": {
+      "label": "个性化推荐",
+      "status": "coming_soon"
+    },
+    "export.formats": {
+      "label": "导出格式",
+      "status": "coming_soon"
+    },
+    "export.watermark": {
+      "label": "去水印",
+      "status": "coming_soon"
+    },
+    "export.batchExport": {
+      "label": "批量导出",
+      "status": "coming_soon"
+    },
+    "collaboration.seats": {
+      "label": "成员席位",
+      "status": "coming_soon",
+      "note": "邀请成员尚未开通"
+    },
+    "collaboration.approvalWorkflow": {
+      "label": "按套餐开通审批流",
+      "status": "coming_soon"
+    },
+    "collaboration.rolePermissions": {
+      "label": "按套餐开通角色权限",
+      "status": "coming_soon"
+    },
+    "service.support": {
+      "label": "客服支持渠道",
+      "status": "coming_soon"
+    },
+    "service.sla": {
+      "label": "服务等级协议",
+      "status": "coming_soon"
+    },
+    "service.privateDeployment": {
+      "label": "私有化部署",
+      "status": "coming_soon"
+    }
+  },
+  "comingSoonFeatures": [
+    "1个平台账号",
+    "10个平台账号",
+    "30个平台账号",
+    "团队协作与审批",
+    "操作审计"
+  ]
 }
