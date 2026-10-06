@@ -101,3 +101,26 @@ describe('HttpExceptionFilter language isolation', () => {
     });
   });
 });
+
+describe('国内版：校验消息去重', () => {
+  const previousRegion = process.env.MARKET_REGION;
+  afterEach(() => { process.env.MARKET_REGION = previousRegion; });
+
+  it('同一字段两个校验都失败时，同一句中文只返回一次', () => {
+    process.env.MARKET_REGION = 'cn';
+    const json = jest.fn();
+    const status = jest.fn();
+    new HttpExceptionFilter().catch(
+      new BadRequestException(['请先阅读并同意用户协议和隐私政策', '请先阅读并同意用户协议和隐私政策', 'agreedToTerms must be a boolean value']),
+      hostFor(json, status),
+    );
+    expect(json.mock.calls[0][0].error.message).toEqual(['请先阅读并同意用户协议和隐私政策']);
+  });
+
+  it('不同的中文消息都保留', () => {
+    process.env.MARKET_REGION = 'cn';
+    const json = jest.fn();
+    new HttpExceptionFilter().catch(new BadRequestException(['请输入邮箱', '密码至少 8 位', '请输入邮箱']), hostFor(json, jest.fn()));
+    expect(json.mock.calls[0][0].error.message).toEqual(['请输入邮箱', '密码至少 8 位']);
+  });
+});

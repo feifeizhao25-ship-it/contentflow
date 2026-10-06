@@ -12,7 +12,7 @@
 export const AI_TEXT_LABEL = '【本内容由 AI 生成】';
 
 /** 隐式标识写入元数据时使用的生成方名称 */
-export const AI_GENERATOR_NAME = 'ContentFlow (分发侠)';
+export const AI_GENERATOR_NAME = '分发侠';
 
 /**
  * 给 AI 生成的文本加显式标识。幂等：已带标识的内容不会重复添加。

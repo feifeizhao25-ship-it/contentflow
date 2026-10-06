@@ -47,7 +47,7 @@ interface MainLayoutProps {
 
 export default function MainLayout({ children }: MainLayoutProps) {
     const router = useRouter();
-    const { sidebarCollapsed, toggleSidebar, user } = useAppStore();
+    const { sidebarCollapsed, toggleSidebar, user, initializeAuth } = useAppStore();
     const { isDark, toggleTheme } = useThemeStore();
     const { balance: points } = usePointsStore();
     const pathname = usePathname();
@@ -65,6 +65,13 @@ export default function MainLayout({ children }: MainLayoutProps) {
         updateViewport();
         media.addEventListener('change', updateViewport);
         return () => media.removeEventListener('change', updateViewport);
+    }, []);
+
+    // 登录身份：initializeAuth 原来没有任何地方调用，store 里的 user 永远是 null，
+    // 设置页「个人资料」的姓名因此为空（注册时明明填了）。进入工作台时从 /auth/profile 读一次。
+    useEffect(() => {
+        if (!user) void initializeAuth();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     // 处理滚动效果

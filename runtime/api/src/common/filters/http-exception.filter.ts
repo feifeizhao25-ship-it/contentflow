@@ -22,10 +22,14 @@ function genericChinese(status: number): string {
   return '请求参数不正确，请检查后重试';
 }
 
-/** 只保留含中文的消息；一条都没有就用该状态码对应的通用中文提示。 */
+/**
+ * 只保留含中文的消息；一条都没有就用该状态码对应的通用中文提示。
+ * 同一句只留一次：一个字段挂两个校验（如 @IsBoolean + @Equals(true)）都失败时，
+ * 原来把「请先阅读并同意用户协议和隐私政策」返回两遍，界面上用「；」连成一行重复显示。
+ */
 function chineseOnly(message: string | string[], status: number): string | string[] {
   if (Array.isArray(message)) {
-    const kept = message.filter((item) => typeof item === 'string' && containsCjk(item));
+    const kept = [...new Set(message.filter((item) => typeof item === 'string' && containsCjk(item)))];
     return kept.length ? kept : genericChinese(status);
   }
   return containsCjk(message) ? message : genericChinese(status);

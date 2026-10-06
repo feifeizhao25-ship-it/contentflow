@@ -9,7 +9,7 @@
 export const AI_TEXT_LABEL = '【本内容由 AI 生成】';
 
 /** 生成方名称（写入媒体元数据） */
-export const AI_GENERATOR_NAME = 'ContentFlow (分发侠)';
+export const AI_GENERATOR_NAME = '分发侠';
 
 /**
  * ffmpeg 导出 AI 生成视频时附加的隐式标识元数据参数。

@@ -41,13 +41,13 @@ export class BilibiliAdapter implements PlatformAdapter {
 
     async validate(payload: PlatformPayload): Promise<AdapterResult<null>> {
         if (!payload.title) {
-            return { ok: false, humanMessage: '标题是必填项 (Title is required)', errorCode: 'MISSING_TITLE' };
+            return { ok: false, humanMessage: '请填写标题', errorCode: 'MISSING_TITLE' };
         }
         if (payload.title.length > 80) {
             return { ok: false, humanMessage: '标题长度不能超过 80 个字符', errorCode: 'TITLE_TOO_LONG' };
         }
         if (!payload.extra?.tid) {
-            return { ok: false, humanMessage: '请选择分区 (Missing TID)', errorCode: 'MISSING_TID' };
+            return { ok: false, humanMessage: '请选择 B 站投稿分区', errorCode: 'MISSING_TID' };
         }
         if (!payload.mediaUrls?.length) {
             return { ok: false, humanMessage: '视频稿件必须包含视频文件', errorCode: 'MISSING_VIDEO' };

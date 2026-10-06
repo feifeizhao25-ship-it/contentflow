@@ -17,6 +17,7 @@ import { apiClient } from '@/lib/api-client';
 import { parseContentList } from '@/lib/page-data';
 import { PLACEHOLDER_IMAGES } from '@/lib/placeholders';
 import { safeErrorText } from '@/lib/api-error';
+import { CONTENT_STATUS_COLORS, contentStatusText, contentTypeText } from '@/lib/status-labels';
 
 const { Search } = Input;
 const { Option } = Select;
@@ -122,27 +123,7 @@ function ContentsContent() {
         }
     }, [searchParams]);
 
-    const statusColors: Record<string, string> = {
-        draft: 'default',
-        pending: 'processing',
-        pending_review: 'processing',
-        approved: 'success',
-        published: 'blue',
-    };
-
-    const statusLabels: Record<string, string> = {
-        draft: '草稿',
-        pending: '待分发',
-        pending_review: '待审核',
-        approved: '已通过',
-        published: '已分发',
-    };
-
-    const typeLabels: Record<string, string> = {
-        article: '图文',
-        video: '视频',
-        image: '图片',
-    };
+    const statusColors = CONTENT_STATUS_COLORS;
 
     const filteredData = statusFilter === 'all'
         ? data
@@ -285,14 +266,14 @@ function ContentsContent() {
             title: '类型',
             dataIndex: 'type',
             key: 'type',
-            render: (type) => <Tag>{typeLabels[type] || type}</Tag>,
+            render: (type) => <Tag>{contentTypeText(type)}</Tag>,
         },
         {
             title: '状态',
             dataIndex: 'status',
             key: 'status',
             render: (status) => (
-                <Tag color={statusColors[status] || 'default'}>{statusLabels[status] || status}</Tag>
+                <Tag color={statusColors[status] || 'default'}>{contentStatusText(status)}</Tag>
             ),
         },
         {
@@ -359,8 +340,8 @@ function ContentsContent() {
                 <div className="min-w-0 flex-1">
                     <p className="break-words text-base font-bold leading-6 text-zinc-900">{record.title || '未命名内容'}</p>
                     <div className="mt-2 flex flex-wrap gap-1">
-                        <Tag>{typeLabels[record.type] || '其他'}</Tag>
-                        <Tag color={statusColors[record.status] || 'default'}>{statusLabels[record.status] || '未知状态'}</Tag>
+                        <Tag>{contentTypeText(record.type)}</Tag>
+                        <Tag color={statusColors[record.status] || 'default'}>{contentStatusText(record.status)}</Tag>
                         {record.source === 'ai' ? <Tag color="purple">AI 生成</Tag> : <Tag>手动创建</Tag>}
                     </div>
                     <p className="mt-2 text-xs text-zinc-400">{record.created_at}</p>
@@ -403,9 +384,11 @@ function ContentsContent() {
                             size="large"
                         >
                             <Option value="all">全部内容状态</Option>
-                            <Option value="draft">仅看草稿</Option>
-                            <Option value="pending">待分发</Option>
-                            <Option value="published">已成功分发</Option>
+                            <Option value="draft">草稿</Option>
+                            <Option value="pending_review">待审核</Option>
+                            <Option value="approved">已通过</Option>
+                            <Option value="rejected">已驳回</Option>
+                            <Option value="published">已发布</Option>
                         </Select>
                     </div>
 

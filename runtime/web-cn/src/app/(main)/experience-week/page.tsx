@@ -32,7 +32,7 @@ export default function ExperienceWeekPage() {
       <header className="rounded-[32px] bg-zinc-950 p-7 text-white md:p-12">
         <p className="text-xs font-bold tracking-[.22em] text-indigo-300">五类用户 × 连续七天｜个性化验收视图（演示数据）</p>
         <h1 className="mt-4 max-w-4xl text-4xl font-black tracking-tight md:text-6xl">每天都更懂用户，但不偷偷替用户做决定。</h1>
-        <p className="mt-5 max-w-3xl text-base leading-8 text-zinc-300">点击不同用户和日期，检查首页重点、Skills 和行动建议是否真的发生变化。所有演示指标均明确标注，不能当作真实经营结果。</p>
+        <p className="mt-5 max-w-3xl text-base leading-8 text-zinc-300">点击不同用户和日期，检查首页重点、能力和行动建议是否真的发生变化。所有演示指标均明确标注，不能当作真实经营结果。</p>
       </header>
 
       <div className="grid gap-3 md:grid-cols-5">

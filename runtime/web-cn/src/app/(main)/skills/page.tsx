@@ -10,7 +10,7 @@ const categories = [
 
 export default function SkillsPage() {
   return <main className="p-8 max-w-6xl mx-auto">
-    <h1 className="text-3xl font-black">Skills 能力中心</h1>
+    <h1 className="text-3xl font-black">能力中心</h1>
     <p className="text-zinc-500 mt-2">按使用场景选择能力；未开放能力会明确标记，不使用虚假占位结果。</p>
     <div className="grid md:grid-cols-3 gap-5 mt-8">
       {categories.map(category => <section className="glass-card p-5" key={category.name}>
