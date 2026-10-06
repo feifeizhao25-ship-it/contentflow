@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { Card, Table, Button, Space, Tag, Input, Select, Modal, message, Typography, Checkbox, Alert } from 'antd';
-import { useSearchParams } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Image from 'next/image';
 const { Text } = Typography;
 import {
@@ -130,6 +130,7 @@ function ContentsContent() {
     const [manualFor, setManualFor] = useState<any>(null);
     const [manualPlatforms, setManualPlatforms] = useState<string[]>(['xhs']);
     const [creatingManual, setCreatingManual] = useState(false);
+    const router = useRouter();
     const canPublish = (record: any) => record.status === 'approved' || record.status === 'published';
     const createManualTasks = async () => {
         if (!manualFor || !manualPlatforms.length) return;
@@ -138,7 +139,7 @@ function ContentsContent() {
             await apiClient.post('/publish/manual-tasks', { contentId: manualFor.id, platforms: manualPlatforms });
             message.success('已创建人工发布任务，去发布中心复制文案、下载封面');
             setManualFor(null);
-            window.location.href = '/publish';
+            router.push('/publish');
         } catch (error: any) {
             message.error(safeErrorText(error, '创建失败，请稍后重试'));
         } finally {

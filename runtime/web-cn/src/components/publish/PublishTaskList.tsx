@@ -139,7 +139,7 @@ export const PublishTaskList = () => {
             case 'processing': return { color: 'blue', icon: <SyncOutlined spin />, text: '发布中' };
             case 'cancelled': return { color: 'default', icon: <CloseCircleFilled />, text: '已取消' };
             case 'queued': return { color: 'gold', icon: <ClockCircleFilled />, text: '队列中' };
-            default: return { color: 'zinc', icon: <ClockCircleFilled />, text: '待发布' };
+            default: return { color: 'default', icon: <ClockCircleFilled />, text: '待发布' };
         }
     };
 
