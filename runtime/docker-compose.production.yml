@@ -89,6 +89,8 @@ services:
       # 所以就算有人把它加回 compose 也不会出境（见 market-routing.ts）。
       QWEN_API_KEY: ${QWEN_API_KEY:-}
       DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY:-}
+      # AI 生成内容隐式标识里的服务提供者编码（如统一社会信用代码）；留空则 provider_code 为空，启动时告警
+      AIGC_PROVIDER_CODE: ${CN_AIGC_PROVIDER_CODE:-}
       PAYMENT_CALLBACK_SECRET: ${CN_PAYMENT_CALLBACK_SECRET:?CN_PAYMENT_CALLBACK_SECRET is required}
       BANK_TRANSFER_ACCOUNT_NAME: ${BANK_TRANSFER_ACCOUNT_NAME:-}
       BANK_TRANSFER_ACCOUNT_NO: ${BANK_TRANSFER_ACCOUNT_NO:-}
@@ -137,6 +139,8 @@ services:
     environment:
       MARKET_REGION: cn
       API_INTERNAL_URL: http://api-cn:4000
+      # 导出 AI 图片时写入隐式标识的服务提供者编码（与 api-cn 同一个值）
+      AIGC_PROVIDER_CODE: ${CN_AIGC_PROVIDER_CODE:-}
       # 国内 Web 不直连任何模型供应商，一律经 api-cn。
       # 此前这里注入 OPENROUTER_API_KEY，等于国内前端自己出境。
     depends_on:

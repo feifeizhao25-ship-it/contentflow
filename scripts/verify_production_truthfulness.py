@@ -283,6 +283,28 @@ for removed in ("ConclusionHero.tsx", "ContentRankList.tsx", "ReplayPanel.tsx", 
     if (_analytics_dir / removed).exists():
         errors.append(f"runtime/web-cn/src/components/analytics/{removed}: 写死假数据的组件不得恢复")
 
+# 只用官方开放平台：仓库里任何地方都不得出现「粘贴 Cookie 登录态」的输入框或 Cookie 代授权接口
+# （历史目录 网页端-Antigravity 已整目录删除；网页端-合并 里的 Cookie 授权页与接口已删除）。
+COOKIE_LOGIN_MARKERS = ("请粘贴 Cookie", "粘贴Cookie", "sessionid=...", "手动 Cookie 模式授权", "authType: 'cookie'")
+_SELF_CHECKS = {"runtime/web-cn/scripts/check-api-contract.mjs", "scripts/verify_production_truthfulness.py"}
+for path in ROOT.rglob("*"):
+    if not path.is_file() or path.suffix not in {".ts", ".tsx", ".js", ".jsx", ".mjs", ".dart"}:
+        continue
+    rel = path.relative_to(ROOT).as_posix()
+    if "node_modules" in path.parts or ".next" in path.parts or "dist" in path.parts or rel in _SELF_CHECKS:
+        continue
+    try:
+        body = path.read_text(encoding="utf-8")
+    except (OSError, UnicodeDecodeError):
+        continue
+    for marker in COOKIE_LOGIN_MARKERS:
+        if marker in body:
+            errors.append(f"{rel}: 出现 Cookie 代登录 / 代授权（{marker!r}），只允许官方开放平台授权")
+if (ROOT / "网页端-Antigravity").exists():
+    errors.append("网页端-Antigravity: 含 Cookie 授权输入框的历史目录已删除，不得恢复")
+if (ROOT / "runtime/web-cn/src/lib/tophub-service.ts").exists():
+    errors.append("runtime/web-cn/src/lib/tophub-service.ts: 授权不明的聚合站接口已删除，不得恢复")
+
 if errors:
     print("Production truthfulness gate failed:")
     for error in errors:

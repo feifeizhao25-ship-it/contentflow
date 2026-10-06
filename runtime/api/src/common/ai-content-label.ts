@@ -34,6 +34,18 @@ export interface AiMediaMetadata {
   generated_at: string;
   /** 生成所用模型（可选，未知则不伪造） */
   model?: string;
+  /**
+   * 服务提供者编码（GB 45438-2025 隐式标识要素；如统一社会信用代码）。
+   * 从环境变量 AIGC_PROVIDER_CODE 读取；未配置时为空字符串（不编造），启动时会提示。
+   */
+  provider_code: string;
+  /** 内容编号：已保存的内容用 Content.id；尚未保存时用生成记录编号；都没有则为空字符串。 */
+  content_id: string;
+}
+
+/** 隐式标识里的服务提供者编码：只从环境变量读，未配置返回空字符串。 */
+export function aigcProviderCode(env: NodeJS.ProcessEnv = process.env): string {
+  return String(env.AIGC_PROVIDER_CODE ?? '').trim();
 }
 
 /**
@@ -45,12 +57,16 @@ export function buildAiMediaMetadata(opts: {
   model?: string;
   generator?: string;
   now?: Date;
+  contentId?: string | null;
+  providerCode?: string;
 }): AiMediaMetadata {
   const meta: AiMediaMetadata = {
     ai_generated: true,
     generator: opts.generator || AI_GENERATOR_NAME,
     media_type: opts.mediaType,
     generated_at: (opts.now || new Date()).toISOString(),
+    provider_code: opts.providerCode ?? aigcProviderCode(),
+    content_id: String(opts.contentId ?? ''),
   };
   if (opts.model) meta.model = opts.model;
   return meta;

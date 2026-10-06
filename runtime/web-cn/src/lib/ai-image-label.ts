@@ -20,14 +20,20 @@ export interface AiImageLabel {
     media_type: 'image';
     generated_at: string;
     model?: string;
+    /** 服务提供者编码（GB 45438-2025）；未配置时为空字符串，不编造 */
+    provider_code: string;
+    /** 内容编号（Content.id 或生成记录编号）；未知时为空字符串 */
+    content_id: string;
 }
 
-export function buildAiImageLabel(opts: { model?: string; now?: Date } = {}): AiImageLabel {
+export function buildAiImageLabel(opts: { model?: string; now?: Date; providerCode?: string; contentId?: string | null } = {}): AiImageLabel {
     const label: AiImageLabel = {
         ai_generated: true,
         generator: AI_GENERATOR_NAME,
         media_type: 'image',
         generated_at: (opts.now || new Date()).toISOString(),
+        provider_code: String(opts.providerCode ?? '').trim(),
+        content_id: String(opts.contentId ?? ''),
     };
     if (opts.model) label.model = opts.model;
     return label;
@@ -125,6 +131,8 @@ function buildAigcXmpPacket(label: AiImageLabel): string {
         ` aigc:generator="${escapeXmlAttr(label.generator)}"` +
         ` aigc:media_type="image"` +
         ` aigc:generated_at="${escapeXmlAttr(label.generated_at)}"` +
+        ` aigc:provider_code="${escapeXmlAttr(label.provider_code ?? '')}"` +
+        ` aigc:content_id="${escapeXmlAttr(label.content_id ?? '')}"` +
         `${modelAttr}/>` +
         `</rdf:RDF></x:xmpmeta>`
     );

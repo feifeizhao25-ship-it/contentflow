@@ -137,7 +137,6 @@ fenfa-ai/
 │   │   ├── materials-service.ts  # 素材服务
 │   │   ├── payment-service.ts    # 支付服务
 │   │   ├── image-service.ts      # 图片服务
-│   │   ├── tophub-service.ts     # TopHub 服务
 │   │   └── traffic-sandwich-service.ts # 流量三明治
 │   ├── hooks/                    # 自定义 Hooks
 │   │   ├── useVideoGeneration.ts # 视频生成控制

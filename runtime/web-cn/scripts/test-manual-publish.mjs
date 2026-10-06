@@ -47,7 +47,9 @@ check('复制文案：AI 生成的内容一定带「AI 生成」显式标识（�
 
 check('下载封面：画上显式「AI 生成」并写入隐式标识，经本站 export-image 同源取图', () => {
   const lib = read('lib/manual-publish.ts');
-  assert.match(lib, /\/api\/ai\/export-image\?url=/);
+  assert.match(lib, /\/api\/ai\/export-image\?/);
+  assert.match(lib, /url=\$\{encodeURIComponent\(coverUrl\)\}/);
+  assert.match(lib, /contentId: meta\.contentId, providerCode: meta\.providerCode/, '隐式标识要带内容编号与服务提供者编码');
   assert.match(lib, /fillText\(COVER_LABEL_TEXT/);
   assert.match(lib, /labelImageDataUrl\(/);
 });

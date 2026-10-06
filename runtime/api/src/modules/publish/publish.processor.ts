@@ -83,7 +83,7 @@ export class PublishProcessor {
         coverUrl: content.cover_url, mediaUrls: content.media_urls, tags: content.tags,
         // 隐式标识：机器可读的 AI 生成元数据，分发器必须原样写入目标平台的 AI 生成声明字段。
         aiGenerated: isAi,
-        ...(isAi ? { aiLabel: AI_TEXT_LABEL, aiMetadata: buildAiMediaMetadata({ mediaType: 'text', model: content.ai_model ?? undefined }) } : {}),
+        ...(isAi ? { aiLabel: AI_TEXT_LABEL, aiMetadata: buildAiMediaMetadata({ mediaType: 'text', model: content.ai_model ?? undefined, contentId: content.id }) } : {}),
       },
     });
     const timestamp = Date.now().toString();

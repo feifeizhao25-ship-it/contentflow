@@ -86,6 +86,15 @@ check('buildAiImageLabel 字段与服务端约定一致', () => {
     assert.equal(label.model, undefined);
 });
 
+check('隐式标识带服务提供者编码与内容编号（未提供时为空字符串，不编造）', () => {
+    const empty = buildAiImageLabel();
+    assert.equal(empty.provider_code, '');
+    assert.equal(empty.content_id, '');
+    const full = buildAiImageLabel({ providerCode: ' 91110000TEST ', contentId: 'c-1' });
+    assert.equal(full.provider_code, '91110000TEST');
+    assert.equal(full.content_id, 'c-1');
+});
+
 check('buildAiImageLabel 带 model 时透传', () => {
     const label = buildAiImageLabel({ model: 'canvas-ai-edit' });
     assert.equal(label.model, 'canvas-ai-edit');

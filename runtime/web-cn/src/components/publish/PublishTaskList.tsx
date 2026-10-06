@@ -106,7 +106,7 @@ export const PublishTaskList = () => {
         try {
             const kit = await loadKit(task);
             if (!kit.coverUrl) { message.info('这条内容还没有封面'); return; }
-            await downloadLabelledCover(kit.coverUrl, `${kit.title || '封面'}-${kit.platformName}`);
+            await downloadLabelledCover(kit.coverUrl, `${kit.title || '封面'}-${kit.platformName}`, { contentId: kit.contentId, providerCode: kit.providerCode });
         } catch (error) {
             message.error(safeErrorText(error, '封面下载失败，请稍后重试'));
         }

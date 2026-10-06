@@ -139,8 +139,8 @@ export class AIController {
       seed,
     });
 
-    // 记录使用
-    await this.aiService.recordGeneration(req.user.tenantId, req.user.sub, {
+    // 记录使用（生成记录编号作为隐式标识里的内容编号）
+    const record = await this.aiService.recordGeneration(req.user.tenantId, req.user.sub, {
       generationType: 'image',
       inputParams: { prompt, size, style, seed },
       outputContent: result.url,
@@ -156,7 +156,7 @@ export class AIController {
       ...result,
       aiGenerated: true,
       aiLabel: AI_TEXT_LABEL,
-      aiMetadata: buildAiMediaMetadata({ mediaType: 'image', model: result.model }),
+      aiMetadata: buildAiMediaMetadata({ mediaType: 'image', model: result.model, contentId: (record as any)?.id }),
     };
   }
 }

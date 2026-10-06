@@ -6,7 +6,7 @@ import { AdapterRegistry } from './adapters/adapter.registry';
 import { ConfigService } from '@nestjs/config';
 import { evaluateDomesticContent } from '../../common/domestic-content-compliance';
 import { isRealNameRequiredForPublish } from '../auth/real-name/real-name.verifier';
-import { labelAiGeneratedText, AI_TEXT_LABEL } from '../../common/ai-content-label';
+import { labelAiGeneratedText, AI_TEXT_LABEL, aigcProviderCode } from '../../common/ai-content-label';
 import { MANUAL_DONE, MANUAL_PENDING, MANUAL_PLATFORMS, isManualPlatform, normalizeManualPostUrl } from './manual-publish';
 
 @Injectable()
@@ -232,6 +232,9 @@ export class PublishService {
       coverUrl: task.platform_content?.cover_url ?? task.content?.cover_url ?? null,
       aiGenerated,
       aiLabel: aiGenerated ? AI_TEXT_LABEL : null,
+      // 隐式标识要素：下载封面时写入图片元数据
+      contentId: task.content_id,
+      providerCode: aigcProviderCode(),
       status: task.status,
       postUrl: task.platform_post_url,
     };

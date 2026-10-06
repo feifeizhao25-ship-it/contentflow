@@ -34,6 +34,9 @@ export interface ManualKit {
     body: string;
     coverUrl: string | null;
     aiGenerated: boolean;
+    /** 隐式标识要素：内容编号、服务提供者编码（来自后端） */
+    contentId?: string;
+    providerCode?: string;
 }
 
 /** 复制到剪贴板的文案：标题 + 正文；AI 生成的内容保证带「AI 生成」显式标识（不能删、不能弱化）。 */
@@ -56,8 +59,13 @@ export const COVER_LABEL_TEXT = 'AI 生成';
  *  2. 在画布左上角画上显式标识「AI 生成」；
  *  3. 导出 PNG 时再写入隐式标识（iTXt），然后触发下载。
  */
-export async function downloadLabelledCover(coverUrl: string, filename: string): Promise<void> {
-    const res = await fetch(`/api/ai/export-image?url=${encodeURIComponent(coverUrl)}`, { credentials: 'include' });
+export async function downloadLabelledCover(
+    coverUrl: string,
+    filename: string,
+    meta: { contentId?: string; providerCode?: string } = {},
+): Promise<void> {
+    const query = `url=${encodeURIComponent(coverUrl)}${meta.contentId ? `&contentId=${encodeURIComponent(meta.contentId)}` : ''}`;
+    const res = await fetch(`/api/ai/export-image?${query}`, { credentials: 'include' });
     if (!res.ok) throw new Error('封面下载失败，请稍后重试');
     const bitmap = await createImageBitmap(await res.blob());
     const canvas = document.createElement('canvas');
@@ -75,7 +83,7 @@ export async function downloadLabelledCover(coverUrl: string, filename: string):
     ctx.fillStyle = '#ffffff';
     ctx.textBaseline = 'top';
     ctx.fillText(COVER_LABEL_TEXT, padding * 2, padding * 1.6);
-    const dataUrl = labelImageDataUrl(canvas.toDataURL('image/png'), buildAiImageLabel());
+    const dataUrl = labelImageDataUrl(canvas.toDataURL('image/png'), buildAiImageLabel({ contentId: meta.contentId, providerCode: meta.providerCode }));
     const a = document.createElement('a');
     a.href = dataUrl;
     a.download = filename.endsWith('.png') ? filename : `${filename}.png`;

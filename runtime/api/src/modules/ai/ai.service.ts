@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../database/prisma.service';
 import { parseGeneratedTitles } from './title-parser';
 import { estimateImageCost, estimateTextCost } from './model-pricing';
+import { aigcProviderCode } from '../../common/ai-content-label';
 import { chinaDayStart } from '../../common/china-period';
 import {
   assertDomesticProviderConfigured,
@@ -158,6 +159,10 @@ export class AIService {
       qwenApiKey: this.qwenApiKey,
       deepseekApiKey: this.deepseekApiKey,
     });
+    // 隐式标识要求写入服务提供者编码（GB 45438-2025）。不编造：没配就留空，并在启动时说清楚。
+    if (isDomesticMarket(this.marketRegion) && !aigcProviderCode()) {
+      this.logger.warn('启动检查：未配置 AIGC_PROVIDER_CODE（服务提供者编码，如统一社会信用代码），AI 生成内容隐式标识中的 provider_code 将为空，上线前请补齐');
+    }
   }
 
   async generateText(params: {

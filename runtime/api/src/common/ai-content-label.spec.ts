@@ -3,6 +3,7 @@ import {
   AI_GENERATOR_NAME,
   labelAiGeneratedText,
   buildAiMediaMetadata,
+  aigcProviderCode,
 } from './ai-content-label';
 
 describe('labelAiGeneratedText', () => {
@@ -39,5 +40,25 @@ describe('buildAiMediaMetadata', () => {
   it('omits the model field instead of fabricating one', () => {
     const meta = buildAiMediaMetadata({ mediaType: 'image' });
     expect('model' in meta).toBe(false);
+  });
+});
+
+describe('隐式标识补齐服务提供者编码与内容编号（GB 45438-2025）', () => {
+  const previous = process.env.AIGC_PROVIDER_CODE;
+  afterEach(() => { if (previous === undefined) delete process.env.AIGC_PROVIDER_CODE; else process.env.AIGC_PROVIDER_CODE = previous; });
+
+  it('provider_code 从环境变量读，content_id 由调用方给', () => {
+    process.env.AIGC_PROVIDER_CODE = ' 91110000TEST00000X ';
+    const meta = buildAiMediaMetadata({ mediaType: 'image', contentId: 'content-123' });
+    expect(meta.provider_code).toBe('91110000TEST00000X');
+    expect(meta.content_id).toBe('content-123');
+  });
+
+  it('未配置时为空字符串，不编造；字段始终存在', () => {
+    delete process.env.AIGC_PROVIDER_CODE;
+    const meta = buildAiMediaMetadata({ mediaType: 'text' });
+    expect(meta).toHaveProperty('provider_code', '');
+    expect(meta).toHaveProperty('content_id', '');
+    expect(aigcProviderCode({} as NodeJS.ProcessEnv)).toBe('');
   });
 });

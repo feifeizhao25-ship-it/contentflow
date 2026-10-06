@@ -94,3 +94,16 @@ describe('人工确认发布闭环', () => {
     expect(Object.keys(MANUAL_PLATFORMS)).toEqual(['xhs', 'weixin', 'wechat_mp']);
   });
 });
+
+describe('人工发布素材带隐式标识要素', () => {
+  it('manual-kit 返回内容编号与服务提供者编码（下载封面时写进元数据）', async () => {
+    process.env.AIGC_PROVIDER_CODE = 'TESTCODE';
+    const task = { id: 'task-1', tenant_id: 't', content_id: 'c1', status: 'manual_pending', platform_content: { platform: 'xhs', title: 'T', body: '正文', cover_url: null }, content: { title: 'T', body: '正文', cover_url: null, source: 'manual' } };
+    const prisma = { publishTask: { findFirst: jest.fn().mockResolvedValue(task) } };
+    const service = new PublishService(prisma as any, {} as any, {} as any, {} as any, { get: () => undefined } as any);
+    const kit = await service.getManualKit('task-1', 't');
+    expect(kit.contentId).toBe('c1');
+    expect(kit.providerCode).toBe('TESTCODE');
+    delete process.env.AIGC_PROVIDER_CODE;
+  });
+});

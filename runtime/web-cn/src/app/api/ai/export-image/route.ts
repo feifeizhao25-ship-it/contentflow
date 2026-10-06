@@ -84,7 +84,9 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: '图片超过 20MB 上限' }, { status: 400 });
     }
 
-    const labeled = labelImageBuffer(imageBuffer, buildAiImageLabel());
+    // 隐式标识：服务提供者编码只从服务端环境变量读（未配置为空）；内容编号由调用方带上（可选）
+    const contentId = (request.nextUrl.searchParams.get('contentId') || '').replace(/[^\w-]/g, '').slice(0, 64);
+    const labeled = labelImageBuffer(imageBuffer, buildAiImageLabel({ providerCode: process.env.AIGC_PROVIDER_CODE, contentId }));
     if (!labeled.labeled) {
       // 不支持的格式（如 webp）：宁可报错也不静默下发无隐式标识的文件
       return NextResponse.json(
