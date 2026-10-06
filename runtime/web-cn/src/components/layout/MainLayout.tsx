@@ -410,7 +410,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
 
                 {/* 内容区 */}
                 <div className={clsx(
-                    "flex-1 p-6 overflow-x-hidden",
+                    "flex-1 p-4 sm:p-6 overflow-x-hidden min-w-0",
                     isDarkMode ? "bg-zinc-950" : "bg-background"
                 )}>
                     {/* 背景光效 */}

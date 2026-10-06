@@ -271,6 +271,7 @@ function TeamContent() {
                         rowKey="id"
                         loading={loading}
                         pagination={false}
+                        scroll={{ x: 'max-content' }}
                     />
                 </div>
             ),

@@ -8,7 +8,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint src",
-    "test": "npm run check:contract && npm run test:security && npm run test:image-label && npm run test:image-label-browser && npm run test:entitlements && npm run test:editor-security && npm run test:api-proxy && npm run test:domestic-session && npm run test:ai-routes && npm run test:checkout && npm run test:sentry-domestic && npm run test:account-data && npm run test:error-text && npm run test:page-data && npm run test:ai-text-label && npm run test:auth-routes && npm run test:auth-service && npm run test:chinese-ui",
+    "test": "npm run check:contract && npm run test:security && npm run test:image-label && npm run test:image-label-browser && npm run test:entitlements && npm run test:editor-security && npm run test:api-proxy && npm run test:domestic-session && npm run test:ai-routes && npm run test:checkout && npm run test:sentry-domestic && npm run test:account-data && npm run test:error-text && npm run test:page-data && npm run test:ai-text-label && npm run test:auth-routes && npm run test:auth-service && npm run test:chinese-ui && npm run test:mobile-layout",
     "test:editor-security": "node scripts/test-editor-security.mjs",
     "check:contract": "node scripts/check-api-contract.mjs",
     "test:security": "node --experimental-strip-types scripts/test-media-path-guard.mjs",
@@ -26,7 +26,8 @@
     "test:auth-service": "node --import ./scripts/ts-extensionless.mjs --experimental-transform-types scripts/test-auth-service.mjs",
     "test:ai-text-label": "node --import ./scripts/ts-extensionless.mjs --experimental-strip-types scripts/test-ai-text-label.mjs",
     "test:account-data": "node --import ./scripts/ts-extensionless.mjs --experimental-strip-types scripts/test-account-data.mjs",
-    "test:sentry-domestic": "node --import ./scripts/ts-extensionless.mjs --experimental-strip-types scripts/test-sentry-domestic.mjs"
+    "test:sentry-domestic": "node --import ./scripts/ts-extensionless.mjs --experimental-strip-types scripts/test-sentry-domestic.mjs",
+    "test:mobile-layout": "node scripts/test-mobile-layout.mjs"
   },
   "dependencies": {
     "@ant-design/icons": "^5.4.0",

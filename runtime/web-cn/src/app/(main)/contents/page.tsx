@@ -343,30 +343,61 @@ function ContentsContent() {
         });
     };
 
+    // 手机（<768px）上表格横向溢出、标题一字一行：窄屏改为卡片列表，标题区单列。
+    const renderCard = (record: any) => (
+        <div key={record.key} className="min-w-0 rounded-xl border border-zinc-200 bg-white p-4">
+            <div className="flex items-start gap-3">
+                <input
+                    type="checkbox"
+                    aria-label="选择这条内容"
+                    className="mt-1 h-4 w-4 shrink-0"
+                    checked={selectedRowKeys.includes(record.key)}
+                    onChange={(e) => setSelectedRowKeys(e.target.checked
+                        ? [...selectedRowKeys, record.key]
+                        : selectedRowKeys.filter((k) => k !== record.key))}
+                />
+                <div className="min-w-0 flex-1">
+                    <p className="break-words text-base font-bold leading-6 text-zinc-900">{record.title || '未命名内容'}</p>
+                    <div className="mt-2 flex flex-wrap gap-1">
+                        <Tag>{typeLabels[record.type] || '其他'}</Tag>
+                        <Tag color={statusColors[record.status] || 'default'}>{statusLabels[record.status] || '未知状态'}</Tag>
+                        {record.source === 'ai' ? <Tag color="purple">AI 生成</Tag> : <Tag>手动创建</Tag>}
+                    </div>
+                    <p className="mt-2 text-xs text-zinc-400">{record.created_at}</p>
+                </div>
+            </div>
+            <div className="mt-3 flex flex-wrap gap-x-1 border-t border-zinc-100 pt-2">
+                <Button type="link" size="small" icon={<EyeOutlined />} onClick={() => window.open(record.media_urls?.[0] || PLACEHOLDER_IMAGES.content, '_blank')}>预览</Button>
+                <Button type="link" size="small" onClick={() => handleOpenAssets(record)}>资产</Button>
+                <Button type="link" size="small" danger icon={<DeleteOutlined />} onClick={() => handleDelete(record.id)}>删除</Button>
+            </div>
+        </div>
+    );
+
     return (
-        <div style={{ padding: '0 24px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
-                <Space size="middle">
-                    <h1 style={{ fontSize: 24, fontWeight: 700, margin: 0 }}>内容库管理</h1>
-                    <Text type="secondary" style={{ marginTop: 8 }}>管理您的所有 AI 创作与手动上传的内容</Text>
-                </Space>
-                <Button type="primary" icon={<PlusOutlined />} size="large" style={{ borderRadius: 8 }}>
+        <div className="min-w-0 px-0 sm:px-6">
+            <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="min-w-0">
+                    <h1 className="m-0 whitespace-nowrap text-2xl font-bold">内容库管理</h1>
+                    <Text type="secondary">管理您的所有 AI 创作与手动上传的内容</Text>
+                </div>
+                <Button type="primary" icon={<PlusOutlined />} size="large" className="self-start sm:self-auto" style={{ borderRadius: 8 }}>
                     手动上传内容
                 </Button>
             </div>
 
-            <Card style={{ borderRadius: 12, border: '1px solid #f1f5f9' }}>
-                <div style={{ marginBottom: 24, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <Space size="middle">
+            <Card style={{ borderRadius: 12, border: '1px solid #f1f5f9' }} styles={{ body: { padding: 16 } }}>
+                <div className="mb-6 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                    <div className="flex min-w-0 flex-col gap-3 sm:flex-row">
                         <Search
                             placeholder="全量搜索标题、关键词..."
                             allowClear
-                            style={{ width: 320 }}
+                            className="w-full sm:w-80"
                             prefix={<SearchOutlined />}
                             size="large"
                         />
                         <Select
-                            style={{ width: 160 }}
+                            className="w-full sm:w-40"
                             value={statusFilter}
                             onChange={setStatusFilter}
                             size="large"
@@ -376,16 +407,28 @@ function ContentsContent() {
                             <Option value="pending">待分发</Option>
                             <Option value="published">已成功分发</Option>
                         </Select>
-                    </Space>
+                    </div>
 
                     {selectedRowKeys.length > 0 && (
-                        <Space>
+                        <Space wrap>
                             <Tag color="blue">已选中 {selectedRowKeys.length} 项</Tag>
                             <Button danger onClick={handleBatchDelete}>批量永久删除</Button>
                         </Space>
                     )}
                 </div>
 
+                <div className="space-y-3 md:hidden">
+                    {loading ? (
+                        <p className="text-sm text-zinc-500">内容加载中…</p>
+                    ) : filteredData.length === 0 ? (
+                        <p className="text-sm text-zinc-500">暂无内容</p>
+                    ) : (
+                        filteredData.map(renderCard)
+                    )}
+                    {!loading && filteredData.length > 0 && <p className="text-center text-xs text-zinc-400">共 {filteredData.length} 条内容</p>}
+                </div>
+
+                <div className="hidden md:block">
                 <Table
                     rowSelection={rowSelection}
                     columns={columns}
@@ -398,7 +441,9 @@ function ContentsContent() {
                         showTotal: (total) => `共 ${total} 条内容`,
                     }}
                     style={{ background: '#fff' }}
+                    scroll={{ x: 'max-content' }}
                 />
+                </div>
             </Card>
 
             <Modal
@@ -407,6 +452,7 @@ function ContentsContent() {
                 onCancel={() => setAssetOpen(false)}
                 footer={null}
                 width={820}
+                style={{ maxWidth: 'calc(100vw - 32px)' }}
             >
                 <div className="space-y-4">
                     <div className="flex items-center gap-3">
@@ -477,6 +523,7 @@ function ContentsContent() {
                 onCancel={() => setDiffOpen(false)}
                 footer={null}
                 width={920}
+                style={{ maxWidth: 'calc(100vw - 32px)' }}
             >
                 {diffLoading ? (
                     <div className="text-sm text-zinc-500">对比中...</div>

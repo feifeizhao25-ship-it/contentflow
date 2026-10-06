@@ -72,7 +72,7 @@ export default function HotPage() {
     return (
         <div className="max-w-[1400px] mx-auto p-4 md:p-8 space-y-12">
             <div className="bg-zinc-900 rounded-[40px] p-10 text-white relative overflow-hidden shadow-2xl">
-                <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-indigo-500/20 rounded-full blur-[120px] -translate-y-1/2 translate-x-1/2" />
+                <div aria-hidden className="pointer-events-none absolute top-0 right-0 w-[500px] h-[500px] bg-indigo-500/20 rounded-full blur-[120px] -translate-y-1/2 translate-x-1/2" />
                 <div className="max-w-2xl relative z-10">
                     <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
                         <Tag color="orange" className="mb-4 bg-orange-600 border-none font-bold px-3">BETA 爆款预测 V2.0</Tag>
