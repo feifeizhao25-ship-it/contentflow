@@ -98,9 +98,16 @@ require(
         "https://api.mch.weixin.qq.com",
     ),
 )
+# 创作工作室：额度读不到时不编数字（describeAiAllowance(null) 只说「暂时无法读取」），
+# 额度来自与 AI 接口额度闸同一来源的 /billing/subscription；视频生成未开通时不可点、不调用接口。
+# （原来要求的「系统不会用模拟进度或占位视频冒充结果」是视频预览区的文案，视频生成入口已改为「暂未开放」。）
 require(
     "runtime/web-cn/src/app/(main)/studio/page.tsx",
-    ("setBalance(null)", "系统不会用模拟进度或占位视频冒充结果"),
+    ("describeAiAllowance(null)", "'/billing/subscription'", "暂未开放"),
+)
+forbid(
+    "runtime/web-cn/src/app/(main)/studio/page.tsx",
+    ("/points/balance", "单次消耗", "测试版", "/ai/generate/video"),
 )
 require(
     "runtime/web-cn/src/components/onboarding/FirstScriptGuide.tsx",

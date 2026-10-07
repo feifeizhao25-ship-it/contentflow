@@ -398,7 +398,7 @@ function StudioContent() {
 
           <Divider className="my-6" />
 
-          {/* 视频生成：国内版还没有接入境内视频模型，不以「测试版」露出，只说明暂未开放且不可点 */}
+          {/* 视频生成：国内版还没有接入境内视频模型，只说明暂未开放且不可点 */}
           <div className="flex items-center justify-between gap-3 text-sm text-zinc-400" aria-disabled="true">
             <span className="flex items-center gap-2"><PlayCircle className="w-4 h-4" />视频生成</span>
             <Tag className="m-0">暂未开放</Tag>
