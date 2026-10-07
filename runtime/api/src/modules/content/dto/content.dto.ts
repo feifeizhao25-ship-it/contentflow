@@ -1,4 +1,4 @@
-import { IsArray, IsIn, IsOptional, IsString, MaxLength } from 'class-validator';
+import { Equals, IsArray, IsBoolean, IsIn, IsOptional, IsString, MaxLength } from 'class-validator';
 
 /**
  * 「创建 / 更新内容」允许客户端给的字段。
@@ -47,5 +47,15 @@ export class ReviewContentDto {
   @IsIn(['approve', 'reject'], { message: '审核动作只能是通过或驳回' })
   action!: 'approve' | 'reject';
 
-  @IsOptional() @IsString() @MaxLength(500) comment?: string;
+  /** 驳回时必填（服务层校验），写给作者看的修改原因。 */
+  @IsOptional() @IsString() @MaxLength(500, { message: '原因不能超过 500 字' }) comment?: string;
+}
+
+/** 所有者自行确认：confirm 必须是 true（界面二次确认），可附说明。 */
+export class SelfConfirmContentDto {
+  @IsBoolean({ message: '请先确认你已自行检查这条内容' })
+  @Equals(true, { message: '请先确认你已自行检查这条内容' })
+  confirm!: boolean;
+
+  @IsOptional() @IsString() @MaxLength(500) note?: string;
 }

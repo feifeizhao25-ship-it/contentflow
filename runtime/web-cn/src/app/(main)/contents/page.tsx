@@ -19,6 +19,7 @@ import { PLACEHOLDER_IMAGES } from '@/lib/placeholders';
 import { safeErrorText } from '@/lib/api-error';
 import { CONTENT_STATUS_COLORS, contentStatusText, contentTypeText } from '@/lib/status-labels';
 import { MANUAL_PLATFORMS, PUBLISH_CHANNEL_NOTICE } from '@/lib/manual-publish';
+import { contentReviewState, parseReviewPolicy, reviewNote, validateRejectReason, type ReviewPolicy } from '@/lib/content-review';
 
 const { Search } = Input;
 const { Option } = Select;
@@ -111,9 +112,117 @@ function ContentsContent() {
         }
     };
 
+    // 审核权限：能否审核、能否自行确认（单人工作区）。读不到就不给审核按钮（只少给，不多给）。
+    const [policy, setPolicy] = useState<ReviewPolicy | null>(null);
     React.useEffect(() => {
         fetchContents();
+        apiClient.get('/contents/review-policy').then((r) => setPolicy(parseReviewPolicy(r))).catch(() => setPolicy(null));
     }, []);
+
+    // ── 新建 / 编辑（只有草稿和已驳回的内容能改，后端同样限制）──
+    const [editor, setEditor] = useState<{ mode: 'create' | 'edit'; record?: any } | null>(null);
+    const [draftTitle, setDraftTitle] = useState('');
+    const [draftBody, setDraftBody] = useState('');
+    const [saving, setSaving] = useState(false);
+    const editorError = !draftTitle.trim() ? '请填写标题' : draftTitle.trim().length > 200 ? '标题不能超过 200 字' : !draftBody.trim() ? '请填写正文' : null;
+    const openEditor = (mode: 'create' | 'edit', record?: any) => {
+        setEditor({ mode, record });
+        setDraftTitle(record?.title ?? '');
+        setDraftBody(record?.body ?? '');
+    };
+    const saveEditor = async () => {
+        if (!editor || editorError) return;
+        const values = { title: draftTitle, body: draftBody };
+        setSaving(true);
+        try {
+            if (editor.mode === 'create') {
+                await apiClient.post('/contents', { content_type: 'article', title: values.title.trim(), body: values.body, source: 'manual' });
+                message.success('已保存为草稿，确认无误后点「提交审核」');
+            } else {
+                await apiClient.put(`/contents/${editor.record.id}`, { title: values.title.trim(), body: values.body });
+                message.success('已保存修改');
+            }
+            setEditor(null);
+            fetchContents();
+        } catch (error: any) {
+            message.error(safeErrorText(error, '保存失败，请稍后重试'));
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    // ── 审核流：提交审核 / 通过 / 驳回（附原因）/ 所有者自行确认（二次确认）──
+    const submitForReview = (record: any) => {
+        Modal.confirm({
+            title: '提交审核？',
+            content: '提交后进入「待审核」，审核期间不能修改。审核通过后才能发布；被驳回可以按原因修改后再提交。',
+            okText: '提交审核',
+            cancelText: '取消',
+            onOk: async () => {
+                try {
+                    await apiClient.post(`/contents/${record.id}/submit`, {});
+                    message.success('已提交审核');
+                    fetchContents();
+                } catch (error: any) {
+                    message.error(safeErrorText(error, '提交失败，请稍后重试'));
+                }
+            },
+        });
+    };
+    const approve = (record: any) => {
+        Modal.confirm({
+            title: `通过「${record.title || '未命名内容'}」？`,
+            content: '通过后作者即可创建发布任务。',
+            okText: '通过',
+            cancelText: '取消',
+            onOk: async () => {
+                try {
+                    await apiClient.post(`/contents/${record.id}/review`, { action: 'approve' });
+                    message.success('已通过审核');
+                    fetchContents();
+                } catch (error: any) {
+                    message.error(safeErrorText(error, '操作失败，请稍后重试'));
+                }
+            },
+        });
+    };
+    const [rejectFor, setRejectFor] = useState<any>(null);
+    const [rejectReason, setRejectReason] = useState('');
+    const [rejecting, setRejecting] = useState(false);
+    const rejectError = rejectFor ? validateRejectReason(rejectReason) : null;
+    const submitReject = async () => {
+        if (!rejectFor || rejectError) return;
+        setRejecting(true);
+        try {
+            await apiClient.post(`/contents/${rejectFor.id}/review`, { action: 'reject', comment: rejectReason.trim() });
+            message.success('已驳回，作者会看到原因');
+            setRejectFor(null);
+            setRejectReason('');
+            fetchContents();
+        } catch (error: any) {
+            message.error(safeErrorText(error, '操作失败，请稍后重试'));
+        } finally {
+            setRejecting(false);
+        }
+    };
+    const [selfConfirmFor, setSelfConfirmFor] = useState<any>(null);
+    const [selfChecked, setSelfChecked] = useState(false);
+    const [selfNote, setSelfNote] = useState('');
+    const [selfConfirming, setSelfConfirming] = useState(false);
+    const submitSelfConfirm = async () => {
+        if (!selfConfirmFor || !selfChecked) return;
+        setSelfConfirming(true);
+        try {
+            await apiClient.post(`/contents/${selfConfirmFor.id}/self-confirm`, { confirm: true, note: selfNote.trim() || undefined });
+            message.success('已记录为「所有者自行确认」，现在可以发布了');
+            setSelfConfirmFor(null);
+            fetchContents();
+        } catch (error: any) {
+            message.error(safeErrorText(error, '确认失败，请稍后重试'));
+        } finally {
+            setSelfConfirming(false);
+        }
+    };
 
     // Sync tab with URL
     const searchParams = useSearchParams();
@@ -244,6 +353,39 @@ function ContentsContent() {
         }
     };
 
+    /** 每条内容按状态与审核权限给出可做的事；做不了时说明在等谁。 */
+    const renderReviewActions = (record: any) => {
+        const state = contentReviewState(record, policy);
+        return (
+            <>
+                {state.actions.includes('edit') && <Button type="link" size="small" icon={<EditOutlined />} onClick={() => openEditor('edit', record)}>编辑</Button>}
+                {state.actions.includes('submit') && <Button type="link" size="small" onClick={() => submitForReview(record)}>提交审核</Button>}
+                {state.actions.includes('review') && (
+                    <>
+                        <Button type="link" size="small" onClick={() => approve(record)}>通过</Button>
+                        <Button type="link" size="small" danger onClick={() => { setRejectFor(record); setRejectReason(''); }}>驳回</Button>
+                    </>
+                )}
+                {state.actions.includes('self_confirm') && (
+                    <Button type="link" size="small" onClick={() => { setSelfConfirmFor(record); setSelfChecked(false); setSelfNote(''); }}>确认可发布</Button>
+                )}
+                {state.actions.includes('publish') && canPublish(record) && <Button type="link" size="small" onClick={() => setManualFor(record)}>发布</Button>}
+            </>
+        );
+    };
+    const renderStatus = (record: any) => {
+        const state = contentReviewState(record, policy);
+        const note = reviewNote(record);
+        const status = record.status;
+        return (
+            <div className="min-w-0">
+                <Tag color={statusColors[status] || 'default'}>{contentStatusText(status)}</Tag>
+                {note && <div className={note.kind === 'rejected' ? 'mt-1 text-xs text-red-600 break-words' : 'mt-1 text-xs text-zinc-500 break-words'}>{note.text}</div>}
+                {!note && state.hint && <div className="mt-1 text-xs text-zinc-400">{state.hint}</div>}
+            </div>
+        );
+    };
+
     const columns: ColumnsType<ContentItem> = [
         {
             title: '预览',
@@ -294,9 +436,8 @@ function ContentsContent() {
             title: '状态',
             dataIndex: 'status',
             key: 'status',
-            render: (status) => (
-                <Tag color={statusColors[status] || 'default'}>{contentStatusText(status)}</Tag>
-            ),
+            width: 220,
+            render: (_status, record: any) => renderStatus(record),
         },
         {
             title: '创建渠道',
@@ -312,13 +453,12 @@ function ContentsContent() {
         {
             title: '操作',
             key: 'action',
-            width: 200,
+            width: 260,
             render: (_, record: any) => (
-                <Space size="small">
+                <Space size="small" wrap>
                     <Button type="link" size="small" icon={<EyeOutlined />} onClick={() => window.open(record.media_urls?.[0] || PLACEHOLDER_IMAGES.content, '_blank')}>预览</Button>
                     <Button type="link" size="small" onClick={() => handleOpenAssets(record)}>资产</Button>
-                    {canPublish(record) && <Button type="link" size="small" onClick={() => setManualFor(record)}>发布</Button>}
-                    <Button type="link" size="small" icon={<EditOutlined />}>编辑</Button>
+                    {renderReviewActions(record)}
                     <Button type="link" size="small" danger icon={<DeleteOutlined />} onClick={() => handleDelete(record.id)}>删除</Button>
                 </Space>
             ),
@@ -364,16 +504,16 @@ function ContentsContent() {
                     <p className="break-words text-base font-bold leading-6 text-zinc-900">{record.title || '未命名内容'}</p>
                     <div className="mt-2 flex flex-wrap gap-1">
                         <Tag>{contentTypeText(record.type)}</Tag>
-                        <Tag color={statusColors[record.status] || 'default'}>{contentStatusText(record.status)}</Tag>
                         {record.source === 'ai' ? <Tag color="purple">AI 生成</Tag> : <Tag>手动创建</Tag>}
                     </div>
+                    <div className="mt-2">{renderStatus(record)}</div>
                     <p className="mt-2 text-xs text-zinc-400">{record.created_at}</p>
                 </div>
             </div>
             <div className="mt-3 flex flex-wrap gap-x-1 border-t border-zinc-100 pt-2">
                 <Button type="link" size="small" icon={<EyeOutlined />} onClick={() => window.open(record.media_urls?.[0] || PLACEHOLDER_IMAGES.content, '_blank')}>预览</Button>
                 <Button type="link" size="small" onClick={() => handleOpenAssets(record)}>资产</Button>
-                {canPublish(record) && <Button type="link" size="small" onClick={() => setManualFor(record)}>发布</Button>}
+                {renderReviewActions(record)}
                 <Button type="link" size="small" danger icon={<DeleteOutlined />} onClick={() => handleDelete(record.id)}>删除</Button>
             </div>
         </div>
@@ -386,8 +526,8 @@ function ContentsContent() {
                     <h1 className="m-0 whitespace-nowrap text-2xl font-bold">内容库管理</h1>
                     <Text type="secondary">管理您的所有 AI 创作与手动上传的内容</Text>
                 </div>
-                <Button type="primary" icon={<PlusOutlined />} size="large" className="self-start sm:self-auto" style={{ borderRadius: 8 }}>
-                    手动上传内容
+                <Button type="primary" icon={<PlusOutlined />} size="large" className="self-start sm:self-auto" style={{ borderRadius: 8 }} onClick={() => openEditor('create')}>
+                    新建内容
                 </Button>
             </div>
 
@@ -452,6 +592,73 @@ function ContentsContent() {
                 />
                 </div>
             </Card>
+
+            <Modal
+                open={editor !== null}
+                title={editor?.mode === 'create' ? '新建内容' : '编辑内容'}
+                okText="保存"
+                cancelText="取消"
+                confirmLoading={saving}
+                okButtonProps={{ disabled: Boolean(editorError) }}
+                onOk={() => void saveEditor()}
+                onCancel={() => setEditor(null)}
+                width={720}
+                style={{ maxWidth: 'calc(100vw - 32px)' }}
+                destroyOnHidden
+            >
+                {editor?.record?.status === 'rejected' && reviewNote(editor.record) && (
+                    <Alert type="error" showIcon className="mb-4" message={reviewNote(editor.record)!.text} />
+                )}
+                {editor?.record?.source === 'ai' && (
+                    <Alert type="info" showIcon className="mb-4" message="这是 AI 生成的内容，保存时会自动保留开头的「AI 生成」标识。" />
+                )}
+                <label className="mb-1 block text-sm text-zinc-600" htmlFor="content-editor-title">标题</label>
+                <Input id="content-editor-title" className="mb-4" maxLength={200} value={draftTitle} onChange={(e) => setDraftTitle(e.target.value)} placeholder="内容标题" />
+                <label className="mb-1 block text-sm text-zinc-600" htmlFor="content-editor-body">正文</label>
+                <Input.TextArea id="content-editor-body" rows={10} value={draftBody} onChange={(e) => setDraftBody(e.target.value)} placeholder="正文内容" />
+                <p className="mt-2 text-xs text-zinc-400">{editorError && (draftTitle || draftBody) ? editorError : '保存后是草稿，点「提交审核」，审核通过后才能发布。'}</p>
+            </Modal>
+
+            <Modal
+                open={rejectFor !== null}
+                title={`驳回：${rejectFor?.title || '未命名内容'}`}
+                okText="驳回"
+                okButtonProps={{ danger: true, disabled: Boolean(rejectError) }}
+                cancelText="取消"
+                confirmLoading={rejecting}
+                onOk={() => void submitReject()}
+                onCancel={() => setRejectFor(null)}
+                style={{ maxWidth: 'calc(100vw - 32px)' }}
+            >
+                <p className="mb-2 text-sm text-zinc-600">请写明需要修改的地方，作者会在内容库看到这段原因。</p>
+                <Input.TextArea rows={4} maxLength={500} showCount value={rejectReason} onChange={(e) => setRejectReason(e.target.value)} placeholder="例如：标题里的「最好」属于绝对化用语，请改为具体描述" />
+                {rejectReason && rejectError && <p className="mt-1 text-xs text-red-600">{rejectError}</p>}
+            </Modal>
+
+            <Modal
+                open={selfConfirmFor !== null}
+                title="自行确认后发布"
+                okText="确认可以发布"
+                cancelText="取消"
+                okButtonProps={{ disabled: !selfChecked }}
+                confirmLoading={selfConfirming}
+                onOk={() => void submitSelfConfirm()}
+                onCancel={() => setSelfConfirmFor(null)}
+                style={{ maxWidth: 'calc(100vw - 32px)' }}
+            >
+                <Alert
+                    type="warning"
+                    showIcon
+                    className="mb-4"
+                    message="你的工作区里没有其他所有者或管理员，没有人能替你审核"
+                    description="确认后这条内容会标记为「所有者自行确认」，并记录确认人和时间，以后添加的团队成员也能在内容库看到。如需他人把关，可以在团队页邀请管理员后再由对方审核。"
+                />
+                <p className="mb-2 text-sm font-medium text-zinc-800">「{selfConfirmFor?.title || '未命名内容'}」</p>
+                <Checkbox checked={selfChecked} onChange={(e) => setSelfChecked(e.target.checked)}>
+                    我已自行检查：没有违禁词和「最好」「第一」之类的绝对化用语；AI 生成的内容保留了「AI 生成」标识；图文不侵犯他人权利。
+                </Checkbox>
+                <Input className="mt-3" maxLength={200} value={selfNote} onChange={(e) => setSelfNote(e.target.value)} placeholder="备注（选填），例如：已核对产品功效描述" />
+            </Modal>
 
             <Modal
                 open={manualFor !== null}

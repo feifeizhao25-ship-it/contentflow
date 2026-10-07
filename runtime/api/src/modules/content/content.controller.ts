@@ -2,10 +2,8 @@ import { Controller, Get, Post, Put, Delete, Body, Param, Query, UseGuards, Requ
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { ContentService } from './content.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
-import { CreateContentDto, ReviewContentDto, UpdateContentDto } from './dto/content.dto';
-
-/** 能批准内容发布的角色。JwtStrategy 每次请求都以数据库里当前的角色为准。 */
-const REVIEWER_ROLES = ['owner', 'admin'];
+import { CreateContentDto, ReviewContentDto, SelfConfirmContentDto, UpdateContentDto } from './dto/content.dto';
+import { REVIEWER_ROLES } from './content.service';
 
 @ApiTags('contents')
 @Controller('contents')
@@ -24,6 +22,18 @@ export class ContentController {
     @Query('keyword') keyword?: string,
   ) {
     return this.contentService.findAll(req.user.tenantId, { status, page, pageSize, keyword });
+  }
+
+  @Get('review-policy')
+  @ApiOperation({ summary: '当前用户的审核权限：能否审核、能否自行确认（单人工作区）' })
+  async reviewPolicy(@Request() req: any) {
+    return this.contentService.reviewPolicy(req.user.tenantId, { sub: req.user.sub, role: req.user.role });
+  }
+
+  @Get(':id/review-logs')
+  @ApiOperation({ summary: '内容的审核记录' })
+  async reviewLogs(@Param('id') id: string, @Request() req: any) {
+    return this.contentService.reviewLogs(id, req.user.tenantId);
   }
 
   @Get(':id')
@@ -53,7 +63,7 @@ export class ContentController {
   @Post(':id/submit')
   @ApiOperation({ summary: '提交审核' })
   async submitForReview(@Param('id') id: string, @Request() req: any) {
-    return this.contentService.submitForReview(id, req.user.tenantId);
+    return this.contentService.submitForReview(id, req.user.tenantId, req.user.sub);
   }
 
   @Post(':id/review')
@@ -67,5 +77,11 @@ export class ContentController {
       throw new ForbiddenException('仅工作区所有者或管理员可以审核内容');
     }
     return this.contentService.review(id, req.user.tenantId, req.user.sub, data.action, data.comment);
+  }
+
+  @Post(':id/self-confirm')
+  @ApiOperation({ summary: '所有者自行确认（工作区没有其他审核人时；需二次确认，单独记录）' })
+  async selfConfirm(@Param('id') id: string, @Request() req: any, @Body() data: SelfConfirmContentDto) {
+    return this.contentService.selfConfirm(id, req.user.tenantId, { sub: req.user.sub, role: req.user.role }, data);
   }
 }

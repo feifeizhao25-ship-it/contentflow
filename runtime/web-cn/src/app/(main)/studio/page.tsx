@@ -247,10 +247,16 @@ function StudioContent() {
 
       const contentStatus = contentRes?.data?.status || contentRes?.content?.status || contentRes?.status;
       // 新内容是草稿：自动发布和人工确认发布都要求内容先审核通过（后端会拒绝）。
-      // 原来这里照样去建发布任务，必然失败；现在如实告诉用户下一步。
+      // 点「创建发布任务」就是要发：直接提交审核，再去内容库等审核（单人工作区由所有者自行确认）。
       if (contentStatus !== 'approved' && contentStatus !== 'published') {
-        message.info({ content: '内容已保存为草稿。提交审核并通过后，可在内容库创建发布任务（小红书、视频号、公众号走人工确认发布）。', key: 'publish', duration: 6 });
-        router.push('/contents');
+        try {
+          await apiClient.post(`/contents/${contentId}/submit`, {});
+          message.info({ content: '内容已保存并提交审核。审核通过后，在内容库点「发布」创建发布任务（小红书、视频号、公众号走人工确认发布）。', key: 'publish', duration: 6 });
+          router.push('/contents?status=pending_review');
+        } catch (e: any) {
+          message.info({ content: `内容已保存为草稿，但提交审核没有成功（${safeErrorText(e, '请稍后重试')}），可在内容库点「提交审核」。`, key: 'publish', duration: 6 });
+          router.push('/contents?status=draft');
+        }
         return;
       }
 

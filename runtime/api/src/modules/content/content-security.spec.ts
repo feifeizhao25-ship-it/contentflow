@@ -28,7 +28,8 @@ describe('contents 接口的越权与绕过', () => {
   let me: { id: string; sub: string; tenantId: string; role: string; email: string };
   const prisma = {
     content: { findFirst: jest.fn(), findMany: jest.fn(), count: jest.fn(), create: jest.fn(), update: jest.fn() },
-    reviewLog: { create: jest.fn() },
+    reviewLog: { create: jest.fn(), findFirst: jest.fn(), findMany: jest.fn() },
+    user: { count: jest.fn() },
   };
 
   beforeEach(async () => {
@@ -126,7 +127,7 @@ describe('contents 接口的越权与绕过', () => {
   });
 
   it('POST /contents/:id/review：所有者批准待审核内容，写入审核人', async () => {
-    prisma.content.findFirst.mockResolvedValue({ id: 'c-1', tenant_id: 't-mine', status: 'pending_review' });
+    prisma.content.findFirst.mockResolvedValue({ id: 'c-1', tenant_id: 't-mine', status: 'pending_review', created_by: 'u-author' });
     const res = await http().post('/api/v1/contents/c-1/review').send({ action: 'approve', comment: '可以发' });
     expect(res.status).toBe(201);
     expect(prisma.content.update.mock.calls[0][0].data).toMatchObject({ status: 'approved', reviewed_by: 'u-me' });
