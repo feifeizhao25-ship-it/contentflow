@@ -14,7 +14,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { parseContentList, mapPublishTasks, parseHotTopics, describePlan, parseAnalyticsOverview } from '../src/lib/page-data.ts';
+import { parseContentList, mapPublishTasks, parseHotTopics, describePlan, parseAnalyticsOverview, describeAiAllowance } from '../src/lib/page-data.ts';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const src = (rel) => fs.readFileSync(path.join(ROOT, 'src', rel), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/[^\n]*/g, '$1');
@@ -152,6 +152,33 @@ await check('数据分析页：读 /analytics/overview，不再引用写死的�
     assert.ok(!fs.existsSync(path.join(ROOT, 'src/components/analytics', `${gone}.tsx`)), `${gone}.tsx 仍在`);
   }
   assert.match(src('components/analytics/OwnDataOverview.tsx'), /engagement\.message/);
+});
+
+await check('创作工作室：AI 额度来自 /billing/subscription 的 aiTokens（与接口额度闸同一来源）', () => {
+  const a = describeAiAllowance({ aiTokens: { limit: 50000, used: 12000, remaining: 38000, unlimited: false, imageTokenEquivalent: 2500 } });
+  assert.equal(a.available, true);
+  assert.equal(a.exhausted, false);
+  assert.match(a.summary, /已用 1\.2万 \/ 5万 令牌，剩余 3\.8万/);
+  assert.match(a.rule, /封面每张计 2,500 令牌/);
+  const done = describeAiAllowance({ aiTokens: { limit: 50000, used: 50000, remaining: 0, unlimited: false } });
+  assert.equal(done.exhausted, true);
+  assert.equal(describeAiAllowance({ aiTokens: { limit: -1, used: 5, remaining: -1, unlimited: true } }).unlimited, true);
+  // 读不到时不编数字
+  const none = describeAiAllowance(null);
+  assert.equal(none.available, false);
+  assert.doesNotMatch(none.summary, /\d/);
+  assert.equal(describeAiAllowance({ monthlyQuota: 5 }).available, false);
+});
+
+await check('创作工作室：不再显示签到积分与写死的「单次消耗 N 积分」；视频生成不以「测试版」露出、不可点', () => {
+  const studio = src('app/(main)/studio/page.tsx');
+  assert.doesNotMatch(studio, /\/points\/balance|单次消耗|可用余额|积分/);
+  assert.match(studio, /'\/billing\/subscription'/);
+  assert.match(studio, /describeAiAllowance/);
+  assert.doesNotMatch(studio, /测试版|智能视频生成|\/ai\/generate\/video|handleGenerateVideo/);
+  assert.match(studio, /视频生成[\s\S]{0,80}暂未开放/);
+  // 页面上不能有没有 onClick 的「重新生成」
+  assert.doesNotMatch(studio, /<Button(?![^>]*onClick)[^>]*>重新生成<\/Button>/);
 });
 
 if (failures) { console.error(`${failures} failed`); process.exit(1); }

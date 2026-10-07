@@ -114,6 +114,52 @@ export function describePlan(tenant: any, subscription?: any): PlanView {
   return { name: PLAN_NAMES[plan] ?? plan, renewText, usage };
 }
 
+export interface AiAllowanceView {
+  /** 读不到（未登录、接口失败）时为 false，界面显示「暂时无法读取」，不显示任何数字 */
+  available: boolean;
+  unlimited: boolean;
+  exhausted: boolean;
+  /** 一行摘要，例如「本月 AI 额度：已用 1.2万 / 5万 令牌，剩余 3.8万」 */
+  summary: string;
+  /** 扣减口径说明 */
+  rule: string;
+}
+
+const formatTokens = (n: number) => {
+  if (n >= 10000) {
+    const wan = Math.round((n / 10000) * 10) / 10;
+    return `${Number.isInteger(wan) ? wan.toFixed(0) : wan}万`;
+  }
+  return n.toLocaleString('zh-CN');
+};
+
+/**
+ * 创作工作室「本月 AI 额度」：只用 GET /billing/subscription 的 aiTokens，
+ * 与 AI 接口的额度闸是同一个算法（后端 aiTokenAllowance）。
+ * 原来这里显示签到积分余额和写死的「单次消耗 5 积分」，与套餐额度无关。
+ */
+export function describeAiAllowance(subscription: unknown): AiAllowanceView {
+  const payload = unwrap(subscription);
+  const t = payload?.aiTokens;
+  const limit = Number(t?.limit), used = Number(t?.used), remaining = Number(t?.remaining);
+  const perImage = Number(t?.imageTokenEquivalent);
+  const rule = `按实际用量扣减：文案、标题按模型返回的令牌数计${Number.isFinite(perImage) && perImage > 0 ? `，封面每张计 ${perImage.toLocaleString('zh-CN')} 令牌` : ''}；每月 1 日（北京时间）恢复。`;
+  if (!t || typeof t !== 'object' || !Number.isFinite(limit) || !Number.isFinite(used)) {
+    return { available: false, unlimited: false, exhausted: false, summary: '本月 AI 额度暂时无法读取', rule };
+  }
+  if (t.unlimited === true || limit === -1) {
+    return { available: true, unlimited: true, exhausted: false, summary: `本月 AI 额度：不限量（已用 ${formatTokens(used)} 令牌）`, rule };
+  }
+  const left = Number.isFinite(remaining) ? Math.max(0, remaining) : Math.max(0, limit - used);
+  return {
+    available: true,
+    unlimited: false,
+    exhausted: left <= 0,
+    summary: `本月 AI 额度：已用 ${formatTokens(used)} / ${formatTokens(limit)} 令牌，剩余 ${formatTokens(left)}`,
+    rule,
+  };
+}
+
 export interface PublishCounts {
   total: number;
   published: number;

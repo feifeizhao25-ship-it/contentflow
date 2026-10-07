@@ -2,6 +2,8 @@ import { ForbiddenException, BadRequestException, Body, Controller, Get, Headers
 import { chinaMonthPeriod } from '../../common/china-period';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { effectiveEntitlements } from './effective-limits';
+import { aiTokenAllowance } from '../system/usage.service';
+import { IMAGE_TOKEN_EQUIVALENT } from '../ai/model-pricing';
 import { CN_PLANS, PLANS } from './plans.constant';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { PrismaService } from '../../database/prisma.service';
@@ -172,14 +174,16 @@ export class BillingController {
     // 套餐已过期则按 free 处理，避免过期租户继续享有付费权限
     const expiresAt = (tenant as any)?.plan_expires_at ?? null;
     const { plan, expired, limits } = effectiveEntitlements(tenant);
-    const monthlyQuota = limits.max_ai_tokens_monthly ??
-      ((limits.max_ai_calls_monthly ?? CN_PLANS[0].aiTokenQuota / 2500) * 2500);
-    const usedQuota = (meter as any)?.ai_tokens ?? 0;
+    // 与 AI 接口的额度闸同一算法（UsageService.checkQuota → aiTokenAllowance）
+    const aiTokens = aiTokenAllowance(limits, meter as any);
 
     return {
       plan,
-      monthlyQuota,
-      usedQuota,
+      monthlyQuota: aiTokens.limit,
+      usedQuota: aiTokens.used,
+      // 本月 AI 额度：剩余 = 额度 − 已用；unlimited 时 limit/remaining 为 -1。
+      // imageTokenEquivalent：生成 1 张图计入多少令牌（AiAllowanceService.chargeImage 的同一常量）。
+      aiTokens: { ...aiTokens, imageTokenEquivalent: IMAGE_TOKEN_EQUIVALENT },
       renewalDate: expiresAt ? new Date(expiresAt).toISOString() : null,
       expired,
       limits,

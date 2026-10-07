@@ -4,9 +4,9 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import NextImage from 'next/image';
 import { Button, Card, Input, Select, Tag, message, Steps, Divider, DatePicker, TimePicker, Skeleton } from 'antd';
 import { Sparkles, Send, Image as ImageIcon, CalendarClock, Layers, PlayCircle } from 'lucide-react';
+import Link from 'next/link';
 import dayjs from 'dayjs';
 import clsx from 'clsx';
-import { motion } from 'framer-motion';
 import { apiClient } from '@/lib/api-client';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAchievementStore } from '@/store/appStore';
@@ -16,6 +16,7 @@ import { safeErrorText } from '@/lib/api-error';
 import { isAiGeneratedText } from '@/lib/ai-content-label';
 import { ComplianceReviewNotice } from '@/components/compliance/ComplianceReviewNotice';
 import { isManualPlatform, PUBLISH_CHANNEL_NOTICE } from '@/lib/manual-publish';
+import { describeAiAllowance, type AiAllowanceView } from '@/lib/page-data';
 
 const { TextArea } = Input;
 
@@ -30,7 +31,8 @@ const PLATFORMS = [
 function StudioContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [balance, setBalance] = useState<number | null>(null);
+  // 本月 AI 额度：来自 GET /billing/subscription（与 AI 接口的额度闸同一算法），不再显示签到积分
+  const [allowance, setAllowance] = useState<AiAllowanceView>(() => describeAiAllowance(null));
   const { unlockAchievement, isUnlocked } = useAchievementStore();
 
   const [topic, setTopic] = useState('');
@@ -46,10 +48,6 @@ function StudioContent() {
   const [visualPrompts, setVisualPrompts] = useState<string[]>([]);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isGeneratingImage, setIsGeneratingImage] = useState(false);
-  const [isGeneratingVideo, setIsGeneratingVideo] = useState(false);
-  const [videoUrl, setVideoUrl] = useState('');
-  const [videoLogs, setVideoLogs] = useState<string[]>([]);
-  const [videoDuration, setVideoDuration] = useState(15);
 
   const [accounts, setAccounts] = useState<any[]>([]);
   const [loadingAccounts, setLoadingAccounts] = useState(true);
@@ -86,17 +84,11 @@ function StudioContent() {
 
   const refreshBalance = useCallback(async () => {
     try {
-      const res: any = await apiClient.get('/points/balance');
-      const nextBalance = res?.data?.balance ?? res?.balance;
-      if (typeof nextBalance === 'number') {
-        setBalance(nextBalance);
-      } else {
-        setBalance(null);
-      }
+      setAllowance(describeAiAllowance(await apiClient.get('/billing/subscription')));
     } catch {
-      setBalance(null);
+      setAllowance(describeAiAllowance(null));
     }
-  }, [setBalance]);
+  }, []);
 
   useEffect(() => {
     refreshBalance();
@@ -212,37 +204,6 @@ function StudioContent() {
       message.error({ content: safeErrorText(e, '封面生成失败'), key: 'cover' });
     } finally {
       setIsGeneratingImage(false);
-    }
-  };
-
-  const handleGenerateVideo = async () => {
-    if (!topic.trim()) {
-      message.warning('请输入主题以生成视频');
-      return;
-    }
-    setIsGeneratingVideo(true);
-    setVideoLogs(['生成请求已提交，正在等待服务器返回可验证结果…']);
-
-    try {
-      const res: any = await apiClient.post('/ai/generate/video', {
-        topic,
-        style,
-        duration: videoDuration,
-      });
-
-      const videoData = res?.data || res;
-      if (!videoData?.url) {
-        throw new Error('服务器未返回可验证的视频地址');
-      }
-      setVideoUrl(videoData.url);
-      setVideoLogs(prev => [...prev, '服务器已返回视频地址，可以预览。']);
-      await refreshBalance();
-      message.success('视频内容包生成成功');
-    } catch (e: any) {
-      message.error(`视频生成失败：${safeErrorText(e, '请稍后重试')}`);
-      setVideoLogs(prev => [...prev, '❌ 生成中断，请检查模型状态或余额。']);
-    } finally {
-      setIsGeneratingVideo(false);
     }
   };
 
@@ -372,7 +333,7 @@ function StudioContent() {
           current={script ? (coverUrl ? 2 : 1) : 0}
           items={[
             { title: '主题与平台', description: '定义核心方向' },
-            { title: '内容生成', description: 'AI 文案/图片/视频' },
+            { title: '内容生成', description: 'AI 文案与封面' },
             { title: '分发排期', description: '自动发布或人工确认发布' },
           ]}
         />
@@ -422,46 +383,27 @@ function StudioContent() {
             icon={<Sparkles className="w-4 h-4" />}
             className="mt-6 bg-[#1f4d4f] border-none w-full"
             loading={isGenerating}
+            disabled={allowance.exhausted}
             onClick={handleGeneratePack}
           >
             一键生成文案包
           </Button>
-          <p className="text-[10px] text-zinc-400 mt-2 flex justify-between items-center bg-zinc-50 p-2 rounded-lg">
-            <span>✨ 单次消耗：<span className="text-emerald-600 font-bold">5 积分</span></span>
-            <span>可用余额：<span className="text-amber-600 font-bold">{balance ?? '暂不可用'}</span></span>
-          </p>
+          <div className="text-xs text-zinc-500 mt-2 bg-zinc-50 p-2 rounded-lg space-y-1" data-testid="ai-allowance">
+            <div className={clsx('font-medium', allowance.exhausted ? 'text-red-600' : 'text-zinc-700')}>{allowance.summary}</div>
+            {allowance.exhausted && (
+              <div>本月额度已用完，可 <Link href="/pricing" className="text-indigo-600">升级套餐</Link>，或等下月 1 日恢复。</div>
+            )}
+            <div className="text-[11px] text-zinc-400">{allowance.rule}</div>
+          </div>
 
           <Divider className="my-6" />
 
-          <h3 className="text-sm font-bold mb-4 flex items-center justify-between">
-            <span>智能视频生成</span>
-            <Tag color="purple">测试版</Tag>
-          </h3>
-          <div className="space-y-4">
-            <div className="flex items-center justify-between text-xs">
-              <span className="text-zinc-500">期望时长</span>
-              <Select
-                size="small"
-                value={videoDuration}
-                onChange={setVideoDuration}
-                options={[
-                  { label: '10秒 (快速)', value: 10 },
-                  { label: '15秒 (标准)', value: 15 },
-                  { label: '30秒 (完整)', value: 30 },
-                ]}
-              />
-            </div>
-            <Button
-              block
-              icon={<PlayCircle className="w-4 h-4" />}
-              loading={isGeneratingVideo}
-              onClick={handleGenerateVideo}
-              className="rounded-xl border-dashed border-zinc-300 hover:border-indigo-500 hover:text-indigo-600 h-10"
-            >
-              生成带分镜的视频
-            </Button>
-            <p className="text-[10px] text-zinc-400 mt-1">视频生成单次消耗：<span className="text-emerald-600 font-bold">20 积分</span></p>
+          {/* 视频生成：国内版还没有接入境内视频模型，不以「测试版」露出，只说明暂未开放且不可点 */}
+          <div className="flex items-center justify-between gap-3 text-sm text-zinc-400" aria-disabled="true">
+            <span className="flex items-center gap-2"><PlayCircle className="w-4 h-4" />视频生成</span>
+            <Tag className="m-0">暂未开放</Tag>
           </div>
+          <p className="text-[11px] text-zinc-400 mt-1">国内版还没有接入视频模型，开放后会在这里提示。</p>
         </Card>
 
         <Card className="lg:col-span-2 rounded-[24px] border-none">
@@ -470,7 +412,7 @@ function StudioContent() {
               <Layers className="w-4 h-4 text-emerald-600" />
               内容包结构预览
             </h3>
-            <Button icon={<ImageIcon className="w-4 h-4" />} onClick={handleGenerateCover} loading={isGeneratingImage}>
+            <Button icon={<ImageIcon className="w-4 h-4" />} onClick={handleGenerateCover} loading={isGeneratingImage} disabled={allowance.exhausted}>
               生成封面
             </Button>
           </div>
@@ -504,8 +446,8 @@ function StudioContent() {
               </div>
               <div>
                 <div className="text-xs text-zinc-500 mb-2 flex justify-between items-center">
-                  <span>多媒体预览 (封面 / 视频)</span>
-                  {coverUrl && <Button type="link" size="small" className="p-0 h-auto text-xs">重新生成</Button>}
+                  <span>封面预览</span>
+                  {coverUrl && <Button type="link" size="small" className="p-0 h-auto text-xs" loading={isGeneratingImage} disabled={allowance.exhausted} onClick={handleGenerateCover}>重新生成</Button>}
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="relative aspect-video rounded-2xl border border-zinc-200 overflow-hidden bg-zinc-100">
@@ -524,26 +466,6 @@ function StudioContent() {
                       <div className="absolute inset-0 bg-black/30 flex flex-col items-center justify-center text-xs text-white text-center p-4">
                         <ImageIcon className="w-8 h-8 mb-2 opacity-50" />
                         <div>AI 封面未生成<br />生成后将自动替换示例图</div>
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="relative aspect-video rounded-2xl border border-zinc-200 overflow-hidden bg-zinc-900 flex flex-col items-center justify-center">
-                    {isGeneratingVideo ? (
-                      <div className="w-full h-full p-4 flex flex-col justify-center gap-4 bg-zinc-900/90 overflow-hidden">
-                        <div className="text-[10px] text-indigo-400 font-mono space-y-1 max-h-32 overflow-y-auto">
-                          {videoLogs.map((log, i) => (
-                            <motion.div initial={{ opacity: 0, x: -5 }} animate={{ opacity: 1, x: 0 }} key={i}>{log}</motion.div>
-                          ))}
-                        </div>
-                        <div className="text-[11px] text-zinc-400">系统不会用模拟进度或占位视频冒充结果</div>
-                      </div>
-                    ) : videoUrl ? (
-                      <video src={videoUrl} controls className="w-full h-full object-contain" />
-                    ) : (
-                      <div className="text-center p-6 space-y-2">
-                        <PlayCircle className="w-10 h-10 text-zinc-700 mx-auto" />
-                        <div className="text-xs text-zinc-600">视频生成后在这里预览</div>
                       </div>
                     )}
                   </div>
