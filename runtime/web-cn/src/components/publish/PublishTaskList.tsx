@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { Button, Empty, Input, Modal, Skeleton, Tag, message } from 'antd';
+import { Button, Empty, Input, Modal, Pagination, Skeleton, Tag, message } from 'antd';
 import {
     CheckCircleFilled,
     CloseCircleFilled,
@@ -17,6 +17,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { apiClient } from '@/lib/api-client';
 import { safeErrorText } from '@/lib/api-error';
 import { buildCopyText, downloadLabelledCover, isManualPlatform, manualPlatformName, type ManualKit } from '@/lib/manual-publish';
+import { isFilterActive, publishFilterQuery, type PublishFilter } from '@/lib/publish-filter';
 
 type PublishTask = {
     id: string;
@@ -33,14 +34,42 @@ type PublishTask = {
 
 type PublishTaskResponse = { tasks: any[]; pagination: { total: number; page: number; pageSize: number; totalPages: number } };
 
-export const PublishTaskList = () => {
+const PAGE_SIZE = 20;
+
+export type PublishTaskRow = PublishTask;
+
+interface Props {
+    filter: PublishFilter;
+    /** 变化时重新加载（批量重试之后） */
+    reloadKey?: number;
+    /** 每次加载完成后把当前页任务交给上层（批量重试只重试当前列表里的失败任务） */
+    onLoaded?: (tasks: PublishTask[]) => void;
+}
+
+export const PublishTaskList = ({ filter, reloadKey = 0, onLoaded }: Props) => {
     const [expandedRow, setExpandedRow] = useState<string | null>(null);
     const [tasks, setTasks] = useState<PublishTask[]>([]);
     const [loading, setLoading] = useState(true);
+    const [page, setPage] = useState(1);
+    const [total, setTotal] = useState(0);
+
+    // 换筛选条件回到第 1 页
+    const filterKey = publishFilterQuery(filter);
+    useEffect(() => { setPage(1); }, [filterKey]);
 
     useEffect(() => {
-        apiClient.get<PublishTaskResponse>('/publish/tasks')
-            .then((result) => setTasks((result.tasks || []).map((task: any) => {
+        onLoaded?.(tasks);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [tasks]);
+
+    useEffect(() => {
+        let cancelled = false;
+        setLoading(true);
+        apiClient.get<PublishTaskResponse>(`/publish/tasks?${publishFilterQuery(filter, { page, pageSize: PAGE_SIZE })}`)
+            .then((result) => {
+                if (cancelled) return;
+                setTotal(Number(result?.pagination?.total) || 0);
+                setTasks((result.tasks || []).map((task: any) => {
                 const scheduledAt = task.scheduled_at ? new Date(task.scheduled_at) : null;
                 return {
                     id: String(task.id),
@@ -59,10 +88,14 @@ export const PublishTaskList = () => {
                     errorCode: task.error_code,
                     externalUrl: task.platform_post_url,
                 };
-            })))
-            .catch(() => message.error('发布任务加载失败，请稍后重试'))
-            .finally(() => setLoading(false));
-    }, []);
+            }));
+            })
+            .catch((error) => { if (!cancelled) message.error(safeErrorText(error, '发布任务加载失败，请稍后重试')); })
+            .finally(() => { if (!cancelled) setLoading(false); });
+        return () => { cancelled = true; };
+        // filterKey 已涵盖 filter 的全部字段
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [filterKey, page, reloadKey]);
 
     const toggleRow = (id: string) => {
         setExpandedRow(expandedRow === id ? null : id);
@@ -150,7 +183,9 @@ export const PublishTaskList = () => {
 
     if (loading) return <Skeleton active paragraph={{ rows: 4 }} />;
     if (tasks.length === 0) {
-        return <Empty description="暂无发布任务。完成内容创作并选择平台后，任务会显示在这里。" />;
+        return isFilterActive(filter)
+            ? <Empty description="没有符合筛选条件的任务，可以换个条件或点「清除筛选」。" />
+            : <Empty description="暂无发布任务。完成内容创作并选择平台后，任务会显示在这里。" />;
     }
 
     return (
@@ -274,6 +309,11 @@ export const PublishTaskList = () => {
                     </div>
                 );
             })}
+            {total > PAGE_SIZE && (
+                <div className="flex justify-center pt-2">
+                    <Pagination current={page} pageSize={PAGE_SIZE} total={total} showSizeChanger={false} onChange={setPage} showTotal={(n) => `共 ${n} 条任务`} />
+                </div>
+            )}
         </div>
     );
 };

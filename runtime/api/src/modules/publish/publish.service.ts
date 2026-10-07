@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, BadRequestException, ForbiddenException, InternalServerErrorException, Logger } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, ForbiddenException, HttpException, InternalServerErrorException, Logger } from '@nestjs/common';
 import { PrismaService } from '../../database/prisma.service';
 import { PublishQueueService } from '../../queue/publish-queue.service';
 import { TenantService } from '../tenant/tenant.service';
@@ -8,6 +8,7 @@ import { evaluateDomesticContent } from '../../common/domestic-content-complianc
 import { isRealNameRequiredForPublish } from '../auth/real-name/real-name.verifier';
 import { labelAiGeneratedText, AI_TEXT_LABEL, aigcProviderCode } from '../../common/ai-content-label';
 import { MANUAL_DONE, MANUAL_PENDING, MANUAL_PLATFORMS, isManualPlatform, normalizeManualPostUrl } from './manual-publish';
+import { PUBLISH_LOG_MAX_ROWS, PublishTaskFilter, publishTaskWhere, publishTasksToCsv } from './publish-log';
 
 @Injectable()
 export class PublishService {
@@ -262,12 +263,17 @@ export class PublishService {
     });
   }
 
-  async getTasks(tenantId: string, options: { status?: string; page?: number; pageSize?: number }) {
-    const { status, page = 1, pageSize = 20 } = options;
+  /**
+   * 发布任务列表。筛选（关键词、平台、状态、日期）与导出共用 publishTaskWhere，
+   * 只查当前工作区自己的任务。
+   */
+  async getTasks(tenantId: string, options: { filter?: PublishTaskFilter; status?: string; page?: number; pageSize?: number }) {
+    const { page = 1, pageSize = 20 } = options;
     const skip = (page - 1) * pageSize;
 
-    const where: any = { tenant_id: tenantId };
-    if (status) where.status = status;
+    const filter: PublishTaskFilter = { ...(options.filter ?? {}) };
+    if (options.status && !filter.statuses) filter.statuses = [options.status];
+    const where = publishTaskWhere(tenantId, filter);
 
     const [tasks, total] = await Promise.all([
       this.prisma.publishTask.findMany({
@@ -295,6 +301,54 @@ export class PublishService {
     };
   }
 
+  /**
+   * 导出发布日志（CSV，中文表头）：只含当前工作区的任务，与列表同一筛选条件。
+   * 超过上限时只导出最新的 PUBLISH_LOG_MAX_ROWS 条，并在返回里标明被截断。
+   */
+  async exportTasksCsv(tenantId: string, filter: PublishTaskFilter): Promise<{ csv: string; rows: number; truncated: boolean }> {
+    const where = publishTaskWhere(tenantId, filter);
+    const tasks = await this.prisma.publishTask.findMany({
+      where,
+      take: PUBLISH_LOG_MAX_ROWS + 1,
+      orderBy: { created_at: 'desc' },
+      include: {
+        content: { select: { title: true } },
+        platform_account: { select: { platform: true, account_name: true, account_nickname: true } },
+        platform_content: { select: { platform: true } },
+      },
+    });
+    const truncated = tasks.length > PUBLISH_LOG_MAX_ROWS;
+    const rows = truncated ? tasks.slice(0, PUBLISH_LOG_MAX_ROWS) : tasks;
+    return { csv: publishTasksToCsv(rows), rows: rows.length, truncated };
+  }
+
+  /**
+   * 批量重试：逐条走 retryTask（同样只认本工作区、只认失败任务、通道未接入的照样拒绝），
+   * 不因为一条失败就整批回滚；返回每条的结果和中文原因。
+   */
+  async retryTasks(taskIds: string[], tenantId: string) {
+    const ids = [...new Set((taskIds || []).map(String))];
+    if (!ids.length) throw new BadRequestException('请选择要重试的任务');
+    if (ids.length > 50) throw new BadRequestException('一次最多重试 50 条任务');
+    const results: Array<{ id: string; ok: boolean; reason?: string }> = [];
+    for (const id of ids) {
+      try {
+        await this.retryTask(id, tenantId);
+        results.push({ id, ok: true });
+      } catch (error) {
+        const reason = error instanceof HttpException ? this.httpReason(error) : '暂时无法重试';
+        results.push({ id, ok: false, reason });
+      }
+    }
+    return { requested: ids.length, retried: results.filter((r) => r.ok).length, results };
+  }
+
+  private httpReason(error: HttpException): string {
+    const body: any = error.getResponse();
+    const message = typeof body === 'string' ? body : Array.isArray(body?.message) ? body.message[0] : body?.message;
+    return typeof message === 'string' && /[一-鿿]/.test(message) ? message : '暂时无法重试';
+  }
+
   async retryTask(taskId: string, tenantId: string) {
     const task = await this.prisma.publishTask.findFirst({
       where: { id: taskId, tenant_id: tenantId },
@@ -313,7 +367,9 @@ export class PublishService {
       throw new BadRequestException('发布任务缺少平台账号');
     }
 
-    const adapter = this.adapterRegistry.get(task.platform_account.platform);
+    let adapter;
+    try { adapter = this.adapterRegistry.get(task.platform_account.platform); }
+    catch { throw new BadRequestException(`平台 ${task.platform_account.platform} 尚无发布适配器，不能重试`); }
     if (!adapter.isLive) throw new BadRequestException(`平台 ${task.platform_account.platform} 尚未完成真实开放平台接入，不能重试`);
 
     await this.prisma.publishTask.update({ where: { id: taskId }, data: { status: 'queued', retry_count: { increment: 1 }, started_at: null, completed_at: null, error_code: null, error_message: null } });

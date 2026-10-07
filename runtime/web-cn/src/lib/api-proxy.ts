@@ -21,7 +21,7 @@ export const FORWARDED_REQUEST_HEADERS = [
   'x-payment-signature',
 ];
 
-export const FORWARDED_RESPONSE_HEADERS = ['content-type', 'content-disposition', 'retry-after', 'cache-control'];
+export const FORWARDED_RESPONSE_HEADERS = ['content-type', 'content-disposition', 'retry-after', 'cache-control', 'x-export-truncated'];
 
 export function apiOrigin(): string {
   return (process.env.API_INTERNAL_URL || 'http://api:4000').replace(/\/$/, '');

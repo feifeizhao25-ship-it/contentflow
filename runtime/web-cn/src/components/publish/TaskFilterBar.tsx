@@ -1,55 +1,102 @@
 'use client';
 
-import React from 'react';
-import { Button, Input, Select, DatePicker } from 'antd';
-import { SearchOutlined, ReloadOutlined, ExportOutlined, FilterOutlined } from '@ant-design/icons';
+import React, { useEffect, useState } from 'react';
+import { Button, Input, Select, DatePicker, Tooltip } from 'antd';
+import { ReloadOutlined, ExportOutlined } from '@ant-design/icons';
+import dayjs from 'dayjs';
+import {
+    EMPTY_PUBLISH_FILTER,
+    PUBLISH_FILTER_PLATFORMS,
+    PUBLISH_FILTER_STATUSES,
+    isFilterActive,
+    type PublishFilter,
+} from '@/lib/publish-filter';
 
 const { RangePicker } = DatePicker;
-const { Option } = Select;
 
-export const TaskFilterBar = () => {
+interface Props {
+    value: PublishFilter;
+    onChange: (next: PublishFilter) => void;
+    /** 当前列表这一页里失败任务的数量；为 0 时「批量重试」置灰并说明原因 */
+    failedCount: number;
+    onBatchRetry: () => void;
+    onExport: () => void;
+    retrying?: boolean;
+    exporting?: boolean;
+}
+
+/**
+ * 发布中心筛选栏。原来所有控件都没有绑定事件（点了没反应），现在：
+ * - 搜索（回车或点放大镜）、平台、状态、日期 → 立即重新查询后端；
+ * - 「批量重试」重试当前列表里的失败任务，逐条返回结果；
+ * - 「导出日志」按当前筛选条件导出本工作区的发布记录（CSV，中文表头）。
+ */
+export const TaskFilterBar = ({ value, onChange, failedCount, onBatchRetry, onExport, retrying, exporting }: Props) => {
+    const [keyword, setKeyword] = useState(value.keyword);
+    useEffect(() => setKeyword(value.keyword), [value.keyword]);
+
     return (
         <div className="bg-white p-4 rounded-2xl border border-zinc-200 shadow-sm flex flex-wrap gap-4 items-center justify-between">
-            {/* Left: Filters */}
-            <div className="flex items-center gap-3 flex-wrap flex-1">
-                <Input
-                    placeholder="搜索任务标题..."
-                    prefix={<SearchOutlined className="text-zinc-400" />}
-                    className="w-full sm:w-64 rounded-xl"
+            <div className="flex items-center gap-3 flex-wrap flex-1 min-w-0">
+                <Input.Search
+                    placeholder="搜索内容标题"
+                    allowClear
+                    value={keyword}
+                    onChange={(e) => {
+                        setKeyword(e.target.value);
+                        // 点清除按钮时立即恢复全部
+                        if (!e.target.value && value.keyword) onChange({ ...value, keyword: '' });
+                    }}
+                    onSearch={(text) => onChange({ ...value, keyword: text.trim() })}
+                    className="w-full sm:w-64"
+                    maxLength={100}
                 />
 
                 <Select
-                    placeholder="平台筛选项"
+                    placeholder="全部平台"
                     mode="multiple"
                     className="min-w-[160px]"
                     allowClear
                     maxTagCount={1}
-                >
-                    <Option value="douyin">🎵 抖音</Option>
-                    <Option value="xhs">📕 小红书</Option>
-                    <Option value="weixin">💬 视频号</Option>
-                    <Option value="wechat_mp">📰 公众号</Option>
-                </Select>
+                    value={value.platforms}
+                    onChange={(platforms: string[]) => onChange({ ...value, platforms })}
+                    options={PUBLISH_FILTER_PLATFORMS}
+                    aria-label="按平台筛选"
+                />
 
                 <Select
-                    defaultValue="all"
-                    className="min-w-[120px]"
-                >
-                    <Option value="all">全状态</Option>
-                    <Option value="success">✅ 成功</Option>
-                    <Option value="publishing">🔄 正在发布</Option>
-                    <Option value="failed">❌ 失败</Option>
-                    <Option value="manual_pending">待人工发布</Option>
-                    <Option value="manual_done">已人工发布</Option>
-                </Select>
+                    className="min-w-[150px]"
+                    value={value.status}
+                    onChange={(status: string) => onChange({ ...value, status })}
+                    options={PUBLISH_FILTER_STATUSES}
+                    aria-label="按状态筛选"
+                />
 
-                <RangePicker className="rounded-xl" />
+                <RangePicker
+                    className="rounded-xl"
+                    placeholder={['开始日期', '结束日期']}
+                    value={value.from && value.to ? [dayjs(value.from), dayjs(value.to)] : null}
+                    onChange={(range) => onChange({
+                        ...value,
+                        from: range?.[0] ? range[0].format('YYYY-MM-DD') : undefined,
+                        to: range?.[1] ? range[1].format('YYYY-MM-DD') : undefined,
+                    })}
+                />
+
+                {isFilterActive(value) && (
+                    <Button type="link" onClick={() => onChange(EMPTY_PUBLISH_FILTER)}>清除筛选</Button>
+                )}
             </div>
 
-            {/* Right: Actions */}
             <div className="flex items-center gap-3">
-                <Button icon={<ReloadOutlined />}>批量重试</Button>
-                <Button icon={<ExportOutlined />}>导出日志</Button>
+                <Tooltip title={failedCount === 0 ? '当前列表没有失败的任务' : `重试当前列表中的 ${failedCount} 条失败任务`}>
+                    <Button icon={<ReloadOutlined />} disabled={failedCount === 0} loading={retrying} onClick={onBatchRetry}>
+                        批量重试{failedCount > 0 ? `（${failedCount}）` : ''}
+                    </Button>
+                </Tooltip>
+                <Tooltip title="按当前筛选条件导出本工作区的发布记录（CSV，可用 Excel / WPS 打开）">
+                    <Button icon={<ExportOutlined />} loading={exporting} onClick={onExport}>导出日志</Button>
+                </Tooltip>
             </div>
         </div>
     );

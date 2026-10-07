@@ -38,8 +38,9 @@ describe('PublishController', () => {
   it('passes list filters to the service', async () => {
     service.getTasks.mockResolvedValue({ tasks: [], pagination: { total: 0 } });
     await controller.getTasks(request, 'queued', 2, 10);
+    // 列表筛选改为统一解析成 filter（与导出共用），status 放进 filter.statuses
     expect(service.getTasks).toHaveBeenCalledWith('tenant_1', {
-      status: 'queued',
+      filter: { statuses: ['queued'] },
       page: 2,
       pageSize: 10,
     });

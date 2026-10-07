@@ -1,10 +1,13 @@
-import { Controller, Post, Get, Body, Param, Query, UseGuards, Request } from '@nestjs/common';
+import { Controller, Post, Get, Body, Param, Query, UseGuards, Request, Res, HttpCode } from '@nestjs/common';
+import type { Response } from 'express';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { PublishService } from './publish.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { normalizePaging } from '../../common/pagination';
 import { CreatePublishTaskDto } from './dto/create-publish-task.dto';
 import { ConfirmManualPublishDto, CreateManualPublishDto } from './dto/create-manual-publish.dto';
+import { RetryPublishTasksDto } from './dto/retry-publish-tasks.dto';
+import { parsePublishTaskFilter, publishLogFileName } from './publish-log';
 
 @ApiTags('publish')
 @Controller('publish')
@@ -38,15 +41,49 @@ export class PublishController {
   }
 
   @Get('tasks')
-  @ApiOperation({ summary: '获取发布任务列表' })
+  @ApiOperation({ summary: '获取发布任务列表（可按关键词、平台、状态、日期筛选）' })
   async getTasks(
     @Request() req: any,
     @Query('status') status?: string,
     @Query('page') page?: number,
     @Query('pageSize') pageSize?: number,
+    @Query('keyword') keyword?: string,
+    @Query('platform') platform?: string,
+    @Query('from') from?: string,
+    @Query('to') to?: string,
   ) {
     const paging = normalizePaging(page, pageSize);
-    return this.publishService.getTasks(req.user.tenantId, { status, page: paging.page, pageSize: paging.pageSize });
+    const filter = parsePublishTaskFilter({ status, keyword, platform, from, to });
+    return this.publishService.getTasks(req.user.tenantId, { filter, page: paging.page, pageSize: paging.pageSize });
+  }
+
+  @Get('tasks/export')
+  @ApiOperation({ summary: '导出本工作区的发布日志（CSV，中文表头，与列表同一筛选条件）' })
+  async exportTasks(
+    @Request() req: any,
+    @Res() res: Response,
+    @Query('status') status?: string,
+    @Query('keyword') keyword?: string,
+    @Query('platform') platform?: string,
+    @Query('from') from?: string,
+    @Query('to') to?: string,
+  ) {
+    const filter = parsePublishTaskFilter({ status, keyword, platform, from, to });
+    const { csv, rows, truncated } = await this.publishService.exportTasksCsv(req.user.tenantId, filter);
+    const name = publishLogFileName();
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="${name.ascii}"; filename*=UTF-8''${encodeURIComponent(name.utf8)}`);
+    res.setHeader('Cache-Control', 'no-store');
+    res.setHeader('X-Export-Rows', String(rows));
+    res.setHeader('X-Export-Truncated', truncated ? '1' : '0');
+    res.status(200).send(csv);
+  }
+
+  @Post('tasks/retry')
+  @HttpCode(200)
+  @ApiOperation({ summary: '批量重试失败的任务（逐条返回结果与原因）' })
+  async retryTasks(@Request() req: any, @Body() body: RetryPublishTasksDto) {
+    return this.publishService.retryTasks(body.taskIds, req.user.tenantId);
   }
 
   @Post('tasks/:id/retry')
