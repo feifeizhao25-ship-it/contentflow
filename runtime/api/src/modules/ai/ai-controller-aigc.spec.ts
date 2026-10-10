@@ -35,7 +35,7 @@ describe('AI 接口的 AIGC 标识', () => {
     process.env.MARKET_REGION = 'cn';
     ai.assertTenantDailyBudget.mockResolvedValue(undefined);
     usage.checkQuota.mockResolvedValue(true);
-    ai.generateArticle.mockResolvedValue({ content: '一篇正文', visualPrompts: [], usage: { prompt_tokens: 1, completion_tokens: 2, total_tokens: 3 }, provider: 'dashscope', model: 'qwen-plus', latency_ms: 5, cost_usd: null });
+    ai.generateArticle.mockResolvedValue({ content: '一篇正文', visualPrompts: [], usage: { prompt_tokens: 1, completion_tokens: 2, total_tokens: 3 }, provider: 'dashscope', model: 'qwen-plus', latency_ms: 5, cost_amount: null });
     ai.generateImage.mockResolvedValue({ url: 'https://dashscope-result.oss-cn-beijing.aliyuncs.com/a.png', provider: 'dashscope', model: 'wanx2.1-t2i-turbo' });
     const moduleRef = await Test.createTestingModule({
       controllers: [AIController],

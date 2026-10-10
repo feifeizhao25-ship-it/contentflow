@@ -49,7 +49,7 @@ export class AIController {
       modelName: result.model,
       tokensInput: result.usage.prompt_tokens,
       tokensOutput: result.usage.completion_tokens,
-      costAmount: result.cost_usd ?? undefined,
+      costAmount: result.cost_amount ?? undefined,
       durationMs: result.latency_ms,
       status: 'success',
     });
@@ -77,7 +77,7 @@ export class AIController {
       modelName: result.model,
       tokensInput: result.usage.prompt_tokens,
       tokensOutput: result.usage.completion_tokens,
-      costAmount: result.cost_usd ?? undefined,
+      costAmount: result.cost_amount ?? undefined,
       durationMs: result.latency_ms,
       status: 'success',
     });
@@ -98,7 +98,7 @@ export class AIController {
       generationType: 'titles', inputParams: { topic, platform, count },
       outputContent: JSON.stringify(result.titles), tokensInput: result.usage.prompt_tokens,
       tokensOutput: result.usage.completion_tokens, modelProvider: result.provider,
-      modelName: result.model, costAmount: result.cost_usd ?? undefined,
+      modelName: result.model, costAmount: result.cost_amount ?? undefined,
       durationMs: result.latency_ms, status: 'success',
     });
     await this.allowance.chargeTokens(req.user.tenantId, result.usage.total_tokens, 'titles');
@@ -117,7 +117,7 @@ export class AIController {
     await this.aiService.recordGeneration(req.user.tenantId, req.user.sub, {
       generationType: 'viral_analysis', inputParams: { content }, outputContent: JSON.stringify(result.analysis),
       modelProvider: result.provider, modelName: result.model, tokensInput: result.usage.prompt_tokens,
-      tokensOutput: result.usage.completion_tokens, costAmount: result.cost_usd ?? undefined,
+      tokensOutput: result.usage.completion_tokens, costAmount: result.cost_amount ?? undefined,
       durationMs: result.latency_ms, status: 'success',
     });
     await this.allowance.chargeTokens(req.user.tenantId, result.usage.total_tokens, 'viral_analysis');
@@ -146,7 +146,7 @@ export class AIController {
       outputContent: result.url,
       modelProvider: result.provider,
       modelName: result.model,
-      costAmount: result.cost_usd ?? undefined,
+      costAmount: result.cost_amount ?? undefined,
       status: 'success',
     });
     await this.allowance.chargeImage(req.user.tenantId);

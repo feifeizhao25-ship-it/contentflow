@@ -21,7 +21,7 @@ describe('AIService OpenRouter routing', () => {
     expect(result.usage.total_tokens).toBe(6);
     expect(result.model).toBe('qwen/qwen3-30b-a3b-instruct-2507');
     expect(result.provider).toBe('openrouter');
-    expect(result.cost_usd).toBe(0.000001);
+    expect(result.cost_amount).toBe(0.000001);
     expect(result.latency_ms).toBeGreaterThanOrEqual(0);
     const [, request] = (global.fetch as jest.Mock).mock.calls[0];
     const body = JSON.parse(request.body);

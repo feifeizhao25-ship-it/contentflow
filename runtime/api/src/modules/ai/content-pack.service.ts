@@ -63,7 +63,7 @@ export class ContentPackService {
             // 计入每日成本预算：原来内容包从不写生成记录，日预算统计里看不到这部分花费。
             let generationId: string | undefined;
             if (userId) {
-                const cost = [titleResult.cost_usd, scriptData.cost_usd].reduce<number>((sum, value) => sum + (Number(value) || 0), 0);
+                const cost = [titleResult.cost_amount, scriptData.cost_amount].reduce<number>((sum, value) => sum + (Number(value) || 0), 0);
                 const record: any = await this.aiService.recordGeneration(tenantId, userId, {
                     generationType: 'content_pack',
                     inputParams: { topic: dto.topic, platforms: dto.platforms },

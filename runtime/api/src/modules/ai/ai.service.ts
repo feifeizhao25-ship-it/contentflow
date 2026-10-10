@@ -16,7 +16,7 @@ interface AIResponse {
   model: string;
   provider: 'openrouter' | 'deepseek' | 'qwen';
   latency_ms: number;
-  cost_usd: number | null;
+  cost_amount: number | null;
   usage: {
     prompt_tokens: number;
     completion_tokens: number;
@@ -30,7 +30,7 @@ interface TitlesResponse {
   model: string;
   provider: AIResponse['provider'];
   latency_ms: number;
-  cost_usd: number | null;
+  cost_amount: number | null;
 }
 
 export interface ContentSource {
@@ -220,7 +220,7 @@ export class AIService {
         model: String(data.model || model),
         provider: 'openrouter',
         latency_ms: Date.now() - startedAt,
-        cost_usd: Number.isFinite(Number(data.usage?.cost)) ? Number(data.usage.cost) : null,
+        cost_amount: Number.isFinite(Number(data.usage?.cost)) ? Number(data.usage.cost) : null,
         usage: { prompt_tokens: data.usage?.prompt_tokens || 0, completion_tokens: data.usage?.completion_tokens || 0, total_tokens: data.usage?.total_tokens || 0 },
       };
     }
@@ -290,7 +290,7 @@ export class AIService {
         // 境内接口只回 token 数、不回金额：按集中价目表折算，否则每日预算永远统计为 0。
         const cost = estimateTextCost(candidate.model, usage.prompt_tokens, usage.completion_tokens);
         if (!cost.known) this.logger.warn(`模型 ${candidate.model} 不在价目表中，已按最高单价计费，请补充 model-pricing.ts`);
-        return { content, model: candidate.model, provider: candidate.provider, latency_ms: Date.now() - startedAt, cost_usd: cost.usd, usage };
+        return { content, model: candidate.model, provider: candidate.provider, latency_ms: Date.now() - startedAt, cost_amount: cost.cny, usage };
       } catch (error) {
         failures.push(`${candidate.provider}:${error instanceof Error ? error.name : 'error'}`);
       }
@@ -315,7 +315,7 @@ export class AIService {
     style: string;
     platform: string;
     keywords?: string[];
-  }): Promise<{ content: string; visualPrompts?: string[]; model: string; provider: string; latency_ms: number; cost_usd: number | null; usage: AIResponse['usage'] }> {
+  }): Promise<{ content: string; visualPrompts?: string[]; model: string; provider: string; latency_ms: number; cost_amount: number | null; usage: AIResponse['usage'] }> {
     // 根据平台构建不同的提示词
     const platformPrompts: Record<string, string> = {
       xhs: `请为小红书创作一篇爆款笔记，主题：${params.topic}，风格：${params.style}`,
@@ -361,7 +361,7 @@ export class AIService {
       model: result.model,
       provider: result.provider,
       latency_ms: result.latency_ms,
-      cost_usd: result.cost_usd,
+      cost_amount: result.cost_amount,
       usage: result.usage,
     };
   }
@@ -386,17 +386,17 @@ ${content}
     });
 
     try {
-      return { analysis: JSON.parse(result.content), model: result.model, provider: result.provider, latency_ms: result.latency_ms, cost_usd: result.cost_usd, usage: result.usage };
+      return { analysis: JSON.parse(result.content), model: result.model, provider: result.provider, latency_ms: result.latency_ms, cost_amount: result.cost_amount, usage: result.usage };
     } catch {
-      return { analysis: { raw_analysis: result.content }, model: result.model, provider: result.provider, latency_ms: result.latency_ms, cost_usd: result.cost_usd, usage: result.usage };
+      return { analysis: { raw_analysis: result.content }, model: result.model, provider: result.provider, latency_ms: result.latency_ms, cost_amount: result.cost_amount, usage: result.usage };
     }
   }
 
   async assertTenantDailyBudget(tenantId: string): Promise<void> {
     const usage = await this.getTenantDailyBudgetUsage(tenantId);
-    if (usage.limit_usd > 0 && usage.spent_usd >= usage.limit_usd) {
+    if (usage.limit > 0 && usage.spent >= usage.limit) {
       // 原来抛英文 Error，经全局过滤器后只剩「服务暂时出错」，用户不知道是额度用完了。
-      this.logger.warn(`AI tenant daily budget exceeded (${usage.spent_usd.toFixed(4)}/${usage.limit_usd.toFixed(2)} USD) tenant=${tenantId}`);
+      this.logger.warn(`AI tenant daily budget exceeded (${usage.spent.toFixed(4)}/${usage.limit.toFixed(2)} ${usage.currency}) tenant=${tenantId}`);
       throw new HttpException(
         { message: '今日 AI 用量已达上限，请明天再试', error: 'AI_DAILY_LIMIT' },
         HttpStatus.TOO_MANY_REQUESTS,
@@ -404,18 +404,33 @@ ${content}
     }
   }
 
+  /**
+   * 租户每日 AI 成本预算。
+   * - 国内版：成本记录（cost_amount）是人民币（见 model-pricing.ts），预算读 AI_TENANT_DAILY_BUDGET_CNY，
+   *   默认 140 元——与原来「20 美元 × 折算 7」的效果相同，只是不再经过没有出处的汇率；具体额度需运营确认。
+   * - 国际版：沿用美元（境外聚合通道直接返回美元金额）与 AI_TENANT_DAILY_BUDGET_USD，行为不变。
+   */
   async getTenantDailyBudgetUsage(tenantId: string) {
-    const budgetUsd = Math.max(0, this.configService.get<number>('AI_TENANT_DAILY_BUDGET_USD', 20));
-    if (budgetUsd === 0) return { spent_usd: 0, limit_usd: 0, remaining_usd: -1, usage_ratio: 0, warning_level: 'disabled' };
+    const domestic = isDomesticMarket(this.marketRegion);
+    const currency: 'CNY' | 'USD' = domestic ? 'CNY' : 'USD';
+    const budget = Math.max(0, Number(domestic
+      ? this.configService.get<number>('AI_TENANT_DAILY_BUDGET_CNY', 140)
+      : this.configService.get<number>('AI_TENANT_DAILY_BUDGET_USD', 20)) || 0);
+    const withLegacy = (u: { spent: number; limit: number; remaining: number }) =>
+      currency === 'USD' ? { spent_usd: u.spent, limit_usd: u.limit, remaining_usd: u.remaining } : {};
+    if (budget === 0) {
+      return { currency, spent: 0, limit: 0, remaining: -1, usage_ratio: 0, warning_level: 'disabled', ...withLegacy({ spent: 0, limit: 0, remaining: -1 }) };
+    }
     const dayStart = chinaDayStart();
     const aggregate = await this.prisma.aIGeneration.aggregate({
       where: { tenant_id: tenantId, status: 'success', created_at: { gte: dayStart } },
       _sum: { cost_amount: true },
     });
     const spent = Number(aggregate._sum.cost_amount || 0);
-    const ratio = spent / budgetUsd;
+    const remaining = Math.max(budget - spent, 0);
+    const ratio = spent / budget;
     const warningLevel = ratio >= 1 ? 'blocked' : ratio >= 0.95 ? 'critical' : ratio >= 0.8 ? 'warning' : 'normal';
-    return { spent_usd: spent, limit_usd: budgetUsd, remaining_usd: Math.max(budgetUsd - spent, 0), usage_ratio: Number(ratio.toFixed(4)), warning_level: warningLevel, timezone: 'Asia/Shanghai' };
+    return { currency, spent, limit: budget, remaining, usage_ratio: Number(ratio.toFixed(4)), warning_level: warningLevel, timezone: 'Asia/Shanghai', ...withLegacy({ spent, limit: budget, remaining }) };
   }
 
   async generateTitles(topic: string, platform: string, count: number = 5): Promise<string[]> {
@@ -435,7 +450,7 @@ ${content}
     // 结构化解析：剥离「以下是……」等说明性前后缀，
     // 解析不到有效标题时抛错（fail closed），不把说明文字当标题返回。
     const titles = parseGeneratedTitles(result.content, count);
-    return { titles, usage: result.usage, model: result.model, provider: result.provider, latency_ms: result.latency_ms, cost_usd: result.cost_usd };
+    return { titles, usage: result.usage, model: result.model, provider: result.provider, latency_ms: result.latency_ms, cost_amount: result.cost_amount };
   }
 
   // 记录AI生成历史
@@ -477,7 +492,7 @@ ${content}
     size?: string;
     style?: string;
     seed?: number;
-  }): Promise<{ url: string; revisedPrompt?: string; provider: string; model: string; cost_usd?: number | null }> {
+  }): Promise<{ url: string; revisedPrompt?: string; provider: string; model: string; cost_amount?: number | null }> {
     // 国内版一律走通义万相（境内），不论环境里有没有 FAL_API_KEY——
     // 原来国内版也只会调 fal.ai（境外），给了 key 就出境，不给就永远「未配置」。
     if (isDomesticMarket(this.marketRegion)) {
@@ -586,7 +601,7 @@ ${content}
   }
 
   /** 通义万相文生图：提交异步任务，轮询到 SUCCEEDED 取结果地址（结果地址约 24 小时有效）。 */
-  private async generateImageDashScope(params: { prompt: string; size?: string; seed?: number }): Promise<{ url: string; revisedPrompt?: string; provider: string; model: string; cost_usd: number }> {
+  private async generateImageDashScope(params: { prompt: string; size?: string; seed?: number }): Promise<{ url: string; revisedPrompt?: string; provider: string; model: string; cost_amount: number }> {
     if (!this.qwenApiKey) {
       throw new Error('国内版图片生成使用通义万相，需要配置 QWEN_API_KEY（DashScope）');
     }
@@ -625,7 +640,7 @@ ${content}
       if (output?.task_status === 'SUCCEEDED') {
         const url = output?.results?.find((r: any) => r?.url)?.url;
         if (!url) throw new Error('通义万相未返回图片地址');
-        return { url, revisedPrompt: output?.results?.[0]?.actual_prompt ?? params.prompt, provider: 'dashscope', model, cost_usd: estimateImageCost(model, 1).usd };
+        return { url, revisedPrompt: output?.results?.[0]?.actual_prompt ?? params.prompt, provider: 'dashscope', model, cost_amount: estimateImageCost(model, 1).cny };
       }
       if (output?.task_status === 'FAILED' || output?.task_status === 'CANCELED') {
         throw new Error(`通义万相生成失败：${output?.code ?? output?.task_status}`);

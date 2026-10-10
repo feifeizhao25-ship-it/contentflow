@@ -1,6 +1,6 @@
 /**
  * 套餐 AI 额度真的被执行（审计 P0-3 / 第 6 点）：
- *  - 国内模型原来 cost_usd: null，每日成本预算永远统计为 0；
+ *  - 国内模型原来 cost_amount: null，每日成本预算永远统计为 0；
  *  - 文章、标题、脚本、图片接口不查套餐 AI 额度，免费版等于无限 AI；
  *  - 日预算超限抛英文 Error，用户只看到「服务暂时出错」。
  */
@@ -37,28 +37,52 @@ describe('国内模型按价目表折算成本', () => {
       expect(price.inputCnyPerMillion).toBeGreaterThan(0);
       expect(price.outputCnyPerMillion).toBeGreaterThan(0);
       expect(price.outputCnyPerMillion).toBeLessThanOrEqual(UNKNOWN_TEXT_MODEL_PRICE.outputCnyPerMillion);
-      expect(estimateTextCost(model, 1000, 1000).usd).toBeGreaterThan(0);
+      expect(estimateTextCost(model, 1000, 1000).cny).toBeGreaterThan(0);
     }
     const unknown = estimateTextCost('some-new-model', 1_000_000, 0);
     expect(unknown.known).toBe(false);
     expect(unknown.cny).toBe(UNKNOWN_TEXT_MODEL_PRICE.inputCnyPerMillion);
-    expect(estimateImageCost('wanx2.1-t2i-turbo').usd).toBeGreaterThan(0);
+    expect(estimateImageCost('wanx2.1-t2i-turbo').cny).toBeGreaterThan(0);
   });
 
-  it('DeepSeek 返回的记录里 cost_usd 不再是 null，而是按 token 折算的金额', async () => {
+  it('DeepSeek 返回的记录里 cost_amount 不再是 null，而是按 token 折算的金额', async () => {
     global.fetch = jest.fn().mockResolvedValue({
       ok: true, status: 200,
       json: async () => ({ choices: [{ message: { content: '好' } }], usage: { prompt_tokens: 1000, completion_tokens: 2000, total_tokens: 3000 } }),
     }) as jest.Mock;
     const result = await service({ MARKET_REGION: 'cn', DEEPSEEK_API_KEY: 'dk' }).generateText({ prompt: '测试' });
-    expect(result.cost_usd).not.toBeNull();
-    expect(result.cost_usd).toBeCloseTo(estimateTextCost('deepseek-chat', 1000, 2000).usd, 8);
-    expect(result.cost_usd!).toBeGreaterThan(0);
+    expect(result.cost_amount).not.toBeNull();
+    expect(result.cost_amount).toBeCloseTo(estimateTextCost('deepseek-chat', 1000, 2000).cny, 8);
+    expect(result.cost_amount!).toBeGreaterThan(0);
+  });
+
+  it('国内版：成本是人民币，预算读 AI_TENANT_DAILY_BUDGET_CNY（默认 140 元），美元预算变量不再参与', async () => {
+    const prisma = { aIGeneration: { aggregate: jest.fn().mockResolvedValue({ _sum: { cost_amount: 100 } }) } };
+    const usage = await service({ MARKET_REGION: 'cn', DEEPSEEK_API_KEY: 'dk', AI_TENANT_DAILY_BUDGET_USD: 1 }, prisma).getTenantDailyBudgetUsage('t');
+    expect(usage).toMatchObject({ currency: 'CNY', spent: 100, limit: 140, remaining: 40 });
+    expect(usage).not.toHaveProperty('spent_usd');
+    // 价目表与源码里都不再有美元汇率
+    const src = require('fs').readFileSync(require('path').join(__dirname, 'model-pricing.ts'), 'utf8');
+    expect(src).not.toMatch(/CNY_PER_USD|usd:/);
+  });
+
+  it('核对过的价目必须带官方来源与实际核对日期；没核对的标「待核实」', () => {
+    for (const [model, price] of Object.entries(DOMESTIC_TEXT_MODEL_PRICES)) {
+      if (price.verified) {
+        expect({ model, source: price.source }).toEqual({ model, source: expect.stringMatching(/^https:\/\/api-docs\.deepseek\.com\//) });
+        expect({ model, checkedAt: price.checkedAt }).toEqual({ model, checkedAt: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/) });
+      } else {
+        expect({ model, note: price.note }).toEqual({ model, note: expect.stringContaining('待核实') });
+      }
+    }
+    expect(DOMESTIC_TEXT_MODEL_PRICES['deepseek-flash']).toMatchObject({ inputCnyPerMillion: 2, outputCnyPerMillion: 8, verified: true });
+    expect(DOMESTIC_TEXT_MODEL_PRICES['deepseek-v4-pro']).toMatchObject({ inputCnyPerMillion: 9, outputCnyPerMillion: 27, verified: true });
   });
 
   it('日预算按记录里的金额累计，超出后抛中文 429「今日 AI 用量已达上限」', async () => {
     const prisma = { aIGeneration: { aggregate: jest.fn().mockResolvedValue({ _sum: { cost_amount: 0.5 } }) } };
-    const ai = service({ MARKET_REGION: 'cn', DEEPSEEK_API_KEY: 'dk', AI_TENANT_DAILY_BUDGET_USD: 0.5 }, prisma);
+    // 国内版预算按人民币（AI_TENANT_DAILY_BUDGET_CNY），不再经美元折算
+    const ai = service({ MARKET_REGION: 'cn', DEEPSEEK_API_KEY: 'dk', AI_TENANT_DAILY_BUDGET_CNY: 0.5 }, prisma);
     const error = await ai.assertTenantDailyBudget('t').catch((e) => e);
     expect(error).toBeInstanceOf(HttpException);
     expect(error.getStatus()).toBe(429);
@@ -80,7 +104,7 @@ describe('AI 生成接口统一执行套餐 AI 额度', () => {
     recordGeneration: jest.fn(),
   };
   const usage = { checkQuota: jest.fn(), trackUsage: jest.fn() };
-  const textResult = { usage: { prompt_tokens: 10, completion_tokens: 20, total_tokens: 30 }, provider: 'deepseek', model: 'deepseek-chat', latency_ms: 1, cost_usd: 0.0001 };
+  const textResult = { usage: { prompt_tokens: 10, completion_tokens: 20, total_tokens: 30 }, provider: 'deepseek', model: 'deepseek-chat', latency_ms: 1, cost_amount: 0.0001 };
   const previousRegion = process.env.MARKET_REGION;
 
   beforeEach(async () => {
@@ -91,7 +115,7 @@ describe('AI 生成接口统一执行套餐 AI 额度', () => {
     ai.generateTitlesWithUsage.mockResolvedValue({ titles: ['标题一'], ...textResult });
     ai.generateScript.mockResolvedValue({ title: 't', scenes: [{ visual: 'v', subtitle: 's', time: 5 }], ...textResult });
     ai.analyzeViralContentWithUsage.mockResolvedValue({ analysis: {}, ...textResult });
-    ai.generateImage.mockResolvedValue({ url: 'https://example.cn/a.png', provider: 'dashscope', model: 'wanx2.1-t2i-turbo', cost_usd: 0.04 });
+    ai.generateImage.mockResolvedValue({ url: 'https://example.cn/a.png', provider: 'dashscope', model: 'wanx2.1-t2i-turbo', cost_amount: 0.04 });
     const moduleRef = await Test.createTestingModule({
       controllers: [AIController],
       providers: [{ provide: AIService, useValue: ai }, { provide: UsageService, useValue: usage }, AiAllowanceService],

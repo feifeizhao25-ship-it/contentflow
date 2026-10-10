@@ -105,7 +105,7 @@ describe('storyboard script', () => {
     const recorded: unknown[] = [];
     const fake = {
       assertTenantDailyBudget: async () => undefined,
-      generateScript: async () => ({ title: 't', scenes: [{ visual: 'v', subtitle: 's', time: 5 }], provider: 'deepseek', model: 'deepseek-chat', usage: { prompt_tokens: 1, completion_tokens: 1, total_tokens: 2 }, latency_ms: 1, cost_usd: null }),
+      generateScript: async () => ({ title: 't', scenes: [{ visual: 'v', subtitle: 's', time: 5 }], provider: 'deepseek', model: 'deepseek-chat', usage: { prompt_tokens: 1, completion_tokens: 1, total_tokens: 2 }, latency_ms: 1, cost_amount: null }),
       recordGeneration: async (...args: unknown[]) => { recorded.push(args); },
     };
     const allowance = { assertAllowed: async () => undefined, chargeTokens: async () => undefined, chargeImage: async () => undefined };
