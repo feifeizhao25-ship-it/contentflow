@@ -46,63 +46,15 @@ function ContentsContent() {
     const [statusFilter, setStatusFilter] = useState<string>('all');
     const [loading, setLoading] = useState(false);
     const [data, setData] = useState<any[]>([]);
-    const [assetOpen, setAssetOpen] = useState(false);
-    const [assetLoading, setAssetLoading] = useState(false);
-    const [assetTitle, setAssetTitle] = useState('');
-    const [assetItems, setAssetItems] = useState<ContentAsset[]>([]);
-    const [reviewReport, setReviewReport] = useState<any>(null);
-    const [activeContentId, setActiveContentId] = useState<string>('');
-    const [versionItems, setVersionItems] = useState<any[]>([]);
-    const [diffOpen, setDiffOpen] = useState(false);
-    const [diffLoading, setDiffLoading] = useState(false);
-    const [diffData, setDiffData] = useState<any>(null);
-    const [diffTitle, setDiffTitle] = useState('');
+    const [keyword, setKeyword] = useState('');
+    // 预览：原来「预览」打开的是封面地址，没有封面时打开一张示例图；现在在弹窗里看标题、正文与封面
+    const [previewFor, setPreviewFor] = useState<any>(null);
 
-    const renderInlineDiff = (fromValue: any, toValue: any) => {
-        const fromText = typeof fromValue === 'string' ? fromValue : JSON.stringify(fromValue || '');
-        const toText = typeof toValue === 'string' ? toValue : JSON.stringify(toValue || '');
-        const maxLen = 360;
-
-        const a = fromText.slice(0, maxLen);
-        const b = toText.slice(0, maxLen);
-
-        let start = 0;
-        while (start < a.length && start < b.length && a[start] === b[start]) start += 1;
-
-        let endA = a.length - 1;
-        let endB = b.length - 1;
-        while (endA >= start && endB >= start && a[endA] === b[endB]) {
-            endA -= 1;
-            endB -= 1;
-        }
-
-        const prefix = a.slice(0, start);
-        const aDiff = a.slice(start, endA + 1);
-        const bDiff = b.slice(start, endB + 1);
-        const suffix = a.slice(endA + 1);
-
-        return (
-            <div className="space-y-1">
-                <div className="text-xs text-zinc-500">从：</div>
-                <div className="text-sm text-zinc-700 whitespace-pre-wrap">
-                    {prefix}
-                    {aDiff ? <span className="bg-red-100 text-red-700 px-1 rounded">{aDiff}</span> : null}
-                    {suffix}
-                </div>
-                <div className="text-xs text-zinc-500">到：</div>
-                <div className="text-sm text-zinc-700 whitespace-pre-wrap">
-                    {prefix}
-                    {bDiff ? <span className="bg-emerald-100 text-emerald-700 px-1 rounded">{bDiff}</span> : null}
-                    {suffix}
-                </div>
-            </div>
-        );
-    };
-
-    const fetchContents = async () => {
+    const fetchContents = async (kw: string = keyword) => {
         setLoading(true);
         try {
-            const result: any = await apiClient.get('/contents');
+            const query = kw.trim() ? `&keyword=${encodeURIComponent(kw.trim())}` : '';
+            const result: any = await apiClient.get(`/contents?pageSize=100${query}`);
             // apiClient 已解开 { success, data } 信封，拿到的就是 { contents, pagination }
             setData(parseContentList(result) as any);
         } catch {
@@ -271,88 +223,6 @@ function ContentsContent() {
         }
     };
 
-    const handleOpenAssets = async (record: any) => {
-        setAssetOpen(true);
-        setAssetTitle(record.title || '内容资产');
-        setActiveContentId(record.id);
-        setAssetLoading(true);
-        setReviewReport(null);
-        setVersionItems([]);
-        try {
-            const res: any = await apiClient.get(`/contents/${record.id}/assets`);
-            const assets = res?.data?.assets || res?.assets || [];
-            setAssetItems(assets);
-
-            const versionRes: any = await apiClient.get(`/contents/${record.id}/versions`);
-            const versions = versionRes?.data?.items || versionRes?.items || [];
-            setVersionItems(versions);
-        } catch (e) {
-            setAssetItems([]);
-        } finally {
-            setAssetLoading(false);
-        }
-    };
-
-    const handleCloneToStudio = async () => {
-        if (!activeContentId) return;
-        setAssetLoading(true);
-        try {
-            const res: any = await apiClient.post(`/contents/${activeContentId}/clone`, {});
-            const clonedId = res?.data?.id || res?.id;
-            const targetId = clonedId || activeContentId;
-            window.location.href = `/studio?contentId=${targetId}`;
-        } catch (e: any) {
-            message.error(safeErrorText(e, '复用失败'));
-        } finally {
-            setAssetLoading(false);
-        }
-    };
-
-    const handleCompareVersion = async (targetId: string, title?: string) => {
-        if (!activeContentId || !targetId) return;
-        setDiffOpen(true);
-        setDiffLoading(true);
-        setDiffTitle(title || '版本对比');
-        try {
-            const res: any = await apiClient.get(`/contents/${activeContentId}/compare?targetId=${targetId}`);
-            const payload = res?.data || res;
-            setDiffData(payload);
-        } catch (e: any) {
-            setDiffData({ error: safeErrorText(e, '对比失败') });
-        } finally {
-            setDiffLoading(false);
-        }
-    };
-
-    const handleRollbackVersion = async (targetId: string) => {
-        if (!activeContentId || !targetId) return;
-        setAssetLoading(true);
-        try {
-            const res: any = await apiClient.post(`/contents/${activeContentId}/rollback`, { targetId });
-            const rollbackId = res?.data?.id || res?.id;
-            if (rollbackId) {
-                window.location.href = `/studio?contentId=${rollbackId}`;
-            }
-        } catch (e: any) {
-            message.error(safeErrorText(e, '回滚失败'));
-        } finally {
-            setAssetLoading(false);
-        }
-    };
-
-    const handleGenerateReview = async (record: any) => {
-        setAssetLoading(true);
-        try {
-            const res: any = await apiClient.post(`/contents/${record.id}/review/generate`, {});
-            const report = res?.data?.report || res?.report;
-            setReviewReport(report);
-        } catch (e: any) {
-            setReviewReport({ raw: safeErrorText(e, '复盘生成失败') });
-        } finally {
-            setAssetLoading(false);
-        }
-    };
-
     /** 每条内容按状态与审核权限给出可做的事；做不了时说明在等谁。 */
     const renderReviewActions = (record: any) => {
         const state = contentReviewState(record, policy);
@@ -456,8 +326,7 @@ function ContentsContent() {
             width: 260,
             render: (_, record: any) => (
                 <Space size="small" wrap>
-                    <Button type="link" size="small" icon={<EyeOutlined />} onClick={() => window.open(record.media_urls?.[0] || PLACEHOLDER_IMAGES.content, '_blank')}>预览</Button>
-                    <Button type="link" size="small" onClick={() => handleOpenAssets(record)}>资产</Button>
+                    <Button type="link" size="small" icon={<EyeOutlined />} onClick={() => setPreviewFor(record)}>预览</Button>
                     {renderReviewActions(record)}
                     <Button type="link" size="small" danger icon={<DeleteOutlined />} onClick={() => handleDelete(record.id)}>删除</Button>
                 </Space>
@@ -511,8 +380,7 @@ function ContentsContent() {
                 </div>
             </div>
             <div className="mt-3 flex flex-wrap gap-x-1 border-t border-zinc-100 pt-2">
-                <Button type="link" size="small" icon={<EyeOutlined />} onClick={() => window.open(record.media_urls?.[0] || PLACEHOLDER_IMAGES.content, '_blank')}>预览</Button>
-                <Button type="link" size="small" onClick={() => handleOpenAssets(record)}>资产</Button>
+                <Button type="link" size="small" icon={<EyeOutlined />} onClick={() => setPreviewFor(record)}>预览</Button>
                 {renderReviewActions(record)}
                 <Button type="link" size="small" danger icon={<DeleteOutlined />} onClick={() => handleDelete(record.id)}>删除</Button>
             </div>
@@ -535,8 +403,11 @@ function ContentsContent() {
                 <div className="mb-6 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                     <div className="flex min-w-0 flex-col gap-3 sm:flex-row">
                         <Search
-                            placeholder="全量搜索标题、关键词..."
+                            placeholder="搜索标题或正文"
                             allowClear
+                            value={keyword}
+                            onChange={(e) => setKeyword(e.target.value)}
+                            onSearch={(value) => fetchContents(value)}
                             className="w-full sm:w-80"
                             prefix={<SearchOutlined />}
                             size="large"
@@ -680,117 +551,29 @@ function ContentsContent() {
             </Modal>
 
             <Modal
-                open={assetOpen}
-                title={assetTitle || '内容资产'}
-                onCancel={() => setAssetOpen(false)}
+                open={previewFor !== null}
+                title={previewFor?.title || '未命名内容'}
                 footer={null}
-                width={820}
+                onCancel={() => setPreviewFor(null)}
+                width={720}
                 style={{ maxWidth: 'calc(100vw - 32px)' }}
             >
-                <div className="space-y-4">
-                    <div className="flex items-center gap-3">
-                        <Button size="small" loading={assetLoading} onClick={() => handleGenerateReview({ id: activeContentId })}>
-                            生成复盘
-                        </Button>
-                        <Button size="small" onClick={handleCloneToStudio}>
-                            复用为内容包
-                        </Button>
+                <div className="space-y-3">
+                    <div className="flex flex-wrap gap-1">
+                        <Tag>{contentTypeText(previewFor?.type)}</Tag>
+                        <Tag color={statusColors[previewFor?.status] || 'default'}>{contentStatusText(previewFor?.status)}</Tag>
+                        {previewFor?.source === 'ai' ? <Tag color="purple">AI 生成</Tag> : <Tag>手动创建</Tag>}
                     </div>
-
-                    {assetLoading ? (
-                        <div className="text-sm text-zinc-500">加载中...</div>
-                    ) : (
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                            {assetItems.length === 0 ? (
-                                <div className="text-sm text-zinc-500">暂无资产</div>
-                            ) : (
-                                assetItems.map((asset, index) => (
-                                    <div key={`${asset.type}-${index}`} className="border border-zinc-200 rounded-lg p-3 bg-zinc-50">
-                                        <div className="text-xs text-zinc-500 mb-1">{asset.label || asset.type}</div>
-                                        {asset.url ? (
-                                            <a className="text-sm text-emerald-700" href={asset.url} target="_blank" rel="noreferrer">{asset.url}</a>
-                                        ) : (
-                                            <div className="text-sm text-zinc-700 whitespace-pre-wrap">{asset.meta?.content || '无内容'}</div>
-                                        )}
-                                    </div>
-                                ))
-                            )}
+                    {previewFor?.cover_url && (
+                        <div className="relative aspect-video w-full max-w-md overflow-hidden rounded-lg border border-zinc-200 bg-zinc-100">
+                            <Image src={previewFor.cover_url} alt="封面" fill unoptimized className="object-cover" sizes="448px" />
+                            {previewFor.source === 'ai' && <div className="absolute left-2 top-2 rounded bg-black/60 px-2 py-0.5 text-[11px] text-white">AI 生成</div>}
                         </div>
                     )}
-
-                    {reviewReport ? (
-                        <div className="border border-amber-200 bg-amber-50/60 rounded-lg p-4 text-sm text-zinc-700 whitespace-pre-wrap">
-                            {reviewReport.raw || JSON.stringify(reviewReport, null, 2)}
-                        </div>
-                    ) : null}
-
-                    {versionItems.length > 0 ? (
-                        <div className="border border-zinc-200 rounded-lg p-4 bg-white/70">
-                            <div className="text-sm font-semibold text-zinc-700 mb-2">版本链</div>
-                            <div className="space-y-2 text-sm text-zinc-600">
-                                {versionItems.map((item) => (
-                                    <div key={item.id} className="flex items-center justify-between">
-                                        <div>
-                                            <span className="font-semibold">{item.is_root ? '源' : `V${item.version}`}</span>
-                                            <span className="ml-2">{item.title || '未命名内容'}</span>
-                                            <span className="ml-2 text-xs text-zinc-400">{new Date(item.created_at).toLocaleString()}</span>
-                                        </div>
-                                        <div className="flex items-center gap-2">
-                                            <Button size="small" onClick={() => handleCompareVersion(item.id, item.title)}>
-                                                对比
-                                            </Button>
-                                            <Button size="small" onClick={() => window.location.href = `/studio?contentId=${item.id}`}>复用</Button>
-                                            <Button size="small" onClick={() => handleRollbackVersion(item.id)}>回滚</Button>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-                    ) : null}
-                </div>
-            </Modal>
-
-            <Modal
-                open={diffOpen}
-                title={diffTitle || '版本对比'}
-                onCancel={() => setDiffOpen(false)}
-                footer={null}
-                width={920}
-                style={{ maxWidth: 'calc(100vw - 32px)' }}
-            >
-                {diffLoading ? (
-                    <div className="text-sm text-zinc-500">对比中...</div>
-                ) : diffData?.error ? (
-                    <div className="text-sm text-red-500">{diffData.error}</div>
-                ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-zinc-700">
-                        <div className="border border-zinc-200 rounded-lg p-3 bg-white/70">
-                            <div className="font-semibold mb-2">当前版本</div>
-                            <div className="text-xs text-zinc-500 mb-2">标题：{diffData?.base?.title || '未命名'}</div>
-                            <div className="text-xs text-zinc-500 mb-2">封面：{diffData?.base?.cover_url || '无'}</div>
-                            <div className="whitespace-pre-wrap">{diffData?.base?.body || '无正文'}</div>
-                        </div>
-                        <div className="border border-zinc-200 rounded-lg p-3 bg-white/70">
-                            <div className="font-semibold mb-2">目标版本</div>
-                            <div className="text-xs text-zinc-500 mb-2">标题：{diffData?.target?.title || '未命名'}</div>
-                            <div className="text-xs text-zinc-500 mb-2">封面：{diffData?.target?.cover_url || '无'}</div>
-                            <div className="whitespace-pre-wrap">{diffData?.target?.body || '无正文'}</div>
-                        </div>
-                        {Array.isArray(diffData?.changes) && diffData.changes.length > 0 ? (
-                            <div className="md:col-span-2 border border-amber-200 rounded-lg p-3 bg-amber-50/60">
-                                <div className="font-semibold mb-2">差异摘要</div>
-                                <div className="space-y-2">
-                                    {diffData.changes.map((change: any, idx: number) => (
-                                        <div key={`${change.field}-${idx}`}>
-                                            <div className="text-xs text-zinc-500 mb-1">{change.field}</div>
-                                            {renderInlineDiff(change.from || '', change.to || '')}
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                        ) : null}
+                    <div className="max-h-[50vh] overflow-y-auto whitespace-pre-wrap break-words rounded-lg bg-zinc-50 p-3 text-sm leading-7 text-zinc-700">
+                        {previewFor?.body || '这条内容还没有正文'}
                     </div>
-                )}
+                </div>
             </Modal>
         </div>
     );

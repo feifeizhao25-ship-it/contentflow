@@ -94,6 +94,12 @@ function StudioContent() {
     refreshBalance();
   }, [refreshBalance]);
 
+  // 从热点页点进来：带上选题（只预填主题，不自动生成）
+  useEffect(() => {
+    const preset = searchParams.get('topic');
+    if (preset && !searchParams.get('contentId')) setTopic(preset.slice(0, 200));
+  }, [searchParams]);
+
   useEffect(() => {
     const contentId = searchParams.get('contentId');
     if (!contentId) return;
@@ -311,7 +317,7 @@ function StudioContent() {
         });
       }
 
-      window.location.href = '/publish';
+      router.push('/publish');
     } catch (e: any) {
       message.error({ content: safeErrorText(e, '发布失败'), key: 'publish' });
     }

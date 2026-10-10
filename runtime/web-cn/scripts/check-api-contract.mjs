@@ -130,11 +130,6 @@ const read = (p) => (fs.existsSync(p) ? fs.readFileSync(p, 'utf8') : null);
 const KNOWN_UNIMPLEMENTED = {
   'GET /contents/:id/assets': '内容素材清单：后端未实现，页面按无素材处理',
   'POST /contents/:id/assets': '内容素材清单：后端未实现，工作室保存时忽略失败',
-  'GET /contents/:id/versions': '内容版本历史：后端未实现（需要新表）',
-  'GET /contents/:id/compare': '内容版本对比：后端未实现（需要新表）',
-  'POST /contents/:id/clone': '内容复用：后端未实现',
-  'POST /contents/:id/rollback': '内容回滚：后端未实现（需要新表）',
-  'POST /contents/:id/review/generate': 'AI 内容复盘：后端未实现',
 };
 
 // 只有真正挂到 AppModule 上的控制器才算「后端有这个路由」。

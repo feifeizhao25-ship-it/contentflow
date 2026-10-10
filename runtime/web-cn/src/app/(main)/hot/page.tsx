@@ -5,7 +5,8 @@ import { FireFilled, ThunderboltFilled, ArrowRightOutlined, SearchOutlined, Cloc
 import { Input, Button, Tag, Empty, Card, Modal, Row, Col, Space, message, Typography, List, Divider } from 'antd';
 import { motion, AnimatePresence } from 'framer-motion';
 import { apiClient } from '@/lib/api-client';
-import { parseHotTopics } from '@/lib/page-data';
+import { flattenViralAnalysis, parseHotTopics } from '@/lib/page-data';
+import { AI_TEXT_LABEL } from '@/lib/ai-content-label';
 import { safeErrorText } from '@/lib/api-error';
 import { useRouter } from 'next/navigation';
 import clsx from 'clsx';
@@ -75,8 +76,7 @@ export default function HotPage() {
                 <div aria-hidden className="pointer-events-none absolute top-0 right-0 w-[500px] h-[500px] bg-indigo-500/20 rounded-full blur-[120px] -translate-y-1/2 translate-x-1/2" />
                 <div className="max-w-2xl relative z-10">
                     <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
-                        <Tag color="orange" className="mb-4 bg-orange-600 border-none font-bold px-3">BETA 爆款预测 V2.0</Tag>
-                        <h1 className="text-4xl md:text-5xl font-black mb-4">捕捉风口，让每一条内容都有成为爆款的潜力</h1>
+                        <h1 className="text-4xl md:text-5xl font-black mb-4">热点与爆款拆解</h1>
                         <p className="text-zinc-400 text-lg mb-8">接入合规授权的热点数据后，为您提供有据可依的选题灵感；目前可以用「AI 爆款拆解」分析您手上的爆款内容。</p>
                         <div className="flex gap-4">
                             <Button size="large" icon={<ThunderboltOutlined />} onClick={() => setShowAnalyzer(true)} className="h-14 px-8 rounded-2xl bg-white text-zinc-900 border-none font-bold hover:scale-105 transition-all">AI 爆款拆解</Button>
@@ -105,7 +105,7 @@ export default function HotPage() {
                                 <h3 className="text-lg font-black text-zinc-800 mb-4 line-clamp-2 h-14">{topic.title}</h3>
                                 <div className="flex items-center justify-between mt-auto">
                                     <div className="text-zinc-400 text-xs font-bold"><AreaChartOutlined /> {Math.round(topic.heat / 1000)}k 指数</div>
-                                    <Button shape="circle" icon={<ArrowRightOutlined />} onClick={() => router.push(`/create?topic=${encodeURIComponent(topic.title)}`)} className="bg-zinc-900 border-none text-white transition-transform" />
+                                    <Button shape="circle" icon={<ArrowRightOutlined />} onClick={() => router.push(`/studio?topic=${encodeURIComponent(topic.title)}`)} className="bg-zinc-900 border-none text-white transition-transform" />
                                 </div>
                             </Card>
                         </motion.div>
@@ -120,10 +120,31 @@ export default function HotPage() {
                     <AnimatePresence>
                         {analysisResult && (
                             <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="mt-8 bg-indigo-50/50 rounded-[32px] p-8 border border-indigo-100">
-                                <Title level={4}><RiseOutlined /> 深度解构报告</Title>
+                                <Title level={4}><RiseOutlined /> 拆解结果</Title>
+                                <p className="text-xs text-zinc-500">{AI_TEXT_LABEL}以下分析由 AI 根据你粘贴的内容生成，仅供参考，不代表平台的推荐规则。</p>
                                 <Divider />
-                                <div className="flex gap-4">
-                                    <Button type="primary" onClick={() => router.push(`/create?source_analysis=${encodeURIComponent(JSON.stringify(analysisResult))}`)} className="h-12 px-8 rounded-xl bg-indigo-600">按此模板创作</Button>
+                                {flattenViralAnalysis(analysisResult).length === 0 ? (
+                                    <p className="text-sm text-zinc-500">模型没有返回可显示的分析，请换一段内容再试。</p>
+                                ) : (
+                                    <div className="space-y-4 text-sm leading-7 text-zinc-700">
+                                        {flattenViralAnalysis(analysisResult).map((section, i) => (
+                                            <div key={i}>
+                                                {section.heading && <div className="font-bold text-zinc-900">{section.heading}</div>}
+                                                {section.lines.map((line, j) => <p key={j} className="m-0 whitespace-pre-wrap break-words">{line}</p>)}
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                                <div className="mt-6 flex gap-4">
+                                    <Button
+                                        onClick={() => {
+                                            const text = [AI_TEXT_LABEL, ...flattenViralAnalysis(analysisResult).flatMap((sec) => [sec.heading, ...sec.lines].filter(Boolean))].join('\n');
+                                            navigator.clipboard.writeText(text).then(() => message.success('拆解结果已复制（含「AI 生成」标识）')).catch(() => message.error('复制失败，请手动选择文字复制'));
+                                        }}
+                                        className="h-12 px-8 rounded-xl"
+                                    >
+                                        复制拆解结果
+                                    </Button>
                                 </div>
                             </motion.div>
                         )}

@@ -77,6 +77,36 @@ export function parseHotTopics(result: unknown): { topics: HotTopicRow[]; notice
   return { topics: [], notice: typeof message === 'string' && /[一-鿿]/.test(message) ? message : '暂时没有可用的热点数据' };
 }
 
+/**
+ * 「AI 爆款拆解」结果 → 可读的段落。模型可能返回 JSON（键名中文或英文）或纯文本（raw_analysis）。
+ * 原来页面拿到结果后只显示一个标题「深度解构报告」，正文一个字都没渲染。
+ * 英文键名不上屏（只显示值）；数组、嵌套对象展开成「· 」开头的行。
+ */
+export function flattenViralAnalysis(analysis: unknown): Array<{ heading: string; lines: string[] }> {
+  const CJK = /[一-鿿]/;
+  const toLines = (value: unknown, depth = 0): string[] => {
+    if (value === null || value === undefined) return [];
+    if (typeof value === 'string') return value.trim() ? [value.trim()] : [];
+    if (typeof value === 'number' || typeof value === 'boolean') return [String(value)];
+    if (Array.isArray(value)) return value.flatMap((v) => toLines(v, depth + 1)).map((l) => (l.startsWith('· ') ? l : `· ${l}`));
+    if (typeof value === 'object' && depth < 4) {
+      return Object.entries(value as Record<string, unknown>).flatMap(([k, v]) => {
+        const inner = toLines(v, depth + 1);
+        if (!inner.length) return [];
+        return CJK.test(k) && inner.length === 1 ? [`${k}：${inner[0]}`] : CJK.test(k) ? [`${k}：`, ...inner] : inner;
+      });
+    }
+    return [];
+  };
+  if (typeof analysis === 'string') return analysis.trim() ? [{ heading: '', lines: [analysis.trim()] }] : [];
+  if (!analysis || typeof analysis !== 'object') return [];
+  const raw = (analysis as any).raw_analysis;
+  if (typeof raw === 'string') return raw.trim() ? [{ heading: '', lines: [raw.trim()] }] : [];
+  return Object.entries(analysis as Record<string, unknown>)
+    .map(([k, v]) => ({ heading: CJK.test(k) ? k : '', lines: toLines(v, 1) }))
+    .filter((section) => section.lines.length > 0);
+}
+
 const PLAN_NAMES: Record<string, string> = { free: '免费版', starter: '入门版', pro: '专业版', team: '团队版', enterprise: '企业版' };
 
 export interface PlanView {

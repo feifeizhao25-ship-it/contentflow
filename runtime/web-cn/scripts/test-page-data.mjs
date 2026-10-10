@@ -14,7 +14,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { parseContentList, mapPublishTasks, parseHotTopics, describePlan, parseAnalyticsOverview, describeAiAllowance } from '../src/lib/page-data.ts';
+import { parseContentList, mapPublishTasks, parseHotTopics, describePlan, parseAnalyticsOverview, describeAiAllowance, flattenViralAnalysis } from '../src/lib/page-data.ts';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const src = (rel) => fs.readFileSync(path.join(ROOT, 'src', rel), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/[^\n]*/g, '$1');
@@ -179,6 +179,31 @@ await check('创作工作室：不再显示签到积分与写死的「单次消�
   assert.match(studio, /视频生成[\s\S]{0,80}暂未开放/);
   // 页面上不能有没有 onClick 的「重新生成」
   assert.doesNotMatch(studio, /<Button(?![^>]*onClick)[^>]*>重新生成<\/Button>/);
+});
+
+await check('热点页：爆款拆解结果真的显示出来（原来只有标题「深度解构报告」），英文键名不上屏', () => {
+  const sections = flattenViralAnalysis({ '标题吸引力': { '评分': 8, '技巧': ['数字', '反问'] }, hook_analysis: '开头抛出反常识结论' });
+  assert.deepEqual(sections[0], { heading: '标题吸引力', lines: ['评分：8', '技巧：', '· 数字', '· 反问'] });
+  assert.deepEqual(sections[1], { heading: '', lines: ['开头抛出反常识结论'] });
+  assert.doesNotMatch(JSON.stringify(sections), /hook_analysis/);
+  assert.deepEqual(flattenViralAnalysis({ raw_analysis: '纯文本分析' }), [{ heading: '', lines: ['纯文本分析'] }]);
+  assert.deepEqual(flattenViralAnalysis(null), []);
+  const page = src('app/(main)/hot/page.tsx');
+  assert.match(page, /flattenViralAnalysis\(analysisResult\)/);
+  assert.match(page, /AI_TEXT_LABEL/, 'AI 拆解结果必须带「AI 生成」标识');
+  assert.doesNotMatch(page, /BETA|爆款预测 V2|捕捉风口|成为爆款的潜力|按此模板创作|source_analysis/);
+  // 热点卡片跳到工作室并预填主题（/create 只是重定向，会丢掉参数）
+  assert.match(page, /\/studio\?topic=/);
+  assert.match(src('app/(main)/studio/page.tsx'), /searchParams\.get\('topic'\)/);
+});
+
+await check('内容库：不再有点了必失败的「资产 / 生成复盘 / 复用 / 版本对比 / 回滚」；预览看正文；搜索接到后端', () => {
+  const page = src('app/(main)/contents/page.tsx');
+  assert.doesNotMatch(page, /\/assets|\/versions|\/compare|\/clone|\/rollback|\/review\/generate|>资产<|生成复盘/);
+  assert.doesNotMatch(page, /window\.open\(record\.media_urls/);
+  assert.match(page, /onClick=\{\(\) => setPreviewFor\(record\)\}>预览/);
+  assert.match(page, /onSearch=\{\(value\) => fetchContents\(value\)\}/);
+  assert.match(page, /keyword=\$\{encodeURIComponent/);
 });
 
 if (failures) { console.error(`${failures} failed`); process.exit(1); }
