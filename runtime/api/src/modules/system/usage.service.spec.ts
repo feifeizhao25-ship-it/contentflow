@@ -57,6 +57,8 @@ describe('UsageService', () => {
         ref_id: 'request_1',
       }),
     });
+    // 不再写没有出处的「每千 token 0.002 美元」估算金额
+    expect(prisma.costLedger.create.mock.calls[0][0].data.cost_est_usd).toBe(0);
   });
 
   it('creates a monthly meter when none exists', async () => {

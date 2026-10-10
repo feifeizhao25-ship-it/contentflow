@@ -64,7 +64,9 @@ export class UsageService {
                     tenant_id: tenantId,
                     source: 'ai',
                     tokens_used: amount,
-                    cost_est_usd: (amount / 1000) * 0.002,
+                    // 原来按「每千 token 0.002 美元」写一个估算金额：这个单价没有出处，国内模型也不按美元计价。
+                    // 台账只记 token 数；金额以生成记录 AIGeneration.cost_amount 为准（按 model-pricing.ts 官方价目折算）。
+                    cost_est_usd: 0,
                     ref_id: metadata?.refId,
                 }
             });
