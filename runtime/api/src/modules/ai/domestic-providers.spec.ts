@@ -25,7 +25,8 @@ describe('domestic text generation', () => {
     const result = await service({ MARKET_REGION: 'cn', DEEPSEEK_API_KEY: 'dk' }).generateText({ prompt: '测试' });
     const [url, init] = (global.fetch as jest.Mock).mock.calls[0];
     expect(url).toBe(DOMESTIC_CHAT_ENDPOINTS.deepseek);
-    expect(JSON.parse(init.body).model).toBe('deepseek-chat');
+    // 官方已停用 deepseek-chat 这个模型名（2026-07-24），默认改用现行的 deepseek-flash
+    expect(JSON.parse(init.body).model).toBe('deepseek-flash');
     expect(result.provider).toBe('deepseek');
   });
 

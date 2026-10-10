@@ -88,6 +88,14 @@ export function scoreContent(content: string, sources: ContentSource[], locale: 
 }
 
 /** 境内供应商的 OpenAI 兼容对话接口。地址写死，不从环境变量读。 */
+/**
+ * 只配了 DEEPSEEK_API_KEY、又没指定 DEEPSEEK_MODEL 时用的模型名。
+ * 原来是 deepseek-chat：DeepSeek 官方更新日志（2026-04-24 条目，https://api-docs.deepseek.com/zh-cn/updates/）
+ * 称 deepseek-chat / deepseek-reasoner「将于 2026-07-24 停止使用」，现行定价页只列 deepseek-flash 与
+ * deepseek-v4-pro（2026-10-10 核对）。继续用旧名，调用会失败。
+ */
+export const DEEPSEEK_DEFAULT_MODEL = 'deepseek-flash';
+
 export const DOMESTIC_CHAT_ENDPOINTS = {
   qwen: 'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions',
   deepseek: 'https://api.deepseek.com/chat/completions',
@@ -251,7 +259,7 @@ export class AIService {
       candidates.push({ provider, model, key: provider === 'deepseek' ? this.deepseekApiKey : this.qwenApiKey });
     } else {
       if (this.qwenApiKey) candidates.push({ provider: 'qwen', model: this.configService.get('QWEN_MODEL', 'qwen-turbo'), key: this.qwenApiKey });
-      if (this.deepseekApiKey) candidates.push({ provider: 'deepseek', model: this.configService.get('DEEPSEEK_MODEL', 'deepseek-chat'), key: this.deepseekApiKey });
+      if (this.deepseekApiKey) candidates.push({ provider: 'deepseek', model: this.configService.get('DEEPSEEK_MODEL', DEEPSEEK_DEFAULT_MODEL), key: this.deepseekApiKey });
     }
     const usable = candidates.filter((c) => c.key);
     if (!usable.length) {

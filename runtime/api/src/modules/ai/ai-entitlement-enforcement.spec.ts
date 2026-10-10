@@ -52,7 +52,7 @@ describe('国内模型按价目表折算成本', () => {
     }) as jest.Mock;
     const result = await service({ MARKET_REGION: 'cn', DEEPSEEK_API_KEY: 'dk' }).generateText({ prompt: '测试' });
     expect(result.cost_amount).not.toBeNull();
-    expect(result.cost_amount).toBeCloseTo(estimateTextCost('deepseek-chat', 1000, 2000).cny, 8);
+    expect(result.cost_amount).toBeCloseTo(estimateTextCost('deepseek-flash', 1000, 2000).cny, 8);
     expect(result.cost_amount!).toBeGreaterThan(0);
   });
 

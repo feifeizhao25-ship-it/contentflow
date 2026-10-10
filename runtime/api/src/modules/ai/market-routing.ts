@@ -62,7 +62,7 @@ export function resolveTextProvider(input: TextProviderInput): TextProviderDecis
       // 请求发出去，不如在这里说清楚。
       throw new Error(
         `国内市场不接受聚合路由风格的模型标识「${input.requestedModel}」；` +
-          '请使用境内供应商自己的模型名（如 qwen-turbo、deepseek-chat）。',
+          '请使用境内供应商自己的模型名（如 qwen-turbo、deepseek-flash）。',
       );
     }
     return { useOpenRouter, model: input.requestedModel };
