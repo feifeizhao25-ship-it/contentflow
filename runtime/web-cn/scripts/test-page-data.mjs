@@ -263,5 +263,14 @@ await check('全仓：apiClient 的结果不能只按带 success 的外层读（
   assert.deepEqual(offenders.filter((o) => !o.includes('CheckInModal')), []);
 });
 
+await check('爆款拆解失败：弹窗里常驻显示原因（后端的中文 503「AI 服务暂不可用，请稍后再试」），不只是一闪而过的提示', () => {
+  const page = src('app/(main)/hot/page.tsx');
+  assert.match(page, /setAnalysisError\(reason\)/);
+  assert.match(page, /\{analysisError && <Alert type="error"/);
+  assert.match(page, /safeErrorText\(e, 'AI 服务暂不可用，请稍后再试'\)/);
+  const api = fs.readFileSync(path.join(ROOT, '../api/src/modules/ai/ai.service.ts'), 'utf8');
+  assert.match(api, /AI_UNAVAILABLE_MESSAGE = 'AI 服务暂不可用，请稍后再试'/);
+});
+
 if (failures) { console.error(`${failures} failed`); process.exit(1); }
 console.log('All page data tests passed');

@@ -1,4 +1,4 @@
-import { HttpException, HttpStatus, Injectable, Logger } from '@nestjs/common';
+import { BadRequestException, HttpException, HttpStatus, Injectable, Logger, ServiceUnavailableException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../database/prisma.service';
 import { parseGeneratedTitles } from './title-parser';
@@ -95,6 +95,19 @@ export function scoreContent(content: string, sources: ContentSource[], locale: 
  * deepseek-v4-pro（2026-10-10 核对）。继续用旧名，调用会失败。
  */
 export const DEEPSEEK_DEFAULT_MODEL = 'deepseek-flash';
+
+/**
+ * 国内版模型不可用时给用户的话。原来抛普通 Error（「AI API error: qwen:503」之类），
+ * 经全局过滤器后只剩「服务暂时出错，请稍后重试」，用户分不清是 AI 不可用还是自己操作有问题。
+ * 供应商返回的细节只写日志，不带给前端。
+ */
+export const AI_UNAVAILABLE_MESSAGE = 'AI 服务暂不可用，请稍后再试';
+export const AI_NOT_CONFIGURED_MESSAGE = 'AI 服务暂未开通，请联系工作区管理员';
+export const AI_IMAGE_UNAVAILABLE_MESSAGE = '封面生成服务暂不可用，请稍后再试';
+
+function aiUnavailable(message: string, code: string) {
+  return new ServiceUnavailableException({ message, error: code });
+}
 
 export const DOMESTIC_CHAT_ENDPOINTS = {
   qwen: 'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions',
@@ -263,7 +276,8 @@ export class AIService {
     }
     const usable = candidates.filter((c) => c.key);
     if (!usable.length) {
-      throw new Error(`${(candidates[0]?.provider ?? 'qwen').toUpperCase()} API key is not configured`);
+      this.logger.error(`${(candidates[0]?.provider ?? 'qwen').toUpperCase()} API key is not configured`);
+      throw aiUnavailable(AI_NOT_CONFIGURED_MESSAGE, 'AI_NOT_CONFIGURED');
     }
 
     const failures: string[] = [];
@@ -305,7 +319,7 @@ export class AIService {
     }
     // 不把供应商返回的原文带出去（可能含账户信息），只记失败摘要。
     this.logger.error(`Domestic AI providers all failed: ${failures.join(', ')}`);
-    throw new Error(`AI API error: ${failures.join(', ')}`);
+    throw aiUnavailable(AI_UNAVAILABLE_MESSAGE, 'AI_UNAVAILABLE');
   }
 
   private registerOpenRouterFailure() {
@@ -504,7 +518,20 @@ ${content}
     // 国内版一律走通义万相（境内），不论环境里有没有 FAL_API_KEY——
     // 原来国内版也只会调 fal.ai（境外），给了 key 就出境，不给就永远「未配置」。
     if (isDomesticMarket(this.marketRegion)) {
-      return this.generateImageDashScope(params);
+      try {
+        return await this.generateImageDashScope(params);
+      } catch (error) {
+        if (error instanceof HttpException) throw error;
+        const detail = error instanceof Error ? error.message : 'error';
+        this.logger.error(`DashScope image generation failed: ${detail}`);
+        // 通义万相的内容安全拦截是用户能处理的原因，单独说清楚
+        if (/DataInspectionFailed/.test(detail)) {
+          throw new BadRequestException({ message: '封面描述没有通过内容安全检查，请修改主题或描述后重试', error: 'AI_IMAGE_INSPECTION_FAILED' });
+        }
+        throw this.qwenApiKey
+          ? aiUnavailable(AI_IMAGE_UNAVAILABLE_MESSAGE, 'AI_IMAGE_UNAVAILABLE')
+          : aiUnavailable(AI_NOT_CONFIGURED_MESSAGE, 'AI_NOT_CONFIGURED');
+      }
     }
     if (!this.falApiKey) {
       throw new Error('FAL_API_KEY not configured');

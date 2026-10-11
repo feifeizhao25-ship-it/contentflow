@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { FireFilled, ThunderboltFilled, ArrowRightOutlined, SearchOutlined, ClockCircleOutlined, RiseOutlined, LoadingOutlined, AreaChartOutlined, ThunderboltOutlined } from '@ant-design/icons';
-import { Input, Button, Tag, Empty, Card, Modal, Row, Col, Space, Typography, List, Divider } from 'antd';
+import { Input, Button, Tag, Empty, Card, Modal, Row, Col, Space, Typography, List, Divider, Alert } from 'antd';
 import { message } from '@/lib/antd-app';
 import { motion, AnimatePresence } from 'framer-motion';
 import { apiClient } from '@/lib/api-client';
@@ -57,15 +57,21 @@ export default function HotPage() {
         }
     };
 
+    // 拆解失败的原因常驻在弹窗里（原来只有一闪而过的提示，生产构建里还显示不出来）
+    const [analysisError, setAnalysisError] = useState('');
     const handleAnalyze = async () => {
-        if (!analysisInput) return;
+        if (!analysisInput.trim()) { setAnalysisError('请先粘贴要拆解的内容'); return; }
         setIsAnalyzing(true);
+        setAnalysisError('');
+        setAnalysisResult(null);
         try {
             const res = await apiClient.post<any>('/ai/analyze/viral', { content: analysisInput });
             // 同上：需先解包 TransformInterceptor 的信封
             setAnalysisResult(res?.data?.analysis ?? res?.analysis);
         } catch (e) {
-            message.error(safeErrorText(e, '分析失败，请稍后重试'));
+            const reason = safeErrorText(e, 'AI 服务暂不可用，请稍后再试');
+            setAnalysisError(reason);
+            message.error(reason);
         } finally {
             setIsAnalyzing(false);
         }
@@ -113,10 +119,11 @@ export default function HotPage() {
                     ))}
             </div>
 
-            <Modal title={null} open={showAnalyzer} footer={null} onCancel={() => { setShowAnalyzer(false); setAnalysisResult(null); }} width={800} centered>
+            <Modal title={null} open={showAnalyzer} footer={null} onCancel={() => { setShowAnalyzer(false); setAnalysisResult(null); setAnalysisError(''); }} width={800} centered>
                 <div className="p-4 space-y-6">
                     <Title level={3}>AI 爆款内容拆解</Title>
                     <TextArea rows={6} value={analysisInput} onChange={e => setAnalysisInput(e.target.value)} placeholder="粘贴爆款内容原文..." className="rounded-2xl border-zinc-200 bg-zinc-50 p-4 focus:bg-white transition-all text-lg" />
+                    {analysisError && <Alert type="error" showIcon message="这次没有拆解成功" description={analysisError} />}
                     <Button type="primary" block size="large" onClick={handleAnalyze} loading={isAnalyzing} icon={<ThunderboltFilled />} className="h-16 rounded-2xl bg-indigo-600 font-bold text-lg">一键拆解</Button>
                     <AnimatePresence>
                         {analysisResult && (

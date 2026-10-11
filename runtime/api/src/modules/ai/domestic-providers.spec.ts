@@ -1,4 +1,4 @@
-import { AIService, DOMESTIC_CHAT_ENDPOINTS, DASHSCOPE_IMAGE_SYNTHESIS, MAX_SCRIPT_SCENES } from './ai.service';
+import { AIService, AI_NOT_CONFIGURED_MESSAGE, AI_UNAVAILABLE_MESSAGE, DOMESTIC_CHAT_ENDPOINTS, DASHSCOPE_IMAGE_SYNTHESIS, MAX_SCRIPT_SCENES } from './ai.service';
 import { AIController } from './ai.controller';
 import { AI_TEXT_LABEL } from '../../common/ai-content-label';
 
@@ -54,6 +54,34 @@ describe('domestic text generation', () => {
   });
 });
 
+describe('国内模型不可用时给出明确的中文原因', () => {
+  const originalFetch = global.fetch;
+  afterEach(() => { global.fetch = originalFetch; });
+
+  it('所有国内模型都失败：503「AI 服务暂不可用，请稍后再试」，供应商细节只写日志', async () => {
+    global.fetch = jest.fn().mockResolvedValue({ ok: false, status: 503, json: async () => ({}), text: async () => 'upstream down' }) as jest.Mock;
+    const svc = service({ MARKET_REGION: 'cn', QWEN_API_KEY: 'qk', DEEPSEEK_API_KEY: 'dk' });
+    const logged = jest.spyOn((svc as any).logger, 'error').mockImplementation(() => undefined);
+    const error = await svc.generateText({ prompt: '测试' }).catch((e) => e);
+    expect(error.getStatus()).toBe(503);
+    expect(error.message).toBe(AI_UNAVAILABLE_MESSAGE);
+    expect(logged.mock.calls.flat().join(' ')).toMatch(/qwen:503.*deepseek:503/);
+  });
+
+  it('经 HTTP 层后界面拿到的就是这句中文（不会被换成「服务暂时出错」）', async () => {
+    const { HttpExceptionFilter } = await import('../../common/filters/http-exception.filter');
+    const svc = service({ MARKET_REGION: 'cn', QWEN_API_KEY: 'qk' });
+    global.fetch = jest.fn().mockRejectedValue(new TypeError('fetch failed')) as jest.Mock;
+    jest.spyOn((svc as any).logger, 'error').mockImplementation(() => undefined);
+    const error = await svc.analyzeViralContentWithUsage('内容').catch((e) => e);
+    const json = jest.fn();
+    const res: any = { status: jest.fn(() => ({ json })) };
+    new HttpExceptionFilter().catch(error, { switchToHttp: () => ({ getResponse: () => res, getRequest: () => ({ url: '/api/v1/ai/analyze/viral', method: 'POST' }) }) } as any);
+    expect(res.status).toHaveBeenCalledWith(503);
+    expect(JSON.stringify(json.mock.calls[0][0])).toContain(AI_UNAVAILABLE_MESSAGE);
+  });
+});
+
 describe('domestic image generation', () => {
   const originalFetch = global.fetch;
   afterEach(() => { global.fetch = originalFetch; });
@@ -76,7 +104,12 @@ describe('domestic image generation', () => {
   it('explains which key is needed instead of calling abroad', async () => {
     global.fetch = jest.fn() as jest.Mock;
     const svc = service({ MARKET_REGION: 'cn', DEEPSEEK_API_KEY: 'dk', FAL_API_KEY: 'fal' });
-    await expect(svc.generateImage({ prompt: 'x' })).rejects.toThrow('QWEN_API_KEY');
+    // 给用户的是中文 503「AI 服务暂未开通」；缺哪个密钥只写日志给运维看（原来把 QWEN_API_KEY 原文抛给前端）
+    const logged = jest.spyOn((svc as any).logger, 'error').mockImplementation(() => undefined);
+    const error = await svc.generateImage({ prompt: 'x' }).catch((e) => e);
+    expect(error.getStatus()).toBe(503);
+    expect(error.message).toBe(AI_NOT_CONFIGURED_MESSAGE);
+    expect(logged.mock.calls.flat().join(' ')).toContain('QWEN_API_KEY');
     expect(global.fetch).not.toHaveBeenCalled();
   });
 
@@ -85,7 +118,12 @@ describe('domestic image generation', () => {
       .mockResolvedValueOnce({ ok: true, json: async () => ({ output: { task_id: 't-2' } }) })
       .mockResolvedValueOnce({ ok: true, json: async () => ({ output: { task_status: 'FAILED', code: 'DataInspectionFailed' } }) }) as jest.Mock;
     const svc = service({ MARKET_REGION: 'cn', QWEN_API_KEY: 'qk', DASHSCOPE_IMAGE_POLL_INTERVAL_MS: 0 });
-    await expect(svc.generateImage({ prompt: 'x' })).rejects.toThrow('DataInspectionFailed');
+    // 内容安全拦截：给用户能处理的中文原因（400），平台返回的代码写日志
+    const logged = jest.spyOn((svc as any).logger, 'error').mockImplementation(() => undefined);
+    const error = await svc.generateImage({ prompt: 'x' }).catch((e) => e);
+    expect(error.getStatus()).toBe(400);
+    expect(error.message).toContain('没有通过内容安全检查');
+    expect(logged.mock.calls.flat().join(' ')).toContain('DataInspectionFailed');
   });
 });
 
