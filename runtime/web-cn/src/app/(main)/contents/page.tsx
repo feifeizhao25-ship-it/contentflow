@@ -15,8 +15,7 @@ import {
 } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 import { apiClient } from '@/lib/api-client';
-import { parseContentList } from '@/lib/page-data';
-import { PLACEHOLDER_IMAGES } from '@/lib/placeholders';
+import { contentCoverUrl, parseContentList } from '@/lib/page-data';
 import { safeErrorText } from '@/lib/api-error';
 import { CONTENT_STATUS_COLORS, contentStatusText, contentTypeText } from '@/lib/status-labels';
 import { MANUAL_PLATFORMS, PUBLISH_CHANNEL_NOTICE } from '@/lib/manual-publish';
@@ -257,76 +256,68 @@ function ContentsContent() {
         );
     };
 
+    // 桌面表格：原来 7 列总宽约 1217px，可见区只有约 910px，「操作」列被挤到可视区外。
+    // 现在类型与来源合并成一列、标题与时间限宽换行，「操作」固定在右侧，始终可见。
     const columns: ColumnsType<ContentItem> = [
         {
-            title: '预览',
-            dataIndex: 'media_urls',
-            key: 'preview',
-            width: 80,
-            render: (media: string[]) => {
-                const mediaUrl = media && media[0] ? media[0] : '';
-                if (mediaUrl.endsWith('.mp4')) {
-                    return (
-                        <div style={{ width: 40, height: 40, background: '#000', borderRadius: 4, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                            <EyeOutlined style={{ color: '#fff' }} />
-                        </div>
-                    );
-                }
-                return (
+            title: '封面',
+            key: 'cover',
+            width: 64,
+            // 有封面才显示；没有就留空，不再用通用示例图冒充内容封面
+            render: (_: unknown, record: any) => {
+                const cover = contentCoverUrl(record);
+                return cover ? (
                     <Image
-                        src={mediaUrl || PLACEHOLDER_IMAGES.content}
-                        alt="内容预览"
+                        src={cover}
+                        alt="封面"
                         width={40}
                         height={40}
                         unoptimized
                         style={{ width: 40, height: 40, objectFit: 'cover', borderRadius: 4 }}
-                        onError={(e) => {
-                            const target = e.currentTarget;
-                            if (target.src !== PLACEHOLDER_IMAGES.content) {
-                                target.src = PLACEHOLDER_IMAGES.content;
-                            }
-                        }}
+                        onError={(e) => { e.currentTarget.style.visibility = 'hidden'; }}
                     />
-                );
-            }
+                ) : <span className="text-xs text-zinc-300">无</span>;
+            },
         },
         {
             title: '内容标题',
             dataIndex: 'title',
             key: 'title',
-            width: '25%',
-            render: (text) => <Text strong>{text}</Text>,
+            width: 220,
+            render: (text) => <Text strong className="line-clamp-2 break-words">{text || '未命名内容'}</Text>,
         },
         {
             title: '类型',
-            dataIndex: 'type',
             key: 'type',
-            render: (type) => <Tag>{contentTypeText(type)}</Tag>,
+            width: 100,
+            render: (_: unknown, record: any) => (
+                <div className="flex flex-col items-start gap-1">
+                    <Tag className="m-0">{contentTypeText(record.type)}</Tag>
+                    {record.source === 'ai' ? <Tag className="m-0" color="purple">AI 生成</Tag> : <Tag className="m-0">手动创建</Tag>}
+                </div>
+            ),
         },
         {
             title: '状态',
             dataIndex: 'status',
             key: 'status',
-            width: 220,
+            width: 200,
             render: (_status, record: any) => renderStatus(record),
-        },
-        {
-            title: '创建渠道',
-            dataIndex: 'source',
-            key: 'source',
-            render: (source) => source === 'ai' ? <Tag color="purple">AI 生成</Tag> : <Tag>手动创建</Tag>,
         },
         {
             title: '创建时间',
             dataIndex: 'created_at',
             key: 'created_at',
+            width: 110,
+            render: (text: string) => <span className="text-xs text-zinc-500 whitespace-pre-line">{String(text || '').replace(' ', '\n')}</span>,
         },
         {
             title: '操作',
             key: 'action',
-            width: 260,
+            width: 190,
+            fixed: 'right',
             render: (_, record: any) => (
-                <Space size="small" wrap>
+                <Space size={[4, 0]} wrap>
                     <Button type="link" size="small" icon={<EyeOutlined />} onClick={() => setPreviewFor(record)}>预览</Button>
                     {renderReviewActions(record)}
                     <Button type="link" size="small" danger icon={<DeleteOutlined />} onClick={() => handleDelete(record.id)}>删除</Button>

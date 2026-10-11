@@ -14,7 +14,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { parseContentList, mapPublishTasks, parseHotTopics, describePlan, parseAnalyticsOverview, describeAiAllowance, flattenViralAnalysis, planBadge } from '../src/lib/page-data.ts';
+import { parseContentList, mapPublishTasks, parseHotTopics, describePlan, parseAnalyticsOverview, describeAiAllowance, flattenViralAnalysis, planBadge, contentCoverUrl } from '../src/lib/page-data.ts';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const src = (rel) => fs.readFileSync(path.join(ROOT, 'src', rel), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/[^\n]*/g, '$1');
@@ -218,6 +218,20 @@ await check('侧栏套餐卡读真实套餐（原来写死「免费版」）；�
   assert.match(layout, /\{plan\.name\}/);
   assert.doesNotMatch(layout, />免费版</);
   assert.doesNotMatch(layout, /usePointsStore|\{points\}|积分中心|ThunderboltOutlined/);
+});
+
+await check('内容库桌面表格：「操作」列固定在右侧不会被挤出可视区；封面列只用真实封面，没有就不显示图', () => {
+  assert.equal(contentCoverUrl({ cover_url: 'https://cdn.example.cn/a.png', media_urls: ['https://x/b.png'] }), 'https://cdn.example.cn/a.png');
+  assert.equal(contentCoverUrl({ media_urls: ['https://x/v.mp4', 'https://x/b.png'] }), 'https://x/b.png');
+  assert.equal(contentCoverUrl({ media_urls: [] }), '');
+  assert.equal(contentCoverUrl(null), '');
+  const page = src('app/(main)/contents/page.tsx');
+  assert.match(page, /key: 'action',[\s\S]{0,60}fixed: 'right'/);
+  assert.doesNotMatch(page, /PLACEHOLDER_IMAGES/);
+  assert.match(page, /contentCoverUrl\(record\)/);
+  // 列宽总和（不含勾选列）控制在 910px 以内
+  const widths = [...page.slice(page.indexOf('const columns'), page.indexOf('const rowSelection')).matchAll(/^ {12}width: (\d+),/gm)].map((m) => Number(m[1]));
+  assert.ok(widths.reduce((a, b) => a + b, 0) <= 910, `列宽合计 ${widths.reduce((a, b) => a + b, 0)}`);
 });
 
 if (failures) { console.error(`${failures} failed`); process.exit(1); }

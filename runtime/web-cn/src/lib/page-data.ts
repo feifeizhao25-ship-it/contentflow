@@ -20,6 +20,14 @@ export function parseContentList(result: unknown): Array<Record<string, any>> {
   }));
 }
 
+/** 内容的封面：有 cover_url 用它，否则用第一张非视频素材；都没有返回空串（界面不显示图片）。 */
+export function contentCoverUrl(record: any): string {
+  const cover = typeof record?.cover_url === 'string' ? record.cover_url.trim() : '';
+  if (cover) return cover;
+  const media = asArray(record?.media_urls).find((u) => typeof u === 'string' && u.trim() && !/\.(mp4|mov|m3u8)(\?|$)/i.test(u));
+  return typeof media === 'string' ? media.trim() : '';
+}
+
 export interface CalendarTask {
   id: string;
   title: string;
