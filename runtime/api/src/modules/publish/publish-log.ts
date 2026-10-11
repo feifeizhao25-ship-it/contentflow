@@ -33,6 +33,36 @@ export const PUBLISH_STATUS_NAMES: Record<string, string> = {
   manual_done: '已人工发布',
 };
 
+/** 平台中文名；不认识的代码不把英文原值上屏。 */
+export function publishPlatformName(code: unknown): string {
+  return PUBLISH_PLATFORM_NAMES[String(code ?? '')] ?? '该平台';
+}
+
+const MANUAL_CAPABLE = new Set(['xhs', 'weixin', 'wechat_mp']);
+
+/**
+ * 自动发布通道不可用时给用户的原因 + 能怎么做（原来是「平台 douyin 尚未完成真实开放平台接入」，
+ * 英文平台代码上屏、也不告诉用户下一步）。
+ */
+export function channelUnavailableReason(
+  code: unknown,
+  kind: 'not_live' | 'no_adapter' | 'no_account',
+  action: 'retry' | 'create',
+): string {
+  const name = publishPlatformName(code);
+  const verb = action === 'retry' ? '重试' : '创建自动发布任务';
+  if (kind === 'no_account') {
+    return `这条任务没有绑定平台账号，不能${verb}。可以取消这条任务，到内容库点「发布」重新创建（小红书、视频号、公众号走人工确认发布）。`;
+  }
+  if (MANUAL_CAPABLE.has(String(code))) {
+    return `${name}不支持自动发布，不能${verb}。可以取消这条任务，到内容库点「发布」改用人工确认发布（复制文案、下载带 AI 标识的封面后自己发）。`;
+  }
+  if (kind === 'not_live') {
+    return `${name}自动发布还没有开通（开放平台接入未完成），不能${verb}。可以取消这条任务，先在${name} App 或创作者中心自己发布。`;
+  }
+  return `${name}暂不支持自动发布，不能${verb}。可以取消这条任务，先在${name} App 或创作者中心自己发布。`;
+}
+
 /** 界面上的状态分组 → 实际状态。 */
 export const PUBLISH_STATUS_GROUPS: Record<string, string[]> = {
   success: ['published', 'manual_done'],

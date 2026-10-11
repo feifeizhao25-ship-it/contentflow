@@ -8,7 +8,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
-  EMPTY_PUBLISH_FILTER, publishFilterQuery, summarizeRetry, fileNameFromDisposition, isFilterActive, downloadPublishLog,
+  EMPTY_PUBLISH_FILTER, publishFilterQuery, displayFailureReason, summarizeRetry, fileNameFromDisposition, isFilterActive, downloadPublishLog,
   PUBLISH_FILTER_STATUSES, PUBLISH_FILTER_PLATFORMS,
 } from '../src/lib/publish-filter.ts';
 
@@ -49,18 +49,27 @@ await check('前端的状态 / 平台选项都是后端认识的（否则后端 
 await check('批量重试结果：按原因归类，英文原因不上屏', () => {
   const s = summarizeRetry({ results: [
     { id: 'a', ok: true },
-    { id: 'b', ok: false, reason: '平台 douyin 尚未完成真实开放平台接入，不能重试' },
-    { id: 'c', ok: false, reason: '平台 douyin 尚未完成真实开放平台接入，不能重试' },
+    { id: 'b', ok: false, reason: '抖音自动发布还没有开通（开放平台接入未完成），不能重试。' },
+    { id: 'c', ok: false, reason: '抖音自动发布还没有开通（开放平台接入未完成），不能重试。' },
     { id: 'd', ok: false, reason: 'Internal error' },
   ] });
   assert.equal(s.retried, 1);
   assert.equal(s.text, '已重新排队 1 条，3 条没能重试');
   assert.deepEqual(s.failed, [
-    { reason: '平台 douyin 尚未完成真实开放平台接入，不能重试', count: 2 },
+    { reason: '抖音自动发布还没有开通（开放平台接入未完成），不能重试。', count: 2 },
     { reason: '暂时无法重试', count: 1 },
   ]);
   assert.equal(summarizeRetry({ results: [{ ok: true }, { ok: true }] }).text, '已重新排队 2 条任务');
   assert.equal(summarizeRetry({ results: [{ ok: false, reason: '任务不存在' }] }).text, '1 条任务都没能重试');
+});
+
+await check('失败原因：旧记录里的英文平台代码换成中文；没有中文原因时给兜底；任务卡直接显示原因', () => {
+  assert.equal(displayFailureReason('平台 douyin 尚未完成真实开放平台接入，不能重试'), '抖音尚未完成真实开放平台接入，不能重试');
+  assert.equal(displayFailureReason('平台 xhs 尚无发布适配器'), '小红书尚无发布适配器');
+  assert.equal(displayFailureReason('Request failed with status 500'), '平台没有返回可识别的原因');
+  assert.equal(displayFailureReason(null), '平台没有返回可识别的原因');
+  const list = read('components/publish/PublishTaskList.tsx');
+  assert.match(list, /isFailed && \([\s\S]{0,120}失败原因：\{displayFailureReason\(task\.error\)\}/);
 });
 
 await check('导出文件名：优先 filename*=UTF-8 的中文名', () => {

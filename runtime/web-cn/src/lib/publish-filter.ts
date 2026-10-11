@@ -57,6 +57,19 @@ export function publishFilterQuery(filter: PublishFilter, paging?: { page: numbe
   return params.toString();
 }
 
+const PLATFORM_CN: Record<string, string> = { douyin: '抖音', bilibili: 'B站', xhs: '小红书', weixin: '视频号', wechat_mp: '公众号', weibo: '微博', kuaishou: '快手' };
+
+/**
+ * 任务卡、重试结果里显示的失败原因：只显示中文；旧记录里「平台 douyin …」这类英文平台代码换成中文名。
+ */
+export function displayFailureReason(reason: unknown): string {
+  const text = typeof reason === 'string' ? reason.trim() : '';
+  if (!text || !/[㐀-鿿]/.test(text)) return '平台没有返回可识别的原因';
+  return text
+    .replace(/平台\s*(douyin|bilibili|xhs|weixin|wechat_mp|weibo|kuaishou)\s*/g, (_m, code: string) => PLATFORM_CN[code])
+    .replace(/\b(douyin|bilibili|xhs|weixin|wechat_mp|weibo|kuaishou)\b/g, (_m, code: string) => PLATFORM_CN[code]);
+}
+
 export interface RetrySummary {
   retried: number;
   failed: Array<{ reason: string; count: number }>;
@@ -70,7 +83,7 @@ export function summarizeRetry(result: any): RetrySummary {
   const counts = new Map<string, number>();
   for (const r of results) {
     if (r?.ok) continue;
-    const reason = typeof r?.reason === 'string' && /[㐀-鿿]/.test(r.reason) ? r.reason : '暂时无法重试';
+    const reason = typeof r?.reason === 'string' && /[㐀-鿿]/.test(r.reason) ? displayFailureReason(r.reason) : '暂时无法重试';
     counts.set(reason, (counts.get(reason) ?? 0) + 1);
   }
   const failed = [...counts.entries()].map(([reason, count]) => ({ reason, count }));

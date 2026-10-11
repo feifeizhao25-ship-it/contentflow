@@ -17,7 +17,7 @@ import { TenantService } from '../tenant/tenant.service';
 import { AdapterRegistry } from './adapters/adapter.registry';
 import { PublishController } from './publish.controller';
 import { PublishService } from './publish.service';
-import { csvCell, parsePublishTaskFilter, publishTaskWhere, publishTasksToCsv, PUBLISH_LOG_HEADERS } from './publish-log';
+import { channelUnavailableReason, csvCell, parsePublishTaskFilter, publishTaskWhere, publishTasksToCsv, PUBLISH_LOG_HEADERS } from './publish-log';
 
 const sampleTasks = [
   {
@@ -140,7 +140,8 @@ describe('发布中心：筛选、批量重试、导出日志', () => {
     expect(data.retried).toBe(1);
     const byId = Object.fromEntries(data.results.map((r: any) => [r.id, r]));
     expect(byId.ok.ok).toBe(true);
-    expect(byId.dy.reason).toMatch(/尚未完成真实开放平台接入/);
+    expect(byId.dy.reason).toMatch(/^抖音自动发布还没有开通/);
+    expect(byId.dy.reason).toMatch(/取消这条任务，先在抖音 App 或创作者中心自己发布/);
     expect(byId.done.reason).toBe('只有失败的任务可以重试');
     expect(byId['other-tenant'].reason).toBe('任务不存在');
     expect(queue.retryPublishTask).toHaveBeenCalledTimes(1);
@@ -155,6 +156,19 @@ describe('发布中心：筛选、批量重试、导出日志', () => {
 });
 
 describe('publish-log 纯函数', () => {
+  it('通道不可用的原因：中文平台名 + 用户能怎么做，不出现英文平台代码', () => {
+    const all = ['douyin', 'bilibili', 'xhs', 'weixin', 'wechat_mp', 'unknown-x'].flatMap((p) =>
+      (['not_live', 'no_adapter'] as const).map((k) => channelUnavailableReason(p, k, 'retry')));
+    for (const r of all) {
+      expect(r).not.toMatch(/[a-z_]{3,}/);
+      expect(r).toMatch(/可以取消这条任务/);
+    }
+    expect(channelUnavailableReason('xhs', 'no_adapter', 'retry')).toMatch(/^小红书不支持自动发布.*改用人工确认发布/);
+    expect(channelUnavailableReason('bilibili', 'not_live', 'create')).toMatch(/^B站自动发布还没有开通.*不能创建自动发布任务/);
+    expect(channelUnavailableReason(null, 'no_account', 'retry')).toMatch(/没有绑定平台账号/);
+  });
+
+
   it('csvCell：公式前缀加单引号；逗号、引号、换行加引号', () => {
     expect(csvCell('=1+1')).toBe("'=1+1");
     expect(csvCell('+86 138')).toBe("'+86 138");

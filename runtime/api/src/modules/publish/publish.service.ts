@@ -8,7 +8,7 @@ import { evaluateDomesticContent } from '../../common/domestic-content-complianc
 import { isRealNameRequiredForPublish } from '../auth/real-name/real-name.verifier';
 import { labelAiGeneratedText, AI_TEXT_LABEL, aigcProviderCode } from '../../common/ai-content-label';
 import { MANUAL_DONE, MANUAL_PENDING, MANUAL_PLATFORMS, isManualPlatform, normalizeManualPostUrl } from './manual-publish';
-import { PUBLISH_LOG_MAX_ROWS, PublishTaskFilter, publishTaskWhere, publishTasksToCsv } from './publish-log';
+import { PUBLISH_LOG_MAX_ROWS, PublishTaskFilter, channelUnavailableReason, publishTaskWhere, publishTasksToCsv } from './publish-log';
 
 @Injectable()
 export class PublishService {
@@ -101,8 +101,8 @@ export class PublishService {
         }
         let adapter;
         try { adapter = this.adapterRegistry.get(account.platform); }
-        catch { throw new BadRequestException(`平台 ${account.platform} 尚无发布适配器`); }
-        if (!adapter.isLive) throw new BadRequestException(`平台 ${account.platform} 尚未完成真实开放平台接入，不能创建发布任务`);
+        catch { throw new BadRequestException(channelUnavailableReason(account.platform, 'no_adapter', 'create')); }
+        if (!adapter.isLive) throw new BadRequestException(channelUnavailableReason(account.platform, 'not_live', 'create'));
         return account;
       }),
     );
@@ -364,13 +364,13 @@ export class PublishService {
     }
 
     if (!task.platform_account_id || !task.platform_account) {
-      throw new BadRequestException('发布任务缺少平台账号');
+      throw new BadRequestException(channelUnavailableReason(null, 'no_account', 'retry'));
     }
 
     let adapter;
     try { adapter = this.adapterRegistry.get(task.platform_account.platform); }
-    catch { throw new BadRequestException(`平台 ${task.platform_account.platform} 尚无发布适配器，不能重试`); }
-    if (!adapter.isLive) throw new BadRequestException(`平台 ${task.platform_account.platform} 尚未完成真实开放平台接入，不能重试`);
+    catch { throw new BadRequestException(channelUnavailableReason(task.platform_account.platform, 'no_adapter', 'retry')); }
+    if (!adapter.isLive) throw new BadRequestException(channelUnavailableReason(task.platform_account.platform, 'not_live', 'retry'));
 
     await this.prisma.publishTask.update({ where: { id: taskId }, data: { status: 'queued', retry_count: { increment: 1 }, started_at: null, completed_at: null, error_code: null, error_message: null } });
     try {

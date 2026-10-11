@@ -18,7 +18,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { apiClient } from '@/lib/api-client';
 import { safeErrorText } from '@/lib/api-error';
 import { buildCopyText, downloadLabelledCover, isManualPlatform, manualPlatformName, type ManualKit } from '@/lib/manual-publish';
-import { isFilterActive, publishFilterQuery, type PublishFilter } from '@/lib/publish-filter';
+import { displayFailureReason, isFilterActive, publishFilterQuery, type PublishFilter } from '@/lib/publish-filter';
 
 type PublishTask = {
     id: string;
@@ -230,6 +230,9 @@ export const PublishTaskList = ({ filter, reloadKey = 0, onLoaded }: Props) => {
                                 <div className="min-w-0">
                                     <div className="font-bold text-sm text-zinc-900 break-words">{task.title}</div>
                                     <div className="text-xs text-zinc-500">{task.account}</div>
+                                    {isFailed && (
+                                        <div className="mt-1 text-xs text-red-600 break-words">失败原因：{displayFailureReason(task.error)}</div>
+                                    )}
                                 </div>
                             </div>
 
@@ -268,7 +271,7 @@ export const PublishTaskList = ({ filter, reloadKey = 0, onLoaded }: Props) => {
                                             danger
                                             onClick={(e) => { e.stopPropagation(); toggleRow(task.id); }}
                                         >
-                                            一键修复
+                                            处理办法
                                         </Button>
                                         <Button size="small" icon={<RightOutlined rotate={isExpanded ? 90 : 0} />} type="text" />
                                     </>
@@ -291,7 +294,7 @@ export const PublishTaskList = ({ filter, reloadKey = 0, onLoaded }: Props) => {
                                             <WarningFilled className="text-xl" />
                                         </div>
                                         <div className="flex-1">
-                                            <h4 className="font-bold text-red-600 mb-1">失败原因：{task.error || '平台未返回可识别的错误说明'}</h4>
+                                            <h4 className="font-bold text-red-600 mb-1">失败原因：{displayFailureReason(task.error)}</h4>
                                             <p className="text-sm text-zinc-600 mb-4">请根据真实错误处理。账号授权或平台通道未恢复前，重复重试不会被标记为成功。</p>
 
                                             <div className="flex gap-3 mb-4">
