@@ -12,7 +12,6 @@ import {
     FolderOutlined,
     BarChartOutlined,
     SettingOutlined,
-    BellOutlined,
     LogoutOutlined,
     CreditCardOutlined,
     FireOutlined,
@@ -24,17 +23,16 @@ import {
     HomeOutlined,
     PlusOutlined,
     CrownOutlined,
-    ThunderboltOutlined,
     TeamOutlined,
     AppstoreOutlined
 } from '@ant-design/icons';
 import { useAppStore } from '@/store/appStore';
 import { useThemeStore } from '@/store/themeStore';
-import { usePointsStore } from '@/store/pointsStore';
+import { apiClient } from '@/lib/api-client';
+import { planBadge } from '@/lib/page-data';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import clsx from 'clsx';
-import dayjs from 'dayjs';
 
 const { Content } = Layout;
 
@@ -49,10 +47,13 @@ export default function MainLayout({ children }: MainLayoutProps) {
     const router = useRouter();
     const { sidebarCollapsed, toggleSidebar, user, initializeAuth } = useAppStore();
     const { isDark, toggleTheme } = useThemeStore();
-    const { balance: points } = usePointsStore();
     const pathname = usePathname();
     const [scrolled, setScrolled] = useState(false);
-    const [hasCheckedIn, setHasCheckedIn] = useState(false);
+    // 侧栏套餐卡：读真实套餐（原来写死「免费版」）
+    const [plan, setPlan] = useState(() => planBadge(null));
+    useEffect(() => {
+        apiClient.get('/billing/subscription').then((r) => setPlan(planBadge(r))).catch(() => setPlan(planBadge(null)));
+    }, []);
     const [isMobile, setIsMobile] = useState(false);
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
@@ -83,14 +84,6 @@ export default function MainLayout({ children }: MainLayoutProps) {
         return () => window.removeEventListener('scroll', handleScroll);
     }, []);
 
-    // 检查今日是否已签到
-    useEffect(() => {
-        const lastCheckIn = localStorage.getItem('lastCheckIn');
-        if (lastCheckIn === dayjs().format('YYYY-MM-DD')) {
-            setHasCheckedIn(true);
-        }
-    }, []);
-
     // 核心创作功能
     const creationItems = [
         { key: '/ai-create', icon: <EditOutlined />, label: <Link href="/ai-create">AI创作</Link>, desc: '快速生成内容' },
@@ -116,7 +109,6 @@ export default function MainLayout({ children }: MainLayoutProps) {
         { key: '/team', icon: <TeamOutlined />, label: <Link href="/team">团队协作</Link> },
         { key: '/community', icon: <AppstoreOutlined />, label: <Link href="/community">创作者社区</Link> },
         { type: 'divider' as const },
-        { key: '/points', icon: <ThunderboltOutlined />, label: <Link href="/points">积分中心</Link> },
         { key: '/settings', icon: <SettingOutlined />, label: <Link href="/settings">系统设置</Link> },
         { key: '/pricing', icon: <CreditCardOutlined />, label: <Link href="/pricing">升级会员</Link> },
     ];
@@ -253,13 +245,13 @@ export default function MainLayout({ children }: MainLayoutProps) {
                                 <span className={clsx(
                                     "text-sm font-bold",
                                     isDarkMode ? "text-amber-400" : "text-amber-600"
-                                )}>免费版</span>
+                                )}>{plan.name}</span>
                             </div>
                             <div className={clsx(
                                 "text-[11px]",
                                 isDarkMode ? "text-zinc-500" : "text-zinc-400"
                             )}>
-                                查看各档会员权益
+                                {plan.detail}
                             </div>
                         </div>
                     </div>
@@ -334,42 +326,8 @@ export default function MainLayout({ children }: MainLayoutProps) {
                             {isDark ? <SunOutlined /> : <MoonOutlined />}
                         </motion.button>
 
-                        {/* 签到 */}
-                        <motion.button
-                            whileHover={{ scale: 1.05 }}
-                            whileTap={{ scale: 0.95 }}
-                            onClick={() => router.push('/points')}
-                            className={clsx(
-                                "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium",
-                                hasCheckedIn
-                                    ? isDarkMode ? "bg-green-500/20 text-green-400" : "bg-green-100 text-green-600"
-                                    : isDarkMode ? "bg-amber-500/20 text-amber-400" : "bg-orange-100 text-orange-600"
-                            )}
-                        >
-                            <FireOutlined className={clsx(!hasCheckedIn && "animate-pulse")} />
-                            {hasCheckedIn ? '已签到' : '签到'}
-                        </motion.button>
-
-                        {/* 积分 */}
-                        <div className={clsx(
-                            "hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium",
-                            isDarkMode ? "bg-zinc-800 text-amber-400" : "bg-amber-50 text-amber-600"
-                        )}>
-                            <ThunderboltOutlined />
-                            <span>{points}</span>
-                        </div>
-
-                        {/* 通知 */}
-                        <motion.button
-                            whileHover={{ scale: 1.05 }}
-                            className={clsx(
-                                "relative p-1.5 rounded-lg transition-colors",
-                                isDarkMode ? "text-zinc-400 hover:text-white" : "text-zinc-500 hover:text-zinc-700"
-                            )}
-                        >
-                            <BellOutlined className="text-lg" />
-                            <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-red-500 rounded-full" />
-                        </motion.button>
+                        {/* 签到、积分、通知铃铛已移除：积分不再作为权益展示（「积分中心」只是跳到定价页），
+                            铃铛没有通知中心、红点是写死的。 */}
 
                         {/* 新建按钮 */}
                         <motion.button

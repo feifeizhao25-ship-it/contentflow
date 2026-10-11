@@ -190,6 +190,22 @@ export function describeAiAllowance(subscription: unknown): AiAllowanceView {
   };
 }
 
+/**
+ * 侧栏底部的套餐卡：读 GET /billing/subscription 的 plan（已按到期时间回落），
+ * 原来写死「免费版」，专业版用户也看到「免费版」。读不到时不猜档位。
+ */
+export function planBadge(subscription: unknown): { name: string; detail: string } {
+  const payload = unwrap(subscription);
+  const plan = typeof payload?.plan === 'string' ? payload.plan : '';
+  if (!plan || !PLAN_NAMES[plan]) return { name: '我的套餐', detail: '查看各档会员权益' };
+  if (plan === 'free') return { name: '免费版', detail: '查看各档会员权益' };
+  const renew = payload?.renewalDate ? dayjs(payload.renewalDate) : null;
+  return {
+    name: PLAN_NAMES[plan],
+    detail: renew && renew.isValid() ? `有效期至 ${renew.format('YYYY年M月D日')}` : '查看套餐与用量',
+  };
+}
+
 export interface PublishCounts {
   total: number;
   published: number;

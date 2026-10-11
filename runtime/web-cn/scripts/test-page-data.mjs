@@ -14,7 +14,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { parseContentList, mapPublishTasks, parseHotTopics, describePlan, parseAnalyticsOverview, describeAiAllowance, flattenViralAnalysis } from '../src/lib/page-data.ts';
+import { parseContentList, mapPublishTasks, parseHotTopics, describePlan, parseAnalyticsOverview, describeAiAllowance, flattenViralAnalysis, planBadge } from '../src/lib/page-data.ts';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const src = (rel) => fs.readFileSync(path.join(ROOT, 'src', rel), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/[^\n]*/g, '$1');
@@ -204,6 +204,20 @@ await check('内容库：不再有点了必失败的「资产 / 生成复盘 / �
   assert.match(page, /onClick=\{\(\) => setPreviewFor\(record\)\}>预览/);
   assert.match(page, /onSearch=\{\(value\) => fetchContents\(value\)\}/);
   assert.match(page, /keyword=\$\{encodeURIComponent/);
+});
+
+await check('侧栏套餐卡读真实套餐（原来写死「免费版」）；顶栏不再显示积分', () => {
+  assert.deepEqual(planBadge({ plan: 'pro', renewalDate: '2026-12-31T00:00:00.000Z' }), { name: '专业版', detail: '有效期至 2026年12月31日' });
+  assert.equal(planBadge({ plan: 'free' }).name, '免费版');
+  assert.equal(planBadge({ success: true, data: { plan: 'team' } }).name, '团队版');
+  // 读不到时不猜档位
+  assert.equal(planBadge(null).name, '我的套餐');
+  assert.equal(planBadge({ plan: 'hacker' }).name, '我的套餐');
+  const layout = src('components/layout/MainLayout.tsx');
+  assert.match(layout, /'\/billing\/subscription'/);
+  assert.match(layout, /\{plan\.name\}/);
+  assert.doesNotMatch(layout, />免费版</);
+  assert.doesNotMatch(layout, /usePointsStore|\{points\}|积分中心|ThunderboltOutlined/);
 });
 
 if (failures) { console.error(`${failures} failed`); process.exit(1); }
