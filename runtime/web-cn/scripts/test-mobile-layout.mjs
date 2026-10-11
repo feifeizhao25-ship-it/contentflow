@@ -56,5 +56,15 @@ check('团队成员表在窄屏可横向滚动，而不是被裁掉', () => {
   assert.match(read('app/(main)/team/page.tsx'), /scroll=\{\{ x: 'max-content' \}\}/);
 });
 
+check('发布中心筛选栏：手机上分行（搜索、日期整行，平台 / 状态两列，按钮两列），不再挤在一行互相压住', () => {
+  const bar = read('components/publish/TaskFilterBar.tsx');
+  assert.match(bar, /flex flex-col gap-3 lg:flex-row/);
+  assert.match(bar, /grid grid-cols-2 gap-3 min-w-0 sm:flex/);
+  assert.match(bar, /className="col-span-2 w-full sm:w-64"/, '搜索框手机上整行');
+  assert.match(bar, /className="col-span-2 w-full rounded-xl sm:w-auto"/, '日期框手机上整行');
+  assert.doesNotMatch(bar, /className="min-w-\[160px\]"/, '平台筛选不能无断点地固定最小宽度');
+  assert.equal((bar.match(/className="w-full sm:w-auto"/g) || []).length, 2, '两个操作按钮手机上各占一半');
+});
+
 if (failures) { console.error(`\n${failures} 项失败`); process.exit(1); }
 console.log('All mobile layout tests passed');

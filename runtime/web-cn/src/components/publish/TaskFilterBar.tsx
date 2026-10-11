@@ -36,8 +36,9 @@ export const TaskFilterBar = ({ value, onChange, failedCount, onBatchRetry, onEx
     useEffect(() => setKeyword(value.keyword), [value.keyword]);
 
     return (
-        <div className="bg-white p-4 rounded-2xl border border-zinc-200 shadow-sm flex flex-wrap gap-4 items-center justify-between">
-            <div className="flex items-center gap-3 flex-wrap flex-1 min-w-0">
+        // 手机上：搜索、日期各占一行，平台 / 状态两列，按钮两列；sm 以上恢复横排（原来挤在一行，按钮压住筛选框）
+        <div className="bg-white p-4 rounded-2xl border border-zinc-200 shadow-sm flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between min-w-0">
+            <div className="grid grid-cols-2 gap-3 min-w-0 sm:flex sm:flex-wrap sm:items-center sm:flex-1">
                 <Input.Search
                     placeholder="搜索内容标题"
                     allowClear
@@ -48,14 +49,14 @@ export const TaskFilterBar = ({ value, onChange, failedCount, onBatchRetry, onEx
                         if (!e.target.value && value.keyword) onChange({ ...value, keyword: '' });
                     }}
                     onSearch={(text) => onChange({ ...value, keyword: text.trim() })}
-                    className="w-full sm:w-64"
+                    className="col-span-2 w-full sm:w-64"
                     maxLength={100}
                 />
 
                 <Select
                     placeholder="全部平台"
                     mode="multiple"
-                    className="min-w-[160px]"
+                    className="w-full min-w-0 sm:w-auto sm:min-w-[160px]"
                     allowClear
                     maxTagCount={1}
                     value={value.platforms}
@@ -65,7 +66,7 @@ export const TaskFilterBar = ({ value, onChange, failedCount, onBatchRetry, onEx
                 />
 
                 <Select
-                    className="min-w-[150px]"
+                    className="w-full min-w-0 sm:w-auto sm:min-w-[150px]"
                     value={value.status}
                     onChange={(status: string) => onChange({ ...value, status })}
                     options={PUBLISH_FILTER_STATUSES}
@@ -73,7 +74,7 @@ export const TaskFilterBar = ({ value, onChange, failedCount, onBatchRetry, onEx
                 />
 
                 <RangePicker
-                    className="rounded-xl"
+                    className="col-span-2 w-full rounded-xl sm:w-auto"
                     placeholder={['开始日期', '结束日期']}
                     value={value.from && value.to ? [dayjs(value.from), dayjs(value.to)] : null}
                     onChange={(range) => onChange({
@@ -84,18 +85,18 @@ export const TaskFilterBar = ({ value, onChange, failedCount, onBatchRetry, onEx
                 />
 
                 {isFilterActive(value) && (
-                    <Button type="link" onClick={() => onChange(EMPTY_PUBLISH_FILTER)}>清除筛选</Button>
+                    <Button type="link" className="col-span-2 justify-self-start px-0 sm:px-2" onClick={() => onChange(EMPTY_PUBLISH_FILTER)}>清除筛选</Button>
                 )}
             </div>
 
-            <div className="flex items-center gap-3">
+            <div className="grid grid-cols-2 gap-3 sm:flex sm:items-center sm:justify-end">
                 <Tooltip title={failedCount === 0 ? '当前列表没有失败的任务' : `重试当前列表中的 ${failedCount} 条失败任务`}>
-                    <Button icon={<ReloadOutlined />} disabled={failedCount === 0} loading={retrying} onClick={onBatchRetry}>
+                    <Button className="w-full sm:w-auto" icon={<ReloadOutlined />} disabled={failedCount === 0} loading={retrying} onClick={onBatchRetry}>
                         批量重试{failedCount > 0 ? `（${failedCount}）` : ''}
                     </Button>
                 </Tooltip>
                 <Tooltip title="按当前筛选条件导出本工作区的发布记录（CSV，可用 Excel / WPS 打开）">
-                    <Button icon={<ExportOutlined />} loading={exporting} onClick={onExport}>导出日志</Button>
+                    <Button className="w-full sm:w-auto" icon={<ExportOutlined />} loading={exporting} onClick={onExport}>导出日志</Button>
                 </Tooltip>
             </div>
         </div>
