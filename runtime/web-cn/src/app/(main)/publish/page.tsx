@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useCallback, useState } from 'react';
-import { Alert, Modal, message } from 'antd';
+import { Alert } from 'antd';
+import { message, modal } from '@/lib/antd-app';
 import { TaskFilterBar } from '@/components/publish/TaskFilterBar';
 import { PublishTaskList, type PublishTaskRow } from '@/components/publish/PublishTaskList';
 import { ComplianceReviewNotice } from '@/components/compliance/ComplianceReviewNotice';
@@ -28,7 +29,7 @@ export default function PublishPage() {
             const result = await apiClient.post<any>('/publish/tasks/retry', { taskIds: failedIds });
             const summary = summarizeRetry(result);
             if (summary.failed.length) {
-                Modal.info({
+                modal.info({
                     title: summary.text,
                     content: (
                         <ul className="mt-2 list-disc pl-5 text-sm text-zinc-600">
@@ -49,7 +50,7 @@ export default function PublishPage() {
     };
 
     const onBatchRetry = () => {
-        Modal.confirm({
+        modal.confirm({
             title: `重试当前列表中的 ${failedIds.length} 条失败任务？`,
             content: '每条任务会单独处理：平台通道未接通、授权失效的任务不会被重试，结果会逐条告诉你原因。',
             okText: '开始重试',

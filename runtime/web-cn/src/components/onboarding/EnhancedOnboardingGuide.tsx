@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Button, Modal, Progress, message, Spin } from 'antd';
+import { Button, Modal, Progress, Spin } from 'antd';
+import { message, modal } from '@/lib/antd-app';
 import {
   CloseOutlined,
   CheckCircleOutlined,
@@ -150,7 +151,7 @@ export default function EnhancedOnboardingGuide() {
 
   // 跳过引导
   const handleSkip = () => {
-    Modal.confirm({
+    modal.confirm({
       title: '确定跳过引导？',
       content: '你可以稍后在创作中心重新启动引导，完成引导可获得丰厚奖励！',
       onOk: () => {

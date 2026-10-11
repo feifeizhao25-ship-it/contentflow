@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { Modal, Button, message, Progress } from 'antd';
+import { Modal, Button, Progress } from 'antd';
+import { message } from '@/lib/antd-app';
 import { 
   CheckCircleOutlined, 
   FireOutlined, 

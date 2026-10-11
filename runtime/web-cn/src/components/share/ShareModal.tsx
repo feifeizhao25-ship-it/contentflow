@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useMemo, useState } from 'react';
-import { Alert, Modal, message } from 'antd';
+import { Alert, Modal } from 'antd';
+import { message } from '@/lib/antd-app';
 import { CopyOutlined, QqOutlined, WechatOutlined, WeiboOutlined } from '@ant-design/icons';
 import { motion } from 'framer-motion';
 import { generateShareConfig, shareContent, type SharePlatform } from '@/lib/referral-service';

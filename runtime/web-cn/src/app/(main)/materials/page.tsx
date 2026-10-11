@@ -2,7 +2,8 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import Image from 'next/image';
-import { Card, Row, Col, Input, Button, Upload, Tag, Space, Tabs, Empty, Progress, message, Modal, List, Typography, Tooltip, Divider } from 'antd';
+import { Card, Row, Col, Input, Button, Upload, Tag, Space, Tabs, Empty, Progress, List, Typography, Tooltip, Divider } from 'antd';
+import { message, modal } from '@/lib/antd-app';
 import {
     UploadOutlined,
     SearchOutlined,
@@ -128,7 +129,7 @@ export default function MaterialsPage() {
     const handleDelete = async (material: Material) => {
         if (!userId) return;
         
-        Modal.confirm({
+        modal.confirm({
             title: '确认删除',
             content: `确定要删除"${material.name}"吗？此操作不可撤销。`,
             onOk: async () => {

@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Card, Table, Button, Space, Tag, Input, Select, Modal, message, Typography, Checkbox, Alert } from 'antd';
+import { Card, Table, Button, Space, Tag, Input, Select, Modal, Typography, Checkbox, Alert } from 'antd';
+import { message, modal } from '@/lib/antd-app';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Image from 'next/image';
 const { Text } = Typography;
@@ -105,7 +106,7 @@ function ContentsContent() {
 
     // ── 审核流：提交审核 / 通过 / 驳回（附原因）/ 所有者自行确认（二次确认）──
     const submitForReview = (record: any) => {
-        Modal.confirm({
+        modal.confirm({
             title: '提交审核？',
             content: '提交后进入「待审核」，审核期间不能修改。审核通过后才能发布；被驳回可以按原因修改后再提交。',
             okText: '提交审核',
@@ -122,7 +123,7 @@ function ContentsContent() {
         });
     };
     const approve = (record: any) => {
-        Modal.confirm({
+        modal.confirm({
             title: `通过「${record.title || '未命名内容'}」？`,
             content: '通过后作者即可创建发布任务。',
             okText: '通过',
@@ -342,7 +343,7 @@ function ContentsContent() {
     };
 
     const handleBatchDelete = () => {
-        Modal.confirm({
+        modal.confirm({
             title: '确认一键清理',
             content: `确定要删除选中的 ${selectedRowKeys.length} 条内容吗？此操作不可撤销。`,
             onOk: async () => {

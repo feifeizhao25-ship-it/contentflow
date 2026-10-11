@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { Button, Empty, Input, Modal, Pagination, Skeleton, Tag, message } from 'antd';
+import { Button, Empty, Input, Modal, Pagination, Skeleton, Tag } from 'antd';
+import { message } from '@/lib/antd-app';
 import {
     CheckCircleFilled,
     CloseCircleFilled,

@@ -1,18 +1,18 @@
 'use client';
 
 import React, { useState, useRef, useCallback, useEffect } from 'react';
-import { 
-    Slider, 
-    Button, 
-    Modal, 
-    Select, 
-    Space, 
-    Upload, 
-    message,
+import {
+    Slider,
+    Button,
+    Modal,
+    Select,
+    Space,
+    Upload,
     Divider,
     Popover,
-    Tooltip
+    Tooltip,
 } from 'antd';
+import { message } from '@/lib/antd-app';
 import {
     ScissorOutlined,
     BgColorsOutlined,

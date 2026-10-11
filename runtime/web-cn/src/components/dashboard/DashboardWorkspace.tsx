@@ -1,20 +1,20 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { 
-  Card, 
-  Button, 
-  Statistic, 
-  Row, 
-  Col, 
-  Progress, 
-  List, 
-  Tag, 
-  Avatar,
-  Badge,
-  Space,
-  message 
+import {
+    Card,
+    Button,
+    Statistic,
+    Row,
+    Col,
+    Progress,
+    List,
+    Tag,
+    Avatar,
+    Badge,
+    Space,
 } from 'antd';
+import { message } from '@/lib/antd-app';
 import { 
   RocketOutlined,
   FileTextOutlined,

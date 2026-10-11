@@ -3,9 +3,23 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import Image from 'next/image';
 import {
-    Button, Card, Tag, Modal, Form, Input, Select, message, Empty,
-    Segmented, Table, Badge, Tooltip, Avatar, Divider, Space
+    Button,
+    Card,
+    Tag,
+    Modal,
+    Form,
+    Input,
+    Select,
+    Empty,
+    Segmented,
+    Table,
+    Badge,
+    Tooltip,
+    Avatar,
+    Divider,
+    Space,
 } from 'antd';
+import { message } from '@/lib/antd-app';
 import {
     CalendarOutlined,
     PlusOutlined,

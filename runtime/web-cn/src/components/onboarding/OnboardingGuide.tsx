@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Button, Modal, Steps, message } from 'antd';
+import { Button, Modal, Steps } from 'antd';
+import { message, modal } from '@/lib/antd-app';
 import {
     ThunderboltOutlined,
     EditOutlined,
@@ -117,7 +118,7 @@ export default function OnboardingGuide({ onComplete }: OnboardingGuideProps) {
     };
 
     const handleSkip = () => {
-        Modal.confirm({
+        modal.confirm({
             title: '确定跳过引导？',
             content: '您可以稍后在帮助中心查看功能介绍',
             onOk: () => {

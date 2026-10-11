@@ -1,7 +1,8 @@
 "use client";
 
 import { AntdRegistry } from '@ant-design/nextjs-registry';
-import { ConfigProvider, theme } from 'antd';
+import { App, ConfigProvider, theme } from 'antd';
+import { AntdAppBridge } from '@/lib/antd-app';
 import zhCN from 'antd/locale/zh_CN';
 import { useEffect, useState } from 'react';
 import { ErrorBoundary, OfflineIndicator, SlowNetworkIndicator } from '@/components/error/ErrorBoundary';
@@ -40,9 +41,13 @@ export function ClientProviders({ children }: Readonly<{ children: React.ReactNo
             },
           }}
         >
-          <OfflineIndicator />
-          <SlowNetworkIndicator />
-          {children}
+          {/* React 19 下 antd 静态方法不渲染：提示与对话框统一走 App.useApp()（见 lib/antd-app.tsx） */}
+          <App component={false}>
+            <AntdAppBridge />
+            <OfflineIndicator />
+            <SlowNetworkIndicator />
+            {children}
+          </App>
         </ConfigProvider>
       </AntdRegistry>
     </ErrorBoundary>

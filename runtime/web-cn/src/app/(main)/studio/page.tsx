@@ -2,7 +2,8 @@
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import NextImage from 'next/image';
-import { Button, Card, Input, Select, Tag, message, Steps, Divider, DatePicker, TimePicker, Skeleton } from 'antd';
+import { Button, Card, Input, Select, Tag, Steps, Divider, DatePicker, TimePicker, Skeleton } from 'antd';
+import { message } from '@/lib/antd-app';
 import { Sparkles, Send, Image as ImageIcon, CalendarClock, Layers, PlayCircle } from 'lucide-react';
 import Link from 'next/link';
 import dayjs from 'dayjs';

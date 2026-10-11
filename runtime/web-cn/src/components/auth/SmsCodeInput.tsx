@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { Button, Input, Space, message } from 'antd';
+import { Button, Input, Space } from 'antd';
+import { message } from '@/lib/antd-app';
 import { SafetyCertificateOutlined } from '@ant-design/icons';
 import { isValidChinaMobile, type SmsSendResult } from '@/lib/auth-service';
 import { safeErrorText } from '@/lib/api-error';

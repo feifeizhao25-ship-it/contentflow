@@ -1,7 +1,8 @@
 'use client';
 
 import React from 'react';
-import { Button, Card, message } from 'antd';
+import { Button, Card } from 'antd';
+import { message } from '@/lib/antd-app';
 import { 
   CrownOutlined, 
   GiftOutlined, 

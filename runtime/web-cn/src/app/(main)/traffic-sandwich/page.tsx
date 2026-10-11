@@ -8,14 +8,14 @@ import {
     Tag,
     Tabs,
     Steps,
-    message,
     Divider,
     Space,
     Typography,
     Tooltip,
     Modal,
-    Popover
+    Popover,
 } from 'antd';
+import { message } from '@/lib/antd-app';
 import {
     Sparkles,
     Send,

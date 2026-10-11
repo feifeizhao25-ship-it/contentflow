@@ -11,7 +11,8 @@ import {
     LinkOutlined,
     SafetyCertificateOutlined
 } from '@ant-design/icons';
-import { Avatar, Tooltip, message } from 'antd';
+import { Avatar, Tooltip } from 'antd';
+import { message } from '@/lib/antd-app';
 import { motion, AnimatePresence } from 'framer-motion';
 import clsx from 'clsx';
 import { apiErrorText, safeErrorText } from '@/lib/api-error';

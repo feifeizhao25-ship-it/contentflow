@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Card, Form, Input, Button, message, Divider, Tabs } from 'antd';
+import { Card, Form, Input, Button, Divider, Tabs } from 'antd';
+import { message } from '@/lib/antd-app';
 import { LockOutlined, MailOutlined, MobileOutlined } from '@ant-design/icons';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';

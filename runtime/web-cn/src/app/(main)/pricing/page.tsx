@@ -10,7 +10,8 @@ import {
     SafetyCertificateOutlined,
     GiftFilled
 } from '@ant-design/icons';
-import { Button, Modal, QRCode, Radio, Alert, message } from 'antd';
+import { Button, Modal, QRCode, Radio, Alert } from 'antd';
+import { message } from '@/lib/antd-app';
 import clsx from 'clsx';
 import { useRouter, useSearchParams } from 'next/navigation';
 import registry from '@/lib/entitlements.json';

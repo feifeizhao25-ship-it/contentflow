@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Card, Table, Button, Space, Tag, Avatar, Modal, Form, Input, Select, message, Tabs, List, Typography, Alert } from 'antd';
+import { Card, Table, Button, Space, Tag, Avatar, Modal, Form, Input, Select, Tabs, List, Typography, Alert } from 'antd';
+import { message, modal } from '@/lib/antd-app';
 import {
     UserAddOutlined,
     UserOutlined,
@@ -149,7 +150,7 @@ function TeamContent() {
     };
 
     const handleDelete = async (id: string) => {
-        Modal.confirm({
+        modal.confirm({
             title: '确认移除',
             content: '确定要将该成员从团队中移除吗？',
             okText: '确认',

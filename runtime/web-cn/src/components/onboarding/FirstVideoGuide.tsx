@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Button, Progress, message } from 'antd';
+import { Button, Progress } from 'antd';
+import { message } from '@/lib/antd-app';
 import { 
   ThunderboltOutlined, 
   PlayCircleOutlined, 

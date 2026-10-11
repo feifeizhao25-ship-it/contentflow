@@ -59,7 +59,7 @@ export const useGamificationStore = create<GamificationState>((set) => ({
                     newAchievements.forEach(a => {
                         // Avoid notification on first load (if achievements state was empty)
                         if (state.achievements.length > 0) {
-                            import('antd').then(({ notification }) => {
+                            import('@/lib/antd-app').then(({ notification }) => {
                                 notification.success({
                                     message: '🎉 Achievement Unlocked!',
                                     description: `You've unlocked: ${a.achievement_id}`,
@@ -91,7 +91,7 @@ export const useGamificationStore = create<GamificationState>((set) => ({
             newLevel++;
             nextLevelXp = Math.floor(nextLevelXp * 1.2);
 
-            import('antd').then(({ notification }) => {
+            import('@/lib/antd-app').then(({ notification }) => {
                 notification.info({
                     message: 'Level Up!',
                     description: `You are now Level ${newLevel}!`,

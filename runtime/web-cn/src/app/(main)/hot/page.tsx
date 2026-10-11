@@ -2,7 +2,8 @@
 
 import React, { useState, useEffect } from 'react';
 import { FireFilled, ThunderboltFilled, ArrowRightOutlined, SearchOutlined, ClockCircleOutlined, RiseOutlined, LoadingOutlined, AreaChartOutlined, ThunderboltOutlined } from '@ant-design/icons';
-import { Input, Button, Tag, Empty, Card, Modal, Row, Col, Space, message, Typography, List, Divider } from 'antd';
+import { Input, Button, Tag, Empty, Card, Modal, Row, Col, Space, Typography, List, Divider } from 'antd';
+import { message } from '@/lib/antd-app';
 import { motion, AnimatePresence } from 'framer-motion';
 import { apiClient } from '@/lib/api-client';
 import { flattenViralAnalysis, parseHotTopics } from '@/lib/page-data';

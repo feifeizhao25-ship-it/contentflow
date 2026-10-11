@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Button, Input, message } from 'antd';
+import { Button, Input } from 'antd';
+import { message } from '@/lib/antd-app';
 import { ThunderboltOutlined, CopyOutlined, CheckCircleOutlined, StarOutlined } from '@ant-design/icons';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useOnboardingStore, DOMAIN_NAMES } from '@/store/onboardingStore';

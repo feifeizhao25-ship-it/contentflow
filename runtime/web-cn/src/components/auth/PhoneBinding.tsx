@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Alert, Button, Form, Input, Space, Tag, Typography, message } from 'antd';
+import { Alert, Button, Form, Input, Space, Tag, Typography } from 'antd';
+import { message } from '@/lib/antd-app';
 import { MobileOutlined } from '@ant-design/icons';
 import { bindPhone, isValidChinaMobile, sendBindCode } from '@/lib/auth-service';
 import { safeErrorText } from '@/lib/api-error';
