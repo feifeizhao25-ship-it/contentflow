@@ -28,6 +28,18 @@ export function contentCoverUrl(record: any): string {
   return typeof media === 'string' ? media.trim() : '';
 }
 
+/**
+ * 平台账号列表：GET /accounts 返回的就是数组（apiClient 已拆掉 { success, data } 外层）。
+ * 工作室原来按「还带外层」读（res.success / res.data），于是「已绑定账号」永远是 0 个，
+ * 抖音、B 站的自动发布任务也因此永远建不出来。
+ */
+export function parseAccountList(result: unknown): any[] {
+  if (Array.isArray(result)) return result;
+  const payload = unwrap(result);
+  if (Array.isArray(payload)) return payload;
+  return asArray(payload?.accounts);
+}
+
 export interface CalendarTask {
   id: string;
   title: string;

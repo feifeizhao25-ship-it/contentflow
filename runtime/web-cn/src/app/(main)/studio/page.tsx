@@ -17,7 +17,7 @@ import { safeErrorText } from '@/lib/api-error';
 import { isAiGeneratedText } from '@/lib/ai-content-label';
 import { ComplianceReviewNotice } from '@/components/compliance/ComplianceReviewNotice';
 import { isManualPlatform, PUBLISH_CHANNEL_NOTICE } from '@/lib/manual-publish';
-import { describeAiAllowance, type AiAllowanceView } from '@/lib/page-data';
+import { describeAiAllowance, parseAccountList, type AiAllowanceView } from '@/lib/page-data';
 
 const { TextArea } = Input;
 
@@ -68,12 +68,7 @@ function StudioContent() {
     const fetchAccounts = async () => {
       setLoadingAccounts(true);
       try {
-        const res: any = await apiClient.get('/accounts');
-        if (res?.success) {
-          setAccounts(res.data || res.accounts || []);
-        } else {
-          setAccounts(res.data || []);
-        }
+        setAccounts(parseAccountList(await apiClient.get('/accounts')));
       } catch (e) {
         console.error('Failed to fetch accounts', e);
       } finally {
@@ -283,7 +278,7 @@ function StudioContent() {
       if (autoPlatforms.length && !nextAccounts.length) {
         try {
           const accountRes: any = await apiClient.get('/accounts');
-          nextAccounts = accountRes?.data || accountRes?.accounts || [];
+          nextAccounts = parseAccountList(accountRes);
           setAccounts(nextAccounts);
         } catch (e) {
           console.warn('Failed to refresh accounts before publish', e);

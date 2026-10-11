@@ -14,7 +14,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { parseContentList, mapPublishTasks, parseHotTopics, describePlan, parseAnalyticsOverview, describeAiAllowance, flattenViralAnalysis, planBadge, contentCoverUrl } from '../src/lib/page-data.ts';
+import { parseContentList, mapPublishTasks, parseHotTopics, describePlan, parseAnalyticsOverview, describeAiAllowance, flattenViralAnalysis, planBadge, contentCoverUrl, parseAccountList } from '../src/lib/page-data.ts';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const src = (rel) => fs.readFileSync(path.join(ROOT, 'src', rel), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/[^\n]*/g, '$1');
@@ -232,6 +232,35 @@ await check('内容库桌面表格：「操作」列固定在右侧不会被挤�
   // 列宽总和（不含勾选列）控制在 910px 以内
   const widths = [...page.slice(page.indexOf('const columns'), page.indexOf('const rowSelection')).matchAll(/^ {12}width: (\d+),/gm)].map((m) => Number(m[1]));
   assert.ok(widths.reduce((a, b) => a + b, 0) <= 910, `列宽合计 ${widths.reduce((a, b) => a + b, 0)}`);
+});
+
+await check('工作室「已绑定账号」：GET /accounts 拆掉外层后就是数组，不再按带 success 的外层读成 0 个', () => {
+  const accounts = [{ id: 'a1', platform: 'douyin' }, { id: 'a2', platform: 'bilibili' }];
+  assert.equal(parseAccountList(accounts).length, 2);
+  assert.equal(parseAccountList({ success: true, data: accounts }).length, 2);
+  assert.equal(parseAccountList({ accounts }).length, 2);
+  assert.deepEqual(parseAccountList(null), []);
+  const studio = src('app/(main)/studio/page.tsx');
+  assert.doesNotMatch(studio, /res\?\.success|accountRes\?\.data/);
+  assert.equal((studio.match(/parseAccountList\(/g) || []).length, 2);
+});
+
+await check('全仓：apiClient 的结果不能只按带 success 的外层读（apiClient 已拆掉外层）', () => {
+  const offenders = [];
+  const walk = (dir) => {
+    for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
+      const full = path.join(dir, e.name);
+      if (e.isDirectory()) { if (e.name !== 'api') walk(full); continue; }
+      if (!/\.tsx?$/.test(e.name) || full.endsWith('api-client.ts')) continue;
+      const text = fs.readFileSync(full, 'utf8');
+      if (!/apiClient\./.test(text)) continue;
+      // 同一文件里用 apiClient 取到的结果再判断 .success 才算可疑（原始 fetch 的 envelope 不算）
+      for (const m of text.matchAll(/const (\w+)[^=]*= await apiClient\.\w+[^;]*;[\s\S]{0,300}?\b\1\??\.success\b/g)) offenders.push(`${path.relative(ROOT, full)}: ${m[1]}.success`);
+    }
+  };
+  walk(path.join(ROOT, 'src'));
+  // CheckInModal：/points/checkin 的业务结果本身带 success 字段（不是外层），允许
+  assert.deepEqual(offenders.filter((o) => !o.includes('CheckInModal')), []);
 });
 
 if (failures) { console.error(`${failures} failed`); process.exit(1); }
