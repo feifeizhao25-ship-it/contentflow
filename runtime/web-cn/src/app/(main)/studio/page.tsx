@@ -12,7 +12,6 @@ import { apiClient } from '@/lib/api-client';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAchievementStore } from '@/store/appStore';
 import { trackEvent } from '@/lib/analytics';
-import { PLACEHOLDER_IMAGES } from '@/lib/placeholders';
 import { safeErrorText } from '@/lib/api-error';
 import { isAiGeneratedText } from '@/lib/ai-content-label';
 import { ComplianceReviewNotice } from '@/components/compliance/ComplianceReviewNotice';
@@ -459,21 +458,24 @@ function StudioContent() {
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="relative aspect-video rounded-2xl border border-zinc-200 overflow-hidden bg-zinc-100">
-                    <NextImage
-                      src={coverUrl || PLACEHOLDER_IMAGES.cover}
-                      alt="封面预览"
-                      fill
-                      sizes="(max-width: 768px) 100vw, 50vw"
-                      unoptimized
-                      className="w-full h-full object-cover"
-                    />
+                    {/* 没有封面时不再垫一张自带文字的示例图（与下面的说明文字叠在一起看不清） */}
+                    {coverUrl && (
+                      <NextImage
+                        src={coverUrl}
+                        alt="封面预览"
+                        fill
+                        sizes="(max-width: 768px) 100vw, 50vw"
+                        unoptimized
+                        className="w-full h-full object-cover"
+                      />
+                    )}
                     {coverUrl && coverIsAi && (
                       <div className="absolute left-2 top-2 rounded bg-black/60 px-2 py-0.5 text-[11px] text-white">AI 生成</div>
                     )}
                     {!coverUrl && (
-                      <div className="absolute inset-0 bg-black/30 flex flex-col items-center justify-center text-xs text-white text-center p-4">
+                      <div className="absolute inset-0 flex flex-col items-center justify-center text-xs text-zinc-500 text-center p-4">
                         <ImageIcon className="w-8 h-8 mb-2 opacity-50" />
-                        <div>AI 封面未生成<br />生成后将自动替换示例图</div>
+                        <div>还没有封面<br />点右上角「生成封面」后在这里预览</div>
                       </div>
                     )}
                   </div>
