@@ -291,7 +291,7 @@ for removed in ("ConclusionHero.tsx", "ContentRankList.tsx", "ReplayPanel.tsx", 
         errors.append(f"runtime/web-cn/src/components/analytics/{removed}: 写死假数据的组件不得恢复")
 
 # 只用官方开放平台：仓库里任何地方都不得出现「粘贴 Cookie 登录态」的输入框或 Cookie 代授权接口
-# （历史目录 网页端-Antigravity 已整目录删除；网页端-合并 里的 Cookie 授权页与接口已删除）。
+# （历史目录 网页端-Antigravity、网页端-合并、网页端-恢复 已整目录删除）。
 COOKIE_LOGIN_MARKERS = ("请粘贴 Cookie", "粘贴Cookie", "sessionid=...", "手动 Cookie 模式授权", "authType: 'cookie'")
 _SELF_CHECKS = {"runtime/web-cn/scripts/check-api-contract.mjs", "scripts/verify_production_truthfulness.py"}
 for path in ROOT.rglob("*"):
@@ -309,6 +309,9 @@ for path in ROOT.rglob("*"):
             errors.append(f"{rel}: 出现 Cookie 代登录 / 代授权（{marker!r}），只允许官方开放平台授权")
 if (ROOT / "网页端-Antigravity").exists():
     errors.append("网页端-Antigravity: 含 Cookie 授权输入框的历史目录已删除，不得恢复")
+for _old_dir in ("网页端-合并", "网页端-恢复", "网页端-apps"):
+    if (ROOT / _old_dir).exists():
+        errors.append(f"{_old_dir}: 无人引用、仍接 Supabase 的历史网页目录已删除，不得恢复（现行国内网页端是 runtime/web-cn）")
 if (ROOT / "runtime/web-cn/src/lib/tophub-service.ts").exists():
     errors.append("runtime/web-cn/src/lib/tophub-service.ts: 授权不明的聚合站接口已删除，不得恢复")
 
