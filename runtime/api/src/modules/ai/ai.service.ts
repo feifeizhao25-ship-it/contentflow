@@ -95,6 +95,11 @@ export function scoreContent(content: string, sources: ContentSource[], locale: 
  * deepseek-v4-pro（2026-10-10 核对）。继续用旧名，调用会失败。
  */
 export const DEEPSEEK_DEFAULT_MODEL = 'deepseek-flash';
+/**
+ * 通义千问默认模型。阿里云百炼官方价目页（https://help.aliyun.com/zh/model-studio/model-pricing ，2026-10-13 核对）
+ * 已不再列出 qwen-turbo，第三方转售方 2026-10-11 公告其随官方下线；现行轻量模型是 qwen-flash。
+ */
+export const QWEN_DEFAULT_MODEL = 'qwen-flash';
 
 /**
  * 国内版模型不可用时给用户的话。原来抛普通 Error（「AI API error: qwen:503」之类），
@@ -271,7 +276,7 @@ export class AIService {
       const provider = model.includes('deepseek') ? 'deepseek' : 'qwen';
       candidates.push({ provider, model, key: provider === 'deepseek' ? this.deepseekApiKey : this.qwenApiKey });
     } else {
-      if (this.qwenApiKey) candidates.push({ provider: 'qwen', model: this.configService.get('QWEN_MODEL', 'qwen-turbo'), key: this.qwenApiKey });
+      if (this.qwenApiKey) candidates.push({ provider: 'qwen', model: this.configService.get('QWEN_MODEL', QWEN_DEFAULT_MODEL), key: this.qwenApiKey });
       if (this.deepseekApiKey) candidates.push({ provider: 'deepseek', model: this.configService.get('DEEPSEEK_MODEL', DEEPSEEK_DEFAULT_MODEL), key: this.deepseekApiKey });
     }
     const usable = candidates.filter((c) => c.key);

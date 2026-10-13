@@ -35,7 +35,7 @@ describe('domestic text generation', () => {
     await service({ MARKET_REGION: 'cn', QWEN_API_KEY: 'qk' }).generateText({ prompt: '测试' });
     const [url, init] = (global.fetch as jest.Mock).mock.calls[0];
     expect(url).toBe('https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions');
-    expect(JSON.parse(init.body).model).toBe('qwen-turbo');
+    expect(JSON.parse(init.body).model).toBe('qwen-flash');
   });
 
   it('falls back to the other domestic provider when the first fails', async () => {

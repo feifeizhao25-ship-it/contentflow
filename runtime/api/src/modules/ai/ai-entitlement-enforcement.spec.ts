@@ -69,7 +69,7 @@ describe('国内模型按价目表折算成本', () => {
   it('核对过的价目必须带官方来源与实际核对日期；没核对的标「待核实」', () => {
     for (const [model, price] of Object.entries(DOMESTIC_TEXT_MODEL_PRICES)) {
       if (price.verified) {
-        expect({ model, source: price.source }).toEqual({ model, source: expect.stringMatching(/^https:\/\/api-docs\.deepseek\.com\//) });
+        expect({ model, source: price.source }).toEqual({ model, source: expect.stringMatching(/^https:\/\/(api-docs\.deepseek\.com|help\.aliyun\.com\/zh\/model-studio)\//) });
         expect({ model, checkedAt: price.checkedAt }).toEqual({ model, checkedAt: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/) });
       } else {
         expect({ model, note: price.note }).toEqual({ model, note: expect.stringContaining('待核实') });

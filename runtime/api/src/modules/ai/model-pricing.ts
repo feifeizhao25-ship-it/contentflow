@@ -27,8 +27,10 @@ export interface TextModelPrice {
 const DEEPSEEK_PRICING_ZH = 'https://api-docs.deepseek.com/zh-cn/quick_start/pricing/';
 const DEEPSEEK_UPDATES_ZH = 'https://api-docs.deepseek.com/zh-cn/updates/';
 const DEEPSEEK_CHECKED_AT = '2026-10-10';
+const QWEN_PRICING_ZH = 'https://help.aliyun.com/zh/model-studio/model-pricing';
+const QWEN_CHECKED_AT = '2026-10-13';
 
-export const MODEL_PRICE_TABLE_VERSION = 'DeepSeek 2026-10-10 已核对；通义千问 / 通义万相 待核实';
+export const MODEL_PRICE_TABLE_VERSION = 'DeepSeek 2026-10-10、通义千问 2026-10-13 已核对；通义万相 待核实';
 
 export const DOMESTIC_TEXT_MODEL_PRICES: Record<string, TextModelPrice> = {
   // ── DeepSeek：官方中文定价页（元 / 百万 tokens）。
@@ -66,11 +68,12 @@ export const DOMESTIC_TEXT_MODEL_PRICES: Record<string, TextModelPrice> = {
     source: DEEPSEEK_UPDATES_ZH,
     note: '待核实：官方定价页已不再列出此模型名（更新日志称 2026-07-24 停用），保留原保守估值',
   },
-  // ── 通义千问：2026-10-10 尝试打开阿里云百炼官方价目页（help.aliyun.com/zh/model-studio/models），
-  // 没能取得页面内容，无法核对，保持原值并标「待核实」。
-  'qwen-turbo': { inputCnyPerMillion: 0.6, outputCnyPerMillion: 1.2, verified: false, note: '待核实：未能打开阿里云百炼官方价目页核对，保持原保守估值' },
-  'qwen-plus': { inputCnyPerMillion: 1.6, outputCnyPerMillion: 4, verified: false, note: '待核实：未能打开阿里云百炼官方价目页核对，保持原保守估值' },
-  'qwen-max': { inputCnyPerMillion: 4.8, outputCnyPerMillion: 19.2, verified: false, note: '待核实：未能打开阿里云百炼官方价目页核对，保持原保守估值' },
+  // ── 通义千问：阿里云百炼官方价目页（中国内地 / 北京部署，元 / 百万 tokens，阶梯计费取最低一档），2026-10-13 核对。
+  'qwen-flash': { inputCnyPerMillion: 0.15, outputCnyPerMillion: 1.5, verified: true, source: QWEN_PRICING_ZH, checkedAt: QWEN_CHECKED_AT, note: '官方：输入 0.15 元（0–128K）、输出 1.5 元（思考 / 非思考同价）' },
+  'qwen-plus': { inputCnyPerMillion: 0.8, outputCnyPerMillion: 8, verified: true, source: QWEN_PRICING_ZH, checkedAt: QWEN_CHECKED_AT, note: '官方：输入 0.8 元（0–128K）；输出非思考 2 元、思考 8 元——按思考模式 8 元计，预算只会偏早拦' },
+  'qwen-max': { inputCnyPerMillion: 2.4, outputCnyPerMillion: 9.6, verified: true, source: QWEN_PRICING_ZH, checkedAt: QWEN_CHECKED_AT, note: '官方：输入 2.4 元、输出 9.6 元（无阶梯，仅非思考）' },
+  // 官方价目页已不再列出 qwen-turbo（第三方转售方公告 2026-10-11 随官方下线）。保留原保守估值只为给历史调用记录计价。
+  'qwen-turbo': { inputCnyPerMillion: 0.6, outputCnyPerMillion: 1.2, verified: false, note: '待核实：2026-10-13 官方价目页已不再列出，默认模型已改为 qwen-flash；保留原保守估值' },
 };
 
 /** 不在表里的模型按表中最贵的一档计价（保守），并在日志里提示补表。 */
@@ -81,7 +84,7 @@ export const UNKNOWN_TEXT_MODEL_PRICE: TextModelPrice = {
   note: '未登记的模型：按表内最高单价计',
 };
 
-/** 文生图单价：人民币元 / 每张。2026-10-10 未能打开阿里云百炼官方价目页核对，保持原值并标「待核实」。 */
+/** 文生图单价：人民币元 / 每张。2026-10-13 打开的阿里云百炼价目页与图像模型页都没有列出 wanx2.1 文生图单价，保持原值并标「待核实」。 */
 export const DOMESTIC_IMAGE_MODEL_PRICES: Record<string, { cnyPerImage: number; verified: boolean; note: string }> = {
   'wanx2.1-t2i-turbo': { cnyPerImage: 0.3, verified: false, note: '待核实：未能打开阿里云百炼官方价目页核对，保持原保守估值' },
   'wanx2.1-t2i-plus': { cnyPerImage: 0.4, verified: false, note: '待核实：未能打开阿里云百炼官方价目页核对，保持原保守估值' },

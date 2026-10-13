@@ -23,7 +23,7 @@ describe('国内市场的模型供应商边界', () => {
       offshoreDefaultModel,
     });
     expect(decision.useOpenRouter).toBe(false);
-    expect(decision.model).toBe('qwen-turbo');
+    expect(decision.model).toBe('qwen-flash');
   });
 
   it.each(['cn', 'CN', ' Cn ', 'china', 'zh-CN'])('市场标识 %p 都算国内', (market) => {
@@ -51,7 +51,7 @@ describe('国内市场的模型供应商边界', () => {
       offshoreDefaultModel,
     });
     expect(decision.useOpenRouter).toBe(false);
-    expect(decision.model).toBe('qwen-turbo');
+    expect(decision.model).toBe('qwen-flash');
   });
 
   it('国内市场拒绝聚合路由风格的模型标识', () => {
