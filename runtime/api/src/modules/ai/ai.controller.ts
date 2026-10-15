@@ -1,4 +1,5 @@
-import { BadRequestException, Controller, Post, Get, Body, UseGuards, Request } from '@nestjs/common';
+import { BadRequestException, Controller, Post, Get, Body, UseGuards, UseInterceptors, Request } from '@nestjs/common';
+import { AiConcurrencyInterceptor } from './ai-concurrency.interceptor';
 import { AI_TEXT_LABEL, buildAiMediaMetadata, labelAiGeneratedText } from '../../common/ai-content-label';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { AIService } from './ai.service';
@@ -6,6 +7,7 @@ import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { AiAllowanceService } from './ai-allowance.service';
 
 @ApiTags('ai')
+@UseInterceptors(AiConcurrencyInterceptor)
 @Controller('ai')
 export class AIController {
   constructor(
