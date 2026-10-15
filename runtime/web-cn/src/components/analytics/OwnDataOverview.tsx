@@ -28,7 +28,7 @@ export function PublishStats({ period }: { period: AnalyticsPeriod }) {
     return (
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
             <StatCard label="发布任务" value={p.total} hint="按计划发布时间统计" />
-            <StatCard label="已自动发布" value={p.published} tone="good" />
+            <StatCard label="已发布" value={p.published} tone="good" />
             <StatCard label="已人工发布" value={p.manualDone} tone="good" hint="你确认已在平台发出" />
             <StatCard label="待人工发布" value={p.manualPending} tone="warn" />
             <StatCard label="进行中" value={p.inProgress} hint="排队、发布中或待平台确认" />
