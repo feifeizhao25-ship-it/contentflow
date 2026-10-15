@@ -48,7 +48,7 @@
       }
     },
     "pro": {
-      "name": "专业版",
+      "name": "Solo",
       "priceMonthlyCny": 99,
       "priceYearlyCny": 990,
       "custom": false,
@@ -94,7 +94,7 @@
       }
     },
     "team": {
-      "name": "团队版",
+      "name": "Team",
       "priceMonthlyCny": 499,
       "priceYearlyCny": 4990,
       "custom": false,
@@ -141,7 +141,7 @@
       }
     },
     "enterprise": {
-      "name": "企业版",
+      "name": "Business",
       "priceMonthlyCny": 1999,
       "priceYearlyCny": 19990,
       "custom": false,

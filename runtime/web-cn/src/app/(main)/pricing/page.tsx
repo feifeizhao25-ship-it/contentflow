@@ -193,7 +193,7 @@ function PricingContent() {
         const plan = displayedPlans.find((item) => item.id === id);
         if (!plan || plan.disabled) return;
         if (plan.custom) {
-            message.info('企业版按团队规模报价，请联系商务顾问');
+            message.info('Business 按团队规模报价，请联系商务顾问');
             return;
         }
         setLoadingPlan(id);

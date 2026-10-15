@@ -49,14 +49,14 @@ export const LEGACY_CN_PLANS: ChinaPlanDefinition[] = [
   },
 ];
 
-// 2026-09-01 已批准定价；旧订单使用下单快照或 LEGACY_CN_PLANS，禁止重定价。
+// 2026-09-01 已批准定价；档名按 0S1 统一为 Solo / Team / Business（分D04）；旧订单使用下单快照或 LEGACY_CN_PLANS，禁止重定价。
 export const CN_PLAN_VERSION = '2026-09-01';
 export const CN_PLANS: ChinaPlanDefinition[] = LEGACY_CN_PLANS.map((plan) => {
   const updates: Record<string, Partial<ChinaPlanDefinition>> = {
     free: { memberLimit: 1, storageGb: 1, platformLimit: 1, monthlyPostQuota: 5, features: ['1个平台账号', '每月5条发布', '人工智能生成内容标识'] },
-    pro: { memberLimit: 1, storageGb: 5, priceMonthlyCny: 99, priceYearlyCny: 990, monthlyPostQuota: 200, features: ['10个平台账号', '每月200条发布', '内容日历与排期'] },
-    team: { memberLimit: 5, storageGb: 50, priceMonthlyCny: 499, priceYearlyCny: 4990, monthlyPostQuota: 1000, features: ['30个平台账号', '团队协作与审批', '每月1000条发布'] },
-    enterprise: { memberLimit: 20, storageGb: -1, priceMonthlyCny: 1999, priceYearlyCny: 19990, custom: false, monthlyPostQuota: 5000, aiTokenQuota: 10000000, features: ['每月5000条发布', '操作审计', '团队协作与审批'] },
+    pro: { name: 'Solo', memberLimit: 1, storageGb: 5, priceMonthlyCny: 99, priceYearlyCny: 990, monthlyPostQuota: 200, features: ['10个平台账号', '每月200条发布', '内容日历与排期'] },
+    team: { name: 'Team', memberLimit: 5, storageGb: 50, priceMonthlyCny: 499, priceYearlyCny: 4990, monthlyPostQuota: 1000, features: ['30个平台账号', '团队协作与审批', '每月1000条发布'] },
+    enterprise: { name: 'Business', memberLimit: 20, storageGb: -1, priceMonthlyCny: 1999, priceYearlyCny: 19990, custom: false, monthlyPostQuota: 5000, aiTokenQuota: 10000000, features: ['每月5000条发布', '操作审计', '团队协作与审批'] },
   };
   return { ...plan, ...updates[plan.id] };
 });

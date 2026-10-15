@@ -127,7 +127,7 @@ export function flattenViralAnalysis(analysis: unknown): Array<{ heading: string
     .filter((section) => section.lines.length > 0);
 }
 
-const PLAN_NAMES: Record<string, string> = { free: '免费版', starter: '入门版', pro: '专业版', team: '团队版', enterprise: '企业版' };
+const PLAN_NAMES: Record<string, string> = { free: '免费版', starter: '入门版', pro: 'Solo', team: 'Team', enterprise: 'Business' };
 
 export interface PlanView {
   name: string;
