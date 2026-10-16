@@ -317,7 +317,7 @@ function PricingContent() {
                 </div>
 
                 {/* Plans Grid */}
-                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 items-stretch mb-20">
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 items-stretch mb-4">
                     {plansFailed && (
                         <div className="col-span-full rounded-2xl border border-amber-200 bg-amber-50 p-5 flex flex-col sm:flex-row items-center justify-center gap-4 text-amber-800">
                             <span>价格信息加载失败，请稍后重试。当前展示经校验的会员权益注册表，支付前会再次确认实时价格。</span>
@@ -376,12 +376,7 @@ function PricingContent() {
                                     </li>
                                 ))}
                             </ul>
-                            {plan.comingSoon.length > 0 && (
-                                <div className="mb-8 rounded-xl border border-dashed border-zinc-200 dark:border-zinc-700 p-3">
-                                    <p className="text-xs font-bold text-amber-700 mb-1">即将上线（暂未开通，不影响当前价格）</p>
-                                    <p className="text-xs leading-5 text-zinc-500">{plan.comingSoon.join('；')}</p>
-                                </div>
-                            )}
+                            {/* 未开通权益只在对应卖点旁标一次「即将上线」，汇总说明放在卡片组下方，避免每张卡重复堆叠。 */}
 
                             <Button
                                 type="primary"
@@ -403,6 +398,7 @@ function PricingContent() {
                     ))}
 
                 </div>
+                <p className="mb-20 text-xs text-zinc-500">标「即将上线」的权益暂未开通（如平台授权、团队审批、操作审计），开通前不影响当前价格。</p>
 
                 <Modal
                     open={checkoutPlan !== null}
