@@ -41,6 +41,9 @@ describe('BillingController', () => {
     expect(CN_PLANS.map((plan) => plan.priceMonthlyCny)).toEqual([0, 99, 499, 1999]);
     expect(CN_PLANS[0].monthlyPostQuota).toBe(5);
     expect(CN_PLANS[3].custom).toBe(false);
+    // Business 不能与 Team 同额度，也不能误继承“不限”平台数
+    expect(CN_PLANS[3].aiTokenQuota).toBeGreaterThan(CN_PLANS[2].aiTokenQuota);
+    expect(CN_PLANS[3].platformLimit).toBe(100);
   });
 
   it('applies free limits when a paid subscription has expired', async () => {

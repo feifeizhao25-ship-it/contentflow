@@ -151,9 +151,9 @@
         "团队协作与审批"
       ],
       "quotas": {
-        "platformAccounts": -1,
+        "platformAccounts": 100,
         "monthlyPosts": 5000,
-        "monthlyAiTokens": 10000000,
+        "monthlyAiTokens": 40000000,
         "videoMinutesMonthly": -1,
         "storageGb": -1
       },
