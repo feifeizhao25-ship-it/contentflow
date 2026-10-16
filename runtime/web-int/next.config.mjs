@@ -3,15 +3,8 @@ const nextConfig = {
   output: 'standalone',
   reactStrictMode: true,
   poweredByHeader: false,
-  async rewrites() {
-    const apiOrigin = process.env.API_INTERNAL_URL || 'http://api:4000';
-    return [
-      {
-        source: '/api/v1/:path*',
-        destination: `${apiOrigin}/api/v1/:path*`,
-      },
-    ];
-  },
+  // No /api/v1 rewrite: it would run before src/app/api/v1/[...path]/route.ts, so requests reached the API
+  // without the Authorization header and every signed-in call returned 401 (found in the 2026-10-16 UI test).
 };
 
 export default nextConfig;

@@ -293,8 +293,8 @@ function PricingContent() {
                             <span className="text-xs font-bold text-zinc-600 dark:text-zinc-300 tracking-wider">会员方案</span>
                         </div>
                         <h1 className="text-5xl md:text-7xl font-black tracking-tight mb-8 text-zinc-900 dark:text-white">
-                            释放无限<br className="md:hidden" />
-                            <span className="bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600"> 创作潜能</span>
+                            选择适合你的<br className="md:hidden" />
+                            <span className="bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600">创作方案</span>
                         </h1>
                         <p className="text-xl text-zinc-500 dark:text-zinc-400 font-medium max-w-2xl mx-auto leading-relaxed">
                             根据账号数量、发布频次和团队规模，选择适合你的会员方案。<br className="hidden md:block" />

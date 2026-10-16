@@ -70,16 +70,10 @@ function TeamContent() {
             //    GET/POST members 两个路由。此前打 /api/team/activity 得到 404，
             //    被 catch 后只在控制台留一行，页面上表现为「一直空白」——
             //    与「暂无动态」无法区分。这里显式区分两者。
-            const res = await fetch('/api/v1/team/activity');
-            if (res.status === 404) {
-                setActivities([]);
-                setActivitiesUnavailable(true);
-                return;
-            }
-            const envelope = await res.json();
-            if (envelope?.success) {
-                setActivities(envelope.data ?? []);
-            }
+            //    后端接口上线前不再请求（每次进页面都会产生一个 404，见 2026-10-16 UI 实测），直接显示「即将上线」。
+            setActivities([]);
+            setActivitiesUnavailable(true);
+            return;
         } catch (error) {
             console.error('Failed to fetch activities');
         } finally {

@@ -11,7 +11,8 @@ export default function CreatePage() {
       body: JSON.stringify({ topic, platform: 'linkedin', style: `Professional English for ${market}` }),
     });
     const body = await response.json().catch(() => ({}));
-    if (!response.ok) return setResult(body.message || 'Generation failed. Please review your account and try again.');
+    // API error messages are written for the China edition; show English copy here instead of relaying them.
+    if (!response.ok) return setResult(response.status === 401 ? 'Your session has expired. Please sign in again.' : response.status === 503 ? 'Draft generation is not available yet. Please try again later.' : 'Generation failed. Please review your account and try again.');
     setResult(body?.data?.content || body?.content || 'Draft created and queued for review.');
   }
   return <main className="shell"><div className="eyebrow">Draft workspace</div><h1>Create for a market, not just a language.</h1>
