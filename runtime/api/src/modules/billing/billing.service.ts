@@ -296,6 +296,10 @@ export class BillingService {
   }
 
   async markRefunded(orderNo: string, providerRefundNo: string) {
+    if (typeof orderNo !== 'string' || !orderNo.trim()
+      || typeof providerRefundNo !== 'string' || !providerRefundNo.trim()) {
+      throw new BadRequestException('退款凭据不完整，请核对订单号和渠道退款号');
+    }
     return this.prisma.$transaction(async (tx: any) => {
       const initial = await tx.paymentOrder.findUnique({ where: { order_no: orderNo } });
       if (!initial) throw new BadRequestException('退款订单不存在');
