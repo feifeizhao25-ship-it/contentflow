@@ -316,6 +316,11 @@ function PricingContent() {
                     </Radio.Group>
                 </div>
 
+                {/* 批1售卖真实性：Business 的 AI 令牌（4000万/月）与平台账号上限（100）为按价格比例推算、未经负责人确认的口径，确认前如实说明，不冒充已承诺额度 */}
+                <div className="max-w-4xl mx-auto mb-8 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900" role="note">
+                    关于 Business：其 AI 令牌额度（4000 万/月）与平台账号上限（100 个）目前为推算口径，尚未经负责人最终确认；确认前请以商务沟通的书面约定为准，页面数字不构成承诺。其余套餐额度以付款时展示为准。
+                </div>
+
                 {/* Plans Grid */}
                 <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 items-stretch mb-4">
                     {plansFailed && (
