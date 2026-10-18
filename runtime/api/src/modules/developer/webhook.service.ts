@@ -1,4 +1,5 @@
-import { BadRequestException, Injectable, Logger } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Injectable, Logger } from '@nestjs/common';
+import { effectiveEntitlements } from '../billing/effective-limits';
 import * as crypto from 'crypto';
 import { PrismaService } from '../../database/prisma.service';
 import { WEBHOOK_EVENTS, decryptSecret, deliverWebhook, encryptSecret } from './webhook-delivery';
@@ -9,7 +10,14 @@ export class WebhookService {
   constructor(private readonly prisma: PrismaService, private readonly fetchFn: typeof fetch = fetch) {}
   private db() { return (this.prisma as any).webhookSubscription; }
 
+  /** 定稿（2026-10-18）：Webhook 订阅仅 Business 档（plan=enterprise）开放，其余档关闭；过期按免费档处理。 */
+  private async assertBusiness(tenantId: string) {
+    const tenant = await (this.prisma as any).tenant.findUnique({ where: { id: tenantId } });
+    const effective = effectiveEntitlements(tenant ?? { plan: 'free' });
+    if (effective.plan !== 'enterprise') throw new ForbiddenException('Webhook 订阅仅 Business 档开放，请升级后使用');
+  }
   async create(tenantId: string, body: { url?: string; events?: string[] }) {
+    await this.assertBusiness(tenantId);
     const url = String(body?.url ?? '').trim();
     let u: URL; try { u = new URL(url); } catch { throw new BadRequestException('Webhook 地址格式不正确'); }
     if (u.protocol !== 'https:') throw new BadRequestException('Webhook 地址必须以 https:// 开头');
@@ -23,10 +31,12 @@ export class WebhookService {
     return { id: sub.id, url: sub.url, events: sub.events, status: sub.status, secret, secret_note: '签名密钥只显示这一次，请存入你的密钥管理；后续投递以 X-ContentFlow-Signature 验签。' };
   }
   async list(tenantId: string) {
+    await this.assertBusiness(tenantId);
     const rows = await this.db().findMany({ where: { tenant_id: tenantId }, orderBy: { created_at: 'desc' } });
     return rows.map((r: any) => ({ id: r.id, url: r.url, events: r.events, status: r.status, created_at: r.created_at }));
   }
   async remove(tenantId: string, id: string) {
+    await this.assertBusiness(tenantId);
     const r = await this.db().findFirst({ where: { id, tenant_id: tenantId } });
     if (!r) throw new BadRequestException('订阅不存在');
     await this.db().delete({ where: { id } });
