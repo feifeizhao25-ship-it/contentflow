@@ -17,3 +17,18 @@ describe('HotService', () => {
     }
   });
 });
+
+describe('HotService 可替换数据源（批2）', () => {
+  const old = process.env.HOT_PROVIDER_URL;
+  afterEach(() => { if (old === undefined) delete process.env.HOT_PROVIDER_URL; else process.env.HOT_PROVIDER_URL = old; });
+  it('配置了服务商时返回其真实返回并标来源，失败时不编造', async () => {
+    process.env.HOT_PROVIDER_URL = 'https://hot.example.cn';
+    const okFetch: any = async () => ({ ok: true, json: async () => ({ topics: [{ id: '1', topic: '城市骑行', heat: 123, platform: 'xhs' }, { bad: true }] }) });
+    const svc = new HotService({} as any, okFetch);
+    const r: any = await svc.getHotList('xhs');
+    expect(r.available).toBe(true); expect(r.topics).toHaveLength(1); expect(r.topics[0].topic).toBe('城市骑行');
+    const bad = new HotService({} as any, (async () => { throw new Error('down'); }) as any);
+    const r2: any = await bad.getHotList('xhs');
+    expect(r2.available).toBe(false); expect(r2.topics).toEqual([]);
+  });
+});

@@ -66,13 +66,11 @@ function TeamContent() {
     const fetchActivities = async () => {
         setActivitiesLoading(true);
         try {
-            // ⚠️ 团队动态在后端**没有实现**：TeamController 只有
-            //    GET/POST members 两个路由。此前打 /api/team/activity 得到 404，
-            //    被 catch 后只在控制台留一行，页面上表现为「一直空白」——
-            //    与「暂无动态」无法区分。这里显式区分两者。
-            //    后端接口上线前不再请求（每次进页面都会产生一个 404，见 2026-10-16 UI 实测），直接显示「即将上线」。
-            setActivities([]);
-            setActivitiesUnavailable(true);
+            // 批2：后端已补 GET /api/v1/team/activity（ActivityLog），真实请求；失败时区分「不可用」与「暂无动态」。
+            const res = await fetch('/api/v1/team/activity');
+            const envelope = await res.json();
+            if (envelope?.success) { setActivities(envelope.data ?? []); setActivitiesUnavailable(false); }
+            else { setActivities([]); setActivitiesUnavailable(true); }
             return;
         } catch (error) {
             console.error('Failed to fetch activities');
@@ -151,14 +149,8 @@ function TeamContent() {
             cancelText: '取消',
             onOk: async () => {
                 try {
-                    // ⚠️ 后端 TeamController 只有 GET/POST members，**没有 DELETE**。
-                    //    此前打 /api/team?id= 得到 404，被 catch 成一句「移除失败」——
-                    //    看起来像临时故障，实际是功能没实现。
+                    // 批2：后端已补 DELETE /api/v1/team/members/:userId（所有者/管理员，写团队动态）。
                     const res = await fetch(`/api/v1/team/members/${id}`, { method: 'DELETE' });
-                    if (res.status === 404) {
-                        message.warning('移除成员功能尚未接入后端');
-                        return;
-                    }
                     const envelope = await res.json();
                     const data = { success: envelope?.success, error: apiErrorText(envelope) ?? '移除失败，请稍后重试' };
                     if (data.success) {
