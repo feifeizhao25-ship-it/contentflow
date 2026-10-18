@@ -101,6 +101,6 @@ describe('refund entitlement ownership', () => {
     await service.markRefunded('CF1', 'refund-1');
     expect(tx.subscription.updateMany).toHaveBeenCalledWith(expect.objectContaining({ where: { id: 'sub-1', tenant_id: 'tenant-1' } }));
     expect(tx.tenant.update).toHaveBeenCalledWith(expect.objectContaining({ where: { id: 'tenant-1' }, data: expect.objectContaining({ plan: 'free' }) }));
-    expect(tx.paymentOrder.update).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ status: 'refunded' }) }));
+    expect(tx.paymentOrder.update).toHaveBeenCalledWith({ where: { order_no: 'CF1' }, data: { status: 'refunded', refund_channel_order_no: 'refund-1' } });
   });
 });

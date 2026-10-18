@@ -306,7 +306,7 @@ export class BillingService {
       await tx.$queryRaw`SELECT id FROM "Tenant" WHERE id = ${initial.tenant_id} FOR UPDATE`;
       const order = await tx.paymentOrder.findUnique({ where: { order_no: orderNo } });
       if (!order) throw new BadRequestException('退款订单不存在');
-      if (order.status === 'refunded' && order.payment_channel_order_no === providerRefundNo) {
+      if (order.status === 'refunded' && order.refund_channel_order_no === providerRefundNo) {
         return order;
       }
       if (order.status !== 'refund_pending') {
@@ -336,7 +336,7 @@ export class BillingService {
       });
       return tx.paymentOrder.update({
         where: { order_no: orderNo },
-        data: { status: 'refunded', payment_channel_order_no: providerRefundNo },
+        data: { status: 'refunded', refund_channel_order_no: providerRefundNo },
       });
     });
   }
