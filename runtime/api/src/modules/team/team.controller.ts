@@ -25,7 +25,7 @@ export class TeamController {
   @Delete('members/:userId')
   @ApiOperation({ summary: '移除团队成员（所有者/管理员）' })
   async removeMember(@Request() req: any, @Param('userId') userId: string) {
-    return this.teamService.removeMember(req.user.tenantId, req.user.userId ?? req.user.id ?? req.user.sub, userId);
+    return this.teamService.removeMember(req.user.tenantId, req.user.id, userId);
   }
 
   @Post('members')
