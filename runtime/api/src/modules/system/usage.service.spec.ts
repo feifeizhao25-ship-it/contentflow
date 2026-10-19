@@ -19,13 +19,16 @@ describe('UsageService', () => {
       findFirst: jest.fn(),
       create: jest.fn(),
       update: jest.fn(),
+      upsert: jest.fn(),
     },
     costLedger: { create: jest.fn() },
     tenant: { findUnique: jest.fn() },
+    $transaction: jest.fn(),
   };
 
   beforeEach(async () => {
     jest.clearAllMocks();
+    prisma.$transaction.mockImplementation((callback) => callback(prisma));
     prisma.usageMeter.findFirst.mockResolvedValue(meter);
     prisma.usageMeter.update.mockResolvedValue(meter);
 
@@ -40,9 +43,10 @@ describe('UsageService', () => {
 
   it('increments the selected usage meter field', async () => {
     await service.trackUsage('tenant_1', ResourceType.PUBLISHES, 2);
-    expect(prisma.usageMeter.update).toHaveBeenCalledWith({
-      where: { id: 'meter_1' },
-      data: { publish_count: { increment: 2 } },
+    expect(prisma.usageMeter.upsert).toHaveBeenCalledWith({
+      where: { tenant_id_period: { tenant_id: 'tenant_1', period: expect.any(String) } },
+      create: { tenant_id: 'tenant_1', period: expect.any(String), publish_count: 2 },
+      update: { publish_count: { increment: 2 } },
     });
   });
 
@@ -61,16 +65,14 @@ describe('UsageService', () => {
     expect(prisma.costLedger.create.mock.calls[0][0].data.cost_est_usd).toBe(0);
   });
 
-  it('creates a monthly meter when none exists', async () => {
-    prisma.usageMeter.findFirst.mockResolvedValueOnce(null);
-    prisma.usageMeter.create.mockResolvedValueOnce(meter);
-    await service.trackUsage('tenant_1', ResourceType.IMAGES, 1);
-    expect(prisma.usageMeter.create).toHaveBeenCalledWith({
-      data: expect.objectContaining({
-        tenant_id: 'tenant_1',
-        image_count: 0,
-      }),
-    });
+  it.each([-1, 0.5, NaN, Infinity, 2147483648])('rejects invalid amount %s before writes', async (amount) => {
+    await expect(service.trackUsage('tenant_1', ResourceType.TOKENS, amount)).rejects.toThrow(RangeError);
+    expect(prisma.$transaction).not.toHaveBeenCalled();
+  });
+
+  it('does not write zero usage', async () => {
+    await service.trackUsage('tenant_1', ResourceType.TOKENS, 0);
+    expect(prisma.$transaction).not.toHaveBeenCalled();
   });
 
   it('allows usage below the tenant limit and rejects usage at the limit', async () => {

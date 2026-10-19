@@ -46,31 +46,31 @@ export class UsageService {
     async trackUsage(tenantId: string, resource: ResourceType, amount: number, metadata?: any) {
         const period = chinaMonthPeriod(); // YYYY-MM，北京时间自然月
 
-        // 查找或创建当前周期的额度统计
-        let meter = await this.getMeter(tenantId, period);
-
-        const updateData: any = {};
-        updateData[resource] = { increment: amount };
-
-        await this.prisma.usageMeter.update({
-            where: { id: (meter as any).id },
-            data: updateData,
-        });
-
-        // 记录明细
-        if (resource === ResourceType.TOKENS) {
-            await this.prisma.costLedger.create({
-                data: {
-                    tenant_id: tenantId,
-                    source: 'ai',
-                    tokens_used: amount,
-                    // 原来按「每千 token 0.002 美元」写一个估算金额：这个单价没有出处，国内模型也不按美元计价。
-                    // 台账只记 token 数；金额以生成记录 AIGeneration.cost_amount 为准（按 model-pricing.ts 官方价目折算）。
-                    cost_est_usd: 0,
-                    ref_id: metadata?.refId,
-                }
-            });
+        if (!Number.isSafeInteger(amount) || amount < 0 || amount > 2147483647) {
+            throw new RangeError('用量必须是非负整数且不超过数据库计数范围');
         }
+        if (amount === 0) return;
+
+        // 月用量和明细必须同时成功，避免账单写入失败后仍扣额度。
+        await this.prisma.$transaction(async (tx) => {
+            await tx.usageMeter.upsert({
+                where: { tenant_id_period: { tenant_id: tenantId, period } },
+                create: { tenant_id: tenantId, period, [resource]: amount },
+                update: { [resource]: { increment: amount } },
+            });
+            if (resource === ResourceType.TOKENS) {
+                await tx.costLedger.create({
+                    data: {
+                        tenant_id: tenantId,
+                        source: 'ai',
+                        tokens_used: amount,
+                        // 金额以生成记录的模型价格为准，不使用无出处的美元估价。
+                        cost_est_usd: 0,
+                        ref_id: metadata?.refId,
+                    },
+                });
+            }
+        });
     }
 
     async checkQuota(tenantId: string, resource: ResourceType): Promise<boolean> {
