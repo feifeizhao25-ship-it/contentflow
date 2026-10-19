@@ -27,7 +27,7 @@ describe('AI 接口的 AIGC 标识', () => {
     generateImage: jest.fn(),
     recordGeneration: jest.fn(),
   };
-  const usage = { checkQuota: jest.fn(), trackUsage: jest.fn() };
+  const usage = { checkQuota: jest.fn(), trackUsageBatch: jest.fn(), trackUsage: jest.fn() };
   const previousRegion = process.env.MARKET_REGION;
 
   beforeEach(async () => {

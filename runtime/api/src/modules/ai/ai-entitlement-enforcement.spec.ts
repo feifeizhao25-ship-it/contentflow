@@ -103,7 +103,7 @@ describe('AI 生成接口统一执行套餐 AI 额度', () => {
     analyzeViralContentWithUsage: jest.fn(),
     recordGeneration: jest.fn(),
   };
-  const usage = { checkQuota: jest.fn(), trackUsage: jest.fn() };
+  const usage = { checkQuota: jest.fn(), trackUsageBatch: jest.fn(), trackUsage: jest.fn() };
   const textResult = { usage: { prompt_tokens: 10, completion_tokens: 20, total_tokens: 30 }, provider: 'deepseek', model: 'deepseek-chat', latency_ms: 1, cost_amount: 0.0001 };
   const previousRegion = process.env.MARKET_REGION;
 
@@ -176,8 +176,8 @@ describe('AI 生成接口统一执行套餐 AI 额度', () => {
     usage.checkQuota.mockResolvedValue(true);
     const res = await request(app.getHttpServer()).post('/api/v1/ai/generate/image').send({ prompt: '一只猫' });
     expect(res.status).toBe(201);
-    expect(usage.trackUsage).toHaveBeenCalledWith('t', ResourceType.IMAGES, 1, expect.anything());
-    expect(usage.trackUsage).toHaveBeenCalledWith('t', ResourceType.TOKENS, IMAGE_TOKEN_EQUIVALENT, expect.anything());
+    expect(usage.trackUsageBatch).toHaveBeenCalledWith('t', { [ResourceType.IMAGES]: 1, [ResourceType.TOKENS]: IMAGE_TOKEN_EQUIVALENT }, expect.anything());
+    expect(usage.trackUsage).not.toHaveBeenCalled();
     expect(ai.recordGeneration.mock.calls[0][2].costAmount).toBe(0.04);
   });
 });
@@ -185,7 +185,7 @@ describe('AI 生成接口统一执行套餐 AI 额度', () => {
 describe('内容包同样走额度闸', () => {
   it('额度用完返回 429 中文提示（原来抛普通 Error，界面只看到「服务暂时出错」）', async () => {
     const ai = { assertTenantDailyBudget: jest.fn().mockResolvedValue(undefined), generateTitlesWithUsage: jest.fn() };
-    const usage = { checkQuota: jest.fn().mockResolvedValue(false), trackUsage: jest.fn() };
+    const usage = { checkQuota: jest.fn().mockResolvedValue(false), trackUsageBatch: jest.fn(), trackUsage: jest.fn() };
     const pack = new ContentPackService(ai as never, usage as never, {} as never, {} as never);
     const error = await pack.generatePack('t', { topic: '主题' } as never, 'u').catch((e) => e);
     expect(error).toBeInstanceOf(HttpException);
@@ -196,7 +196,7 @@ describe('内容包同样走额度闸', () => {
 
   it('先查今日预算', async () => {
     const ai = { assertTenantDailyBudget: jest.fn().mockRejectedValue(new HttpException('今日 AI 用量已达上限', 429)), generateTitlesWithUsage: jest.fn() };
-    const usage = { checkQuota: jest.fn().mockResolvedValue(true), trackUsage: jest.fn() };
+    const usage = { checkQuota: jest.fn().mockResolvedValue(true), trackUsageBatch: jest.fn(), trackUsage: jest.fn() };
     const pack = new ContentPackService(ai as never, usage as never, {} as never, {} as never);
     await expect(pack.generatePack('t', { topic: '主题' } as never, 'u')).rejects.toBeInstanceOf(HttpException);
     expect(ai.generateTitlesWithUsage).not.toHaveBeenCalled();

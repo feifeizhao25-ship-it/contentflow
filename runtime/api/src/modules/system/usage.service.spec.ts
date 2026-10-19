@@ -75,6 +75,19 @@ describe('UsageService', () => {
     expect(prisma.$transaction).not.toHaveBeenCalled();
   });
 
+  it('rejects the entire batch before writing if any amount is invalid', async () => {
+    await expect(service.trackUsageBatch('tenant_1', { image_count: 1, ai_tokens: -1 })).rejects.toThrow(RangeError);
+    expect(prisma.$transaction).not.toHaveBeenCalled();
+  });
+
+  it('treats a missing monthly meter as zero without creating one', async () => {
+    prisma.usageMeter.findFirst.mockResolvedValueOnce(null);
+    prisma.tenant.findUnique.mockResolvedValue({ limits: { max_ai_tokens_monthly: 100 } });
+    await expect(service.checkQuota('tenant_1', ResourceType.TOKENS)).resolves.toBe(true);
+    expect(prisma.usageMeter.create).not.toHaveBeenCalled();
+    expect(prisma.usageMeter.upsert).not.toHaveBeenCalled();
+  });
+
   it('allows usage below the tenant limit and rejects usage at the limit', async () => {
     prisma.tenant.findUnique.mockResolvedValue({
       limits: { max_publishes_monthly: 10 },

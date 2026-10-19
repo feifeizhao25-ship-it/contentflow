@@ -47,7 +47,9 @@ export class AiAllowanceService {
 
   /** 图片生成：计一张图，并按固定折算计入 AI 令牌额度。 */
   async chargeImage(tenantId: string): Promise<void> {
-    await this.usageService.trackUsage(tenantId, ResourceType.IMAGES, 1, { type: 'image' });
-    await this.usageService.trackUsage(tenantId, ResourceType.TOKENS, IMAGE_TOKEN_EQUIVALENT, { type: 'image' });
+    await this.usageService.trackUsageBatch(tenantId, {
+      [ResourceType.IMAGES]: 1,
+      [ResourceType.TOKENS]: IMAGE_TOKEN_EQUIVALENT,
+    }, { type: 'image' });
   }
 }

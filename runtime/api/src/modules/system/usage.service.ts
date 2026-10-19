@@ -44,26 +44,37 @@ export class UsageService {
     constructor(private readonly prisma: PrismaService) { }
 
     async trackUsage(tenantId: string, resource: ResourceType, amount: number, metadata?: any) {
-        const period = chinaMonthPeriod(); // YYYY-MM，北京时间自然月
+        return this.trackUsageBatch(tenantId, { [resource]: amount }, metadata);
+    }
 
-        if (!Number.isSafeInteger(amount) || amount < 0 || amount > 2147483647) {
-            throw new RangeError('用量必须是非负整数且不超过数据库计数范围');
+    async trackUsageBatch(tenantId: string, amounts: Partial<Record<ResourceType, number>>, metadata?: { refId?: string; type?: string }) {
+        const period = chinaMonthPeriod();
+        const create: Partial<Record<ResourceType, number>> = {};
+        const update: Partial<Record<ResourceType, { increment: number }>> = {};
+        for (const [key, amount] of Object.entries(amounts)) {
+            if (!Object.values(ResourceType).includes(key as ResourceType) ||
+                !Number.isSafeInteger(amount) || amount < 0 || amount > 2147483647) {
+                throw new RangeError('用量必须是有效资源的非负整数且不超过数据库计数范围');
+            }
+            if (amount === 0) continue;
+            create[key as ResourceType] = amount;
+            update[key as ResourceType] = { increment: amount };
         }
-        if (amount === 0) return;
+        if (Object.keys(create).length === 0) return;
 
         // 月用量和明细必须同时成功，避免账单写入失败后仍扣额度。
         await this.prisma.$transaction(async (tx) => {
             await tx.usageMeter.upsert({
                 where: { tenant_id_period: { tenant_id: tenantId, period } },
-                create: { tenant_id: tenantId, period, [resource]: amount },
-                update: { [resource]: { increment: amount } },
+                create: { tenant_id: tenantId, period, ...create },
+                update,
             });
-            if (resource === ResourceType.TOKENS) {
+            if (create[ResourceType.TOKENS]) {
                 await tx.costLedger.create({
                     data: {
                         tenant_id: tenantId,
                         source: 'ai',
-                        tokens_used: amount,
+                        tokens_used: create[ResourceType.TOKENS],
                         // 金额以生成记录的模型价格为准，不使用无出处的美元估价。
                         cost_est_usd: 0,
                         ref_id: metadata?.refId,
@@ -78,7 +89,7 @@ export class UsageService {
         const meter = await this.getMeter(tenantId, period);
         const tenant = await this.prisma.tenant.findUnique({ where: { id: tenantId } });
 
-        if (!tenant || !meter) return false;
+        if (!tenant) return false;
 
         const limits: Record<string, number> = effectiveEntitlements(tenant).limits;
         if (resource === ResourceType.TOKENS) {
@@ -92,7 +103,7 @@ export class UsageService {
                 : resource === ResourceType.IMAGES
                   ? (limits.max_images_monthly ?? 0)
                   : (limits.max_videos_monthly ?? 0);
-        const current = (meter as any)[resource] || 0;
+        const current = (meter as any)?.[resource] || 0;
 
         // 如果限制是 GB，需要转换
         const adjustedCurrent = resource === ResourceType.STORAGE ? current / 1024 : current;
@@ -101,23 +112,9 @@ export class UsageService {
     }
 
     private async getMeter(tenantId: string, period: string) {
-        let meter = await this.prisma.usageMeter.findFirst({
+        // 额度查询只读；无月表即零用量，避免并发首次查询争抢创建记录。
+        return this.prisma.usageMeter.findFirst({
             where: { tenant_id: tenantId, period },
         });
-
-        if (!meter) {
-            meter = await this.prisma.usageMeter.create({
-                data: {
-                    tenant_id: tenantId,
-                    period,
-                    ai_tokens: 0,
-                    image_count: 0,
-                    video_count: 0,
-                    publish_count: 0,
-                    storage_mb: 0,
-                },
-            });
-        }
-        return meter;
     }
 }
