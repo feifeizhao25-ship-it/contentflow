@@ -149,8 +149,12 @@ describe('AI 生成接口统一执行套餐 AI 额度', () => {
     usage.checkQuota.mockResolvedValue(false);
     const res = await request(app.getHttpServer()).post(url).send(body);
     expect(res.status).toBe(429);
-    expect(res.body.error.message).toContain('本月 AI 额度已用完');
-    expect(usage.checkQuota).toHaveBeenCalledWith('t', ResourceType.TOKENS);
+    expect(res.body.error.message).toContain(method === 'generateImage' ? '本月 AI 剩余额度不足' : '本月 AI 额度已用完');
+    if (method === 'generateImage') {
+      expect(usage.checkQuota).toHaveBeenCalledWith('t', ResourceType.TOKENS, IMAGE_TOKEN_EQUIVALENT);
+    } else {
+      expect(usage.checkQuota).toHaveBeenCalledWith('t', ResourceType.TOKENS);
+    }
     expect(ai[method]).not.toHaveBeenCalled();
   });
 

@@ -24,12 +24,14 @@ export class AiAllowanceService {
     private readonly usageService: UsageService,
   ) {}
 
-  async assertAllowed(tenantId: string): Promise<void> {
+  async assertAllowed(tenantId: string, requiredTokens?: number): Promise<void> {
     await this.aiService.assertTenantDailyBudget(tenantId);
-    const hasQuota = await this.usageService.checkQuota(tenantId, ResourceType.TOKENS);
+    const hasQuota = requiredTokens === undefined
+      ? await this.usageService.checkQuota(tenantId, ResourceType.TOKENS)
+      : await this.usageService.checkQuota(tenantId, ResourceType.TOKENS, requiredTokens);
     if (!hasQuota) {
       throw new HttpException(
-        { message: AI_MONTHLY_QUOTA_MESSAGE, error: 'AI_MONTHLY_QUOTA' },
+        { message: requiredTokens === undefined ? AI_MONTHLY_QUOTA_MESSAGE : `本月 AI 剩余额度不足，本次生成需要 ${requiredTokens} 令牌，可升级套餐，或在下月 1 日额度恢复后再试`, error: 'AI_MONTHLY_QUOTA' },
         HttpStatus.TOO_MANY_REQUESTS,
       );
     }

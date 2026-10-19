@@ -164,6 +164,17 @@ export function describePlan(tenant: any, subscription?: any): PlanView {
   return { name: PLAN_NAMES[plan] ?? plan, renewText, usage };
 }
 
+/** 不把空响应或不可显示的地址当作封面生成成功。 */
+export function generatedCoverUrl(response: unknown): string {
+  const payload = unwrap(response);
+  const value = typeof payload?.url === 'string' ? payload.url.trim() : '';
+  try {
+    const url = new URL(value);
+    if (url.protocol === 'https:' || url.protocol === 'http:') return value;
+  } catch { /* 统一给出用户可理解的错误 */ }
+  throw new Error('未收到有效的封面图片，请重试；已有封面已保留');
+}
+
 export interface AiAllowanceView {
   /** 读不到（未登录、接口失败）时为 false，界面显示「暂时无法读取」，不显示任何数字 */
   available: boolean;

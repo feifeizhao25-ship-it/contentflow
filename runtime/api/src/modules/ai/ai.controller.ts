@@ -4,6 +4,7 @@ import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { AIService } from './ai.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { AiAllowanceService } from './ai-allowance.service';
+import { IMAGE_TOKEN_EQUIVALENT } from './model-pricing';
 
 @ApiTags('ai')
 @Controller('ai')
@@ -129,7 +130,7 @@ export class AIController {
   @ApiBearerAuth()
   @ApiOperation({ summary: 'AI图片生成' })
   async generateImage(@Request() req: any, @Body() body: any) {
-    await this.allowance.assertAllowed(req.user.tenantId);
+    await this.allowance.assertAllowed(req.user.tenantId, IMAGE_TOKEN_EQUIVALENT);
     const { prompt, size, style, seed } = body;
 
     const result = await this.aiService.generateImage({

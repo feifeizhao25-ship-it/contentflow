@@ -116,6 +116,17 @@ describe('UsageService', () => {
     await expect(service.checkQuota('tenant_1', ResourceType.TOKENS)).resolves.toBe(false);
   });
 
+  it.each([[2499, false], [2500, true], [2501, true]])('image generation with %s tokens remaining is allowed=%s', async (remaining, allowed) => {
+    prisma.tenant.findUnique.mockResolvedValue({ limits: { max_ai_tokens_monthly: 50000 } });
+    prisma.usageMeter.findFirst.mockResolvedValue({ ...meter, ai_tokens: 50000 - remaining });
+    await expect(service.checkQuota('tenant_1', ResourceType.TOKENS, 2500)).resolves.toBe(allowed);
+  });
+
+  it('allows fixed image cost for an unlimited plan', async () => {
+    prisma.tenant.findUnique.mockResolvedValue({ limits: { max_ai_tokens_monthly: -1 } });
+    await expect(service.checkQuota('tenant_1', ResourceType.TOKENS, 2500)).resolves.toBe(true);
+  });
+
   it('converts legacy AI call limits during tenant migration', async () => {
     prisma.tenant.findUnique.mockResolvedValue({
       limits: { max_ai_calls_monthly: 20 },

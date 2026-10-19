@@ -16,7 +16,7 @@ import { safeErrorText } from '@/lib/api-error';
 import { isAiGeneratedText } from '@/lib/ai-content-label';
 import { ComplianceReviewNotice } from '@/components/compliance/ComplianceReviewNotice';
 import { isManualPlatform, PUBLISH_CHANNEL_NOTICE } from '@/lib/manual-publish';
-import { describeAiAllowance, parseAccountList, type AiAllowanceView } from '@/lib/page-data';
+import { describeAiAllowance, generatedCoverUrl, parseAccountList, type AiAllowanceView } from '@/lib/page-data';
 
 const { TextArea } = Input;
 
@@ -42,6 +42,7 @@ function StudioContent() {
   const [selectedTitle, setSelectedTitle] = useState('');
   const [script, setScript] = useState('');
   const [coverUrl, setCoverUrl] = useState('');
+  const [coverError, setCoverError] = useState('');
   // 本次会话里的内容 / 封面是 AI 生成的：保存到内容库时标记 source=ai，分发时才会保留 AI 生成标识
   const [scriptIsAi, setScriptIsAi] = useState(false);
   const [coverIsAi, setCoverIsAi] = useState(false);
@@ -186,6 +187,7 @@ function StudioContent() {
       message.warning('请先生成内容包或填写主题');
       return;
     }
+    setCoverError('');
     setIsGeneratingImage(true);
     try {
       message.loading({ content: '正在生成封面...', key: 'cover' });
@@ -193,8 +195,8 @@ function StudioContent() {
         prompt: derivedPrompt,
         style: style === 'xhs_influencer' ? 'xhs_influencer' : 'professional',
       });
-      const imageData = res?.data || res;
-      setCoverUrl(imageData?.url || '');
+      const nextCoverUrl = generatedCoverUrl(res);
+      setCoverUrl(nextCoverUrl);
       setCoverIsAi(true);
       await refreshBalance();
       trackEvent('cover_generated', {
@@ -202,7 +204,9 @@ function StudioContent() {
       });
       message.success({ content: '封面已生成', key: 'cover' });
     } catch (e: any) {
-      message.error({ content: safeErrorText(e, '封面生成失败'), key: 'cover' });
+      const errorText = safeErrorText(e, '封面生成失败');
+      setCoverError(errorText);
+      message.error({ content: errorText, key: 'cover' });
     } finally {
       setIsGeneratingImage(false);
     }
@@ -424,6 +428,7 @@ function StudioContent() {
             </Button>
           </div>
           <Divider className="my-4" />
+          {coverError && <div role="alert" className="mb-4 rounded-lg bg-red-50 p-3 text-sm text-red-700">{coverError}</div>}
           {isGenerating ? (
             <Skeleton active paragraph={{ rows: 6 }} />
           ) : (

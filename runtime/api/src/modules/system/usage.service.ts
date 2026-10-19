@@ -84,7 +84,8 @@ export class UsageService {
         });
     }
 
-    async checkQuota(tenantId: string, resource: ResourceType): Promise<boolean> {
+    async checkQuota(tenantId: string, resource: ResourceType, requiredTokens = 1): Promise<boolean> {
+        if (!Number.isSafeInteger(requiredTokens) || requiredTokens <= 0) throw new RangeError('所需额度必须为正整数');
         const period = chinaMonthPeriod();
         const meter = await this.getMeter(tenantId, period);
         const tenant = await this.prisma.tenant.findUnique({ where: { id: tenantId } });
@@ -94,7 +95,7 @@ export class UsageService {
         const limits: Record<string, number> = effectiveEntitlements(tenant).limits;
         if (resource === ResourceType.TOKENS) {
             const allowance = aiTokenAllowance(limits, meter as any);
-            return allowance.unlimited || allowance.remaining > 0;
+            return allowance.unlimited || allowance.remaining >= requiredTokens;
         }
         const limit = resource === ResourceType.STORAGE
               ? (limits.max_storage_gb ?? 0)
