@@ -303,16 +303,24 @@ export class AIService {
           continue;
         }
         const data = await response.json();
-        const content = data?.choices?.[0]?.message?.content || '';
-        if (!content) {
+        const content = data?.choices?.[0]?.message?.content;
+        if (typeof content !== 'string' || !content.trim()) {
           failures.push(`${candidate.provider}:empty`);
           continue;
         }
         const usage = {
-          prompt_tokens: data.usage?.prompt_tokens || 0,
-          completion_tokens: data.usage?.completion_tokens || 0,
-          total_tokens: data.usage?.total_tokens || 0,
+          prompt_tokens: data.usage?.prompt_tokens,
+          completion_tokens: data.usage?.completion_tokens,
+          total_tokens: data.usage?.total_tokens,
         };
+        // 不把缺失、字符串或负数用量归零后报告成功，避免免费生成和错误成本统计。
+        if (!Number.isSafeInteger(usage.prompt_tokens) || usage.prompt_tokens < 0 ||
+            !Number.isSafeInteger(usage.completion_tokens) || usage.completion_tokens < 0 ||
+            !Number.isSafeInteger(usage.total_tokens) || usage.total_tokens <= 0 ||
+            usage.total_tokens < usage.prompt_tokens || usage.total_tokens < usage.completion_tokens) {
+          failures.push(`${candidate.provider}:invalid_usage`);
+          continue;
+        }
         this.logger.log(`AI generation completed via ${candidate.provider}: ${usage.total_tokens} tokens`);
         // 境内接口只回 token 数、不回金额：按集中价目表折算，否则每日预算永远统计为 0。
         const cost = estimateTextCost(candidate.model, usage.prompt_tokens, usage.completion_tokens);

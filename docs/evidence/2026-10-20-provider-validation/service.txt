@@ -1,0 +1,19 @@
+
+> fenfaxia-api@1.0.0 test
+> jest --runInBand ai.service.spec
+
+[Nest] 35144  - 10/20/2026, 3:02:13 PM    WARN [AIService] OpenRouter circuit opened for 60000ms after 2 failures
+[Nest] 35144  - 10/20/2026, 3:02:13 PM    WARN [AIService] AI tenant daily budget exceeded (1.0100/1.00 USD) tenant=tenant-1
+PASS src/modules/ai/ai.service.spec.ts
+  AIService OpenRouter routing
+    ✓ uses tested economical models with privacy-safe fallback routing (2 ms)
+    ✓ fails closed when OpenRouter returns empty content (7 ms)
+    ✓ opens the circuit after consecutive provider failures (1 ms)
+    ✓ blocks a tenant that has reached its daily AI cost budget (1 ms)
+    ✓ reports the 80 percent budget warning level
+
+Test Suites: 1 passed, 1 total
+Tests:       5 passed, 5 total
+Snapshots:   0 total
+Time:        1.532 s, estimated 3 s
+Ran all test suites matching /ai.service.spec/i.

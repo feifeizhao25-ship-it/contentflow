@@ -20,6 +20,35 @@ describe('domestic text generation', () => {
   const originalFetch = global.fetch;
   afterEach(() => { global.fetch = originalFetch; });
 
+  it.each(['   ', 123, {}, null])('rejects unusable provider content %s', async (content) => {
+    global.fetch = jest.fn().mockResolvedValue(chatOk(content as any));
+    await expect(service({ MARKET_REGION: 'cn', QWEN_API_KEY: 'qk' }).generateText({ prompt: '测试' })).rejects.toThrow(AI_UNAVAILABLE_MESSAGE);
+  });
+
+  it.each([undefined, 0, -1, 0.5, '8', Infinity])('rejects unusable total token usage %s', async (total) => {
+    global.fetch = jest.fn().mockResolvedValue({ ok: true, json: async () => ({ choices: [{message:{content:'正文'}}], usage:{prompt_tokens:3, completion_tokens:5, total_tokens:total} }) });
+    await expect(service({ MARKET_REGION: 'cn', QWEN_API_KEY: 'qk' }).generateText({ prompt: '测试' })).rejects.toThrow(AI_UNAVAILABLE_MESSAGE);
+  });
+
+  it.each([
+    {prompt_tokens:-1,completion_tokens:5,total_tokens:8},
+    {prompt_tokens:3,completion_tokens:'5',total_tokens:8},
+    {prompt_tokens:3,total_tokens:8},
+    {prompt_tokens:9,completion_tokens:5,total_tokens:8},
+    {prompt_tokens:3,completion_tokens:9,total_tokens:8},
+  ])('rejects invalid token components %j', async (usage) => {
+    global.fetch = jest.fn().mockResolvedValue({ok:true,json:async()=>({choices:[{message:{content:'正文'}}],usage})});
+    await expect(service({MARKET_REGION:'cn',QWEN_API_KEY:'qk'}).generateText({prompt:'测试'})).rejects.toThrow(AI_UNAVAILABLE_MESSAGE);
+  });
+
+  it('falls back domestically when primary token accounting is malformed', async () => {
+    global.fetch = jest.fn().mockResolvedValueOnce({ok:true,json:async()=>({choices:[{message:{content:'无用量正文'}}]})}).mockResolvedValueOnce(chatOk('有效正文'));
+    const result = await service({MARKET_REGION:'cn',QWEN_API_KEY:'qk',DEEPSEEK_API_KEY:'dk'}).generateText({prompt:'测试'});
+    expect(result.provider).toBe('deepseek');
+    expect(result.usage.total_tokens).toBe(8);
+    expect((global.fetch as jest.Mock).mock.calls.map(c => c[0])).toEqual([DOMESTIC_CHAT_ENDPOINTS.qwen, DOMESTIC_CHAT_ENDPOINTS.deepseek]);
+  });
+
   it('uses DeepSeek when only DEEPSEEK_API_KEY is configured', async () => {
     global.fetch = jest.fn().mockResolvedValue(chatOk('好')) as jest.Mock;
     const result = await service({ MARKET_REGION: 'cn', DEEPSEEK_API_KEY: 'dk' }).generateText({ prompt: '测试' });
