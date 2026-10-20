@@ -48,6 +48,7 @@ function StudioContent() {
   const [coverIsAi, setCoverIsAi] = useState(false);
   const [visualPrompts, setVisualPrompts] = useState<string[]>([]);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [generationError, setGenerationError] = useState('');
   const [isGeneratingImage, setIsGeneratingImage] = useState(false);
 
   const [accounts, setAccounts] = useState<any[]>([]);
@@ -143,6 +144,7 @@ function StudioContent() {
       message.warning('请输入主题或一句话灵感');
       return;
     }
+    setGenerationError('');
     setIsGenerating(true);
     try {
       message.loading({ content: '正在构建内容包...', key: 'gen' });
@@ -153,9 +155,12 @@ function StudioContent() {
       });
 
       const articleData = articleRes?.data || articleRes;
-      setScript(articleData?.content || '');
+      if (typeof articleData?.content !== 'string' || !articleData.content.trim()) {
+        throw new Error('没有收到有效正文，请重试；已有正文已保留');
+      }
+      setScript(articleData.content);
       setScriptIsAi(true);
-      setVisualPrompts(articleData?.visualPrompts || []);
+      setVisualPrompts(Array.isArray(articleData?.visualPrompts) ? articleData.visualPrompts.filter((p: unknown) => typeof p === 'string') : []);
 
       const titleRes: any = await apiClient.post('/ai/generate/titles', {
         topic,
@@ -163,6 +168,9 @@ function StudioContent() {
         count: 6,
       });
       const nextTitles = titleRes?.data?.titles || titleRes?.titles || [];
+      if (!Array.isArray(nextTitles) || !nextTitles.length || nextTitles.some((t: unknown) => typeof t !== 'string' || !t.trim())) {
+        throw new Error('正文已生成，但没有收到有效标题；正文已保留，请手动填写标题或稍后重试');
+      }
       setTitles(nextTitles);
       if (nextTitles.length > 0) {
         setSelectedTitle(nextTitles[0]);
@@ -176,7 +184,9 @@ function StudioContent() {
       message.success({ content: '内容包生成完成', key: 'gen' });
     } catch (e: any) {
       console.error('Generation Error Detail:', e);
-      message.error({ content: `生成失败: ${safeErrorText(e, '未知错误')}`, key: 'gen' });
+      const errorText = safeErrorText(e, '生成失败，请稍后重试');
+      setGenerationError(errorText);
+      message.error({ content: errorText, key: 'gen' });
     } finally {
       setIsGenerating(false);
     }
@@ -364,7 +374,7 @@ function StudioContent() {
         />
       </Card>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 items-start gap-6">
         <Card className="lg:col-span-1 rounded-[24px] border-none">
           <h3 className="text-lg font-serif mb-4 flex items-center gap-2">
             <Sparkles className="w-4 h-4 text-amber-500" />
@@ -442,6 +452,7 @@ function StudioContent() {
             </Button>
           </div>
           <Divider className="my-4" />
+          {generationError && <div role="alert" className="mb-4 rounded-lg bg-red-50 p-3 text-sm text-red-700">{generationError}</div>}
           {coverError && <div role="alert" className="mb-4 rounded-lg bg-red-50 p-3 text-sm text-red-700">{coverError}</div>}
           {isGenerating ? (
             <Skeleton active paragraph={{ rows: 6 }} />
@@ -453,6 +464,7 @@ function StudioContent() {
                   {titles.length > 0 ? titles.map((t, idx) => (
                     <Tag
                       key={idx}
+                      style={{ whiteSpace: 'normal', overflowWrap: 'anywhere', maxWidth: '100%' }}
                       className={clsx('cursor-pointer', selectedTitle === t ? 'bg-emerald-50 border-emerald-300 text-emerald-700' : 'bg-zinc-100')}
                       onClick={() => setSelectedTitle(t)}
                     >
@@ -464,12 +476,21 @@ function StudioContent() {
               <div>
                 <div className="text-xs text-zinc-500 mb-2">正文脚本</div>
                 <TextArea
-                  rows={10}
+                  autoSize={{ minRows: 10 }}
                   value={script}
                   onChange={(e) => setScript(e.target.value)}
                   placeholder="内容包生成后自动填充，可继续编辑"
                 />
               </div>
+              {visualPrompts.length > 0 && (
+                <section aria-label="封面提示词" className="space-y-2">
+                  <h4 className="text-sm font-medium text-zinc-700">封面提示词</h4>
+                  <p className="text-xs text-zinc-500">以下为本次返回的全部提示词；生成封面默认使用第一条。</p>
+                  <ol className="list-decimal pl-5 space-y-2 text-sm text-zinc-700">
+                    {visualPrompts.map((prompt, index) => <li key={index} style={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>{prompt}</li>)}
+                  </ol>
+                </section>
+              )}
               <div>
                 <div className="text-xs text-zinc-500 mb-2 flex justify-between items-center">
                   <span>封面预览</span>
