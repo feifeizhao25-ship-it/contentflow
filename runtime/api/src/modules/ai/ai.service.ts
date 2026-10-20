@@ -289,6 +289,7 @@ export class AIService {
     for (const candidate of usable) {
       try {
         const response = await fetch(DOMESTIC_CHAT_ENDPOINTS[candidate.provider], {
+          signal: AbortSignal.timeout(30000),
           method: 'POST',
           headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${candidate.key}` },
           body: JSON.stringify({

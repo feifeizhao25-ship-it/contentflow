@@ -1,0 +1,206 @@
+
+> fenfaxia-api@1.0.0 test
+> jest --runInBand domestic-text-timeout.spec domestic-providers.spec ai-entitlement-enforcement.spec content-pack.service.spec ai-controller-aigc.spec ai.service.spec
+
+[Nest] 41085  - 10/20/2026, 4:06:57 PM    WARN [AIService] 启动检查：未配置 AIGC_PROVIDER_CODE（服务提供者编码，如统一社会信用代码），AI 生成内容隐式标识中的 provider_code 将为空，上线前请补齐
+[Nest] 41085  - 10/20/2026, 4:06:57 PM   ERROR [AIService] Domestic AI providers all failed: qwen:error
+[Nest] 41085  - 10/20/2026, 4:06:57 PM    WARN [AIService] 启动检查：未配置 AIGC_PROVIDER_CODE（服务提供者编码，如统一社会信用代码），AI 生成内容隐式标识中的 provider_code 将为空，上线前请补齐
+[Nest] 41085  - 10/20/2026, 4:06:57 PM   ERROR [AIService] Domestic AI providers all failed: qwen:error
+PASS src/modules/ai/domestic-text-timeout.spec.ts
+[Nest] 41085  - 10/20/2026, 4:06:58 PM   ERROR [AIService] Domestic AI providers all failed: qwen:empty
+[Nest] 41085  - 10/20/2026, 4:06:58 PM   ERROR [AIService] Domestic AI providers all failed: qwen:empty
+[Nest] 41085  - 10/20/2026, 4:06:58 PM   ERROR [AIService] Domestic AI providers all failed: qwen:empty
+[Nest] 41085  - 10/20/2026, 4:06:58 PM   ERROR [AIService] Domestic AI providers all failed: qwen:empty
+[Nest] 41085  - 10/20/2026, 4:06:58 PM   ERROR [AIService] Domestic AI providers all failed: qwen:invalid_usage
+[Nest] 41085  - 10/20/2026, 4:06:58 PM   ERROR [AIService] Domestic AI providers all failed: qwen:invalid_usage
+[Nest] 41085  - 10/20/2026, 4:06:58 PM   ERROR [AIService] Domestic AI providers all failed: qwen:invalid_usage
+[Nest] 41085  - 10/20/2026, 4:06:58 PM   ERROR [AIService] Domestic AI providers all failed: qwen:invalid_usage
+[Nest] 41085  - 10/20/2026, 4:06:58 PM   ERROR [AIService] Domestic AI providers all failed: qwen:invalid_usage
+[Nest] 41085  - 10/20/2026, 4:06:58 PM   ERROR [AIService] Domestic AI providers all failed: qwen:invalid_usage
+[Nest] 41085  - 10/20/2026, 4:06:58 PM   ERROR [AIService] Domestic AI providers all failed: qwen:invalid_usage
+[Nest] 41085  - 10/20/2026, 4:06:58 PM   ERROR [AIService] Domestic AI providers all failed: qwen:invalid_usage
+[Nest] 41085  - 10/20/2026, 4:06:58 PM   ERROR [AIService] Domestic AI providers all failed: qwen:invalid_usage
+[Nest] 41085  - 10/20/2026, 4:06:58 PM   ERROR [AIService] Domestic AI providers all failed: qwen:invalid_usage
+[Nest] 41085  - 10/20/2026, 4:06:58 PM   ERROR [AIService] Domestic AI providers all failed: qwen:invalid_usage
+[Nest] 41085  - 10/20/2026, 4:06:58 PM   ERROR [HttpExceptionFilter] POST /api/v1/ai/analyze/viral - 503: AI 服务暂不可用，请稍后再试
+ServiceUnavailableException: AI 服务暂不可用，请稍后再试
+    at aiUnavailable (/Users/feifei00/Documents/CodexWorktrees/contentflow-production/runtime/api/src/modules/ai/ai.service.ts:114:10)
+    at AIService.generateDomesticText (/Users/feifei00/Documents/CodexWorktrees/contentflow-production/runtime/api/src/modules/ai/ai.service.ts:336:11)
+[Nest] 41085  - 10/20/2026, 4:06:57 PM    WARN [AIService] 启动检查：未配置 AIGC_PROVIDER_CODE（服务提供者编码，如统一社会信用代码），AI 生成内容隐式标识中的 provider_code 将为空，上线前请补齐
+[Nest] 41085  - 10/20/2026, 4:06:57 PM     LOG [AIService] AI generation completed via deepseek: 3 tokens
+[Nest] 41085  - 10/20/2026, 4:06:58 PM    WARN [AIService] 启动检查：未配置 AIGC_PROVIDER_CODE（服务提供者编码，如统一社会信用代码），AI 生成内容隐式标识中的 provider_code 将为空，上线前请补齐
+[Nest] 41085  - 10/20/2026, 4:06:58 PM    WARN [AIService] 启动检查：未配置 AIGC_PROVIDER_CODE（服务提供者编码，如统一社会信用代码），AI 生成内容隐式标识中的 provider_code 将为空，上线前请补齐
+[Nest] 41085  - 10/20/2026, 4:06:58 PM    WARN [AIService] 启动检查：未配置 AIGC_PROVIDER_CODE（服务提供者编码，如统一社会信用代码），AI 生成内容隐式标识中的 provider_code 将为空，上线前请补齐
+[Nest] 41085  - 10/20/2026, 4:06:58 PM    WARN [AIService] 启动检查：未配置 AIGC_PROVIDER_CODE（服务提供者编码，如统一社会信用代码），AI 生成内容隐式标识中的 provider_code 将为空，上线前请补齐
+[Nest] 41085  - 10/20/2026, 4:06:58 PM    WARN [AIService] 启动检查：未配置 AIGC_PROVIDER_CODE（服务提供者编码，如统一社会信用代码），AI 生成内容隐式标识中的 provider_code 将为空，上线前请补齐
+[Nest] 41085  - 10/20/2026, 4:06:58 PM    WARN [AIService] 启动检查：未配置 AIGC_PROVIDER_CODE（服务提供者编码，如统一社会信用代码），AI 生成内容隐式标识中的 provider_code 将为空，上线前请补齐
+[Nest] 41085  - 10/20/2026, 4:06:58 PM    WARN [AIService] 启动检查：未配置 AIGC_PROVIDER_CODE（服务提供者编码，如统一社会信用代码），AI 生成内容隐式标识中的 provider_code 将为空，上线前请补齐
+[Nest] 41085  - 10/20/2026, 4:06:58 PM    WARN [AIService] 启动检查：未配置 AIGC_PROVIDER_CODE（服务提供者编码，如统一社会信用代码），AI 生成内容隐式标识中的 provider_code 将为空，上线前请补齐
+[Nest] 41085  - 10/20/2026, 4:06:58 PM    WARN [AIService] 启动检查：未配置 AIGC_PROVIDER_CODE（服务提供者编码，如统一社会信用代码），AI 生成内容隐式标识中的 provider_code 将为空，上线前请补齐
+[Nest] 41085  - 10/20/2026, 4:06:58 PM    WARN [AIService] 启动检查：未配置 AIGC_PROVIDER_CODE（服务提供者编码，如统一社会信用代码），AI 生成内容隐式标识中的 provider_code 将为空，上线前请补齐
+[Nest] 41085  - 10/20/2026, 4:06:58 PM    WARN [AIService] 启动检查：未配置 AIGC_PROVIDER_CODE（服务提供者编码，如统一社会信用代码），AI 生成内容隐式标识中的 provider_code 将为空，上线前请补齐
+[Nest] 41085  - 10/20/2026, 4:06:58 PM    WARN [AIService] 启动检查：未配置 AIGC_PROVIDER_CODE（服务提供者编码，如统一社会信用代码），AI 生成内容隐式标识中的 provider_code 将为空，上线前请补齐
+[Nest] 41085  - 10/20/2026, 4:06:58 PM    WARN [AIService] 启动检查：未配置 AIGC_PROVIDER_CODE（服务提供者编码，如统一社会信用代码），AI 生成内容隐式标识中的 provider_code 将为空，上线前请补齐
+[Nest] 41085  - 10/20/2026, 4:06:58 PM    WARN [AIService] 启动检查：未配置 AIGC_PROVIDER_CODE（服务提供者编码，如统一社会信用代码），AI 生成内容隐式标识中的 provider_code 将为空，上线前请补齐
+[Nest] 41085  - 10/20/2026, 4:06:58 PM    WARN [AIService] 启动检查：未配置 AIGC_PROVIDER_CODE（服务提供者编码，如统一社会信用代码），AI 生成内容隐式标识中的 provider_code 将为空，上线前请补齐
+[Nest] 41085  - 10/20/2026, 4:06:58 PM    WARN [AIService] 启动检查：未配置 AIGC_PROVIDER_CODE（服务提供者编码，如统一社会信用代码），AI 生成内容隐式标识中的 provider_code 将为空，上线前请补齐
+[Nest] 41085  - 10/20/2026, 4:06:58 PM     LOG [AIService] AI generation completed via deepseek: 8 tokens
+[Nest] 41085  - 10/20/2026, 4:06:58 PM    WARN [AIService] 启动检查：未配置 AIGC_PROVIDER_CODE（服务提供者编码，如统一社会信用代码），AI 生成内容隐式标识中的 provider_code 将为空，上线前请补齐
+[Nest] 41085  - 10/20/2026, 4:06:58 PM     LOG [AIService] AI generation completed via deepseek: 8 tokens
+[Nest] 41085  - 10/20/2026, 4:06:58 PM    WARN [AIService] 启动检查：未配置 AIGC_PROVIDER_CODE（服务提供者编码，如统一社会信用代码），AI 生成内容隐式标识中的 provider_code 将为空，上线前请补齐
+[Nest] 41085  - 10/20/2026, 4:06:58 PM     LOG [AIService] AI generation completed via qwen: 8 tokens
+[Nest] 41085  - 10/20/2026, 4:06:58 PM    WARN [AIService] 启动检查：未配置 AIGC_PROVIDER_CODE（服务提供者编码，如统一社会信用代码），AI 生成内容隐式标识中的 provider_code 将为空，上线前请补齐
+[Nest] 41085  - 10/20/2026, 4:06:58 PM     LOG [AIService] AI generation completed via deepseek: 8 tokens
+[Nest] 41085  - 10/20/2026, 4:06:58 PM    WARN [AIService] 启动检查：未配置 AIGC_PROVIDER_CODE（服务提供者编码，如统一社会信用代码），AI 生成内容隐式标识中的 provider_code 将为空，上线前请补齐
+[Nest] 41085  - 10/20/2026, 4:06:58 PM     LOG [AIService] AI generation completed via deepseek: 8 tokens
+[Nest] 41085  - 10/20/2026, 4:06:58 PM    WARN [AIService] 启动检查：未配置 AIGC_PROVIDER_CODE（服务提供者编码，如统一社会信用代码），AI 生成内容隐式标识中的 provider_code 将为空，上线前请补齐
+[Nest] 41085  - 10/20/2026, 4:06:58 PM    WARN [AIService] 启动检查：未配置 AIGC_PROVIDER_CODE（服务提供者编码，如统一社会信用代码），AI 生成内容隐式标识中的 provider_code 将为空，上线前请补齐
+[Nest] 41085  - 10/20/2026, 4:06:58 PM    WARN [AIService] 启动检查：未配置 AIGC_PROVIDER_CODE（服务提供者编码，如统一社会信用代码），AI 生成内容隐式标识中的 provider_code 将为空，上线前请补齐
+[Nest] 41085  - 10/20/2026, 4:06:58 PM    WARN [AIService] 启动检查：未配置 AIGC_PROVIDER_CODE（服务提供者编码，如统一社会信用代码），AI 生成内容隐式标识中的 provider_code 将为空，上线前请补齐
+[Nest] 41085  - 10/20/2026, 4:06:58 PM    WARN [AIService] 启动检查：未配置 AIGC_PROVIDER_CODE（服务提供者编码，如统一社会信用代码），AI 生成内容隐式标识中的 provider_code 将为空，上线前请补齐
+[Nest] 41085  - 10/20/2026, 4:06:58 PM    WARN [AIService] 启动检查：未配置 AIGC_PROVIDER_CODE（服务提供者编码，如统一社会信用代码），AI 生成内容隐式标识中的 provider_code 将为空，上线前请补齐
+[Nest] 41085  - 10/20/2026, 4:06:58 PM     LOG [AIService] AI generation completed via deepseek: 8 tokens
+PASS src/modules/ai/domestic-providers.spec.ts
+PASS src/modules/ai/ai.service.spec.ts
+[Nest] 41085  - 10/20/2026, 4:06:58 PM    WARN [AIService] OpenRouter circuit opened for 60000ms after 2 failures
+[Nest] 41085  - 10/20/2026, 4:06:58 PM    WARN [AIService] AI tenant daily budget exceeded (1.0100/1.00 USD) tenant=tenant-1
+[Nest] 41085  - 10/20/2026, 4:06:59 PM    WARN [AIService] 启动检查：未配置 AIGC_PROVIDER_CODE（服务提供者编码，如统一社会信用代码），AI 生成内容隐式标识中的 provider_code 将为空，上线前请补齐
+[Nest] 41085  - 10/20/2026, 4:06:59 PM     LOG [AIService] AI generation completed via deepseek: 3000 tokens
+[Nest] 41085  - 10/20/2026, 4:06:59 PM    WARN [AIService] 启动检查：未配置 AIGC_PROVIDER_CODE（服务提供者编码，如统一社会信用代码），AI 生成内容隐式标识中的 provider_code 将为空，上线前请补齐
+[Nest] 41085  - 10/20/2026, 4:06:59 PM    WARN [AIService] 启动检查：未配置 AIGC_PROVIDER_CODE（服务提供者编码，如统一社会信用代码），AI 生成内容隐式标识中的 provider_code 将为空，上线前请补齐
+[Nest] 41085  - 10/20/2026, 4:06:59 PM    WARN [AIService] AI tenant daily budget exceeded (0.5000/0.50 CNY) tenant=t
+[Nest] 41085  - 10/20/2026, 4:06:59 PM   ERROR [HttpExceptionFilter] POST /api/v1/ai/generate/article - 429: 本月 AI 额度已用完，可升级套餐，或在下月 1 日额度恢复后再试
+HttpException: 本月 AI 额度已用完，可升级套餐，或在下月 1 日额度恢复后再试
+    at AiAllowanceService.assertAllowed (/Users/feifei00/Documents/CodexWorktrees/contentflow-production/runtime/api/src/modules/ai/ai-allowance.service.ts:33:13)
+    at processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at AIController.generateArticle (/Users/feifei00/Documents/CodexWorktrees/contentflow-production/runtime/api/src/modules/ai/ai.controller.ts:30:5)
+[Nest] 41085  - 10/20/2026, 4:06:59 PM   ERROR [HttpExceptionFilter] POST /api/v1/ai/generate/titles - 429: 本月 AI 额度已用完，可升级套餐，或在下月 1 日额度恢复后再试
+HttpException: 本月 AI 额度已用完，可升级套餐，或在下月 1 日额度恢复后再试
+    at AiAllowanceService.assertAllowed (/Users/feifei00/Documents/CodexWorktrees/contentflow-production/runtime/api/src/modules/ai/ai-allowance.service.ts:33:13)
+    at processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at AIController.generateTitles (/Users/feifei00/Documents/CodexWorktrees/contentflow-production/runtime/api/src/modules/ai/ai.controller.ts:95:5)
+[Nest] 41085  - 10/20/2026, 4:06:59 PM   ERROR [HttpExceptionFilter] POST /api/v1/ai/generate/script - 429: 本月 AI 额度已用完，可升级套餐，或在下月 1 日额度恢复后再试
+HttpException: 本月 AI 额度已用完，可升级套餐，或在下月 1 日额度恢复后再试
+    at AiAllowanceService.assertAllowed (/Users/feifei00/Documents/CodexWorktrees/contentflow-production/runtime/api/src/modules/ai/ai-allowance.service.ts:33:13)
+    at processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at AIController.generateScript (/Users/feifei00/Documents/CodexWorktrees/contentflow-production/runtime/api/src/modules/ai/ai.controller.ts:67:5)
+[Nest] 41085  - 10/20/2026, 4:06:59 PM   ERROR [HttpExceptionFilter] POST /api/v1/ai/generate/image - 429: 本月 AI 剩余额度不足，本次生成需要 2500 令牌，可升级套餐，或在下月 1 日额度恢复后再试
+HttpException: 本月 AI 剩余额度不足，本次生成需要 2500 令牌，可升级套餐，或在下月 1 日额度恢复后再试
+    at AiAllowanceService.assertAllowed (/Users/feifei00/Documents/CodexWorktrees/contentflow-production/runtime/api/src/modules/ai/ai-allowance.service.ts:33:13)
+    at processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at AIController.generateImage (/Users/feifei00/Documents/CodexWorktrees/contentflow-production/runtime/api/src/modules/ai/ai.controller.ts:133:5)
+[Nest] 41085  - 10/20/2026, 4:06:59 PM   ERROR [HttpExceptionFilter] POST /api/v1/ai/analyze/viral - 429: 本月 AI 额度已用完，可升级套餐，或在下月 1 日额度恢复后再试
+HttpException: 本月 AI 额度已用完，可升级套餐，或在下月 1 日额度恢复后再试
+    at AiAllowanceService.assertAllowed (/Users/feifei00/Documents/CodexWorktrees/contentflow-production/runtime/api/src/modules/ai/ai-allowance.service.ts:33:13)
+    at processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at AIController.analyzeViral (/Users/feifei00/Documents/CodexWorktrees/contentflow-production/runtime/api/src/modules/ai/ai.controller.ts:115:5)
+[Nest] 41085  - 10/20/2026, 4:06:59 PM   ERROR [HttpExceptionFilter] POST /api/v1/ai/generate/article - 429: 今日 AI 用量已达上限，请明天再试
+HttpException: 今日 AI 用量已达上限，请明天再试
+    at AIService.assertTenantDailyBudget (/Users/feifei00/Documents/CodexWorktrees/contentflow-production/runtime/api/src/modules/ai/ai.service.ts:436:13)
+    at processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at AiAllowanceService.assertAllowed (/Users/feifei00/Documents/CodexWorktrees/contentflow-production/runtime/api/src/modules/ai/ai-allowance.service.ts:28:5)
+    at AIController.generateArticle (/Users/feifei00/Documents/CodexWorktrees/contentflow-production/runtime/api/src/modules/ai/ai.controller.ts:30:5)
+[Nest] 41085  - 10/20/2026, 4:06:59 PM   ERROR [HttpExceptionFilter] POST /api/v1/ai/generate/titles - 429: 今日 AI 用量已达上限，请明天再试
+HttpException: 今日 AI 用量已达上限，请明天再试
+    at AIService.assertTenantDailyBudget (/Users/feifei00/Documents/CodexWorktrees/contentflow-production/runtime/api/src/modules/ai/ai.service.ts:436:13)
+    at processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at AiAllowanceService.assertAllowed (/Users/feifei00/Documents/CodexWorktrees/contentflow-production/runtime/api/src/modules/ai/ai-allowance.service.ts:28:5)
+    at AIController.generateTitles (/Users/feifei00/Documents/CodexWorktrees/contentflow-production/runtime/api/src/modules/ai/ai.controller.ts:95:5)
+[Nest] 41085  - 10/20/2026, 4:06:59 PM   ERROR [HttpExceptionFilter] POST /api/v1/ai/generate/script - 429: 今日 AI 用量已达上限，请明天再试
+HttpException: 今日 AI 用量已达上限，请明天再试
+    at AIService.assertTenantDailyBudget (/Users/feifei00/Documents/CodexWorktrees/contentflow-production/runtime/api/src/modules/ai/ai.service.ts:436:13)
+    at processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at AiAllowanceService.assertAllowed (/Users/feifei00/Documents/CodexWorktrees/contentflow-production/runtime/api/src/modules/ai/ai-allowance.service.ts:28:5)
+    at AIController.generateScript (/Users/feifei00/Documents/CodexWorktrees/contentflow-production/runtime/api/src/modules/ai/ai.controller.ts:67:5)
+[Nest] 41085  - 10/20/2026, 4:06:59 PM   ERROR [HttpExceptionFilter] POST /api/v1/ai/generate/image - 429: 今日 AI 用量已达上限，请明天再试
+HttpException: 今日 AI 用量已达上限，请明天再试
+    at AIService.assertTenantDailyBudget (/Users/feifei00/Documents/CodexWorktrees/contentflow-production/runtime/api/src/modules/ai/ai.service.ts:436:13)
+    at processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at AiAllowanceService.assertAllowed (/Users/feifei00/Documents/CodexWorktrees/contentflow-production/runtime/api/src/modules/ai/ai-allowance.service.ts:28:5)
+    at AIController.generateImage (/Users/feifei00/Documents/CodexWorktrees/contentflow-production/runtime/api/src/modules/ai/ai.controller.ts:133:5)
+[Nest] 41085  - 10/20/2026, 4:06:59 PM   ERROR [HttpExceptionFilter] POST /api/v1/ai/analyze/viral - 429: 今日 AI 用量已达上限，请明天再试
+HttpException: 今日 AI 用量已达上限，请明天再试
+    at AIService.assertTenantDailyBudget (/Users/feifei00/Documents/CodexWorktrees/contentflow-production/runtime/api/src/modules/ai/ai.service.ts:436:13)
+    at processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at AiAllowanceService.assertAllowed (/Users/feifei00/Documents/CodexWorktrees/contentflow-production/runtime/api/src/modules/ai/ai-allowance.service.ts:28:5)
+    at AIController.analyzeViral (/Users/feifei00/Documents/CodexWorktrees/contentflow-production/runtime/api/src/modules/ai/ai.controller.ts:115:5)
+PASS src/modules/ai/ai-entitlement-enforcement.spec.ts
+[Nest] 41085  - 10/20/2026, 4:06:59 PM   ERROR [HttpExceptionFilter] POST /api/v1/ai/generate/image - 500: 今日 AI 预算已用完
+Error: 今日 AI 预算已用完
+    at Object.<anonymous> (/Users/feifei00/Documents/CodexWorktrees/contentflow-production/runtime/api/src/modules/ai/ai-controller-aigc.spec.ts:86:50)
+    at Promise.then.completed (/Users/feifei00/Documents/CodexWorktrees/contentflow-production/runtime/api/node_modules/jest-circus/build/utils.js:298:28)
+    at new Promise (<anonymous>)
+    at callAsyncCircusFn (/Users/feifei00/Documents/CodexWorktrees/contentflow-production/runtime/api/node_modules/jest-circus/build/utils.js:231:10)
+    at _callCircusTest (/Users/feifei00/Documents/CodexWorktrees/contentflow-production/runtime/api/node_modules/jest-circus/build/run.js:316:40)
+    at processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at _runTest (/Users/feifei00/Documents/CodexWorktrees/contentflow-production/runtime/api/node_modules/jest-circus/build/run.js:252:3)
+    at _runTestsForDescribeBlock (/Users/feifei00/Documents/CodexWorktrees/contentflow-production/runtime/api/node_modules/jest-circus/build/run.js:126:9)
+    at _runTestsForDescribeBlock (/Users/feifei00/Documents/CodexWorktrees/contentflow-production/runtime/api/node_modules/jest-circus/build/run.js:121:9)
+    at run (/Users/feifei00/Documents/CodexWorktrees/contentflow-production/runtime/api/node_modules/jest-circus/build/run.js:71:3)
+    at runAndTransformResultsToJestFormat (/Users/feifei00/Documents/CodexWorktrees/contentflow-production/runtime/api/node_modules/jest-circus/build/legacy-code-todo-rewrite/jestAdapterInit.js:122:21)
+    at jestAdapter (/Users/feifei00/Documents/CodexWorktrees/contentflow-production/runtime/api/node_modules/jest-circus/build/legacy-code-todo-rewrite/jestAdapter.js:79:19)
+    at runTestInternal (/Users/feifei00/Documents/CodexWorktrees/contentflow-production/runtime/api/node_modules/jest-runner/build/runTest.js:367:16)
+    at runTest (/Users/feifei00/Documents/CodexWorktrees/contentflow-production/runtime/api/node_modules/jest-runner/build/runTest.js:444:34)
+PASS src/modules/ai/ai-controller-aigc.spec.ts
+[Nest] 41085  - 10/20/2026, 4:06:59 PM   ERROR [ContentPackService] Failed to generate pack: AI provider did not return valid title token usage
+[Nest] 41085  - 10/20/2026, 4:06:59 PM   ERROR [ContentPackService] Failed to generate pack: AI provider did not return valid title token usage
+[Nest] 41085  - 10/20/2026, 4:06:59 PM   ERROR [ContentPackService] Failed to generate pack: AI provider did not return valid title token usage
+[Nest] 41085  - 10/20/2026, 4:06:59 PM   ERROR [ContentPackService] Failed to generate pack: AI provider did not return valid title token usage
+[Nest] 41085  - 10/20/2026, 4:06:59 PM   ERROR [ContentPackService] Failed to generate pack: AI provider did not return valid title token usage
+[Nest] 41085  - 10/20/2026, 4:06:59 PM   ERROR [ContentPackService] Failed to generate pack: AI provider did not return valid title token usage
+[Nest] 41085  - 10/20/2026, 4:06:59 PM   ERROR [ContentPackService] Failed to generate pack: AI provider did not return valid title token usage
+[Nest] 41085  - 10/20/2026, 4:06:59 PM   ERROR [ContentPackService] Failed to generate pack: AI provider did not return valid body token usage
+[Nest] 41085  - 10/20/2026, 4:06:59 PM   ERROR [ContentPackService] Failed to generate pack: AI provider did not return valid body token usage
+[Nest] 41085  - 10/20/2026, 4:06:59 PM   ERROR [ContentPackService] Failed to generate pack: AI provider did not return valid body token usage
+[Nest] 41085  - 10/20/2026, 4:06:59 PM   ERROR [ContentPackService] Failed to generate pack: AI provider did not return valid body token usage
+[Nest] 41085  - 10/20/2026, 4:06:59 PM   ERROR [ContentPackService] Failed to generate pack: AI provider did not return valid body token usage
+[Nest] 41085  - 10/20/2026, 4:06:59 PM   ERROR [ContentPackService] Failed to generate pack: AI provider did not return valid body token usage
+[Nest] 41085  - 10/20/2026, 4:06:59 PM   ERROR [ContentPackService] Failed to generate pack: AI provider did not return valid body token usage
+[Nest] 41085  - 10/20/2026, 4:06:59 PM   ERROR [ContentPackService] Failed to generate pack: AI provider did not return usable body content
+[Nest] 41085  - 10/20/2026, 4:06:59 PM   ERROR [ContentPackService] Failed to generate pack: AI provider did not return usable body content
+[Nest] 41085  - 10/20/2026, 4:06:59 PM   ERROR [ContentPackService] Failed to generate pack: AI provider did not return usable body content
+[Nest] 41085  - 10/20/2026, 4:06:59 PM   ERROR [ContentPackService] Failed to generate pack: AI provider did not return usable body content
+[Nest] 41085  - 10/20/2026, 4:06:59 PM   ERROR [ContentPackService] Failed to generate pack: Compliance processing returned empty body content
+[Nest] 41085  - 10/20/2026, 4:06:59 PM   ERROR [ContentPackService] Failed to generate pack: AI provider did not return usable titles
+[Nest] 41085  - 10/20/2026, 4:06:59 PM   ERROR [ContentPackService] Failed to generate pack: AI provider did not return usable titles
+[Nest] 41085  - 10/20/2026, 4:06:59 PM   ERROR [ContentPackService] Failed to generate pack: AI provider did not return usable titles
+[Nest] 41085  - 10/20/2026, 4:06:59 PM   ERROR [ContentPackService] Failed to generate pack: AI provider did not return usable titles
+[Nest] 41085  - 10/20/2026, 4:06:59 PM   ERROR [ContentPackService] Failed to generate pack: AI provider did not return valid title token usage
+[Nest] 41085  - 10/20/2026, 4:06:59 PM   ERROR [ContentPackService] Failed to generate pack: Bad Request Exception
+PASS src/modules/ai/content-pack.service.spec.ts
+
+Test Suites: 6 passed, 6 total
+Tests:       89 passed, 89 total
+Snapshots:   0 total
+Time:        3.436 s, estimated 6 s
+Ran all test suites matching /domestic-text-timeout.spec|domestic-providers.spec|ai-entitlement-enforcement.spec|content-pack.service.spec|ai-controller-aigc.spec|ai.service.spec/i.
+[Nest] 41085  - 10/20/2026, 4:06:59 PM     LOG [ContentPackService] Generating content pack for topic: 主题
+[Nest] 41085  - 10/20/2026, 4:06:59 PM     LOG [ContentPackService] Generating content pack for topic: 主题
+[Nest] 41085  - 10/20/2026, 4:06:59 PM     LOG [ContentPackService] Generating content pack for topic: 主题
+[Nest] 41085  - 10/20/2026, 4:06:59 PM     LOG [ContentPackService] Generating content pack for topic: 主题
+[Nest] 41085  - 10/20/2026, 4:06:59 PM     LOG [ContentPackService] Generating content pack for topic: 主题
+[Nest] 41085  - 10/20/2026, 4:06:59 PM     LOG [ContentPackService] Generating content pack for topic: 主题
+[Nest] 41085  - 10/20/2026, 4:06:59 PM     LOG [ContentPackService] Generating content pack for topic: 主题
+[Nest] 41085  - 10/20/2026, 4:06:59 PM     LOG [ContentPackService] Generating content pack for topic: 主题
+[Nest] 41085  - 10/20/2026, 4:06:59 PM     LOG [ContentPackService] Generating content pack for topic: 主题
+[Nest] 41085  - 10/20/2026, 4:06:59 PM     LOG [ContentPackService] Generating content pack for topic: 主题
+[Nest] 41085  - 10/20/2026, 4:06:59 PM     LOG [ContentPackService] Generating content pack for topic: 主题
+[Nest] 41085  - 10/20/2026, 4:06:59 PM     LOG [ContentPackService] Generating content pack for topic: 主题
+[Nest] 41085  - 10/20/2026, 4:06:59 PM     LOG [ContentPackService] Generating content pack for topic: 主题
+[Nest] 41085  - 10/20/2026, 4:06:59 PM     LOG [ContentPackService] Generating content pack for topic: 主题
+[Nest] 41085  - 10/20/2026, 4:06:59 PM     LOG [ContentPackService] Generating content pack for topic: 主题
+[Nest] 41085  - 10/20/2026, 4:06:59 PM     LOG [ContentPackService] Generating content pack for topic: 主题
+[Nest] 41085  - 10/20/2026, 4:06:59 PM     LOG [ContentPackService] Generating content pack for topic: 主题
+[Nest] 41085  - 10/20/2026, 4:06:59 PM     LOG [ContentPackService] Generating content pack for topic: 主题
+[Nest] 41085  - 10/20/2026, 4:06:59 PM     LOG [ContentPackService] Generating content pack for topic: 主题
+[Nest] 41085  - 10/20/2026, 4:06:59 PM     LOG [ContentPackService] Generating content pack for topic: 主题
+[Nest] 41085  - 10/20/2026, 4:06:59 PM     LOG [ContentPackService] Generating content pack for topic: 主题
+[Nest] 41085  - 10/20/2026, 4:06:59 PM     LOG [ContentPackService] Generating content pack for topic: 主题
+[Nest] 41085  - 10/20/2026, 4:06:59 PM     LOG [ContentPackService] Generating content pack for topic: 主题
+[Nest] 41085  - 10/20/2026, 4:06:59 PM     LOG [ContentPackService] Generating content pack for topic: Topic
+[Nest] 41085  - 10/20/2026, 4:06:59 PM     LOG [ContentPackService] Generating content pack for topic: Topic
+[Nest] 41085  - 10/20/2026, 4:06:59 PM     LOG [ContentPackService] Generating content pack for topic: Topic
+[Nest] 41085  - 10/20/2026, 4:06:59 PM     LOG [ContentPackService] Generating content pack for topic: Topic
+[Nest] 41085  - 10/20/2026, 4:06:59 PM     LOG [ContentPackService] Generating content pack for topic: Topic
+[Nest] 41085  - 10/20/2026, 4:06:59 PM     LOG [ContentPackService] Generating content pack for topic: Topic
+[Nest] 41085  - 10/20/2026, 4:06:59 PM     LOG [ContentPackService] Generating content pack for topic: 主题
