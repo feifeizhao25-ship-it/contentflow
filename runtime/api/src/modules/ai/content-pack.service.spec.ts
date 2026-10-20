@@ -27,6 +27,46 @@ describe('ContentPackService token accounting', () => {
     rag.buildContext.mockReturnValue('');
   });
 
+  it.each([undefined, 0, -1, 0.5, NaN, Infinity, '10'])('rejects invalid title usage %s before generating the body', async (total) => {
+    ai.generateTitlesWithUsage.mockResolvedValue({ titles: ['标题'], usage: { total_tokens: total } });
+    ai.generateText.mockResolvedValue({ content: '正文', usage: { total_tokens: 100 } });
+    await expect(service.generatePack('tenant-1', { topic: '主题' }, 'user-1')).rejects.toBeInstanceOf(InternalServerErrorException);
+    expect(ai.generateText).not.toHaveBeenCalled();
+    expect(usage.trackUsage).not.toHaveBeenCalled();
+    expect(ai.recordGeneration).not.toHaveBeenCalled();
+  });
+
+  it.each([undefined, 0, -1, 0.5, NaN, Infinity, '10'])('rejects invalid body usage %s even when combined usage would look valid', async (total) => {
+    ai.generateTitlesWithUsage.mockResolvedValue({ titles: ['标题'], usage: { total_tokens: 100 } });
+    ai.generateText.mockResolvedValue({ content: '正文', usage: { total_tokens: total } });
+    await expect(service.generatePack('tenant-1', { topic: '主题' }, 'user-1')).rejects.toBeInstanceOf(InternalServerErrorException);
+    expect(usage.trackUsage).not.toHaveBeenCalled();
+    expect(ai.recordGeneration).not.toHaveBeenCalled();
+  });
+
+  it.each(['', '   ', null, 123])('rejects empty or malformed body %s without charging', async (content) => {
+    ai.generateTitlesWithUsage.mockResolvedValue({ titles: ['标题'], usage: { total_tokens: 2 } });
+    ai.generateText.mockResolvedValue({ content, usage: { total_tokens: 4 } });
+    await expect(service.generatePack('tenant-1', { topic: '主题' }, 'user-1')).rejects.toBeInstanceOf(InternalServerErrorException);
+    expect(usage.trackUsage).not.toHaveBeenCalled();
+    expect(ai.recordGeneration).not.toHaveBeenCalled();
+  });
+
+  it('rejects a body emptied by compliance processing before adding the AI label', async () => {
+    ai.generateTitlesWithUsage.mockResolvedValue({ titles: ['标题'], usage: { total_tokens: 2 } });
+    ai.generateText.mockResolvedValue({ content: '正文', usage: { total_tokens: 4 } });
+    compliance.scrubOutput.mockResolvedValue('  ');
+    await expect(service.generatePack('tenant-1', { topic: '主题' }, 'user-1')).rejects.toBeInstanceOf(InternalServerErrorException);
+    expect(usage.trackUsage).not.toHaveBeenCalled();
+  });
+
+  it.each([undefined, [], [' '], [12]].map(titles => [titles]))('rejects missing or malformed titles %s', async (titles) => {
+    ai.generateTitlesWithUsage.mockResolvedValue({ titles, usage: { total_tokens: 2 } });
+    await expect(service.generatePack('tenant-1', { topic: '主题' })).rejects.toBeInstanceOf(InternalServerErrorException);
+    expect(ai.generateText).not.toHaveBeenCalled();
+    expect(usage.trackUsage).not.toHaveBeenCalled();
+  });
+
   it('charges the provider-reported title and script tokens', async () => {
     ai.generateTitlesWithUsage.mockResolvedValue({
       titles: ['A title'],

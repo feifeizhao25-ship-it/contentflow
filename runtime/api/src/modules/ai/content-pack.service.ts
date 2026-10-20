@@ -34,7 +34,15 @@ export class ContentPackService {
             // Step A: Headlines x 10
             const platformsStr = dto.platforms?.join(',') || '全渠道';
             const titleResult = await this.aiService.generateTitlesWithUsage(dto.topic, platformsStr, 10);
-            const titles = titleResult.titles;
+            const titles = titleResult?.titles;
+            if (!Array.isArray(titles) || titles.length === 0 ||
+                titles.some(title => typeof title !== 'string' || !title.trim())) {
+                throw new Error('AI provider did not return usable titles');
+            }
+            const titleTokens = titleResult?.usage?.total_tokens;
+            if (!Number.isSafeInteger(titleTokens) || titleTokens <= 0) {
+                throw new Error('AI provider did not return valid title token usage');
+            }
 
             // Step B: Script/Body
             const policySources = await this.ragPolicyService.select(dto.platforms || [], dto.topic);
@@ -42,17 +50,27 @@ export class ContentPackService {
             const freshness = policySources.length ? null : await this.ragPolicyService.freshnessReport?.().catch(() => null);
             const scriptPrompt = `请根据主题 "${dto.topic}" 和标题 "${titles[0]}" 创作一篇深度脚本。要求：逻辑清晰、使用普通人能理解的表达；如资料包含合规要求，在结尾增加发布前核对清单。${this.ragPolicyService.buildContext(policySources)}`;
             const scriptData = await this.aiService.generateText({ prompt: scriptPrompt });
-            let script = scriptData.content;
+            let script = scriptData?.content;
+            if (typeof script !== 'string' || !script.trim()) {
+                throw new Error('AI provider did not return usable body content');
+            }
+            const scriptTokens = scriptData?.usage?.total_tokens;
+            if (!Number.isSafeInteger(scriptTokens) || scriptTokens <= 0) {
+                throw new Error('AI provider did not return valid body token usage');
+            }
 
             // 3. Compliance Scrubbing
             script = await this.complianceService.scrubOutput(script);
+            if (typeof script !== 'string' || !script.trim()) {
+                throw new Error('Compliance processing returned empty body content');
+            }
 
             // 4. AI 生成内容显式标识（导出文本必须可辨识为 AI 生成）
             script = labelAiGeneratedText(script);
 
             // 5. Usage Tracking
             const totalTokens =
-                titleResult.usage.total_tokens + scriptData.usage.total_tokens;
+                titleTokens + scriptTokens;
             if (!Number.isSafeInteger(totalTokens) || totalTokens <= 0) {
                 throw new Error('AI provider did not return valid token usage');
             }
