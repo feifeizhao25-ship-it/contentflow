@@ -18,13 +18,16 @@ try {
       if (path.endsWith('/auth/me')) data={id:'fixture',name:'界面测试用户',role:'owner'};
       if (path.endsWith('/ai/generate/image')) {
         calls++;
-        data = calls===1 ? {url:'https://fixture.example/cover.png'} : calls===2 ? {} : {url:'https://fixture.example/broken.png'};
+        data = calls===1 ? {url:'https://fixture.example/cover.png'} : calls===2 ? {} : calls===3 ? {url:'https://fixture.example/broken.png'} : {url:'https://fixture.example/slow.png'};
       }
+      if (path.endsWith('/billing/subscription') && calls >= 3) await new Promise(resolve => setTimeout(resolve, 600));
       await route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({success:true,data})});
     });
     await page.route('**/cover.png', route => route.fulfill({contentType:'image/svg+xml',body:'<svg xmlns="http://www.w3.org/2000/svg" width="640" height="360"><rect width="640" height="360" fill="#d1fae5"/><text x="40" y="160" font-size="30" fill="#065f46">TEST FIXTURE - preserved cover</text></svg>'}));
     await page.route('**/broken.png', route => route.fulfill({status:404,body:'not found'}));
+    await page.route('**/slow.png', async route => { await new Promise(resolve => setTimeout(resolve, 22000)); await route.abort().catch(() => {}); });
     await page.goto('http://127.0.0.1:3433/studio?topic=封面空响应回归测试', {waitUntil:'networkidle'});
+    await page.getByPlaceholder('内容包生成后自动填充，可继续编辑').fill('测试正文：失败后必须完整保留。');
     await page.getByRole('button',{name:'生成封面',exact:true}).click();
     await page.getByRole('button',{name:'重新生成',exact:true}).waitFor();
     const before = await page.getByAltText('封面预览',{exact:true}).getAttribute('src');
@@ -40,9 +43,21 @@ try {
     await page.getByAltText('封面预览',{exact:true}).scrollIntoViewIfNeeded();
     await page.getByRole('alert').filter({hasText:'封面图片加载失败'}).waitFor();
     assert.equal(calls,3);
+    assert.equal(await page.getByAltText('封面预览',{exact:true}).getAttribute('src'),before, 'failed image must preserve previous cover');
+    await page.waitForFunction(() => !document.querySelector('.ant-btn-loading'));
+    assert.equal(await page.getByText('封面已生成',{exact:true}).count(), 0, 'broken image must not show success after balance refresh');
     await page.screenshot({path:`${out}/broken-${width}.png`,fullPage:true});
     await fs.writeFile(`${out}/broken-${width}.txt`,await page.locator('body').innerText());
+    await page.getByRole('button',{name:'重新生成',exact:true}).click();
+    await page.getByRole('alert').filter({hasText:'封面图片加载超时'}).waitFor({timeout:25000});
+    assert.equal(calls,4);
+    assert.equal(await page.getByAltText('封面预览',{exact:true}).getAttribute('src'),before);
+    assert.equal(await page.getByPlaceholder('内容包生成后自动填充，可继续编辑').inputValue(),'测试正文：失败后必须完整保留。');
+    assert.equal(await page.getByText('封面已生成',{exact:true}).count(),0);
+    await page.evaluate(() => scrollTo(0,0));
+    await page.screenshot({path:`${out}/timeout-${width}.png`,fullPage:true});
+    await fs.writeFile(`${out}/timeout-${width}.txt`,await page.locator('body').innerText());
     await context.close();
-    console.log(`PASS ${width}: empty generation preserves previous cover; broken image shows persistent error. Fixture API, not live model.`);
+    console.log(`PASS ${width}: empty generation preserves previous cover; broken/timeout images preserve cover and body with no false success. Fixture API, not live model.`);
   }
 } finally {await browser.close();}

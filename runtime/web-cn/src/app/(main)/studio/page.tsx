@@ -196,6 +196,20 @@ function StudioContent() {
         style: style === 'xhs_influencer' ? 'xhs_influencer' : 'professional',
       });
       const nextCoverUrl = generatedCoverUrl(res);
+      // 先确认图片可加载，再替换用户已有封面；接口返回 URL 不等于图片可用。
+      await new Promise<void>((resolve, reject) => {
+        const preview = new window.Image();
+        const finish = (error?: Error) => {
+          clearTimeout(timer);
+          preview.onload = null;
+          preview.onerror = null;
+          if (error) reject(error); else resolve();
+        };
+        const timer = setTimeout(() => finish(new Error('封面图片加载超时，请重试；已有封面已保留')), 20000);
+        preview.onload = () => finish();
+        preview.onerror = () => finish(new Error('封面图片加载失败，请重试；已有封面已保留'));
+        preview.src = nextCoverUrl;
+      });
       setCoverUrl(nextCoverUrl);
       setCoverIsAi(true);
       await refreshBalance();
@@ -423,7 +437,7 @@ function StudioContent() {
               <Layers className="w-4 h-4 text-emerald-600" />
               内容包结构预览
             </h3>
-            <Button icon={<ImageIcon className="w-4 h-4" />} onClick={handleGenerateCover} loading={isGeneratingImage} disabled={allowance.exhausted}>
+            <Button aria-label="生成封面" aria-busy={isGeneratingImage} icon={<ImageIcon className="w-4 h-4" />} onClick={handleGenerateCover} loading={isGeneratingImage} disabled={allowance.exhausted}>
               生成封面
             </Button>
           </div>
@@ -459,7 +473,7 @@ function StudioContent() {
               <div>
                 <div className="text-xs text-zinc-500 mb-2 flex justify-between items-center">
                   <span>封面预览</span>
-                  {coverUrl && <Button type="link" size="small" className="p-0 h-auto text-xs" loading={isGeneratingImage} disabled={allowance.exhausted} onClick={handleGenerateCover}>重新生成</Button>}
+                  {coverUrl && <Button aria-label="重新生成" aria-busy={isGeneratingImage} type="link" size="small" className="p-0 h-auto text-xs" loading={isGeneratingImage} disabled={allowance.exhausted} onClick={handleGenerateCover}>重新生成</Button>}
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="relative aspect-video rounded-2xl border border-zinc-200 overflow-hidden bg-zinc-100">
