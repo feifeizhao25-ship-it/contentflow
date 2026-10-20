@@ -42,3 +42,9 @@
 - 此浏览器用例使用测试 cookie 和拦截 API，图内标有 TEST FIXTURE；不是生产登录、真实图片模型或付款证据。未执行完整会员 UI 矩阵。脚本 scripts/test-studio-cover-browser.mjs 可使用 PLAYWRIGHT_MODULE 指定已安装 Playwright，EVIDENCE_DIR 指定证据目录，默认访问本地 3433。
 - 待继续：并发预占与幂等、供应商成功后的结果恢复、图片地址可访问性/加载失败提示、完整四产品与国内外 UI 验收。
 - 浏览器控制台仍有现有 Ant Design v5 / React 版本兼容警告（截图含开发模式 Issue 标识）；本轮未消除，后续需评估交互影响与兼容修复。
+
+## 09点轮次：图片加载失败
+
+已补充 NextImage onError：HTTP 404 等图片加载失败会在预览区持续展示中文错误，不再只显示破图。没有修改正文或发布设置。依据本地 Next 文档 components/image.md 的 onError 行为实现。
+
+本地 Chrome 390/1440 宽度：复测空响应保留旧图，追加404图片，均观察到错误提示并保存全页截图/正文（runtime/docs/evidence/2026-10-20-image-load）。接口与图片为显式测试替身，不是付费模型。前端TypeScript通过。浏览器用例此前数次在第二次“重新生成”按钮定位处超时，失败时正文仍包含按钮文字；最后两尺寸通过，原因尚未定位，保留为间歇性测试/交互待排查问题，不能宣称稳定性已全部验收。测试保留失败DOM诊断，未跳过断言。
