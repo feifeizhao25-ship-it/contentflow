@@ -468,7 +468,11 @@ function StudioContent() {
                       <NextImage
                         src={coverUrl}
                         alt="封面预览"
-                        onError={() => setCoverError('封面图片加载失败，请重新生成；正文和发布设置已保留')}
+                        onError={() => {
+                          const text = '封面图片加载失败，请重新生成；正文和发布设置已保留';
+                          setCoverError(text);
+                          message.error({ content: text, key: 'cover' });
+                        }}
                         fill
                         sizes="(max-width: 768px) 100vw, 50vw"
                         unoptimized
