@@ -367,20 +367,17 @@ function PricingContent() {
                                 )}
                             </div>
 
-                            <ul className="space-y-4 mb-8 flex-1">
-                                {plan.features.map((f, i) => (
+                            <ul className="space-y-4 mb-4 flex-1">
+                                {plan.features.filter((f) => !isComingSoonFeature(typedRegistry, f)).map((f, i) => (
                                     <li key={i} className="flex items-start gap-3 text-sm font-medium text-zinc-600 dark:text-zinc-300">
                                         <CheckCircleFilled className={clsx("mt-0.5", plan.highlight ? "text-indigo-500" : "text-zinc-300")} />
-                                        <span>
-                                            {f}
-                                            {isComingSoonFeature(typedRegistry, f) && (
-                                                <span className="ml-2 rounded-full bg-amber-50 px-2 py-0.5 text-xs font-bold text-amber-700">即将上线</span>
-                                            )}
-                                        </span>
+                                        <span>{f}</span>
                                     </li>
                                 ))}
                             </ul>
-                            {/* 未开通权益只在对应卖点旁标一次「即将上线」，汇总说明放在卡片组下方，避免每张卡重复堆叠。 */}
+                            {plan.features.some((f) => isComingSoonFeature(typedRegistry, f)) && (
+                                <p className="mb-8 text-xs leading-5 text-amber-700">路线图（即将上线）：{plan.features.filter((f) => isComingSoonFeature(typedRegistry, f)).join('、')}</p>
+                            )}
 
                             <Button
                                 type="primary"
@@ -402,7 +399,7 @@ function PricingContent() {
                     ))}
 
                 </div>
-                <p className="mb-20 text-xs text-zinc-500">标「即将上线」的权益暂未开通（如平台授权、团队审批、操作审计），开通前不影响当前价格。</p>
+                <p className="mb-20 text-xs text-zinc-500">每张卡底部一行「路线图（即将上线）」列出尚未开通的卖点，开通前不影响当前价格。</p>
 
                 <Modal
                     open={checkoutPlan !== null}

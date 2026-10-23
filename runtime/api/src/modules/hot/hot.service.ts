@@ -25,7 +25,9 @@ export class HotService {
     if (!p) {
       return {
         available: false,
-        topics: [] as Array<{ id: string; topic: string; heat: number; platform: string }>,
+        source: null as string | null,
+        fetchedAt: null as string | null,
+        topics: [] as Array<{ id: string; topic: string; heat: number; platform: string; fetchedAt: string; source: string }>,
         message: '热点数据源尚未接入：需要接入合规授权的数据服务后才能提供真实热点',
       };
     }
@@ -36,13 +38,23 @@ export class HotService {
       const res = await this.fetchFn(u.toString(), { headers: p.key ? { Authorization: `Bearer ${p.key}` } : {}, signal: AbortSignal.timeout(5000) });
       if (!res.ok) throw new Error(`hot provider ${res.status}`);
       const data: any = await res.json();
+      const fetchedAt = typeof data?.fetchedAt === 'string' && Number.isFinite(Date.parse(data.fetchedAt))
+        ? new Date(data.fetchedAt).toISOString()
+        : new Date().toISOString();
       const topics = (Array.isArray(data?.topics) ? data.topics : [])
         .filter((t: any) => t && typeof t.topic === 'string' && t.topic.trim())
-        .map((t: any, i: number) => ({ id: String(t.id ?? i), topic: String(t.topic).slice(0, 100), heat: Number.isFinite(Number(t.heat)) ? Number(t.heat) : 0, platform: String(t.platform ?? platform) }));
-      return { available: true, source: p.name, topics, message: '' };
+        .map((t: any, i: number) => ({
+          id: String(t.id ?? i),
+          topic: String(t.topic).slice(0, 100),
+          heat: Number.isFinite(Number(t.heat)) ? Number(t.heat) : 0,
+          platform: String(t.platform ?? platform),
+          fetchedAt: typeof t.fetchedAt === 'string' && Number.isFinite(Date.parse(t.fetchedAt)) ? new Date(t.fetchedAt).toISOString() : fetchedAt,
+          source: typeof t.source === 'string' && t.source.trim() ? String(t.source).slice(0, 80) : p.name,
+        }));
+      return { available: true, source: p.name, fetchedAt, topics, message: '' };
     } catch (e: any) {
       this.logger.warn(`hot provider failed: ${e?.message ?? e}`);
-      return { available: false, topics: [], message: '热点数据源暂时不可用，本次没有展示热点（不会用编造数据代替）' };
+      return { available: false, source: null, fetchedAt: null, topics: [], message: '热点数据源暂时不可用，本次没有展示热点（不会用编造数据代替）' };
     }
   }
 }

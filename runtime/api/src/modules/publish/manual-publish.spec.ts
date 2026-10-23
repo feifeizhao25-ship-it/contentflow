@@ -1,7 +1,10 @@
 import { BadRequestException } from '@nestjs/common';
+import { plainToInstance } from 'class-transformer';
+import { validate } from 'class-validator';
 import { PublishService } from './publish.service';
 import { AI_TEXT_LABEL } from '../../common/ai-content-label';
 import { MANUAL_PLATFORMS, normalizeManualPostUrl } from './manual-publish';
+import { CreateManualPublishDto } from './dto/create-manual-publish.dto';
 
 /**
  * 审计 P0-1：小红书 / 视频号 / 公众号没有可用的自动发布通道，也没有兜底流程。
@@ -84,6 +87,31 @@ describe('人工确认发布闭环', () => {
   it('含违禁表述的内容同样过六道闸，不能绕过人工发布', async () => {
     const { service } = build({ body: '稳赚不赔的最佳选择' });
     await expect(service.createManualTasks('t', 'u', { contentId: 'c1', platforms: ['xhs'] })).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it('可能有风险的表述在资料未过期时仍可生成人工发布任务', async () => {
+    const { service } = build({ body: '需要的话加微信领资料' });
+    await expect(service.createManualTasks('t', 'u', { contentId: 'c1', platforms: ['xhs'] })).resolves.toHaveLength(1);
+  });
+
+  it('资料过期时，可能有风险的内容必须确认后才能发布，明确违规不能靠确认放行', async () => {
+    const rag = { freshnessReport: jest.fn().mockResolvedValue({ needsReview: true }) };
+    const risky = build({ body: '需要的话加微信领资料' });
+    const strict = new PublishService(risky.prisma, {} as any, risky.tenant as any, { get: jest.fn() } as any, { get: jest.fn((_k: string, fallback: unknown) => fallback) } as any, undefined, rag as any);
+    await expect(strict.createManualTasks('t', 'u', { contentId: 'c1', platforms: ['douyin'] })).rejects.toMatchObject({
+      response: expect.objectContaining({ code: 'COMPLIANCE_RISK_ACK_REQUIRED' }),
+    });
+    await expect(strict.createManualTasks('t', 'u', { contentId: 'c1', platforms: ['douyin'], riskAcknowledged: true })).resolves.toHaveLength(1);
+    const blocked = build({ body: '这是国家级最佳' });
+    const stillBlocked = new PublishService(blocked.prisma, {} as any, blocked.tenant as any, { get: jest.fn() } as any, { get: jest.fn((_k: string, fallback: unknown) => fallback) } as any, undefined, rag as any);
+    await expect(stillBlocked.createManualTasks('t', 'u', { contentId: 'c1', platforms: ['bilibili'], riskAcknowledged: true })).rejects.toMatchObject({
+      response: expect.objectContaining({ code: 'CONTENT_COMPLIANCE_BLOCKED' }),
+    });
+  });
+
+  it('人工发布请求体接受抖音和 B 站', async () => {
+    const dto = plainToInstance(CreateManualPublishDto, { contentId: 'c1', platforms: ['douyin', 'bilibili'] });
+    expect(await validate(dto)).toEqual([]);
   });
 
   it('链接校验：各平台只认自己的域名', () => {

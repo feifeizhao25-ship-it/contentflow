@@ -27,6 +27,10 @@ describe('HotService 可替换数据源（批2）', () => {
     const svc = new HotService({} as any, okFetch);
     const r: any = await svc.getHotList('xhs');
     expect(r.available).toBe(true); expect(r.topics).toHaveLength(1); expect(r.topics[0].topic).toBe('城市骑行');
+    expect(r.source).toBeTruthy();
+    expect(r.fetchedAt).toMatch(/^\d{4}-\d{2}-\d{2}T/);
+    expect(r.topics[0].fetchedAt).toBe(r.fetchedAt);
+    expect(r.topics[0].source).toBe(r.source);
     const bad = new HotService({} as any, (async () => { throw new Error('down'); }) as any);
     const r2: any = await bad.getHotList('xhs');
     expect(r2.available).toBe(false); expect(r2.topics).toEqual([]);

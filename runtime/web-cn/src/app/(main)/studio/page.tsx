@@ -369,7 +369,7 @@ function StudioContent() {
           items={[
             { title: '主题与平台', description: '定义核心方向' },
             { title: '内容生成', description: 'AI 文案与封面' },
-            { title: '分发排期', description: '复制文案到平台发布；平台授权开通后可自动发布' },
+            { title: '分发排期', description: '目前所有平台都是人工确认发布，复制文案后到平台手动发出' },
           ]}
         />
       </Card>

@@ -77,6 +77,9 @@ await check('热点：有数据时按后端给的展示（topic 字段作标题�
   const r = parseHotTopics({ available: true, topics: [{ id: '1', topic: '某话题', heat: 5000, platform: 'xhs' }] });
   assert.equal(r.topics[0].title, '某话题');
   assert.equal(r.notice, '');
+  const stamped = parseHotTopics({ available: true, source: '示例数据服务', fetchedAt: '2026-10-23T01:02:03.000Z', topics: [{ id: '1', topic: '某话题', heat: 1, platform: 'douyin' }] });
+  assert.equal(stamped.topics[0].fetchedAt, '2026-10-23T01:02:03.000Z');
+  assert.equal(stamped.topics[0].source, '示例数据服务');
 });
 
 await check('热点：异常形状得到空列表与中文说明，不抛错', () => {

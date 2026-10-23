@@ -122,6 +122,10 @@ services:
       REAL_NAME_REQUIRED_FOR_PUBLISH: ${CN_REAL_NAME_REQUIRED_FOR_PUBLISH:-false}
       # Business Webhook 密钥加密。留空时服务可启动，创建订阅会明确拒绝，不会保存明文密钥。
       WEBHOOK_ENCRYPTION_KEY: ${CN_WEBHOOK_ENCRYPTION_KEY:-}
+      HOT_PROVIDER_URL: ${CN_HOT_PROVIDER_URL:-}
+      HOT_PROVIDER_KEY: ${CN_HOT_PROVIDER_KEY:-}
+      HOT_PROVIDER_NAME: ${CN_HOT_PROVIDER_NAME:-}
+      RAG_MAX_AGE_DAYS: ${CN_RAG_MAX_AGE_DAYS:-30}
       ENABLE_API_DOCS: "false"
     depends_on:
       postgres-cn: {condition: service_healthy}

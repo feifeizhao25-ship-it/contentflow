@@ -14,6 +14,19 @@ import type { Request as ExpressRequest } from 'express';
 import { verifyAlipayNotify } from './alipay.adapter';
 import { decryptWeChatNotify, verifyWeChatNotifySignature } from './wechat-pay.adapter';
 
+const RENEWAL_NOTICE_MS = 7 * 24 * 60 * 60 * 1000;
+
+/** 到期前 7 天提示。当前没有自动扣款，到期后按免费版。 */
+export function domesticRenewalNotice(plan: string, expiresAt: Date | string | null, now = Date.now()): string | null {
+  if (!expiresAt || plan === 'free') return null;
+  const end = new Date(expiresAt).getTime();
+  if (!Number.isFinite(end)) return null;
+  const left = end - now;
+  if (left < 0 || left > RENEWAL_NOTICE_MS) return null;
+  const day = new Intl.DateTimeFormat('zh-CN', { timeZone: 'Asia/Shanghai', year: 'numeric', month: 'numeric', day: 'numeric' }).format(end);
+  return `套餐将于 ${day} 到期。到期后回到免费版。当前不会自动扣款，继续使用请在到期前手动开通。`;
+}
+
 @ApiTags('billing')
 @Controller('billing')
 export class BillingController {
@@ -191,6 +204,7 @@ export class BillingController {
       // imageTokenEquivalent：生成 1 张图计入多少令牌（AiAllowanceService.chargeImage 的同一常量）。
       aiTokens: { ...aiTokens, imageTokenEquivalent: IMAGE_TOKEN_EQUIVALENT, quotaStatus },
       renewalDate: expiresAt ? new Date(expiresAt).toISOString() : null,
+      renewalNotice: domesticRenewalNotice(plan, expiresAt),
       expired,
       limits,
       period,
@@ -214,7 +228,7 @@ export class BillingController {
   @HttpCode(200)
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
-  @ApiOperation({ summary: '在当前周期结束时取消自动续费' })
+  @ApiOperation({ summary: '在当前周期结束时停止延续（当前没有自动扣款）' })
   async cancelSubscription(@Request() req: any) {
     await this.requireBillingManager(req);
     return this.billingService.requestCancellation(req.user.tenantId);

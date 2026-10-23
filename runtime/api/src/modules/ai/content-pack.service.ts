@@ -60,11 +60,13 @@ export class ContentPackService {
                 throw new Error('AI provider did not return valid body token usage');
             }
 
-            // 3. Compliance Scrubbing
-            script = await this.complianceService.scrubOutput(script);
+            // 3. 明确违规才拦住。资料过期时仍生成，检查结果带上“可能有风险”。
+            const conservative = Boolean(freshness?.needsReview);
+            script = await this.complianceService.scrubOutput(script, { conservative });
             if (typeof script !== 'string' || !script.trim()) {
                 throw new Error('Compliance processing returned empty body content');
             }
+            const compliance = await this.complianceService.checkContent?.(script, { conservative });
 
             // 4. AI 生成内容显式标识（导出文本必须可辨识为 AI 生成）
             script = labelAiGeneratedText(script);
@@ -85,8 +87,14 @@ export class ContentPackService {
                     sources_note: policySources.length
                         ? '以上资料已加入本次模型上下文；仍需发布者按最新平台页面人工复核'
                         : freshness?.needsReview
-                            ? (freshness.notice ?? '合规规则资料需要人工复核')
+                            ? `${freshness.notice ?? '合规规则资料需要人工复核'}${String(freshness.notice ?? '').includes('生成仍然可用') ? '' : '。AI 生成仍然可用，发布前请自行确认。'}`
                             : '本次生成未引用有效的外部合规资料；仅供草稿使用，发布前请核对最新平台规则',
+                    compliance: compliance ? {
+                        level: compliance.level,
+                        disclaimer: compliance.disclaimer,
+                        mode: compliance.mode,
+                        hits: compliance.hits,
+                    } : undefined,
                     metadata: {
                         usage: { tokens: totalTokens },
                         platforms: dto.platforms,

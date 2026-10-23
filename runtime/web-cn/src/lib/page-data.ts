@@ -79,6 +79,8 @@ export interface HotTopicRow {
   platform: string;
   prediction: 'rising' | 'stable';
   tags: string[];
+  fetchedAt: string;
+  source: string;
 }
 
 /** 热点页：GET /hot/list → { available, topics, message }。没有数据源就如实说明，不补任何热点。 */
@@ -91,6 +93,8 @@ export function parseHotTopics(result: unknown): { topics: HotTopicRow[]; notice
     platform: String(t.platform ?? ''),
     prediction: (t.prediction === 'rising' ? 'rising' : 'stable') as 'rising' | 'stable',
     tags: asArray(t.tags).map(String),
+    fetchedAt: typeof t.fetchedAt === 'string' ? t.fetchedAt : (typeof payload?.fetchedAt === 'string' ? payload.fetchedAt : ''),
+    source: typeof t.source === 'string' && t.source ? t.source : (typeof payload?.source === 'string' ? payload.source : ''),
   })).filter((t) => t.title);
   if (topics.length) return { topics, notice: '' };
   const message = payload?.message;
@@ -239,10 +243,16 @@ export function planBadge(subscription: unknown): { name: string; detail: string
   const plan = typeof payload?.plan === 'string' ? payload.plan : '';
   if (!plan || !PLAN_NAMES[plan]) return { name: '我的套餐', detail: '查看各档会员权益' };
   if (plan === 'free') return { name: '免费版', detail: '查看各档会员权益' };
+  if (typeof payload?.renewalNotice === 'string' && payload.renewalNotice.trim()) {
+    return { name: PLAN_NAMES[plan], detail: payload.renewalNotice.trim() };
+  }
   const renew = payload?.renewalDate ? dayjs(payload.renewalDate) : null;
+  const soon = renew && renew.isValid() && renew.diff(dayjs(), 'day', true) >= 0 && renew.diff(dayjs(), 'day', true) <= 7;
   return {
     name: PLAN_NAMES[plan],
-    detail: renew && renew.isValid() ? `有效期至 ${renew.format('YYYY年M月D日')}` : '查看套餐与用量',
+    detail: soon
+      ? `将于 ${renew.format('YYYY年M月D日')} 到期，到期后回到免费版。当前不会自动扣款，继续使用请在到期前手动开通。`
+      : renew && renew.isValid() ? `有效期至 ${renew.format('YYYY年M月D日')}` : '查看套餐与用量',
   };
 }
 

@@ -1,4 +1,4 @@
-import { BillingController } from './billing.controller';
+import { BillingController, domesticRenewalNotice } from './billing.controller';
 import { CN_PLANS, PLANS } from './plans.constant';
 import { createHmac, createSign, generateKeyPairSync } from 'crypto';
 import { canonicalAlipayParams } from './alipay.adapter';
@@ -87,6 +87,11 @@ describe('BillingController', () => {
       expect(result.plan).toBe('enterprise');
       expect(result.quotaStatus).toBe('unconfirmed');
       expect(result.aiTokens.quotaStatus).toBe('unconfirmed');
+      expect(result.renewalNotice).toContain('不会自动扣款');
+      const now = Date.parse('2026-10-23T00:00:00Z');
+      expect(domesticRenewalNotice('pro', new Date(now + 3 * 86400000), now)).toContain('不会自动扣款');
+      expect(domesticRenewalNotice('pro', new Date(now + 30 * 86400000), now)).toBeNull();
+      expect(domesticRenewalNotice('free', new Date(now + 86400000), now)).toBeNull();
     } finally {
       process.env.MARKET_REGION = previous;
     }
