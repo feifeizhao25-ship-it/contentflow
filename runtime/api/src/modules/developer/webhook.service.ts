@@ -2,12 +2,12 @@ import { BadRequestException, ForbiddenException, Injectable, Logger } from '@ne
 import { effectiveEntitlements } from '../billing/effective-limits';
 import * as crypto from 'crypto';
 import { PrismaService } from '../../database/prisma.service';
-import { WEBHOOK_EVENTS, assertPublicHttpsWebhookUrl, decryptSecret, deliverWebhook, encryptSecret } from './webhook-delivery';
+import { WEBHOOK_EVENTS, WebhookDeliveryDeps, assertPublicHttpsWebhookUrl, decryptSecret, deliverWebhook, encryptSecret } from './webhook-delivery';
 
 @Injectable()
 export class WebhookService {
   private readonly logger = new Logger(WebhookService.name);
-  constructor(private readonly prisma: PrismaService, private readonly fetchFn: typeof fetch = fetch) {}
+  constructor(private readonly prisma: PrismaService, private readonly delivery: WebhookDeliveryDeps = {}) {}
   private db() { return (this.prisma as any).webhookSubscription; }
 
   /** 定稿（2026-10-18）：Webhook 订阅仅 Business 档（plan=enterprise）开放，其余档关闭；过期按免费档处理。 */
@@ -50,7 +50,7 @@ export class WebhookService {
       const rows = await this.db().findMany({ where: { tenant_id: tenantId, status: 'active' } });
       for (const r of rows ?? []) {
         if (!(Array.isArray(r.events) && r.events.includes(event))) continue;
-        const res = await deliverWebhook(this.fetchFn, { url: r.url, secret: decryptSecret(r.secret_cipher) }, event, payload);
+        const res = await deliverWebhook({ url: r.url, secret: decryptSecret(r.secret_cipher) }, event, payload, this.delivery);
         if (!res.ok) this.logger.warn(`webhook ${r.id} ${event} failed: ${res.error ?? res.status}`);
       }
     } catch (e: any) { this.logger.warn(`webhook dispatch failed: ${e?.message ?? e}`); }

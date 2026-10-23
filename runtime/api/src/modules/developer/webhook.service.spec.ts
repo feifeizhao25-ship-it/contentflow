@@ -25,12 +25,12 @@ describe('Webhook Business 门禁（定稿）', () => {
     }
   });
   it('降级或非 Business 即使库里有订阅也不投递', async () => {
-    const fetchFn = jest.fn();
+    const request = jest.fn();
     const prisma: any = {
       tenant: { findUnique: async () => ({ plan: 'team', plan_expires_at: null, limits: {} }) },
       webhookSubscription: { findMany: async () => [{ id: 'w', url: 'https://example.com/h', events: ['content.generated'], secret_cipher: 'x', status: 'active' }] },
     };
-    await new WebhookService(prisma, fetchFn as any).dispatch('t1', 'content.generated', { ok: true });
-    expect(fetchFn).not.toHaveBeenCalled();
+    await new WebhookService(prisma, { request }).dispatch('t1', 'content.generated', { ok: true });
+    expect(request).not.toHaveBeenCalled();
   });
 });

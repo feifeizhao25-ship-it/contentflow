@@ -1,14 +1,13 @@
-import { BadRequestException, Controller, Post, Get, Body, UseGuards, UseInterceptors, Request } from '@nestjs/common';
-import { AiConcurrencyInterceptor } from './ai-concurrency.interceptor';
-import { AI_TEXT_LABEL, buildAiMediaMetadata, labelAiGeneratedText } from '../../common/ai-content-label';
+import { BadRequestException, Controller, Post, Get, Body, UseGuards, Request, Headers } from '@nestjs/common';
+import { AI_TEXT_LABEL, labelAiGeneratedText } from '../../common/ai-content-label';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { AIService } from './ai.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { AiAllowanceService } from './ai-allowance.service';
-import { IMAGE_TOKEN_EQUIVALENT } from './model-pricing';
+import { AI_HOLD_TOKENS } from './ai-holds';
+import { normalizeIdempotencyKey } from '../system/usage.service';
 
 @ApiTags('ai')
-@UseInterceptors(AiConcurrencyInterceptor)
 @Controller('ai')
 export class AIController {
   constructor(
@@ -28,138 +27,179 @@ export class AIController {
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'AI文章生成' })
-  async generateArticle(@Request() req: any, @Body() body: any) {
-    await this.allowance.assertAllowed(req.user.tenantId);
+  async generateArticle(@Request() req: any, @Body() body: any, @Headers('idempotency-key') idempotencyKey?: string) {
     const { topic, style, platform, keywords } = body;
-    
-    const result = await this.aiService.generateArticle({
-      topic,
-      style: style || 'professional',
-      platform: platform || 'xhs',
-      keywords,
+    return this.allowance.withReservation({
+      tenantId: req.user.tenantId,
+      kind: 'article',
+      holdTokens: AI_HOLD_TOKENS.article,
+      idempotencyKey: normalizeIdempotencyKey(idempotencyKey),
+      run: async () => {
+        const result = await this.aiService.generateArticle({
+          topic,
+          style: style || 'professional',
+          platform: platform || 'xhs',
+          keywords,
+        });
+        // 显式标识（《人工智能生成合成内容标识办法》）：正文本身带「AI 生成」，
+        // 复制、保存、分发时不会丢；留存的生成记录里也是带标识的版本。
+        const labelled = labelAiGeneratedText(result.content);
+        return {
+          tokens: result.usage.total_tokens,
+          response: { ...result, content: labelled, aiGenerated: true, aiLabel: AI_TEXT_LABEL },
+          generation: {
+            userId: req.user.sub,
+            generationType: 'article',
+            inputParams: { topic, style, platform, keywords },
+            outputContent: labelled,
+            modelProvider: result.provider,
+            modelName: result.model,
+            tokensInput: result.usage.prompt_tokens,
+            tokensOutput: result.usage.completion_tokens,
+            costAmount: result.cost_amount ?? undefined,
+            durationMs: result.latency_ms,
+            status: 'success',
+          },
+        };
+      },
     });
-
-    // 显式标识（《人工智能生成合成内容标识办法》）：正文本身带「AI 生成」，
-    // 复制、保存、分发时不会丢；留存的生成记录里也是带标识的版本。
-    const labelled = labelAiGeneratedText(result.content);
-
-    // 记录使用
-    await this.aiService.recordGeneration(req.user.tenantId, req.user.sub, {
-      generationType: 'article',
-      inputParams: { topic, style, platform, keywords },
-      outputContent: labelled,
-      modelProvider: result.provider,
-      modelName: result.model,
-      tokensInput: result.usage.prompt_tokens,
-      tokensOutput: result.usage.completion_tokens,
-      costAmount: result.cost_amount ?? undefined,
-      durationMs: result.latency_ms,
-      status: 'success',
-    });
-    await this.allowance.chargeTokens(req.user.tenantId, result.usage.total_tokens, 'article');
-
-    return { ...result, content: labelled, aiGenerated: true, aiLabel: AI_TEXT_LABEL };
   }
 
   @Post('generate/script')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: '短视频分镜脚本生成' })
-  async generateScript(@Request() req: any, @Body() body: any) {
-    await this.allowance.assertAllowed(req.user.tenantId);
+  async generateScript(@Request() req: any, @Body() body: any, @Headers('idempotency-key') idempotencyKey?: string) {
     const topic = String(body?.topic ?? '').trim().slice(0, 200);
     if (!topic) throw new BadRequestException('请输入创作主题');
     const type = String(body?.type ?? '爆款解说').slice(0, 50);
     const platform = String(body?.platform ?? '抖音').slice(0, 20);
-    const result = await this.aiService.generateScript({ topic, type, platform });
-    await this.aiService.recordGeneration(req.user.tenantId, req.user.sub, {
-      generationType: 'script',
-      inputParams: { topic, type, platform },
-      outputContent: JSON.stringify({ title: result.title, scenes: result.scenes }),
-      modelProvider: result.provider,
-      modelName: result.model,
-      tokensInput: result.usage.prompt_tokens,
-      tokensOutput: result.usage.completion_tokens,
-      costAmount: result.cost_amount ?? undefined,
-      durationMs: result.latency_ms,
-      status: 'success',
+    return this.allowance.withReservation({
+      tenantId: req.user.tenantId,
+      kind: 'script',
+      holdTokens: AI_HOLD_TOKENS.script,
+      idempotencyKey: normalizeIdempotencyKey(idempotencyKey),
+      run: async () => {
+        const result = await this.aiService.generateScript({ topic, type, platform });
+        return {
+          tokens: result.usage.total_tokens,
+          response: { title: result.title, scenes: result.scenes, aiLabel: AI_TEXT_LABEL },
+          generation: {
+            userId: req.user.sub,
+            generationType: 'script',
+            inputParams: { topic, type, platform },
+            outputContent: JSON.stringify({ title: result.title, scenes: result.scenes }),
+            modelProvider: result.provider,
+            modelName: result.model,
+            tokensInput: result.usage.prompt_tokens,
+            tokensOutput: result.usage.completion_tokens,
+            costAmount: result.cost_amount ?? undefined,
+            durationMs: result.latency_ms,
+            status: 'success',
+          },
+        };
+      },
     });
-    await this.allowance.chargeTokens(req.user.tenantId, result.usage.total_tokens, 'script');
-    // 显式标识（《人工智能生成合成内容标识办法》）：随结果返回，前端展示与导出时附上。
-    return { title: result.title, scenes: result.scenes, aiLabel: AI_TEXT_LABEL };
   }
 
   @Post('generate/titles')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'AI标题生成' })
-  async generateTitles(@Request() req: any, @Body() body: any) {
-    await this.allowance.assertAllowed(req.user.tenantId);
+  async generateTitles(@Request() req: any, @Body() body: any, @Headers('idempotency-key') idempotencyKey?: string) {
     const { topic, platform, count } = body;
-    const result = await this.aiService.generateTitlesWithUsage(topic, platform || 'xhs', count || 5);
-    await this.aiService.recordGeneration(req.user.tenantId, req.user.sub, {
-      generationType: 'titles', inputParams: { topic, platform, count },
-      outputContent: JSON.stringify(result.titles), tokensInput: result.usage.prompt_tokens,
-      tokensOutput: result.usage.completion_tokens, modelProvider: result.provider,
-      modelName: result.model, costAmount: result.cost_amount ?? undefined,
-      durationMs: result.latency_ms, status: 'success',
+    return this.allowance.withReservation({
+      tenantId: req.user.tenantId,
+      kind: 'titles',
+      holdTokens: AI_HOLD_TOKENS.titles,
+      idempotencyKey: normalizeIdempotencyKey(idempotencyKey),
+      run: async () => {
+        const result = await this.aiService.generateTitlesWithUsage(topic, platform || 'xhs', count || 5);
+        return {
+          tokens: result.usage.total_tokens,
+          response: { titles: result.titles },
+          generation: {
+            userId: req.user.sub,
+            generationType: 'titles',
+            inputParams: { topic, platform, count },
+            outputContent: JSON.stringify(result.titles),
+            tokensInput: result.usage.prompt_tokens,
+            tokensOutput: result.usage.completion_tokens,
+            modelProvider: result.provider,
+            modelName: result.model,
+            costAmount: result.cost_amount ?? undefined,
+            durationMs: result.latency_ms,
+            status: 'success',
+          },
+        };
+      },
     });
-    await this.allowance.chargeTokens(req.user.tenantId, result.usage.total_tokens, 'titles');
-
-    return { titles: result.titles };
   }
 
   @Post('analyze/viral')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: '爆款内容分析' })
-  async analyzeViral(@Request() req: any, @Body() body: any) {
-    await this.allowance.assertAllowed(req.user.tenantId);
+  async analyzeViral(@Request() req: any, @Body() body: any, @Headers('idempotency-key') idempotencyKey?: string) {
     const { content } = body;
-    const result = await this.aiService.analyzeViralContentWithUsage(content);
-    await this.aiService.recordGeneration(req.user.tenantId, req.user.sub, {
-      generationType: 'viral_analysis', inputParams: { content }, outputContent: JSON.stringify(result.analysis),
-      modelProvider: result.provider, modelName: result.model, tokensInput: result.usage.prompt_tokens,
-      tokensOutput: result.usage.completion_tokens, costAmount: result.cost_amount ?? undefined,
-      durationMs: result.latency_ms, status: 'success',
+    return this.allowance.withReservation({
+      tenantId: req.user.tenantId,
+      kind: 'viral',
+      holdTokens: AI_HOLD_TOKENS.viral,
+      idempotencyKey: normalizeIdempotencyKey(idempotencyKey),
+      run: async () => {
+        const result = await this.aiService.analyzeViralContentWithUsage(content);
+        return {
+          tokens: result.usage.total_tokens,
+          response: { analysis: result.analysis },
+          generation: {
+            userId: req.user.sub,
+            generationType: 'viral_analysis',
+            inputParams: { content },
+            outputContent: JSON.stringify(result.analysis),
+            modelProvider: result.provider,
+            modelName: result.model,
+            tokensInput: result.usage.prompt_tokens,
+            tokensOutput: result.usage.completion_tokens,
+            costAmount: result.cost_amount ?? undefined,
+            durationMs: result.latency_ms,
+            status: 'success',
+          },
+        };
+      },
     });
-    await this.allowance.chargeTokens(req.user.tenantId, result.usage.total_tokens, 'viral_analysis');
-    return { analysis: result.analysis };
   }
 
   @Post('generate/image')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'AI图片生成' })
-  async generateImage(@Request() req: any, @Body() body: any) {
-    await this.allowance.assertAllowed(req.user.tenantId, IMAGE_TOKEN_EQUIVALENT);
+  async generateImage(@Request() req: any, @Body() body: any, @Headers('idempotency-key') idempotencyKey?: string) {
     const { prompt, size, style, seed } = body;
-
-    const result = await this.aiService.generateImage({
-      prompt,
-      size,
-      style,
-      seed,
+    return this.allowance.withReservation({
+      tenantId: req.user.tenantId,
+      kind: 'image',
+      holdTokens: AI_HOLD_TOKENS.image,
+      idempotencyKey: normalizeIdempotencyKey(idempotencyKey),
+      run: async () => {
+        const result = await this.aiService.generateImage({ prompt, size, style, seed });
+        return {
+          tokens: AI_HOLD_TOKENS.image,
+          images: 1,
+          attachContentId: 'image' as const,
+          response: { ...result, aiGenerated: true, aiLabel: AI_TEXT_LABEL },
+          generation: {
+            userId: req.user.sub,
+            generationType: 'image',
+            inputParams: { prompt, size, style, seed },
+            outputContent: result.url,
+            modelProvider: result.provider,
+            modelName: result.model,
+            costAmount: result.cost_amount ?? undefined,
+            status: 'success',
+          },
+        };
+      },
     });
-
-    // 记录使用（生成记录编号作为隐式标识里的内容编号）
-    const record = await this.aiService.recordGeneration(req.user.tenantId, req.user.sub, {
-      generationType: 'image',
-      inputParams: { prompt, size, style, seed },
-      outputContent: result.url,
-      modelProvider: result.provider,
-      modelName: result.model,
-      costAmount: result.cost_amount ?? undefined,
-      status: 'success',
-    });
-    await this.allowance.chargeImage(req.user.tenantId);
-
-    // 显式标识 + 隐式标识元数据随结果返回：前端展示「AI 生成」，导出图片时写入文件元数据。
-    return {
-      ...result,
-      aiGenerated: true,
-      aiLabel: AI_TEXT_LABEL,
-      aiMetadata: buildAiMediaMetadata({ mediaType: 'image', model: result.model, contentId: (record as any)?.id }),
-    };
   }
 }

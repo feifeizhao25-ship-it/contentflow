@@ -122,6 +122,13 @@ describe('UsageService', () => {
     await expect(service.checkQuota('tenant_1', ResourceType.TOKENS, 2500)).resolves.toBe(allowed);
   });
 
+  it('counts reserved tokens against the monthly allowance', async () => {
+    prisma.tenant.findUnique.mockResolvedValue({ limits: { max_ai_tokens_monthly: 50000 } });
+    prisma.usageMeter.findFirst.mockResolvedValue({ ...meter, ai_tokens: 1000, ai_tokens_reserved: 48000 });
+    await expect(service.checkQuota('tenant_1', ResourceType.TOKENS, 1000)).resolves.toBe(true);
+    await expect(service.checkQuota('tenant_1', ResourceType.TOKENS, 1001)).resolves.toBe(false);
+  });
+
   it('allows fixed image cost for an unlimited plan', async () => {
     prisma.tenant.findUnique.mockResolvedValue({ limits: { max_ai_tokens_monthly: -1 } });
     await expect(service.checkQuota('tenant_1', ResourceType.TOKENS, 2500)).resolves.toBe(true);

@@ -187,7 +187,13 @@ describe('storyboard script', () => {
       generateScript: async () => ({ title: 't', scenes: [{ visual: 'v', subtitle: 's', time: 5 }], provider: 'deepseek', model: 'deepseek-chat', usage: { prompt_tokens: 1, completion_tokens: 1, total_tokens: 2 }, latency_ms: 1, cost_amount: null }),
       recordGeneration: async (...args: unknown[]) => { recorded.push(args); },
     };
-    const allowance = { assertAllowed: async () => undefined, chargeTokens: async () => undefined, chargeImage: async () => undefined };
+    const allowance = {
+      withReservation: async (opts: { run: () => Promise<{ generation: unknown; response: unknown }> }) => {
+        const produced = await opts.run();
+        recorded.push(produced.generation);
+        return produced.response;
+      },
+    };
     const controller = new AIController(fake as never, allowance as never);
     const body = await controller.generateScript({ user: { tenantId: 't-1', sub: 'u-1' } }, { topic: '咖啡' });
     expect(body).toEqual({ title: 't', scenes: [{ visual: 'v', subtitle: 's', time: 5 }], aiLabel: AI_TEXT_LABEL });
