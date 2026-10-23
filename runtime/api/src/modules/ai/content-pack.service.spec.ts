@@ -137,6 +137,7 @@ describe('ContentPackService token accounting', () => {
     expect(ai.generateText).toHaveBeenCalledWith(expect.objectContaining({ prompt: expect.stringContaining('[1] 官方规则') }));
     expect(result.data.sources).toEqual([source]);
     expect(result.data.sources_status).toBe('verified');
+    expect(result.data.platform_variants.map((item: { platform: string }) => item.platform)).toEqual(['douyin']);
   });
 
   it('fails closed when the provider omits usable token accounting', async () => {

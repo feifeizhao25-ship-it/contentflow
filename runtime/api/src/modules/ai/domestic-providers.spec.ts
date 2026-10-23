@@ -1,4 +1,4 @@
-import { AIService, AI_NOT_CONFIGURED_MESSAGE, AI_UNAVAILABLE_MESSAGE, DOMESTIC_CHAT_ENDPOINTS, DASHSCOPE_IMAGE_SYNTHESIS, MAX_SCRIPT_SCENES } from './ai.service';
+import { AIService, AI_NOT_CONFIGURED_MESSAGE, AI_UNAVAILABLE_MESSAGE, AI_IMAGE_UNAVAILABLE_MESSAGE, DOMESTIC_CHAT_ENDPOINTS, DOMESTIC_IMAGE_REQUEST_TIMEOUT_MS, DASHSCOPE_IMAGE_SYNTHESIS, MAX_SCRIPT_SCENES } from './ai.service';
 import { AIController } from './ai.controller';
 import { AI_TEXT_LABEL } from '../../common/ai-content-label';
 
@@ -125,6 +125,8 @@ describe('domestic image generation', () => {
     expect(result.url).toContain('aliyuncs.com');
     const calls = (global.fetch as jest.Mock).mock.calls;
     expect(calls[0][0]).toBe(DASHSCOPE_IMAGE_SYNTHESIS);
+    expect(calls[0][1].signal).toBeInstanceOf(AbortSignal);
+    expect(DOMESTIC_IMAGE_REQUEST_TIMEOUT_MS).toBe(30000);
     expect(calls[0][1].headers['X-DashScope-Async']).toBe('enable');
     expect(JSON.parse(calls[0][1].body).parameters.size).toBe('720*1280');
     for (const [url] of calls) expect(String(url)).not.toContain('fal.');
@@ -153,6 +155,15 @@ describe('domestic image generation', () => {
     expect(error.getStatus()).toBe(400);
     expect(error.message).toContain('没有通过内容安全检查');
     expect(logged.mock.calls.flat().join(' ')).toContain('DataInspectionFailed');
+  });
+
+  it('单次图片请求超时走中文不可用，而不是一直等', async () => {
+    global.fetch = jest.fn().mockRejectedValue(Object.assign(new Error('The operation was aborted'), { name: 'TimeoutError' })) as jest.Mock;
+    const svc = service({ MARKET_REGION: 'cn', QWEN_API_KEY: 'qk', DASHSCOPE_IMAGE_POLL_INTERVAL_MS: 0 });
+    jest.spyOn((svc as any).logger, 'error').mockImplementation(() => undefined);
+    const error = await svc.generateImage({ prompt: 'x' }).catch((e) => e);
+    expect(error.getStatus()).toBe(503);
+    expect(error.message).toBe(AI_IMAGE_UNAVAILABLE_MESSAGE);
   });
 });
 

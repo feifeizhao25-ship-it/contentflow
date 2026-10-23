@@ -1,4 +1,4 @@
-export const DOMESTIC_RULESET_VERSION = 'cn-content-2026.10.06';
+export const DOMESTIC_RULESET_VERSION = 'cn-content-2026.10.16';
 
 export type DomesticGateId =
   | 'illegal_content'
@@ -155,6 +155,30 @@ const RULES: readonly GateRule[] = [
   },
 ] as const;
 
+// 《互联网广告管理办法》（市场监管总局令第72号）第九条第三款：知识介绍、体验分享、消费测评等形式
+// 推销商品或服务并附加购物链接等购买方式的，应当显著标明“广告”。这是“缺少标注”类检查，不是禁用词。
+const AD_DISCLOSURE_FORMS = ['种草', '测评', '评测', '好物推荐', '好物分享', '体验分享', '开箱', '安利'] as const;
+const PURCHASE_SIGNALS = [/https?:\/\//i, /购物链接|购买链接|下单链接|商品链接|小黄车|橱窗|点击购买|戳链接|链接在评论区|淘口令|优惠券/,
+  /taobao|tmall|jd\.com|pinduoduo|yangkeduo|e\.tb\.cn|u\.jd\.com/i] as const;
+
+export function checkAdDisclosure(content: string): DomesticComplianceHit | null {
+  const text = String(content || '').normalize('NFKC');
+  const forms = AD_DISCLOSURE_FORMS.filter((form) => text.includes(form));
+  if (!forms.length) return null;
+  if (!PURCHASE_SIGNALS.some((re) => re.test(text))) return null;
+  if (/广告/.test(text)) return null;
+  return {
+    gate: 'advertising_law',
+    ruleId: 'CN-AD-NET-ART9-3',
+    source: '《互联网广告管理办法》（国家市场监督管理总局令第72号）第九条第三款',
+    sourceUrl: 'https://www.gov.cn/zhengce/202305/content_6858084.htm',
+    sourceRetrievedAt: '2026-10-16',
+    reason: '以种草/测评/体验分享形式推销并附购买方式，但未显著标明“广告”',
+    matchedTerms: [...forms],
+    humanOverrideAllowed: true,
+  } as DomesticComplianceHit;
+}
+
 export function evaluateDomesticContent(content: string): DomesticComplianceResult {
   const normalized = String(content || '').normalize('NFKC').toLowerCase();
   const hits = RULES.flatMap((rule) => {
@@ -174,8 +198,19 @@ export function evaluateDomesticContent(content: string): DomesticComplianceResu
       humanOverrideAllowed: rule.humanOverrideAllowed,
     }] : [];
   });
+  const disclosure = checkAdDisclosure(content);
+  if (disclosure) {
+    const order = (gate: DomesticGateId) => DOMESTIC_GATE_ORDER_INTERNAL.indexOf(gate);
+    const at = hits.findIndex((hit) => order(hit.gate) > order('advertising_law'));
+    hits.splice(at === -1 ? hits.length : at, 0, disclosure as (typeof hits)[number]);
+  }
   return { passed: hits.length === 0, ruleSetVersion: DOMESTIC_RULESET_VERSION, hits };
 }
+
+const DOMESTIC_GATE_ORDER_INTERNAL: readonly DomesticGateId[] = [
+  'illegal_content', 'advertising_law', 'regulated_industry',
+  'minor_protection', 'misinformation', 'intellectual_property',
+];
 
 export const DOMESTIC_GATE_ORDER: readonly DomesticGateId[] = [
   'illegal_content', 'advertising_law', 'regulated_industry',

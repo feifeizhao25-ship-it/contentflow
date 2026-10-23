@@ -18,6 +18,16 @@ export type PaymentMethod = 'wechat' | 'alipay' | 'bank_transfer';
 
 const PAYABLE_ORDER_STATES: string[] = ['pending'];
 
+const ORDER_STATUS_TEXT: Record<string, string> = {
+  pending: '待支付', paid: '已支付', refund_pending: '退款处理中', refunded: '已退款',
+  closed: '已关闭', cancelled: '已取消', canceled: '已取消', failed: '支付失败', expired: '已过期',
+};
+
+/** 订单状态的中文说明。不把 pending、paid 这类内部码直接展示给国内用户。 */
+export function orderStatusText(status: string): string {
+  return ORDER_STATUS_TEXT[status] ?? '状态异常';
+}
+
 @Injectable()
 export class BillingService {
   constructor(private readonly prisma: PrismaService) {}
@@ -137,7 +147,7 @@ export class BillingService {
       where: { tenant_id: tenantId, order_no: orderNo },
     });
     if (!order) throw new BadRequestException('订单不存在');
-    if (order.status !== 'paid') throw new ConflictException(`订单状态 ${order.status} 不允许申请退款`);
+    if (order.status !== 'paid') throw new ConflictException(`订单当前${orderStatusText(order.status)}，不能申请退款`);
     const changed = await this.prisma.paymentOrder.updateMany({
       where: { order_no: orderNo, tenant_id: tenantId, status: 'paid' },
       data: { status: 'refund_pending' },
@@ -151,7 +161,7 @@ export class BillingService {
       where: { tenant_id: tenantId, order_no: orderNo },
     });
     if (!order) throw new BadRequestException('订单不存在');
-    if (order.status !== 'pending') throw new ConflictException(`订单状态 ${order.status} 不允许关闭`);
+    if (order.status !== 'pending') throw new ConflictException(`订单当前${orderStatusText(order.status)}，不能关闭`);
     if (!order.payment_method) throw new ConflictException('订单支付渠道缺失，请人工核对');
     if (order.payment_method !== 'bank_transfer') {
       try {
@@ -232,7 +242,7 @@ export class BillingService {
         && Number(order.amount) === input.paidAmount && order.currency === 'CNY') {
         return { duplicate: true, event: null };
       }
-      if (!PAYABLE_ORDER_STATES.includes(order.status)) throw new ConflictException(`订单状态 ${order.status} 不允许支付`);
+      if (!PAYABLE_ORDER_STATES.includes(order.status)) throw new ConflictException(`订单当前${orderStatusText(order.status)}，不能支付`);
       if (Number(order.amount) !== input.paidAmount || order.currency !== 'CNY') {
         throw new BadRequestException('支付金额或币种与订单不一致');
       }
@@ -310,7 +320,7 @@ export class BillingService {
         return order;
       }
       if (order.status !== 'refund_pending') {
-        throw new ConflictException(`订单状态 ${order.status} 不允许完成退款`);
+        throw new ConflictException(`订单当前${orderStatusText(order.status)}，不能完成退款`);
       }
       if (!order.subscription_id) {
         throw new ConflictException('退款订单未关联订阅，请人工核对');

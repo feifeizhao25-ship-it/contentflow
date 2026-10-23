@@ -6,6 +6,7 @@ import { ComplianceService } from './compliance.service';
 import { GenerateContentPackDto } from './dto/generate-content-pack.dto';
 import { labelAiGeneratedText, buildAiMediaMetadata } from '../../common/ai-content-label';
 import { RagPolicyService } from './rag-policy.service';
+import { adaptForPlatforms } from './platform-adaptation';
 
 @Injectable()
 export class ContentPackService {
@@ -101,6 +102,7 @@ export class ContentPackService {
                 data: {
                     titles,
                     script,
+                    platform_variants: adaptForPlatforms(script, dto.platforms || [], dto.topic),
                     sources: policySources.map(source => ({ id: source.id, source_url: source.source_url, source_name: source.source_name, published_at: source.published_at, retrieved_at: source.retrieved_at, jurisdiction: source.jurisdiction, source_tier: source.source_tier })),
                     sources_status: policySources.length ? 'verified' : freshness?.needsReview ? 'review_required' : 'none',
                     sources_note: policySources.length

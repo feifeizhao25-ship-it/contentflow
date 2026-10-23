@@ -1,0 +1,2 @@
+CREATE TABLE IF NOT EXISTS "WebhookSubscription" ("id" TEXT NOT NULL PRIMARY KEY, "tenant_id" TEXT NOT NULL REFERENCES "Tenant"("id") ON DELETE CASCADE, "url" TEXT NOT NULL, "events" JSONB NOT NULL, "secret_cipher" TEXT NOT NULL, "status" TEXT NOT NULL DEFAULT 'active', "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP, "updated_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP);
+CREATE INDEX IF NOT EXISTS "WebhookSubscription_tenant_id_idx" ON "WebhookSubscription"("tenant_id");

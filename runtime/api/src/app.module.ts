@@ -111,6 +111,10 @@ export function validateProductionConfig(config: Record<string, unknown>) {
   if (!['cn', 'global'].includes(String(config.MARKET_REGION))) {
     throw new Error('MARKET_REGION must be either cn or global');
   }
+  const webhookKey = String(config.WEBHOOK_ENCRYPTION_KEY ?? '').trim();
+  if (webhookKey && !/^[0-9a-fA-F]{64}$/.test(webhookKey)) {
+    throw new Error('WEBHOOK_ENCRYPTION_KEY must be 64 hex characters');
+  }
   const origins = String(config.CORS_ORIGIN).split(',').map((value) => value.trim());
   if (origins.some((origin) => !origin.startsWith('https://') || origin.includes('*'))) {
     throw new Error('CORS_ORIGIN must contain explicit HTTPS origins without wildcards');

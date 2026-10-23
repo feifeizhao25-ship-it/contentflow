@@ -1,7 +1,7 @@
 /**
- * 人工确认发布（小红书 / 视频号 / 公众号）的前端辅助。
+ * 人工确认发布（全部平台，批3起含抖音/B站）的前端辅助。
  *
- * 这三个平台不做自动发布：用户「复制文案」「下载带 AI 标识的封面」后自己到平台发出，
+ * 这些平台目前都不做官方自动发布：用户「复制文案」「下载带 AI 标识的封面」后自己到平台发出，
  * 再点「我已手动发布」，可回填作品链接。只保存链接，不去平台抓任何数据。
  */
 import { AI_TEXT_LABEL, labelAiGeneratedText } from './ai-content-label';
@@ -11,12 +11,15 @@ export const MANUAL_PLATFORMS = [
     { id: 'xhs', name: '小红书', icon: '📕' },
     { id: 'weixin', name: '视频号', icon: '💬' },
     { id: 'wechat_mp', name: '公众号', icon: '📰' },
+    { id: 'douyin', name: '抖音（手动发布）', icon: '🎵' },
+    { id: 'bilibili', name: 'B站（手动发布）', icon: '📺' },
 ] as const;
 
-export const AUTO_PLATFORMS = ['douyin', 'bilibili'] as const;
+// 批3：目前没有任何平台完成官方自动发布授权，自动平台为空；全部走人工确认发布，不冒充自动化。
+export const AUTO_PLATFORMS = [] as const;
 
 export const PUBLISH_CHANNEL_NOTICE =
-    '抖音、B 站需完成开放平台授权后自动发布；小红书、视频号、公众号暂不支持自动发布，可一键复制文案并下载带 AI 标识的封面后手动发布';
+    '目前所有平台均为人工确认发布（非自动发布）：小红书、视频号、公众号、抖音、B站都需你复制文案、下载带 AI 标识的封面后到平台手动发出，再回填作品链接确认。各平台官方自动发布授权完成并通过审核后，才会另行开通并明确标注';
 
 export function isManualPlatform(id: string): boolean {
     return MANUAL_PLATFORMS.some((p) => p.id === id);

@@ -120,6 +120,8 @@ services:
       # 发布信息类服务要求实名：打开后，未完成手机号验证与实名认证的用户不能创建发布任务。
       # 实名认证服务（公安 / 运营商二要素）尚未接入，打开后在接入之前没有人能发布。
       REAL_NAME_REQUIRED_FOR_PUBLISH: ${CN_REAL_NAME_REQUIRED_FOR_PUBLISH:-false}
+      # Business Webhook 密钥加密。留空时服务可启动，创建订阅会明确拒绝，不会保存明文密钥。
+      WEBHOOK_ENCRYPTION_KEY: ${CN_WEBHOOK_ENCRYPTION_KEY:-}
       ENABLE_API_DOCS: "false"
     depends_on:
       postgres-cn: {condition: service_healthy}

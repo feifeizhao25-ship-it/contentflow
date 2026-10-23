@@ -114,6 +114,9 @@ function aiUnavailable(message: string, code: string) {
   return new ServiceUnavailableException({ message, error: code });
 }
 
+/** 国内文生图每次 HTTP 请求的上限。轮询次数另有 DASHSCOPE_IMAGE_POLL_ATTEMPTS。 */
+export const DOMESTIC_IMAGE_REQUEST_TIMEOUT_MS = 30_000;
+
 export const DOMESTIC_CHAT_ENDPOINTS = {
   qwen: 'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions',
   deepseek: 'https://api.deepseek.com/chat/completions',
@@ -661,6 +664,7 @@ ${content}
     const size = sizes[params.size || '1024x1024'] ?? '1024*1024';
     const model = this.configService.get('DASHSCOPE_IMAGE_MODEL', 'wanx2.1-t2i-turbo');
     const submit = await fetch(DASHSCOPE_IMAGE_SYNTHESIS, {
+      signal: AbortSignal.timeout(DOMESTIC_IMAGE_REQUEST_TIMEOUT_MS),
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -682,6 +686,7 @@ ${content}
     for (let i = 0; i < attempts; i += 1) {
       if (intervalMs) await new Promise((resolve) => setTimeout(resolve, intervalMs));
       const res = await fetch(`${DASHSCOPE_TASKS}${encodeURIComponent(taskId)}`, {
+        signal: AbortSignal.timeout(DOMESTIC_IMAGE_REQUEST_TIMEOUT_MS),
         headers: { Authorization: `Bearer ${this.qwenApiKey}` },
       });
       if (!res.ok) continue;

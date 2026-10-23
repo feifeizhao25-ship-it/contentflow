@@ -83,6 +83,7 @@ export const TENANT_OWNED_TABLES: ReadonlyArray<string> = [
   'personas',
   'TeamTask',
   'ApiKey',
+  'WebhookSubscription',
 ];
 
 /**
@@ -146,6 +147,7 @@ export const TABLE_CLASSIFICATION: Readonly<Record<string, { kind: 'user' | 'ten
   personas: { kind: 'tenant' },
   TeamTask: { kind: 'tenant' },
   ApiKey: { kind: 'tenant' },
+  WebhookSubscription: { kind: 'tenant', note: '含 Webhook 签名密钥密文，随工作区删除' },
   AccountStatsHistory: { kind: 'cascade', note: 'PlatformAccount' },
   PlatformContent: { kind: 'cascade', note: 'Content' },
   PublishTask: { kind: 'cascade', note: 'Content' },

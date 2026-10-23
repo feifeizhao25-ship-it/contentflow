@@ -2,6 +2,7 @@ import {
   DOMESTIC_GATE_ORDER,
   DOMESTIC_RULESET_VERSION,
   evaluateDomesticContent,
+  checkAdDisclosure,
   AD_LAW_ART9_TERMS,
   AD_TERM_WHITELIST_CONTEXTS,
 } from './domestic-content-compliance';
@@ -68,5 +69,20 @@ describe('《广告法》第九条结构化词表', () => {
     expect(hit?.ruleId).toBe('CN-AD-RISK-001');
     expect(hit?.source).toContain('未对应具体法条');
     expect(hit?.source).not.toMatch(/第九条|第二十八条/);
+  });
+});
+
+
+describe('互联网广告管理办法第九条：种草/测评 + 购物链接须标明“广告”', () => {
+  it('flags review content with a purchase link but no 广告 label', () => {
+    const r = evaluateDomesticContent('真实测评这款面霜，链接在评论区，https://u.jd.com/abc');
+    expect(r.passed).toBe(false);
+    expect(r.hits.map((h) => h.ruleId)).toContain('CN-AD-NET-ART9-3');
+  });
+  it('passes once 广告 is clearly marked', () => {
+    expect(checkAdDisclosure('【广告】种草一款面霜，点击购买 https://u.jd.com/abc')).toBeNull();
+  });
+  it('does not flag plain reviews without any purchase method', () => {
+    expect(checkAdDisclosure('这次测评了三款面霜，记录真实使用感受')).toBeNull();
   });
 });

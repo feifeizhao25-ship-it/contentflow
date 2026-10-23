@@ -47,6 +47,7 @@ model Tenant {
   publish_tasks     PublishTask[]
   subscriptions     Subscription?
   api_keys          ApiKey[]
+  webhook_subscriptions WebhookSubscription[]
   activity_logs     ActivityLog[]
   orders            PaymentOrder[]
 
@@ -1190,4 +1191,19 @@ model ApiKey {
 
   @@index([tenant_id])
   @@index([key_hash])
+}
+
+// Webhook 订阅：secret_cipher 为 AES-256-GCM 密文，明文密钥只在创建时返回一次
+model WebhookSubscription {
+  id            String   @id @default(uuid())
+  tenant_id     String
+  tenant        Tenant   @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  url           String
+  events        Json
+  secret_cipher String
+  status        String   @default("active")
+  created_at    DateTime @default(now())
+  updated_at    DateTime @updatedAt
+
+  @@index([tenant_id])
 }

@@ -54,6 +54,12 @@ describe('production configuration', () => {
     expect(() => validateProductionConfig({ ...valid, CORS_ORIGIN: 'https://*.example.com' })).toThrow('wildcards');
   });
 
+  it('rejects a malformed webhook encryption key and allows it to be unset', () => {
+    expect(validateProductionConfig(valid).WEBHOOK_ENCRYPTION_KEY).toBeUndefined();
+    expect(() => validateProductionConfig({ ...valid, WEBHOOK_ENCRYPTION_KEY: 'short' })).toThrow('WEBHOOK_ENCRYPTION_KEY');
+    expect(validateProductionConfig({ ...valid, WEBHOOK_ENCRYPTION_KEY: 'a'.repeat(64) }).WEBHOOK_ENCRYPTION_KEY).toBe('a'.repeat(64));
+  });
+
   it('rejects an unencrypted or missing publishing dispatcher', () => {
     expect(() => validateProductionConfig({ ...valid, PUBLISH_DISPATCH_WEBHOOK_URL: 'http://automation.local/publish' })).toThrow('HTTPS');
     expect(() => validateProductionConfig({ ...valid, PUBLISH_DISPATCH_WEBHOOK_SECRET: '' })).toThrow('PUBLISH_DISPATCH_WEBHOOK_SECRET');

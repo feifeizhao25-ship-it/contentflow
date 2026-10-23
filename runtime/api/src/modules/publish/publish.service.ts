@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, BadRequestException, ForbiddenException, HttpException, InternalServerErrorException, Logger } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, ForbiddenException, HttpException, InternalServerErrorException, Logger, Optional } from '@nestjs/common';
 import { PrismaService } from '../../database/prisma.service';
 import { PublishQueueService } from '../../queue/publish-queue.service';
 import { TenantService } from '../tenant/tenant.service';
@@ -9,6 +9,8 @@ import { isRealNameRequiredForPublish } from '../auth/real-name/real-name.verifi
 import { labelAiGeneratedText, AI_TEXT_LABEL, aigcProviderCode } from '../../common/ai-content-label';
 import { MANUAL_DONE, MANUAL_PENDING, MANUAL_PLATFORMS, isManualPlatform, normalizeManualPostUrl } from './manual-publish';
 import { PUBLISH_LOG_MAX_ROWS, PublishTaskFilter, channelUnavailableReason, publishTaskWhere, publishTasksToCsv } from './publish-log';
+import { adaptBodyForPlatform } from '../ai/platform-adaptation';
+import { WebhookService } from '../developer/webhook.service';
 
 @Injectable()
 export class PublishService {
@@ -20,6 +22,7 @@ export class PublishService {
     private readonly tenantService: TenantService,
     private readonly adapterRegistry: AdapterRegistry,
     private readonly config: ConfigService,
+    @Optional() private readonly webhooks?: WebhookService,
   ) {}
 
   /**
@@ -178,7 +181,7 @@ export class PublishService {
     const platforms = [...new Set(data.platforms || [])];
     if (!platforms.length) throw new BadRequestException('请至少选择一个平台');
     const unsupported = platforms.filter((p) => !isManualPlatform(p));
-    if (unsupported.length) throw new BadRequestException('人工确认发布只支持小红书、视频号、公众号');
+    if (unsupported.length) throw new BadRequestException('人工确认发布支持小红书、视频号、公众号、抖音、B站（均为手动发布，非自动发布）');
     const scheduledAt = data.scheduledAt ? new Date(data.scheduledAt) : new Date();
     if (Number.isNaN(scheduledAt.getTime())) throw new BadRequestException('计划发布时间格式不正确');
     await this.assertRealNameIfRequired(userId);
@@ -191,10 +194,13 @@ export class PublishService {
     const tasks = [];
     for (const platform of platforms) {
       // 按平台留一份文案快照（AI 生成的内容必须带显式标识）
+      // 批2/批3：按平台改写后的正文快照（抖音/B站也是人工确认发布，不是自动发布）
+      const variant = adaptBodyForPlatform(body, platform, content.title || '');
+      const snapshot = aiGenerated ? labelAiGeneratedText(variant.body) : variant.body;
       const platformContent = await this.prisma.platformContent.upsert({
         where: { content_id_platform: { content_id: content.id, platform } },
-        create: { content_id: content.id, platform, title: content.title, body: aiGenerated ? labelAiGeneratedText(body) : body, cover_url: content.cover_url },
-        update: { title: content.title, body: aiGenerated ? labelAiGeneratedText(body) : body, cover_url: content.cover_url },
+        create: { content_id: content.id, platform, title: content.title, body: snapshot, cover_url: content.cover_url },
+        update: { title: content.title, body: snapshot, cover_url: content.cover_url },
       });
       tasks.push(await this.prisma.publishTask.create({
         data: {
@@ -257,10 +263,13 @@ export class PublishService {
     } catch (error) {
       throw new BadRequestException(error instanceof Error ? error.message : '作品链接格式不正确');
     }
-    return this.prisma.publishTask.update({
+    const updated = await this.prisma.publishTask.update({
       where: { id: taskId },
       data: { status: MANUAL_DONE, platform_post_url: url ?? task.platform_post_url ?? null, completed_at: task.completed_at ?? new Date() },
     });
+    // 批3 Webhook：人工确认完成也算 publish.task.success（manual:true 标明非自动发布）
+    void this.webhooks?.dispatch(tenantId, 'publish.task.success', { task_id: taskId, platform, post_url: url ?? null, manual: true });
+    return updated;
   }
 
   /**

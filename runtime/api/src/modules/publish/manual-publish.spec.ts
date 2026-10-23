@@ -70,9 +70,10 @@ describe('人工确认发布闭环', () => {
     await expect(service.confirmManualPublished(task.id, 'other')).rejects.toThrow('任务不存在');
   });
 
-  it('只支持小红书 / 视频号 / 公众号；未通过审核、额度用完都拒绝', async () => {
+  it('批3起支持小红书/视频号/公众号/抖音/B站人工确认（非自动）；未通过审核、额度用完都拒绝', async () => {
     const a = build();
-    await expect(a.service.createManualTasks('t', 'u', { contentId: 'c1', platforms: ['douyin'] })).rejects.toThrow('只支持小红书、视频号、公众号');
+    await expect(a.service.createManualTasks('t', 'u', { contentId: 'c1', platforms: ['zhihu'] })).rejects.toThrow('人工确认发布支持');
+    await expect(a.service.createManualTasks('t', 'u', { contentId: 'c1', platforms: ['douyin'] })).resolves.toHaveLength(1);
     const b = build({ status: 'draft' });
     await expect(b.service.createManualTasks('t', 'u', { contentId: 'c1', platforms: ['xhs'] })).rejects.toThrow('内容未通过审核');
     const c = build();
@@ -91,7 +92,9 @@ describe('人工确认发布闭环', () => {
     expect(() => normalizeManualPostUrl('wechat_mp', 'https://mp.weixin.qq.com.evil.cn/s/abc')).toThrow();
     expect(() => normalizeManualPostUrl('xhs', 'https://user:pw@www.xiaohongshu.com/a')).toThrow();
     expect(normalizeManualPostUrl('xhs', '   ')).toBeNull();
-    expect(Object.keys(MANUAL_PLATFORMS)).toEqual(['xhs', 'weixin', 'wechat_mp']);
+    expect(Object.keys(MANUAL_PLATFORMS)).toEqual(['douyin', 'bilibili', 'xhs', 'weixin', 'wechat_mp']);
+    expect(normalizeManualPostUrl('douyin', 'https://www.douyin.com/video/1')).toContain('douyin.com');
+    expect(() => normalizeManualPostUrl('douyin', 'https://www.bilibili.com/video/1')).toThrow();
   });
 });
 
