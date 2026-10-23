@@ -89,7 +89,7 @@ d('AccountErasureService × PostgreSQL', () => {
     await db.query(`INSERT INTO "Tenant" (id, name, slug, updated_at, plan) VALUES ($1, $2, $3, NOW(), 'pro')`, [tenant, `工作室-${tag}`, `slug-${tag}`]);
     await db.query(
       `INSERT INTO "User" (id, tenant_id, email, phone, password_hash, name, role, updated_at) VALUES ($1,$2,$3,$4,$5,$6,'owner',NOW())`,
-      [owner, tenant, `${tag}@example.com`, `1380000${tag.length}`, `hash-secret-${tag}`, `姓名-${tag}`],
+      [owner, tenant, `${tag}@example.com`, `138${tag}`, `hash-secret-${tag}`, `姓名-${tag}`],
     );
     const members: string[] = [];
     for (let i = 0; i < (opts.members ?? 0); i++) {
