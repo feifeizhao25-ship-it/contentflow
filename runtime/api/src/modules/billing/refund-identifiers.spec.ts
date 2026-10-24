@@ -25,7 +25,8 @@ describe('refund and payment references remain distinct', () => {
       },
     };
     const service = new BillingService({ $transaction: (callback: any) => callback(tx) } as any);
-    await expect(service.markRefunded('CF1', 'payment-1')).rejects.toThrow('不允许完成退款');
+    await expect(service.markRefunded('CF1', 'payment-1')).rejects.toThrow('不能完成退款');
+    await expect(service.markRefunded('CF1', 'payment-1')).rejects.toThrow('已退款');
     expect(tx.paymentOrder.update).not.toHaveBeenCalled();
   });
 });

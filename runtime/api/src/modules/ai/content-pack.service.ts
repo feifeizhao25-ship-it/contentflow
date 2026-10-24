@@ -1,11 +1,12 @@
 import { Injectable, Logger, InternalServerErrorException, HttpException, HttpStatus } from '@nestjs/common';
 import { AIService } from './ai.service';
-import { UsageService, ResourceType } from '../system/usage.service';
-import { AI_MONTHLY_QUOTA_MESSAGE } from './ai-allowance.service';
+import { UsageService, AiQuotaExceededError, AiRequestInProgressError } from '../system/usage.service';
+import { AI_HOLD_TOKENS } from './ai-holds';
 import { ComplianceService } from './compliance.service';
 import { GenerateContentPackDto } from './dto/generate-content-pack.dto';
 import { labelAiGeneratedText, buildAiMediaMetadata } from '../../common/ai-content-label';
 import { RagPolicyService } from './rag-policy.service';
+import { adaptForPlatforms } from './platform-adaptation';
 
 @Injectable()
 export class ContentPackService {
@@ -18,18 +19,18 @@ export class ContentPackService {
         private readonly ragPolicyService: RagPolicyService,
     ) { }
 
-    async generatePack(tenantId: string, dto: GenerateContentPackDto, userId?: string) {
-        // 1. 额度闸：与其它 AI 生成接口一致——先查每日成本预算，再查套餐月度 AI 令牌额度。
-        //    原来只查月度额度，且额度不足抛的是普通 Error（被全局过滤器换成「服务暂时出错」）。
+    async generatePack(tenantId: string, dto: GenerateContentPackDto, userId?: string, idempotencyKey?: string) {
+        // 额度闸：先查每日成本预算，再在数据库里占住本月令牌。占住之后才调用模型。
         await this.aiService.assertTenantDailyBudget(tenantId);
-        const hasQuota = await this.usageService.checkQuota(tenantId, ResourceType.TOKENS);
-        if (!hasQuota) {
-            throw new HttpException({ message: AI_MONTHLY_QUOTA_MESSAGE, error: 'AI_MONTHLY_QUOTA' }, HttpStatus.TOO_MANY_REQUESTS);
-        }
-
         this.logger.log(`Generating content pack for topic: ${dto.topic}`);
 
         try {
+            return await this.usageService.withAiHold({
+                tenantId,
+                holdTokens: AI_HOLD_TOKENS.content_pack,
+                kind: 'content_pack',
+                idempotencyKey: idempotencyKey || '',
+            }, async () => {
             // 2. Multi-step AI Pipeline
             // Step A: Headlines x 10
             const platformsStr = dto.platforms?.join(',') || '全渠道';
@@ -59,30 +60,54 @@ export class ContentPackService {
                 throw new Error('AI provider did not return valid body token usage');
             }
 
-            // 3. Compliance Scrubbing
-            script = await this.complianceService.scrubOutput(script);
+            // 3. 明确违规才拦住。资料过期时仍生成，检查结果带上“可能有风险”。
+            const conservative = Boolean(freshness?.needsReview);
+            script = await this.complianceService.scrubOutput(script, { conservative });
             if (typeof script !== 'string' || !script.trim()) {
                 throw new Error('Compliance processing returned empty body content');
             }
+            const compliance = await this.complianceService.checkContent?.(script, { conservative });
 
             // 4. AI 生成内容显式标识（导出文本必须可辨识为 AI 生成）
             script = labelAiGeneratedText(script);
 
-            // 5. Usage Tracking
-            const totalTokens =
-                titleTokens + scriptTokens;
+            const totalTokens = titleTokens + scriptTokens;
             if (!Number.isSafeInteger(totalTokens) || totalTokens <= 0) {
                 throw new Error('AI provider did not return valid token usage');
             }
-            await this.usageService.trackUsage(tenantId, ResourceType.TOKENS, totalTokens, {
-                topic: dto.topic,
-                type: 'content_pack'
-            });
-            // 计入每日成本预算：原来内容包从不写生成记录，日预算统计里看不到这部分花费。
-            let generationId: string | undefined;
-            if (userId) {
-                const cost = [titleResult.cost_amount, scriptData.cost_amount].reduce<number>((sum, value) => sum + (Number(value) || 0), 0);
-                const record: any = await this.aiService.recordGeneration(tenantId, userId, {
+            const cost = [titleResult.cost_amount, scriptData.cost_amount].reduce<number>((sum, value) => sum + (Number(value) || 0), 0);
+            const response = {
+                success: true,
+                data: {
+                    titles,
+                    script,
+                    platform_variants: adaptForPlatforms(script, dto.platforms || [], dto.topic),
+                    sources: policySources.map(source => ({ id: source.id, source_url: source.source_url, source_name: source.source_name, published_at: source.published_at, retrieved_at: source.retrieved_at, jurisdiction: source.jurisdiction, source_tier: source.source_tier })),
+                    sources_status: policySources.length ? 'verified' : freshness?.needsReview ? 'review_required' : 'none',
+                    sources_note: policySources.length
+                        ? '以上资料已加入本次模型上下文；仍需发布者按最新平台页面人工复核'
+                        : freshness?.needsReview
+                            ? `${freshness.notice ?? '合规规则资料需要人工复核'}${String(freshness.notice ?? '').includes('生成仍然可用') ? '' : '。AI 生成仍然可用，发布前请自行确认。'}`
+                            : '本次生成未引用有效的外部合规资料；仅供草稿使用，发布前请核对最新平台规则',
+                    compliance: compliance ? {
+                        level: compliance.level,
+                        disclaimer: compliance.disclaimer,
+                        mode: compliance.mode,
+                        hits: compliance.hits,
+                    } : undefined,
+                    metadata: {
+                        usage: { tokens: totalTokens },
+                        platforms: dto.platforms,
+                        ai_content: buildAiMediaMetadata({ mediaType: 'text' }),
+                    }
+                }
+            };
+            return {
+                tokens: totalTokens,
+                attachContentId: 'text' as const,
+                response,
+                generation: userId ? {
+                    userId,
                     generationType: 'content_pack',
                     inputParams: { topic: dto.topic, platforms: dto.platforms },
                     outputContent: script,
@@ -92,30 +117,16 @@ export class ContentPackService {
                     tokensOutput: (titleResult.usage.completion_tokens || 0) + (scriptData.usage.completion_tokens || 0),
                     costAmount: cost || undefined,
                     status: 'success',
-                });
-                generationId = record?.id;
-            }
-
-            return {
-                success: true,
-                data: {
-                    titles,
-                    script,
-                    sources: policySources.map(source => ({ id: source.id, source_url: source.source_url, source_name: source.source_name, published_at: source.published_at, retrieved_at: source.retrieved_at, jurisdiction: source.jurisdiction, source_tier: source.source_tier })),
-                    sources_status: policySources.length ? 'verified' : freshness?.needsReview ? 'review_required' : 'none',
-                    sources_note: policySources.length
-                        ? '以上资料已加入本次模型上下文；仍需发布者按最新平台页面人工复核'
-                        : freshness?.needsReview
-                            ? (freshness.notice ?? '合规规则资料需要人工复核')
-                            : '本次生成未引用有效的外部合规资料；仅供草稿使用，发布前请核对最新平台规则',
-                    metadata: {
-                        usage: { tokens: totalTokens },
-                        platforms: dto.platforms,
-                        ai_content: buildAiMediaMetadata({ mediaType: 'text', contentId: generationId }),
-                    }
-                }
+                } : null,
             };
+            });
         } catch (error) {
+            if (error instanceof AiQuotaExceededError) {
+                throw new HttpException({ message: error.message, error: 'AI_MONTHLY_QUOTA' }, HttpStatus.TOO_MANY_REQUESTS);
+            }
+            if (error instanceof AiRequestInProgressError) {
+                throw new HttpException({ message: error.message, error: 'AI_REQUEST_IN_PROGRESS' }, HttpStatus.CONFLICT);
+            }
             this.logger.error(`Failed to generate pack: ${error.message}`);
             // Keep actionable 4xx responses (especially compliance gate details)
             // intact. Only unexpected provider/runtime failures become a generic 500.

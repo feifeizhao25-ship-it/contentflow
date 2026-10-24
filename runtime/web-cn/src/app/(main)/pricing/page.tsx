@@ -193,7 +193,7 @@ function PricingContent() {
         const plan = displayedPlans.find((item) => item.id === id);
         if (!plan || plan.disabled) return;
         if (plan.custom) {
-            message.info('企业版按团队规模报价，请联系商务顾问');
+            message.info('Business 按团队规模报价，请联系商务顾问');
             return;
         }
         setLoadingPlan(id);
@@ -293,8 +293,8 @@ function PricingContent() {
                             <span className="text-xs font-bold text-zinc-600 dark:text-zinc-300 tracking-wider">会员方案</span>
                         </div>
                         <h1 className="text-5xl md:text-7xl font-black tracking-tight mb-8 text-zinc-900 dark:text-white">
-                            释放无限<br className="md:hidden" />
-                            <span className="bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600"> 创作潜能</span>
+                            选择适合你的<br className="md:hidden" />
+                            <span className="bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600">创作方案</span>
                         </h1>
                         <p className="text-xl text-zinc-500 dark:text-zinc-400 font-medium max-w-2xl mx-auto leading-relaxed">
                             根据账号数量、发布频次和团队规模，选择适合你的会员方案。<br className="hidden md:block" />
@@ -316,8 +316,12 @@ function PricingContent() {
                     </Radio.Group>
                 </div>
 
+                <div className="max-w-4xl mx-auto mb-8 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900" role="note">
+                    关于 Business：AI 令牌额度与平台账号上限尚未确认，页面不展示未确认的数字，也不构成承诺。确认前请以商务书面约定为准。其余套餐额度以付款时展示为准。
+                </div>
+
                 {/* Plans Grid */}
-                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 items-stretch mb-20">
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 items-stretch mb-4">
                     {plansFailed && (
                         <div className="col-span-full rounded-2xl border border-amber-200 bg-amber-50 p-5 flex flex-col sm:flex-row items-center justify-center gap-4 text-amber-800">
                             <span>价格信息加载失败，请稍后重试。当前展示经校验的会员权益注册表，支付前会再次确认实时价格。</span>
@@ -363,24 +367,16 @@ function PricingContent() {
                                 )}
                             </div>
 
-                            <ul className="space-y-4 mb-8 flex-1">
-                                {plan.features.map((f, i) => (
+                            <ul className="space-y-4 mb-4 flex-1">
+                                {plan.features.filter((f) => !isComingSoonFeature(typedRegistry, f)).map((f, i) => (
                                     <li key={i} className="flex items-start gap-3 text-sm font-medium text-zinc-600 dark:text-zinc-300">
                                         <CheckCircleFilled className={clsx("mt-0.5", plan.highlight ? "text-indigo-500" : "text-zinc-300")} />
-                                        <span>
-                                            {f}
-                                            {isComingSoonFeature(typedRegistry, f) && (
-                                                <span className="ml-2 rounded-full bg-amber-50 px-2 py-0.5 text-xs font-bold text-amber-700">即将上线</span>
-                                            )}
-                                        </span>
+                                        <span>{f}</span>
                                     </li>
                                 ))}
                             </ul>
-                            {plan.comingSoon.length > 0 && (
-                                <div className="mb-8 rounded-xl border border-dashed border-zinc-200 dark:border-zinc-700 p-3">
-                                    <p className="text-xs font-bold text-amber-700 mb-1">即将上线（暂未开通，不影响当前价格）</p>
-                                    <p className="text-xs leading-5 text-zinc-500">{plan.comingSoon.join('；')}</p>
-                                </div>
+                            {plan.features.some((f) => isComingSoonFeature(typedRegistry, f)) && (
+                                <p className="mb-8 text-xs leading-5 text-amber-700">路线图（即将上线）：{plan.features.filter((f) => isComingSoonFeature(typedRegistry, f)).join('、')}</p>
                             )}
 
                             <Button
@@ -403,6 +399,7 @@ function PricingContent() {
                     ))}
 
                 </div>
+                <p className="mb-20 text-xs text-zinc-500">每张卡底部一行「路线图（即将上线）」列出尚未开通的卖点，开通前不影响当前价格。</p>
 
                 <Modal
                     open={checkoutPlan !== null}

@@ -44,7 +44,11 @@ describe('合规资料人工复核流程（reviewed_by / reviewed_at）', () => 
     expect(await service().select(['douyin'])).toEqual([]);
     const report = await service().freshnessReport(now);
     expect(report.needsReview).toBe(true);
+    expect(report.mode).toBe('conservative');
+    expect(report.generationAvailable).toBe(true);
     expect(report.notice).toContain(COMPLIANCE_REVIEW_NOTICE);
+    expect(report.notice).toContain('生成仍然可用');
+    expect(report.userNotice).toContain('更保守');
     expect(report.sources[0]).toMatchObject({ state: 'stale', checkedBy: 'retrieval' });
   });
 
@@ -53,6 +57,8 @@ describe('合规资料人工复核流程（reviewed_by / reviewed_at）', () => 
     expect(await service().select(['douyin'])).toHaveLength(1);
     const report = await service().freshnessReport(now);
     expect(report.needsReview).toBe(false);
+    expect(report.mode).toBe('normal');
+    expect(report.userNotice).toBeNull();
     expect(report.sources[0]).toMatchObject({ state: 'current', checkedBy: 'review' });
   });
 

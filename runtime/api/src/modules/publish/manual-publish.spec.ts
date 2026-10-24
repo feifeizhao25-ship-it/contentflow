@@ -1,7 +1,10 @@
 import { BadRequestException } from '@nestjs/common';
+import { plainToInstance } from 'class-transformer';
+import { validate } from 'class-validator';
 import { PublishService } from './publish.service';
 import { AI_TEXT_LABEL } from '../../common/ai-content-label';
 import { MANUAL_PLATFORMS, normalizeManualPostUrl } from './manual-publish';
+import { CreateManualPublishDto } from './dto/create-manual-publish.dto';
 
 /**
  * 审计 P0-1：小红书 / 视频号 / 公众号没有可用的自动发布通道，也没有兜底流程。
@@ -70,9 +73,10 @@ describe('人工确认发布闭环', () => {
     await expect(service.confirmManualPublished(task.id, 'other')).rejects.toThrow('任务不存在');
   });
 
-  it('只支持小红书 / 视频号 / 公众号；未通过审核、额度用完都拒绝', async () => {
+  it('批3起支持小红书/视频号/公众号/抖音/B站人工确认（非自动）；未通过审核、额度用完都拒绝', async () => {
     const a = build();
-    await expect(a.service.createManualTasks('t', 'u', { contentId: 'c1', platforms: ['douyin'] })).rejects.toThrow('只支持小红书、视频号、公众号');
+    await expect(a.service.createManualTasks('t', 'u', { contentId: 'c1', platforms: ['zhihu'] })).rejects.toThrow('人工确认发布支持');
+    await expect(a.service.createManualTasks('t', 'u', { contentId: 'c1', platforms: ['douyin'] })).resolves.toHaveLength(1);
     const b = build({ status: 'draft' });
     await expect(b.service.createManualTasks('t', 'u', { contentId: 'c1', platforms: ['xhs'] })).rejects.toThrow('内容未通过审核');
     const c = build();
@@ -85,13 +89,40 @@ describe('人工确认发布闭环', () => {
     await expect(service.createManualTasks('t', 'u', { contentId: 'c1', platforms: ['xhs'] })).rejects.toBeInstanceOf(BadRequestException);
   });
 
+  it('可能有风险的表述在资料未过期时仍可生成人工发布任务', async () => {
+    const { service } = build({ body: '需要的话加微信领资料' });
+    await expect(service.createManualTasks('t', 'u', { contentId: 'c1', platforms: ['xhs'] })).resolves.toHaveLength(1);
+  });
+
+  it('资料过期时，可能有风险的内容必须确认后才能发布，明确违规不能靠确认放行', async () => {
+    const rag = { freshnessReport: jest.fn().mockResolvedValue({ needsReview: true }) };
+    const risky = build({ body: '需要的话加微信领资料' });
+    const strict = new PublishService(risky.prisma, {} as any, risky.tenant as any, { get: jest.fn() } as any, { get: jest.fn((_k: string, fallback: unknown) => fallback) } as any, undefined, rag as any);
+    await expect(strict.createManualTasks('t', 'u', { contentId: 'c1', platforms: ['douyin'] })).rejects.toMatchObject({
+      response: expect.objectContaining({ code: 'COMPLIANCE_RISK_ACK_REQUIRED' }),
+    });
+    await expect(strict.createManualTasks('t', 'u', { contentId: 'c1', platforms: ['douyin'], riskAcknowledged: true })).resolves.toHaveLength(1);
+    const blocked = build({ body: '这是国家级最佳' });
+    const stillBlocked = new PublishService(blocked.prisma, {} as any, blocked.tenant as any, { get: jest.fn() } as any, { get: jest.fn((_k: string, fallback: unknown) => fallback) } as any, undefined, rag as any);
+    await expect(stillBlocked.createManualTasks('t', 'u', { contentId: 'c1', platforms: ['bilibili'], riskAcknowledged: true })).rejects.toMatchObject({
+      response: expect.objectContaining({ code: 'CONTENT_COMPLIANCE_BLOCKED' }),
+    });
+  });
+
+  it('人工发布请求体接受抖音和 B 站', async () => {
+    const dto = plainToInstance(CreateManualPublishDto, { contentId: 'c1', platforms: ['douyin', 'bilibili'] });
+    expect(await validate(dto)).toEqual([]);
+  });
+
   it('链接校验：各平台只认自己的域名', () => {
     expect(normalizeManualPostUrl('wechat_mp', 'https://mp.weixin.qq.com/s/abc')).toBe('https://mp.weixin.qq.com/s/abc');
     expect(normalizeManualPostUrl('weixin', 'https://channels.weixin.qq.com/x')).toBe('https://channels.weixin.qq.com/x');
     expect(() => normalizeManualPostUrl('wechat_mp', 'https://mp.weixin.qq.com.evil.cn/s/abc')).toThrow();
     expect(() => normalizeManualPostUrl('xhs', 'https://user:pw@www.xiaohongshu.com/a')).toThrow();
     expect(normalizeManualPostUrl('xhs', '   ')).toBeNull();
-    expect(Object.keys(MANUAL_PLATFORMS)).toEqual(['xhs', 'weixin', 'wechat_mp']);
+    expect(Object.keys(MANUAL_PLATFORMS)).toEqual(['douyin', 'bilibili', 'xhs', 'weixin', 'wechat_mp']);
+    expect(normalizeManualPostUrl('douyin', 'https://www.douyin.com/video/1')).toContain('douyin.com');
+    expect(() => normalizeManualPostUrl('douyin', 'https://www.bilibili.com/video/1')).toThrow();
   });
 });
 

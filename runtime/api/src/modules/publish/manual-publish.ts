@@ -8,6 +8,16 @@
  * 只保存用户回填的链接，不去平台抓取任何数据；不做模拟登录、Cookie、逆向接口。
  */
 export const MANUAL_PLATFORMS: Record<string, { name: string; hosts: readonly string[]; guide: string }> = {
+  douyin: {
+    name: '抖音',
+    hosts: ['douyin.com'],
+    guide: '抖音开放平台自动发布尚未完成企业认证与授权（适配器未上线），请打开抖音创作服务平台，粘贴文案、上传视频/封面后手动发布，再回填作品链接；不要把这里当作自动发布。',
+  },
+  bilibili: {
+    name: '哔哩哔哩',
+    hosts: ['bilibili.com'],
+    guide: 'B站自动投稿尚未完成开放平台资质（适配器未上线），请打开B站创作中心，粘贴文案、上传视频/封面后手动投稿，再回填作品链接；不要把这里当作自动发布。',
+  },
   xhs: {
     name: '小红书',
     hosts: ['xiaohongshu.com', 'xhslink.com'],

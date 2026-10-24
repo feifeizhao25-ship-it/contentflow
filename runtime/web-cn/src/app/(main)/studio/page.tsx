@@ -280,7 +280,7 @@ function StudioContent() {
       if (contentStatus !== 'approved' && contentStatus !== 'published') {
         try {
           await apiClient.post(`/contents/${contentId}/submit`, {});
-          message.info({ content: '内容已保存并提交审核。审核通过后，在内容库点「发布」创建发布任务（小红书、视频号、公众号走人工确认发布）。', key: 'publish', duration: 6 });
+          message.info({ content: '内容已保存并提交审核。审核通过后，在内容库点「发布」创建发布任务（全部平台走人工确认发布，抖音/B站也是手动发布、不是自动发布）。', key: 'publish', duration: 6 });
           router.push('/contents?status=pending_review');
         } catch (e: any) {
           message.info({ content: `内容已保存为草稿，但提交审核没有成功（${safeErrorText(e, '请稍后重试')}），可在内容库点「提交审核」。`, key: 'publish', duration: 6 });
@@ -299,7 +299,7 @@ function StudioContent() {
         await apiClient.post('/publish/manual-tasks', { contentId, platforms: manualPlatforms, scheduledAt: scheduleAt });
       }
 
-      // 抖音 / B 站：只有完成开放平台授权、绑定了账号才能自动发布
+      // 抖音/B站已纳入人工确认发布（见 isManualPlatform）。此分支只剩未支持平台；官方自动发布未开通前不创建自动任务
       const autoPlatforms = selectedPlatforms.filter((p) => !isManualPlatform(p));
       let nextAccounts = accounts;
       if (autoPlatforms.length && !nextAccounts.length) {
@@ -322,7 +322,7 @@ function StudioContent() {
           scheduledAt: scheduleAt,
         });
       } else if (autoPlatforms.length) {
-        message.warning('抖音、B 站需要先完成开放平台授权，本次没有为它们创建任务');
+        message.warning('所选平台暂不支持发布，本次没有为它们创建任务');
       }
 
       trackEvent('publish_task_created', {
@@ -369,7 +369,7 @@ function StudioContent() {
           items={[
             { title: '主题与平台', description: '定义核心方向' },
             { title: '内容生成', description: 'AI 文案与封面' },
-            { title: '分发排期', description: '自动发布或人工确认发布' },
+            { title: '分发排期', description: '目前所有平台都是人工确认发布，复制文案后到平台手动发出' },
           ]}
         />
       </Card>

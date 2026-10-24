@@ -13,7 +13,8 @@ import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { AIController } from './ai.controller';
 import { AIService } from './ai.service';
 import { AiAllowanceService } from './ai-allowance.service';
-import { ResourceType, UsageService } from '../system/usage.service';
+import { AiQuotaExceededError, finalizeReservedResponse, UsageService } from '../system/usage.service';
+import { AI_HOLD_TOKENS } from './ai-holds';
 import { ContentPackService } from './content-pack.service';
 import {
   DOMESTIC_TEXT_MODEL_PRICES,
@@ -103,7 +104,11 @@ describe('AI 生成接口统一执行套餐 AI 额度', () => {
     analyzeViralContentWithUsage: jest.fn(),
     recordGeneration: jest.fn(),
   };
-  const usage = { checkQuota: jest.fn(), trackUsageBatch: jest.fn(), trackUsage: jest.fn() };
+  const usage = {
+    withAiHold: jest.fn(),
+    last: undefined as { tokens?: number; images?: number; generation?: { costAmount?: number; generationType?: string } } | undefined,
+    quotaOpen: true,
+  };
   const textResult = { usage: { prompt_tokens: 10, completion_tokens: 20, total_tokens: 30 }, provider: 'deepseek', model: 'deepseek-chat', latency_ms: 1, cost_amount: 0.0001 };
   const previousRegion = process.env.MARKET_REGION;
 
@@ -111,6 +116,14 @@ describe('AI 生成接口统一执行套餐 AI 额度', () => {
     jest.resetAllMocks();
     process.env.MARKET_REGION = 'cn';
     ai.assertTenantDailyBudget.mockResolvedValue(undefined);
+    usage.quotaOpen = true;
+    usage.last = undefined;
+    usage.withAiHold.mockImplementation(async (input: { kind?: string; holdTokens?: number }, run: () => Promise<{ tokens: number; images?: number; generation?: { costAmount?: number }; response: unknown; attachContentId?: 'text' | 'image' | null }>) => {
+      if (!usage.quotaOpen) throw new AiQuotaExceededError(input.kind === 'image' ? input.holdTokens : undefined);
+      const produced = await run();
+      usage.last = produced;
+      return finalizeReservedResponse(produced, 'gen-1');
+    });
     ai.generateArticle.mockResolvedValue({ content: '正文', visualPrompts: [], ...textResult });
     ai.generateTitlesWithUsage.mockResolvedValue({ titles: ['标题一'], ...textResult });
     ai.generateScript.mockResolvedValue({ title: 't', scenes: [{ visual: 'v', subtitle: 's', time: 5 }], ...textResult });
@@ -146,22 +159,19 @@ describe('AI 生成接口统一执行套餐 AI 额度', () => {
   ];
 
   it.each(endpoints)('%s：套餐月度 AI 额度用完 → 中文 429，且不调用模型', async (url, body, method) => {
-    usage.checkQuota.mockResolvedValue(false);
+    usage.quotaOpen = false;
     const res = await request(app.getHttpServer()).post(url).send(body);
     expect(res.status).toBe(429);
     expect(res.body.error.message).toContain(method === 'generateImage' ? '本月 AI 剩余额度不足' : '本月 AI 额度已用完');
-    if (method === 'generateImage') {
-      expect(usage.checkQuota).toHaveBeenCalledWith('t', ResourceType.TOKENS, IMAGE_TOKEN_EQUIVALENT);
-    } else {
-      expect(usage.checkQuota).toHaveBeenCalledWith('t', ResourceType.TOKENS);
-    }
+    const kinds: Record<string, keyof typeof AI_HOLD_TOKENS> = { generateArticle: 'article', generateTitlesWithUsage: 'titles', generateScript: 'script', generateImage: 'image', analyzeViralContentWithUsage: 'viral' };
+    const kind = kinds[String(method)];
+    expect(usage.withAiHold).toHaveBeenCalledWith(expect.objectContaining({ tenantId: 't', kind, holdTokens: AI_HOLD_TOKENS[kind] }), expect.any(Function));
     expect(ai[method]).not.toHaveBeenCalled();
   });
 
   it.each(endpoints)('%s：今日预算用完 → 中文 429「今日 AI 用量已达上限」', async (url, body, method) => {
     const real = service({ AI_TENANT_DAILY_BUDGET_USD: 1 }, { aIGeneration: { aggregate: async () => ({ _sum: { cost_amount: 5 } }) } });
     ai.assertTenantDailyBudget.mockImplementation((id: string) => real.assertTenantDailyBudget(id));
-    usage.checkQuota.mockResolvedValue(true);
     const res = await request(app.getHttpServer()).post(url).send(body);
     expect(res.status).toBe(429);
     expect(res.body.error.message).toContain('今日 AI 用量已达上限');
@@ -169,27 +179,27 @@ describe('AI 生成接口统一执行套餐 AI 额度', () => {
   });
 
   it('文本生成成功后按实际 token 数计入当月 AI 额度，并把折算金额写进生成记录', async () => {
-    usage.checkQuota.mockResolvedValue(true);
     const res = await request(app.getHttpServer()).post('/api/v1/ai/generate/titles').send({ topic: '主题' });
     expect(res.status).toBe(201);
-    expect(usage.trackUsage).toHaveBeenCalledWith('t', ResourceType.TOKENS, 30, expect.objectContaining({ type: 'titles' }));
-    expect(ai.recordGeneration.mock.calls[0][2].costAmount).toBe(0.0001);
+    expect(usage.last?.tokens).toBe(30);
+    expect(usage.last?.generation?.costAmount).toBe(0.0001);
+    expect(usage.last?.generation?.generationType).toBe('titles');
   });
 
   it('图片生成计一张图并按固定折算计入 AI 额度，成本写进生成记录', async () => {
-    usage.checkQuota.mockResolvedValue(true);
     const res = await request(app.getHttpServer()).post('/api/v1/ai/generate/image').send({ prompt: '一只猫' });
     expect(res.status).toBe(201);
-    expect(usage.trackUsageBatch).toHaveBeenCalledWith('t', { [ResourceType.IMAGES]: 1, [ResourceType.TOKENS]: IMAGE_TOKEN_EQUIVALENT }, expect.anything());
-    expect(usage.trackUsage).not.toHaveBeenCalled();
-    expect(ai.recordGeneration.mock.calls[0][2].costAmount).toBe(0.04);
+    expect(usage.withAiHold).toHaveBeenCalledWith(expect.objectContaining({ holdTokens: IMAGE_TOKEN_EQUIVALENT, kind: 'image' }), expect.any(Function));
+    expect(usage.last?.images).toBe(1);
+    expect(usage.last?.tokens).toBe(IMAGE_TOKEN_EQUIVALENT);
+    expect(usage.last?.generation?.costAmount).toBe(0.04);
   });
 });
 
 describe('内容包同样走额度闸', () => {
   it('额度用完返回 429 中文提示（原来抛普通 Error，界面只看到「服务暂时出错」）', async () => {
     const ai = { assertTenantDailyBudget: jest.fn().mockResolvedValue(undefined), generateTitlesWithUsage: jest.fn() };
-    const usage = { checkQuota: jest.fn().mockResolvedValue(false), trackUsageBatch: jest.fn(), trackUsage: jest.fn() };
+    const usage = { withAiHold: jest.fn(async () => { throw new AiQuotaExceededError(); }) };
     const pack = new ContentPackService(ai as never, usage as never, {} as never, {} as never);
     const error = await pack.generatePack('t', { topic: '主题' } as never, 'u').catch((e) => e);
     expect(error).toBeInstanceOf(HttpException);
@@ -200,7 +210,7 @@ describe('内容包同样走额度闸', () => {
 
   it('先查今日预算', async () => {
     const ai = { assertTenantDailyBudget: jest.fn().mockRejectedValue(new HttpException('今日 AI 用量已达上限', 429)), generateTitlesWithUsage: jest.fn() };
-    const usage = { checkQuota: jest.fn().mockResolvedValue(true), trackUsageBatch: jest.fn(), trackUsage: jest.fn() };
+    const usage = { withAiHold: jest.fn() };
     const pack = new ContentPackService(ai as never, usage as never, {} as never, {} as never);
     await expect(pack.generatePack('t', { topic: '主题' } as never, 'u')).rejects.toBeInstanceOf(HttpException);
     expect(ai.generateTitlesWithUsage).not.toHaveBeenCalled();

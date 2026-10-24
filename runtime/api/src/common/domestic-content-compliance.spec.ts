@@ -1,7 +1,9 @@
 import {
+  COMPLIANCE_DISCLAIMER,
   DOMESTIC_GATE_ORDER,
   DOMESTIC_RULESET_VERSION,
   evaluateDomesticContent,
+  checkAdDisclosure,
   AD_LAW_ART9_TERMS,
   AD_TERM_WHITELIST_CONTEXTS,
 } from './domestic-content-compliance';
@@ -33,8 +35,32 @@ describe('domestic content six-gate compliance', () => {
 
   it('allows ordinary content through without fabricating warnings', () => {
     expect(evaluateDomesticContent('分享三种提升写作清晰度的方法')).toEqual({
-      passed: true, ruleSetVersion: DOMESTIC_RULESET_VERSION, hits: [],
+      passed: true,
+      level: 'clear',
+      disclaimer: COMPLIANCE_DISCLAIMER,
+      mode: 'normal',
+      ruleSetVersion: DOMESTIC_RULESET_VERSION,
+      hits: [],
     });
+  });
+
+  it('splits clear violation, possible risk, and none, and always says this is not legal advice', () => {
+    const violation = evaluateDomesticContent('吃了这款茶血压稳了');
+    expect(violation.passed).toBe(false);
+    expect(violation.level).toBe('violation');
+    expect(violation.hits.some((hit) => hit.ruleId === 'CN-AD-ART17-18' && hit.severity === 'block')).toBe(true);
+    expect(violation.disclaimer).toContain('不是法律意见');
+
+    const guarantee = evaluateDomesticContent('本课程保本，年化 20% 稳赚');
+    expect(guarantee.hits.map((hit) => hit.ruleId)).toEqual(expect.arrayContaining(['CN-AD-ART25', 'CN-AD-RISK-001']));
+
+    const risk = evaluateDomesticContent('加微信领资料');
+    expect(risk.passed).toBe(true);
+    expect(risk.level).toBe('risk');
+    expect(risk.hits[0]).toEqual(expect.objectContaining({ ruleId: 'CN-PLATFORM-OFFSITE', severity: 'review' }));
+    expect(risk.mode).toBe('normal');
+    expect(evaluateDomesticContent('加微信领资料', { conservative: true }).mode).toBe('conservative');
+    expect(evaluateDomesticContent('加微信领资料', { conservative: true }).passed).toBe(true);
   });
 });
 
@@ -68,5 +94,20 @@ describe('《广告法》第九条结构化词表', () => {
     expect(hit?.ruleId).toBe('CN-AD-RISK-001');
     expect(hit?.source).toContain('未对应具体法条');
     expect(hit?.source).not.toMatch(/第九条|第二十八条/);
+  });
+});
+
+
+describe('互联网广告管理办法第九条：种草/测评 + 购物链接须标明“广告”', () => {
+  it('flags review content with a purchase link but no 广告 label', () => {
+    const r = evaluateDomesticContent('真实测评这款面霜，链接在评论区，https://u.jd.com/abc');
+    expect(r.passed).toBe(false);
+    expect(r.hits.map((h) => h.ruleId)).toContain('CN-AD-NET-ART9-3');
+  });
+  it('passes once 广告 is clearly marked', () => {
+    expect(checkAdDisclosure('【广告】种草一款面霜，点击购买 https://u.jd.com/abc')).toBeNull();
+  });
+  it('does not flag plain reviews without any purchase method', () => {
+    expect(checkAdDisclosure('这次测评了三款面霜，记录真实使用感受')).toBeNull();
   });
 });

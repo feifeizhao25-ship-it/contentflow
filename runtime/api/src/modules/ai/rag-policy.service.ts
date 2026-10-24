@@ -40,9 +40,17 @@ export interface RagFreshnessReport {
   total: number;
   current: number;
   needsReview: boolean;
+  /** normal：资料在有效期内。conservative：有过期或无效资料，生成仍可用，检查更严，发布前须人工确认。 */
+  mode: 'normal' | 'conservative';
+  /** 过期不会停用生成。 */
+  generationAvailable: true;
   notice: string | null;
+  /** 给普通成员看的短句。管理员看 notice。 */
+  userNotice: string | null;
   sources: RagSourceStatus[];
 }
+
+export const CONSERVATIVE_USER_NOTICE = '今天的合规检查会更保守，发布前需要你自行确认。这不是法律意见。';
 
 const DAY = 86_400_000;
 const ALLOWED_ORIGINS = ['https://www.cac.gov.cn', 'https://www.douyin.com', 'https://www.bilibili.com'];
@@ -148,7 +156,10 @@ export class RagPolicyService implements OnApplicationBootstrap, OnModuleDestroy
       total: sources.length,
       current,
       needsReview,
-      notice: needsReview ? `${COMPLIANCE_REVIEW_NOTICE}：平台规则资料超过 ${maxAgeDays} 天未核对，AI 生成暂不引用这些资料，发布前请自行核对平台最新规则。` : null,
+      mode: needsReview ? 'conservative' : 'normal',
+      generationAvailable: true,
+      notice: needsReview ? `${COMPLIANCE_REVIEW_NOTICE}：平台规则资料超过 ${maxAgeDays} 天未核对。AI 生成仍然可用，但不再引用这些过期资料，检查改为保守模式，发布前必须人工确认。` : null,
+      userNotice: needsReview ? CONSERVATIVE_USER_NOTICE : null,
       sources,
     };
   }
@@ -162,7 +173,7 @@ export class RagPolicyService implements OnApplicationBootstrap, OnModuleDestroy
     const report = await this.freshnessReport(now);
     for (const source of report.sources) {
       if (source.state === 'stale') {
-        this.logger.error(`[合规资料复核提醒] ${COMPLIANCE_REVIEW_NOTICE}：「${source.name}」上次核对于 ${source.lastCheckedAt?.slice(0, 10)}，已 ${source.daysSinceCheck} 天，超过 ${report.maxAgeDays} 天时效，线上已停止引用。请对照原文复核后用 scripts/review_rag_source.py 登记复核人与日期。`);
+        this.logger.error(`[合规资料复核提醒] ${COMPLIANCE_REVIEW_NOTICE}：「${source.name}」上次核对于 ${source.lastCheckedAt?.slice(0, 10)}，已 ${source.daysSinceCheck} 天，超过 ${report.maxAgeDays} 天时效，线上已停止引用该资料，生成未停用。请对照原文复核后用 scripts/review_rag_source.py 登记复核人与日期。`);
       } else if (source.state === 'invalid') {
         this.logger.error(`[合规资料复核提醒] 「${source.name}」来源字段不完整或无法解析，线上未引用，请检查资料文件。`);
       } else if (source.state === 'due_soon') {

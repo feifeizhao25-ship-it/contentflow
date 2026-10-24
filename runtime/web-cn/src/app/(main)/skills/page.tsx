@@ -1,26 +1,36 @@
 'use client';
 
-import { Empty, Tag } from 'antd';
+import Link from 'next/link';
+import { Tag } from 'antd';
 
-const categories = [
-  { name: '内容创作', skills: ['标题优化', '社交帖子', '视频脚本'] },
-  { name: '增长优化', skills: ['SEO 检查', '平台适配'] },
-  { name: '合规与质量', skills: ['敏感内容检查', '来源核验'] },
+const ready = [
+  { name: '标题与正文', detail: '在创作工作室生成标题、脚本和正文。按实际令牌扣额度。', href: '/studio' },
+  { name: '平台改写', detail: '同一条内容按抖音、B站、小红书等平台的长度和语气改写。不是自动发布。', href: '/studio' },
+  { name: '合规检查', detail: '发布前检查明确违规和可能有风险的表述，并写明这不是法律意见。', href: '/publish' },
+  { name: '爆款拆解', detail: '粘贴你手上的内容再分析。没有接入热点数据源时，不展示编造的榜单。', href: '/hot' },
 ];
 
 export default function SkillsPage() {
   return <main className="p-8 max-w-6xl mx-auto">
     <h1 className="text-3xl font-black">能力中心</h1>
-    <p className="text-zinc-500 mt-2">按使用场景选择能力；未开放能力会明确标记，不使用虚假占位结果。</p>
-    <div className="grid md:grid-cols-3 gap-5 mt-8">
-      {categories.map(category => <section className="glass-card p-5" key={category.name}>
-        <h2 className="font-bold text-lg">{category.name}</h2>
-        <div className="space-y-3 mt-4">{category.skills.map(skill =>
-          <div className="p-3 rounded-xl bg-zinc-50 dark:bg-zinc-800" key={skill}>{skill}</div>)}</div>
+    <p className="text-zinc-500 mt-2">下面四项已经可以在对应页面使用。没有接通的能力只标即将上线，不会给出假的结果。</p>
+    <div className="grid md:grid-cols-2 gap-5 mt-8">
+      {ready.map((skill) => <section className="glass-card p-5" key={skill.name}>
+        <div className="flex items-center justify-between gap-3">
+          <h2 className="font-bold text-lg">{skill.name}</h2>
+          <Tag color="green">可使用</Tag>
+        </div>
+        <p className="mt-3 text-sm leading-6 text-zinc-600">{skill.detail}</p>
+        <Link href={skill.href} className="mt-4 inline-block text-sm font-bold text-indigo-600">去使用</Link>
       </section>)}
     </div>
-    <div className="glass-card p-8 mt-6"><Empty description="暂时没有更多已验证能力">
-      <Tag color="blue">即将上线：团队审核流</Tag><Tag>即将上线：品牌语气训练</Tag>
-    </Empty></div>
+    <div className="glass-card p-8 mt-6">
+      <p className="font-bold">尚未开通</p>
+      <div className="mt-4 flex flex-wrap gap-2">
+        <Tag color="blue">即将上线：团队审核流</Tag>
+        <Tag>即将上线：品牌语气训练</Tag>
+      </div>
+      <p className="mt-3 text-sm text-zinc-500">这两项还没有执行点。Team 邀请在邮件与接受流程接通前也不能添加成员。</p>
+    </div>
   </main>;
 }

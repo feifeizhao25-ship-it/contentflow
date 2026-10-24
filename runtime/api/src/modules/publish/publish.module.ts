@@ -7,6 +7,8 @@ import { AdapterRegistry } from './adapters/adapter.registry';
 import { BilibiliAdapter } from './adapters/bilibili.adapter';
 import { DouyinAdapter } from './adapters/douyin.adapter';
 import { PublishProcessor } from './publish.processor';
+import { DeveloperModule } from '../developer/developer.module';
+import { AIModule } from '../ai/ai.module';
 
 const registryProvider = {
   provide: AdapterRegistry,
@@ -20,7 +22,7 @@ const registryProvider = {
 };
 
 @Module({
-  imports: [QueueModule, TenantModule],
+  imports: [QueueModule, TenantModule, DeveloperModule, AIModule],
   providers: [PublishService, PublishProcessor, BilibiliAdapter, DouyinAdapter, registryProvider],
   controllers: [PublishController],
   exports: [PublishService],

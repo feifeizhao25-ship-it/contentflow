@@ -83,6 +83,8 @@ export const TENANT_OWNED_TABLES: ReadonlyArray<string> = [
   'personas',
   'TeamTask',
   'ApiKey',
+  'WebhookSubscription',
+  'ai_quota_reservations',
 ];
 
 /**
@@ -146,6 +148,8 @@ export const TABLE_CLASSIFICATION: Readonly<Record<string, { kind: 'user' | 'ten
   personas: { kind: 'tenant' },
   TeamTask: { kind: 'tenant' },
   ApiKey: { kind: 'tenant' },
+  WebhookSubscription: { kind: 'tenant', note: '含 Webhook 签名密钥密文，随工作区删除' },
+  ai_quota_reservations: { kind: 'tenant', note: '含生成结果的额度预占，随工作区删除；已入账令牌仍留在 usage_meters' },
   AccountStatsHistory: { kind: 'cascade', note: 'PlatformAccount' },
   PlatformContent: { kind: 'cascade', note: 'Content' },
   PublishTask: { kind: 'cascade', note: 'Content' },
@@ -316,8 +320,10 @@ export class AccountErasureService {
       if (soleMember) {
         workspace.ai_generations = await select('AIGeneration', 'tenant_id = $1', tenantId);
         workspace.publish_tasks = await select('PublishTask', 'tenant_id = $1', tenantId);
+        workspace.ai_quota_reservations = await select('ai_quota_reservations', 'tenant_id = $1', tenantId);
       } else {
         workspace.ai_generations = await select('AIGeneration', 'tenant_id = $1 AND user_id = $2', tenantId, userId);
+        workspace.ai_quota_reservations = await select('ai_quota_reservations', `tenant_id = $1 AND settlement->'generation'->>'userId' = $2`, tenantId, userId);
       }
       const orders = soleMember ? await select('PaymentOrder', 'tenant_id = $1', tenantId) : [];
 

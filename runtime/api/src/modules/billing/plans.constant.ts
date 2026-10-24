@@ -1,5 +1,5 @@
-// 订阅套餐定义 — 国际版五档定价(唯一权威来源)
-// platformLimit / monthlyPostQuota 为 -1 表示不限(Enterprise 定制)
+// 订阅套餐定义 — 代码侧唯一事实源（CN 与 INT 分开定义，文档以本文件为准回写）。
+// platformLimit / monthlyPostQuota 为 -1 表示不限(仅国际 Enterprise 定制档)。
 export interface PlanDefinition {
   id: 'free' | 'starter' | 'pro' | 'team' | 'enterprise';
   name: string;
@@ -12,6 +12,8 @@ export interface PlanDefinition {
 }
 
 export interface ChinaPlanDefinition {
+  /** 批1：额度口径确认状态。unconfirmed=推算值、未经负责人确认，对外展示必须带说明，不得冒充已承诺额度 */
+  quotaStatus?: 'confirmed' | 'unconfirmed';
   memberLimit?: number;
   storageGb?: number;
   id: 'free' | 'pro' | 'team' | 'enterprise';
@@ -49,17 +51,37 @@ export const LEGACY_CN_PLANS: ChinaPlanDefinition[] = [
   },
 ];
 
-// 2026-09-01 已批准定价；旧订单使用下单快照或 LEGACY_CN_PLANS，禁止重定价。
+// 2026-09-01 已批准定价。档名按 0S1 统一为 Solo / Team / Business（分D04）。
+// Business 的 AI 令牌与平台账号上限尚未经负责人确认：下面的数字只是内部安全上限
+// （避免误继承「不限」），不是对客户的承诺。对外展示走 presentChinaPlan，不输出这些数字。
+// 旧订单使用下单快照或 LEGACY_CN_PLANS，禁止重定价。
 export const CN_PLAN_VERSION = '2026-09-01';
 export const CN_PLANS: ChinaPlanDefinition[] = LEGACY_CN_PLANS.map((plan) => {
   const updates: Record<string, Partial<ChinaPlanDefinition>> = {
     free: { memberLimit: 1, storageGb: 1, platformLimit: 1, monthlyPostQuota: 5, features: ['1个平台账号', '每月5条发布', '人工智能生成内容标识'] },
-    pro: { memberLimit: 1, storageGb: 5, priceMonthlyCny: 99, priceYearlyCny: 990, monthlyPostQuota: 200, features: ['10个平台账号', '每月200条发布', '内容日历与排期'] },
-    team: { memberLimit: 5, storageGb: 50, priceMonthlyCny: 499, priceYearlyCny: 4990, monthlyPostQuota: 1000, features: ['30个平台账号', '团队协作与审批', '每月1000条发布'] },
-    enterprise: { memberLimit: 20, storageGb: -1, priceMonthlyCny: 1999, priceYearlyCny: 19990, custom: false, monthlyPostQuota: 5000, aiTokenQuota: 10000000, features: ['每月5000条发布', '操作审计', '团队协作与审批'] },
+    pro: { name: 'Solo', memberLimit: 1, storageGb: 5, priceMonthlyCny: 99, priceYearlyCny: 990, monthlyPostQuota: 200, features: ['10个平台账号', '每月200条发布', '内容日历与排期'] },
+    team: { name: 'Team', memberLimit: 5, storageGb: 50, priceMonthlyCny: 499, priceYearlyCny: 4990, monthlyPostQuota: 1000, features: ['30个平台账号', '团队协作与审批', '每月1000条发布'] },
+    enterprise: { name: 'Business', quotaStatus: 'unconfirmed', memberLimit: 20, storageGb: -1, priceMonthlyCny: 1999, priceYearlyCny: 19990, custom: false, monthlyPostQuota: 5000, aiTokenQuota: 40000000, platformLimit: 100, features: ['每月5000条发布', '操作审计', '团队协作与审批'] },
   };
   return { ...plan, ...updates[plan.id] };
 });
+
+export type PublicChinaPlan = Omit<ChinaPlanDefinition, 'aiTokenQuota' | 'platformLimit'> & {
+  aiTokenQuota: number | null;
+  platformLimit: number | null;
+  quotaNote?: string;
+};
+
+/** 给定价接口和页面的国内套餐。未确认额度不带具体数字。 */
+export function presentChinaPlan(plan: ChinaPlanDefinition): PublicChinaPlan {
+  if (plan.quotaStatus !== 'unconfirmed') return plan;
+  return {
+    ...plan,
+    aiTokenQuota: null,
+    platformLimit: null,
+    quotaNote: 'AI 令牌额度与平台账号上限待确认，确认前不构成承诺',
+  };
+}
 
 export const PLANS: PlanDefinition[] = [
   {

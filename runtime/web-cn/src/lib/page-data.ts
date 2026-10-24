@@ -79,6 +79,8 @@ export interface HotTopicRow {
   platform: string;
   prediction: 'rising' | 'stable';
   tags: string[];
+  fetchedAt: string;
+  source: string;
 }
 
 /** 热点页：GET /hot/list → { available, topics, message }。没有数据源就如实说明，不补任何热点。 */
@@ -91,6 +93,8 @@ export function parseHotTopics(result: unknown): { topics: HotTopicRow[]; notice
     platform: String(t.platform ?? ''),
     prediction: (t.prediction === 'rising' ? 'rising' : 'stable') as 'rising' | 'stable',
     tags: asArray(t.tags).map(String),
+    fetchedAt: typeof t.fetchedAt === 'string' ? t.fetchedAt : (typeof payload?.fetchedAt === 'string' ? payload.fetchedAt : ''),
+    source: typeof t.source === 'string' && t.source ? t.source : (typeof payload?.source === 'string' ? payload.source : ''),
   })).filter((t) => t.title);
   if (topics.length) return { topics, notice: '' };
   const message = payload?.message;
@@ -127,7 +131,7 @@ export function flattenViralAnalysis(analysis: unknown): Array<{ heading: string
     .filter((section) => section.lines.length > 0);
 }
 
-const PLAN_NAMES: Record<string, string> = { free: '免费版', starter: '入门版', pro: '专业版', team: '团队版', enterprise: '企业版' };
+const PLAN_NAMES: Record<string, string> = { free: '免费版', starter: '入门版', pro: 'Solo', team: 'Team', enterprise: 'Business' };
 
 export interface PlanView {
   name: string;
@@ -142,10 +146,12 @@ export interface PlanView {
  */
 export function describePlan(tenant: any, subscription?: any): PlanView {
   const plan = String(tenant?.plan ?? 'free');
+  const quotaUnconfirmed = subscription?.quotaStatus === 'unconfirmed' || subscription?.aiTokens?.quotaStatus === 'unconfirmed';
   const expires = tenant?.plan_expires_at ? dayjs(tenant.plan_expires_at) : null;
-  const renewText = plan === 'free' || !expires || !expires.isValid()
+  const renewText = (plan === 'free' || !expires || !expires.isValid()
     ? '免费版长期有效，不会产生账单'
-    : `当前套餐有效期至 ${expires.format('YYYY年M月D日')}`;
+    : `当前套餐有效期至 ${expires.format('YYYY年M月D日')}`)
+    + (quotaUnconfirmed ? '。Business 的 AI 令牌额度与平台账号上限待确认，页面不展示未确认数字。' : '');
   const limits = tenant?.limits && typeof tenant.limits === 'object' ? tenant.limits : null;
   const used = tenant?.usage_stats && typeof tenant.usage_stats === 'object' ? tenant.usage_stats : null;
   const usage: PlanView['usage'] = [];
@@ -154,11 +160,11 @@ export function describePlan(tenant: any, subscription?: any): PlanView {
     if (Number.isFinite(c) && Number.isFinite(l) && l > 0) usage.push({ title, current: Math.round((c / scale) * 100) / 100, limit: l, unit });
   };
   if (limits && used) {
-    add('账号绑定', used.accounts_count, limits.max_accounts, '个');
+    if (!quotaUnconfirmed) add('账号绑定', used.accounts_count, limits.max_accounts, '个');
     add('本月发布', used.publishes_this_month, limits.max_publishes_monthly, '次');
     add('存储空间', used.storage_used_mb, limits.max_storage_gb, 'GB', 1024);
   }
-  if (subscription && typeof subscription === 'object') {
+  if (subscription && typeof subscription === 'object' && !quotaUnconfirmed) {
     add('本月 AI 令牌', subscription.usedQuota, subscription.monthlyQuota, '个');
   }
   return { name: PLAN_NAMES[plan] ?? plan, renewText, usage };
@@ -208,6 +214,13 @@ export function describeAiAllowance(subscription: unknown): AiAllowanceView {
   if (!t || typeof t !== 'object' || !Number.isFinite(limit) || !Number.isFinite(used)) {
     return { available: false, unlimited: false, exhausted: false, summary: '本月 AI 额度暂时无法读取', rule };
   }
+  if (t.quotaStatus === 'unconfirmed') {
+    const left = Number.isFinite(remaining) ? remaining : limit - used;
+    if (Number.isFinite(left) && left <= 0) {
+      return { available: true, unlimited: false, exhausted: true, summary: `本月 AI 额度已用完（已用 ${formatTokens(used)} 令牌）。Business 额度上限待确认，请联系客服核对。`, rule };
+    }
+    return { available: true, unlimited: false, exhausted: false, summary: `本月 AI 额度待确认（已用 ${formatTokens(used)} 令牌）。确认前不展示未确认的额度数字。`, rule };
+  }
   if (t.unlimited === true || limit === -1) {
     return { available: true, unlimited: true, exhausted: false, summary: `本月 AI 额度：不限量（已用 ${formatTokens(used)} 令牌）`, rule };
   }
@@ -230,10 +243,16 @@ export function planBadge(subscription: unknown): { name: string; detail: string
   const plan = typeof payload?.plan === 'string' ? payload.plan : '';
   if (!plan || !PLAN_NAMES[plan]) return { name: '我的套餐', detail: '查看各档会员权益' };
   if (plan === 'free') return { name: '免费版', detail: '查看各档会员权益' };
+  if (typeof payload?.renewalNotice === 'string' && payload.renewalNotice.trim()) {
+    return { name: PLAN_NAMES[plan], detail: payload.renewalNotice.trim() };
+  }
   const renew = payload?.renewalDate ? dayjs(payload.renewalDate) : null;
+  const soon = renew && renew.isValid() && renew.diff(dayjs(), 'day', true) >= 0 && renew.diff(dayjs(), 'day', true) <= 7;
   return {
     name: PLAN_NAMES[plan],
-    detail: renew && renew.isValid() ? `有效期至 ${renew.format('YYYY年M月D日')}` : '查看套餐与用量',
+    detail: soon
+      ? `将于 ${renew.format('YYYY年M月D日')} 到期，到期后回到免费版。当前不会自动扣款，继续使用请在到期前手动开通。`
+      : renew && renew.isValid() ? `有效期至 ${renew.format('YYYY年M月D日')}` : '查看套餐与用量',
   };
 }
 

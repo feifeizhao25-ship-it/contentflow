@@ -77,6 +77,9 @@ await check('热点：有数据时按后端给的展示（topic 字段作标题�
   const r = parseHotTopics({ available: true, topics: [{ id: '1', topic: '某话题', heat: 5000, platform: 'xhs' }] });
   assert.equal(r.topics[0].title, '某话题');
   assert.equal(r.notice, '');
+  const stamped = parseHotTopics({ available: true, source: '示例数据服务', fetchedAt: '2026-10-23T01:02:03.000Z', topics: [{ id: '1', topic: '某话题', heat: 1, platform: 'douyin' }] });
+  assert.equal(stamped.topics[0].fetchedAt, '2026-10-23T01:02:03.000Z');
+  assert.equal(stamped.topics[0].source, '示例数据服务');
 });
 
 await check('热点：异常形状得到空列表与中文说明，不抛错', () => {
@@ -100,13 +103,30 @@ await check('套餐与用量：用真实的工作区限额与用量，日期来�
     limits: { max_accounts: 5, max_publishes_monthly: 300, max_storage_gb: 10 },
     usage_stats: { accounts_count: 2, publishes_this_month: 41, storage_used_mb: 512, ai_calls_this_month: 17 },
   }, { monthlyQuota: 2500000, usedQuota: 1234 });
-  assert.equal(plan.name, '专业版');
+  assert.equal(plan.name, 'Solo');
   assert.match(plan.renewText, /2026年12月31日/);
   assert.deepEqual(plan.usage.map((u) => [u.title, u.current, u.limit]), [
     ['账号绑定', 2, 5], ['本月发布', 41, 300], ['存储空间', 0.5, 10], ['本月 AI 令牌', 1234, 2500000],
   ]);
   // 从未累加的 ai_calls_this_month 不再上屏
   assert.equal('aiCallsThisMonth' in plan, false);
+});
+
+await check('Business 未确认额度：页面不展示令牌或平台账号数字', () => {
+  const plan = describePlan({
+    plan: 'enterprise',
+    plan_expires_at: '2026-12-31T00:00:00.000Z',
+    limits: { max_accounts: 100, max_publishes_monthly: 5000, max_storage_gb: 50 },
+    usage_stats: { accounts_count: 2, publishes_this_month: 3, storage_used_mb: 100 },
+  }, { quotaStatus: 'unconfirmed', monthlyQuota: 40000000, usedQuota: 10 });
+  assert.equal(plan.name, 'Business');
+  assert.match(plan.renewText, /待确认/);
+  assert.equal(plan.usage.some((u) => u.title === '本月 AI 令牌' || u.title === '账号绑定'), false);
+  assert.doesNotMatch(JSON.stringify(plan), /40000000|100/);
+  const allowance = describeAiAllowance({ aiTokens: { quotaStatus: 'unconfirmed', limit: 40000000, used: 10, remaining: 39999990 } });
+  assert.match(allowance.summary, /待确认/);
+  assert.equal(allowance.exhausted, false);
+  assert.doesNotMatch(allowance.summary, /4000|40000000/);
 });
 
 await check('套餐与用量：免费版没有到期日，如实写「无账单」；缺数据时不编数字', () => {
@@ -215,9 +235,9 @@ await check('内容库：不再有点了必失败的「资产 / 生成复盘 / �
 });
 
 await check('侧栏套餐卡读真实套餐（原来写死「免费版」）；顶栏不再显示积分', () => {
-  assert.deepEqual(planBadge({ plan: 'pro', renewalDate: '2026-12-31T00:00:00.000Z' }), { name: '专业版', detail: '有效期至 2026年12月31日' });
+  assert.deepEqual(planBadge({ plan: 'pro', renewalDate: '2026-12-31T00:00:00.000Z' }), { name: 'Solo', detail: '有效期至 2026年12月31日' });
   assert.equal(planBadge({ plan: 'free' }).name, '免费版');
-  assert.equal(planBadge({ success: true, data: { plan: 'team' } }).name, '团队版');
+  assert.equal(planBadge({ success: true, data: { plan: 'team' } }).name, 'Team');
   // 读不到时不猜档位
   assert.equal(planBadge(null).name, '我的套餐');
   assert.equal(planBadge({ plan: 'hacker' }).name, '我的套餐');

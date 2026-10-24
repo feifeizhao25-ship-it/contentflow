@@ -4,7 +4,7 @@ import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { effectiveEntitlements } from './effective-limits';
 import { aiTokenAllowance } from '../system/usage.service';
 import { IMAGE_TOKEN_EQUIVALENT } from '../ai/model-pricing';
-import { CN_PLANS, PLANS } from './plans.constant';
+import { CN_PLANS, PLANS, presentChinaPlan } from './plans.constant';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { PrismaService } from '../../database/prisma.service';
 import { BillingCycle, BillingService, PaymentMethod } from './billing.service';
@@ -13,6 +13,19 @@ import type { Response } from 'express';
 import type { Request as ExpressRequest } from 'express';
 import { verifyAlipayNotify } from './alipay.adapter';
 import { decryptWeChatNotify, verifyWeChatNotifySignature } from './wechat-pay.adapter';
+
+const RENEWAL_NOTICE_MS = 7 * 24 * 60 * 60 * 1000;
+
+/** 到期前 7 天提示。当前没有自动扣款，到期后按免费版。 */
+export function domesticRenewalNotice(plan: string, expiresAt: Date | string | null, now = Date.now()): string | null {
+  if (!expiresAt || plan === 'free') return null;
+  const end = new Date(expiresAt).getTime();
+  if (!Number.isFinite(end)) return null;
+  const left = end - now;
+  if (left < 0 || left > RENEWAL_NOTICE_MS) return null;
+  const day = new Intl.DateTimeFormat('zh-CN', { timeZone: 'Asia/Shanghai', year: 'numeric', month: 'numeric', day: 'numeric' }).format(end);
+  return `套餐将于 ${day} 到期。到期后回到免费版。当前不会自动扣款，继续使用请在到期前手动开通。`;
+}
 
 @ApiTags('billing')
 @Controller('billing')
@@ -138,13 +151,13 @@ export class BillingController {
 
   // 公开端点:定价页与落地页直接消费,不要求登录
   getPlans(): { market: 'global'; plans: typeof PLANS };
-  getPlans(market: 'cn'): { market: 'cn'; plans: typeof CN_PLANS };
-  getPlans(market?: string): { market: 'cn' | 'global'; plans: typeof CN_PLANS | typeof PLANS };
+  getPlans(market: 'cn'): { market: 'cn'; plans: ReturnType<typeof presentChinaPlan>[] };
+  getPlans(market?: string): { market: 'cn' | 'global'; plans: ReturnType<typeof presentChinaPlan>[] | typeof PLANS };
   @Get('plans')
   @ApiOperation({ summary: '获取订阅套餐列表(公开)' })
   getPlans(@Query('market') market?: string) {
     return market === 'cn'
-      ? { market: 'cn' as const, plans: CN_PLANS }
+      ? { market: 'cn' as const, plans: CN_PLANS.map(presentChinaPlan) }
       : { market: 'global' as const, plans: PLANS };
   }
 
@@ -176,15 +189,22 @@ export class BillingController {
     const { plan, expired, limits } = effectiveEntitlements(tenant);
     // 与 AI 接口的额度闸同一算法（UsageService.checkQuota → aiTokenAllowance）
     const aiTokens = aiTokenAllowance(limits, meter as any);
+    // 国内 Business 的令牌/平台账号额度尚未经负责人确认。内部仍保留有限上限，避免变成不限；
+    // 对外只标待确认，不把推算数字当成已承诺额度。国际版不使用这套口径。
+    const quotaStatus = process.env.MARKET_REGION === 'global'
+      ? 'confirmed'
+      : (CN_PLANS.find((item) => item.id === plan)?.quotaStatus ?? 'confirmed');
 
     return {
       plan,
+      quotaStatus,
       monthlyQuota: aiTokens.limit,
       usedQuota: aiTokens.used,
       // 本月 AI 额度：剩余 = 额度 − 已用；unlimited 时 limit/remaining 为 -1。
       // imageTokenEquivalent：生成 1 张图计入多少令牌（AiAllowanceService.chargeImage 的同一常量）。
-      aiTokens: { ...aiTokens, imageTokenEquivalent: IMAGE_TOKEN_EQUIVALENT },
+      aiTokens: { ...aiTokens, imageTokenEquivalent: IMAGE_TOKEN_EQUIVALENT, quotaStatus },
       renewalDate: expiresAt ? new Date(expiresAt).toISOString() : null,
+      renewalNotice: domesticRenewalNotice(plan, expiresAt),
       expired,
       limits,
       period,
@@ -208,7 +228,7 @@ export class BillingController {
   @HttpCode(200)
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
-  @ApiOperation({ summary: '在当前周期结束时取消自动续费' })
+  @ApiOperation({ summary: '在当前周期结束时停止延续（当前没有自动扣款）' })
   async cancelSubscription(@Request() req: any) {
     await this.requireBillingManager(req);
     return this.billingService.requestCancellation(req.user.tenantId);

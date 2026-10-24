@@ -1,3 +1,4 @@
+import { randomInt } from 'crypto';
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '@/database/prisma.service';
 
@@ -232,11 +233,12 @@ export class RewardsService {
     return { success: true, message: '兑换码使用成功！' };
   }
 
-  private generateRedeemCode(): string {
+  // 兑换码可换取权益，必须用密码学随机数生成（原来用非密码学伪随机数，可被预测）。
+  generateRedeemCode(): string {
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
     let code = 'FX-';
     for (let i = 0; i < 8; i++) {
-      code += chars.charAt(Math.floor(Math.random() * chars.length));
+      code += chars.charAt(randomInt(chars.length));
       if (i === 3) code += '-';
     }
     return code;
