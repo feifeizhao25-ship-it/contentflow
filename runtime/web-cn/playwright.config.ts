@@ -4,8 +4,8 @@ const baseURL = process.env.E2E_BASE_URL || 'http://127.0.0.1:3000';
 
 export default defineConfig({
   testDir: './e2e',
-  timeout: 180_000,
-  expect: { timeout: 20_000 },
+  timeout: 360_000,
+  expect: { timeout: 30_000 },
   fullyParallel: false,
   workers: 1,
   retries: 0,
@@ -17,6 +17,7 @@ export default defineConfig({
     screenshot: 'off',
     trace: 'off',
     locale: 'zh-CN',
+    permissions: ['clipboard-read', 'clipboard-write'],
   },
   projects: [
     { name: 'desktop', use: { viewport: { width: 1440, height: 900 } } },

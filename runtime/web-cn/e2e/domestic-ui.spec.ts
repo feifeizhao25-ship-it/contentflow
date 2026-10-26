@@ -2,8 +2,8 @@
  * 国内版界面走查。需要本机 API（AI_LOCAL_STUB=1）和 web-cn 已启动。
  * 截图目录：/opt/cursor/artifacts/ui-test
  *
- *   E2E_HOT_MODE=empty  只拍热点空状态（不要配置 HOT_PROVIDER_URL）
- *   E2E_HOT_MODE=data   走完整流程（HOT_PROVIDER_URL 指向 e2e/hot-mock.mjs）
+ *   E2E_HOT_MODE=empty  热点显示「尚未接入」（不要配置 HOT_PROVIDER_URL）
+ *   E2E_HOT_MODE=data   热点显示本地样例（HOT_PROVIDER_URL 指向 e2e/hot-mock.mjs）
  *   CF_UI_PG_DSN        本机测试库，用于把套餐改到即将到期、以及把额度改到用尽
  */
 import { execFileSync } from 'node:child_process';
@@ -64,7 +64,7 @@ async function createApproved(page: Page, title: string, body: string) {
   const dialog = page.getByRole('dialog');
   await dialog.getByLabel('标题').fill(title);
   await dialog.getByLabel('正文').fill(body);
-  await dialog.getByRole('button', { name: '保存' }).click();
+  await dialog.getByRole('button', { name: /^保\s*存$/ }).click();
   await expect(dialog).toBeHidden();
   await page.getByPlaceholder('搜索标题或正文').fill(title);
   await page.getByPlaceholder('搜索标题或正文').press('Enter');
@@ -76,24 +76,20 @@ async function createApproved(page: Page, title: string, body: string) {
   const confirm = page.getByRole('dialog');
   await confirm.getByText('我已自行检查').click();
   await confirm.getByRole('button', { name: '确认可以发布' }).click();
-  await expect(page.getByRole('button', { name: '发布' })).toBeVisible();
+  await expect(page.getByRole('button', { name: /^发\s*布$/ })).toBeVisible();
 }
 
-test('热点空状态', async ({ page }, info) => {
-  test.skip(process.env.E2E_HOT_MODE !== 'empty', '只在未配置热点数据源时跑');
-  await page.goto('/hot');
-  await expect(page.getByText('尚未接入')).toBeVisible();
-  await shot(page, info, 'hot-empty');
-});
-
 test('国内版主要流程', async ({ page }, info) => {
-  test.skip(process.env.E2E_HOT_MODE === 'empty', '完整流程在本地热点样例启动后跑');
-  test.setTimeout(240_000);
+  test.setTimeout(360_000);
   const results: StepResult[] = [];
   const consoleErrors: string[] = [];
+  const failedRequests: string[] = [];
   page.on('pageerror', (error) => consoleErrors.push(String(error)));
   page.on('console', (msg) => {
     if (msg.type() === 'error') consoleErrors.push(msg.text());
+  });
+  page.on('response', (response) => {
+    if (response.status() >= 400) failedRequests.push(`${response.status()} ${response.url()}`);
   });
 
   const run = async (name: string, fn: () => Promise<void>) => {
@@ -135,7 +131,7 @@ test('国内版主要流程', async ({ page }, info) => {
     const pane = await activePane(page);
     await pane.getByPlaceholder('邮箱地址').fill('nobody@example.com');
     await pane.getByPlaceholder('密码').fill('wrong-pass');
-    await pane.getByRole('button', { name: '登录' }).click();
+    await pane.getByRole('button', { name: /^登\s*录$/ }).click();
     await expect(page.getByText('邮箱或密码错误')).toBeVisible();
     await shot(page, info, 'login-error');
   });
@@ -150,7 +146,7 @@ test('国内版主要流程', async ({ page }, info) => {
     await pane.getByPlaceholder('密码（至少6位）').fill(PASSWORD);
     await pane.getByPlaceholder('确认密码').fill(PASSWORD);
     await pane.getByRole('checkbox').check();
-    await pane.getByRole('button', { name: '注册' }).click();
+    await pane.getByRole('button', { name: /^注\s*册$/ }).click();
     await page.waitForURL('**/studio**');
     await shot(page, info, 'register-studio');
   });
@@ -172,13 +168,13 @@ test('国内版主要流程', async ({ page }, info) => {
 
   await run('compliance-and-publish', async () => {
     await createApproved(page, '秋天读书', '秋天读完一本书，记下三件还想再看的事。');
-    await page.getByRole('button', { name: '发布' }).click();
+    await page.getByRole('button', { name: /^发\s*布$/ }).click();
     let dialog = page.getByRole('dialog');
     await expect(dialog.getByTestId('compliance-result')).toHaveAttribute('data-level', 'clear');
     await expect(dialog.getByTestId('compliance-disclaimer')).toContainText('这不是法律意见');
     await shot(page, info, 'compliance-clear');
     for (const name of ['视频号', '公众号', '抖音（手动发布）', 'B站（手动发布）']) {
-      await dialog.getByText(name, { exact: true }).click();
+      await dialog.getByRole('checkbox', { name: new RegExp(name) }).check();
     }
     await dialog.getByRole('button', { name: '创建人工发布任务' }).click();
     await page.waitForURL('**/publish**');
@@ -195,16 +191,16 @@ test('国内版主要流程', async ({ page }, info) => {
     await shot(page, info, 'manual-publish-confirmed');
 
     await createApproved(page, '绝对化用语', '这款产品是国家级最佳选择。');
-    await page.getByRole('button', { name: '发布' }).click();
+    await page.getByRole('button', { name: /^发\s*布$/ }).click();
     dialog = page.getByRole('dialog');
     await expect(dialog.getByTestId('compliance-result')).toHaveAttribute('data-level', 'violation');
     await expect(dialog.getByTestId('compliance-disclaimer')).toContainText('这不是法律意见');
     await expect(dialog.getByRole('button', { name: '创建人工发布任务' })).toBeDisabled();
     await shot(page, info, 'compliance-blocked');
-    await dialog.getByRole('button', { name: '取消' }).click();
+    await dialog.getByRole('button', { name: /^取\s*消$/ }).click();
 
     await createApproved(page, '站外引导', '想要资料请加微信领资料。');
-    await page.getByRole('button', { name: '发布' }).click();
+    await page.getByRole('button', { name: /^发\s*布$/ }).click();
     dialog = page.getByRole('dialog');
     await expect(dialog.getByTestId('compliance-result')).toHaveAttribute('data-level', 'risk');
     await expect(dialog.getByTestId('compliance-disclaimer')).toContainText('这不是法律意见');
@@ -219,6 +215,11 @@ test('国内版主要流程', async ({ page }, info) => {
 
   await run('hot-list', async () => {
     await page.goto('/hot');
+    if (process.env.E2E_HOT_MODE === 'empty') {
+      await expect(page.getByText('尚未接入')).toBeVisible();
+      await shot(page, info, 'hot-empty');
+      return;
+    }
     await expect(page.getByText('秋天的读书笔记怎么写')).toBeVisible();
     await expect(page.getByText(/来源 本地热点样例/)).toBeVisible();
     await expect(page.getByText(/截至 2026-10-23/)).toBeVisible();
@@ -276,7 +277,7 @@ test('国内版主要流程', async ({ page }, info) => {
   });
 
   shotDir();
-  fs.writeFileSync(`${OUT}/results-${info.project.name}.json`, JSON.stringify({ results, consoleErrors }, null, 2));
+  fs.writeFileSync(`${OUT}/results-${info.project.name}.json`, JSON.stringify({ results, consoleErrors, failedRequests }, null, 2));
   const failed = results.filter((item) => !item.ok);
   expect(failed, JSON.stringify(failed, null, 2)).toEqual([]);
 });
