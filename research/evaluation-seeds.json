@@ -1,0 +1,50 @@
+[
+  {
+    "id": "contentflow-01",
+    "scenario": "抖音专属规则和五条通用规则",
+    "expected_behavior": "专属相关证据进入top5",
+    "status": "scenario_seed_not_executed_model_eval"
+  },
+  {
+    "id": "contentflow-02",
+    "scenario": "只有海外平台资料",
+    "expected_behavior": "不能当作国内授权依据",
+    "status": "scenario_seed_not_executed_model_eval"
+  },
+  {
+    "id": "contentflow-03",
+    "scenario": "抓取失败",
+    "expected_behavior": "保留旧状态但按到期排除",
+    "status": "scenario_seed_not_executed_model_eval"
+  },
+  {
+    "id": "contentflow-04",
+    "scenario": "重新运行同一发布任务",
+    "expected_behavior": "不能重复发送",
+    "status": "scenario_seed_not_executed_model_eval"
+  },
+  {
+    "id": "contentflow-05",
+    "scenario": "返回提交ID但无最终回执",
+    "expected_behavior": "显示处理中",
+    "status": "scenario_seed_not_executed_model_eval"
+  },
+  {
+    "id": "contentflow-06",
+    "scenario": "不存在播放量",
+    "expected_behavior": "显示缺失而非造数",
+    "status": "scenario_seed_not_executed_model_eval"
+  },
+  {
+    "id": "contentflow-07",
+    "scenario": "未来复核日期",
+    "expected_behavior": "拒绝来源",
+    "status": "scenario_seed_not_executed_model_eval"
+  },
+  {
+    "id": "contentflow-08",
+    "scenario": "归因订单重复",
+    "expected_behavior": "按订单去重分配",
+    "status": "scenario_seed_not_executed_model_eval"
+  }
+]

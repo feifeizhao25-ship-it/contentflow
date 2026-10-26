@@ -91,3 +91,19 @@ describe('合规资料人工复核流程（reviewed_by / reviewed_at）', () => 
     }
   });
 });
+
+describe('context budget prioritizes specific evidence', () => {
+  it('keeps platform-specific policy ahead of five generic sources', async () => {
+    const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'rag-ranking-'));
+    const now = Date.now();
+    const base = { source_name: '官方资料', source_url: 'https://www.cac.gov.cn/policy', published_at: '2025-03-14', retrieved_at: new Date(now).toISOString(), jurisdiction: 'CN', source_tier: 'S', review_status: 'verified', platforms: ['all'], topics: ['all'], content: '已审核摘要' };
+    try {
+      for (let i=0;i<5;i++) await fs.writeFile(path.join(directory, `${i}.json`), JSON.stringify({...base,id:`generic-${i}`}));
+      await fs.writeFile(path.join(directory,'z.json'),JSON.stringify({...base,id:'specific',platforms:['douyin'],topics:['广告']}));
+      const svc = new RagPolicyService({get:(key:string)=>key==='RAG_POLICY_DIR'?directory:30} as any);
+      const result=await svc.select(['douyin'],'广告文案');
+      expect(result).toHaveLength(5);
+      expect(result[0].id).toBe('specific');
+    } finally { await fs.rm(directory,{recursive:true,force:true}); }
+  });
+});

@@ -125,6 +125,14 @@ export class RagPolicyService implements OnApplicationBootstrap, OnModuleDestroy
       const topicMatch = record.topics.includes('all') || record.topics.some(value => topic.includes(value));
       if (platformMatch && topicMatch) selected.push(record);
     }
+    // Specific evidence must not be crowded out by alphabetically earlier
+    // generic rules when the context budget is limited to five sources.
+    const specificity = (record: RagPolicySource) =>
+      Number(record.platforms.some(value => normalizedPlatforms.has(value.toLowerCase()))) * 2
+      + Number(record.topics.some(value => value !== 'all' && topic.includes(value)));
+    selected.sort((a, b) => specificity(b) - specificity(a)
+      || lastCheckedAt(b, now)!.at - lastCheckedAt(a, now)!.at
+      || a.id.localeCompare(b.id));
     return selected.slice(0, 5);
   }
 
