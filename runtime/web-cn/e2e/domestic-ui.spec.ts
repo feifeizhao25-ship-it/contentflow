@@ -62,6 +62,23 @@ async function activePane(page: Page) {
   return page.locator('.ant-tabs-tabpane-active');
 }
 
+/** 水合完成前的第一次点击可能被丢掉。点到目标输入框出现为止。 */
+async function selectTab(page: Page, name: string, placeholder: string) {
+  const tab = page.getByRole('tab', { name });
+  const field = page.locator('.ant-tabs-tabpane-active').getByPlaceholder(placeholder, { exact: true });
+  await expect(tab).toBeVisible();
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    await tab.click();
+    try {
+      await field.waitFor({ state: 'visible', timeout: 3_000 });
+      return;
+    } catch {
+      // 再点一次。
+    }
+  }
+  await field.waitFor({ state: 'visible' });
+}
+
 /** 等 React 水合完再点。水合前的点击会被服务端初稿替换掉，选项卡看起来点了却没有切过去。 */
 async function openPage(page: Page, path: string) {
   await page.goto(path, { waitUntil: 'domcontentloaded' });
@@ -142,7 +159,7 @@ test('国内版主要流程', async ({ page }, info) => {
 
   await run('login-error', async () => {
     await openPage(page, '/login');
-    await page.getByRole('tab', { name: '邮箱密码登录' }).click();
+    await selectTab(page, '邮箱密码登录', '邮箱地址');
     const pane = await activePane(page);
     await pane.getByPlaceholder('邮箱地址').fill('nobody@example.com');
     await pane.getByPlaceholder('密码').fill('wrong-pass');
@@ -153,7 +170,7 @@ test('国内版主要流程', async ({ page }, info) => {
 
   await run('register', async () => {
     await openPage(page, '/register');
-    await page.getByRole('tab', { name: '邮箱注册' }).click();
+    await selectTab(page, '邮箱注册', '姓名');
     const pane = await activePane(page);
     await pane.getByPlaceholder('姓名', { exact: true }).fill('界面测试');
     await pane.getByPlaceholder('邮箱地址', { exact: true }).fill(email);

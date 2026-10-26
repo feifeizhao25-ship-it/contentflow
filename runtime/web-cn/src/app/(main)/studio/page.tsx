@@ -28,6 +28,7 @@ const PLATFORMS = [
   { id: 'weixin', name: '视频号', color: '#07c160', icon: '💬' },
   { id: 'bilibili', name: 'B站', color: '#00a1d6', icon: '📺' },
   { id: 'wechat_mp', name: '公众号', color: '#16a34a', icon: '📰' },
+  { id: 'zhihu', name: '知乎', color: '#0066ff', icon: '🎓' },
 ];
 
 function StudioContent() {

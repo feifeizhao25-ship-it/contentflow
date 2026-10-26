@@ -13,13 +13,19 @@ export const MANUAL_PLATFORMS = [
     { id: 'wechat_mp', name: '公众号', icon: '📰' },
     { id: 'douyin', name: '抖音（手动发布）', icon: '🎵' },
     { id: 'bilibili', name: 'B站（手动发布）', icon: '📺' },
+    { id: 'zhihu', name: '知乎', icon: '🎓' },
 ] as const;
 
-// 批3：目前没有任何平台完成官方自动发布授权，自动平台为空；全部走人工确认发布，不冒充自动化。
+// 目前没有任何平台完成官方自动发布授权。小红书、公众号、视频号、知乎按 2026 年规则只做人确认。
+// 抖音、B站适配器未接线。前端不提供自动发布开关。
 export const AUTO_PLATFORMS = [] as const;
 
+export function officialAutoPublishAllowed(_id: string): boolean {
+    return false;
+}
+
 export const PUBLISH_CHANNEL_NOTICE =
-    '目前所有平台均为人工确认发布（非自动发布）：小红书、视频号、公众号、抖音、B站都需你复制文案、下载带 AI 标识的封面后到平台手动发出，再回填作品链接确认。各平台官方自动发布授权完成并通过审核后，才会另行开通并明确标注';
+    '目前所有平台均为人工确认发布（非自动发布）：小红书、视频号、公众号、抖音、B站、知乎都需你复制文案、下载带 AI 标识的封面后到平台手动发出，再回填作品链接确认。各平台官方自动发布授权完成并通过审核后，才会另行开通并明确标注';
 
 export function isManualPlatform(id: string): boolean {
     return MANUAL_PLATFORMS.some((p) => p.id === id);
