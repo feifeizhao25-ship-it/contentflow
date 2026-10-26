@@ -90,12 +90,18 @@ describe('service 不得返回编造的业务数据', () => {
 
   it('查询按 user_id 过滤的模型不得传 tenantId', () => {
     // GrowthGoal / CompetitorMonitor 上是 user_id；
-    // 传 tenantId 会静默查不到任何记录 —— 表现成「没数据」而非「传错了」
+    // 传 tenantId 会静默查不到任何记录 —— 表现成「没数据」而非「传错了」。
+    // 流量漏斗是另一张表：GrowthEvent.tenant_id 表示工作区，funnelForTenant 可以用 tenantId。
     const offenders: string[] = [];
     for (const rel of ['growth/growth.controller.ts', 'competitor/competitor.controller.ts']) {
       const src = stripComments(fs.readFileSync(path.join(MODULES_DIR, rel), 'utf8'));
-      if (/req\.user\.tenantId/.test(src)) offenders.push(rel);
+      const withoutWorkspaceFunnel = src.replace(/funnelForTenant\(req\.user\.tenantId\)/g, 'funnelForTenant(workspaceId)');
+      if (/req\.user\.tenantId/.test(withoutWorkspaceFunnel)) offenders.push(rel);
+      if (/growthService\.\w+\([^)]*tenantId/.test(src)) offenders.push(`${rel} 把 tenantId 传进了 GrowthGoal`);
     }
+    const growth = stripComments(fs.readFileSync(path.join(MODULES_DIR, 'growth/growth.controller.ts'), 'utf8'));
+    expect(growth).toContain('getGrowthPlan(req.user.id)');
+    expect(growth).toContain('updateGrowthPlan(req.user.id');
     expect(offenders.length === 0 ? '' : `${offenders.join(', ')} 仍在传 tenantId`).toBe('');
   });
 
