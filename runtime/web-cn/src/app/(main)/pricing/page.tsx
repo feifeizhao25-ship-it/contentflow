@@ -138,6 +138,11 @@ function PricingContent() {
         color: plan.id === 'pro' ? 'text-indigo-500' : 'text-zinc-500',
         badge: plan.id === 'pro' ? '推荐' : undefined,
         credits: undefined as string | undefined,
+        quotaNote: typeof plan.quotaNote === 'string' && plan.quotaNote.trim()
+            ? plan.quotaNote.trim()
+            : plan.id === 'enterprise'
+                ? 'AI 令牌额度与平台账号上限待确认，确认前不构成承诺'
+                : '',
     }));
 
     // ── 下单 ──────────────────────────────────────────────────────────
@@ -375,6 +380,9 @@ function PricingContent() {
                                     </li>
                                 ))}
                             </ul>
+                            {plan.quotaNote && (
+                                <p className="mb-4 text-xs leading-5 text-amber-800" data-testid="quota-note">{plan.quotaNote}</p>
+                            )}
                             {plan.features.some((f) => isComingSoonFeature(typedRegistry, f)) && (
                                 <p className="mb-8 text-xs leading-5 text-amber-700">路线图（即将上线）：{plan.features.filter((f) => isComingSoonFeature(typedRegistry, f)).join('、')}</p>
                             )}

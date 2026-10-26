@@ -188,6 +188,9 @@ await check('创作工作室：AI 额度来自 /billing/subscription 的 aiToken
   assert.equal(a.exhausted, false);
   assert.match(a.summary, /已用 1\.2万 \/ 5万 令牌，剩余 3\.8万/);
   assert.match(a.rule, /封面每张计 2,500 令牌/);
+  assert.match(a.rule, /生成前会先预占额度/);
+  const holding = describeAiAllowance({ aiTokens: { limit: 50000, used: 8000, remaining: 42000, reserved: 8000, unlimited: false } });
+  assert.match(holding.rule, /8,000 令牌处于生成预占/);
   const done = describeAiAllowance({ aiTokens: { limit: 50000, used: 50000, remaining: 0, unlimited: false } });
   assert.equal(done.exhausted, true);
   assert.equal(describeAiAllowance({ aiTokens: { limit: -1, used: 5, remaining: -1, unlimited: true } }).unlimited, true);

@@ -49,6 +49,23 @@ describe('domestic text generation', () => {
     expect((global.fetch as jest.Mock).mock.calls.map(c => c[0])).toEqual([DOMESTIC_CHAT_ENDPOINTS.qwen, DOMESTIC_CHAT_ENDPOINTS.deepseek]);
   });
 
+  it('local stub answers without calling a provider and cannot boot production', async () => {
+    global.fetch = jest.fn();
+    const result = await service({
+      MARKET_REGION: 'cn',
+      NODE_ENV: 'development',
+      AI_LOCAL_STUB: '1',
+    }).generateText({ prompt: '请为小红书创作一篇爆款笔记，主题：秋天的读书笔记，风格：专业' });
+    expect(global.fetch).not.toHaveBeenCalled();
+    expect(result.provider).toBe('local');
+    expect(result.content).toContain('秋天的读书笔记');
+    expect(result.usage.total_tokens).toBeGreaterThan(0);
+    const titles = await service({ MARKET_REGION: 'cn', NODE_ENV: 'development', AI_LOCAL_STUB: '1' })
+      .generateTitlesWithUsage('秋天的读书笔记', 'xhs', 3);
+    expect(titles.titles.length).toBeGreaterThan(0);
+    expect(() => service({ MARKET_REGION: 'cn', NODE_ENV: 'production', AI_LOCAL_STUB: '1' })).toThrow('QWEN_API_KEY 或 DEEPSEEK_API_KEY');
+  });
+
   it('uses DeepSeek when only DEEPSEEK_API_KEY is configured', async () => {
     global.fetch = jest.fn().mockResolvedValue(chatOk('好')) as jest.Mock;
     const result = await service({ MARKET_REGION: 'cn', DEEPSEEK_API_KEY: 'dk' }).generateText({ prompt: '测试' });

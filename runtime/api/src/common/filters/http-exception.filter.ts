@@ -27,6 +27,26 @@ function genericChinese(status: number): string {
  * 同一句只留一次：一个字段挂两个校验（如 @IsBoolean + @Equals(true)）都失败时，
  * 原来把「请先阅读并同意用户协议和隐私政策」返回两遍，界面上用「；」连成一行重复显示。
  */
+const COMPLIANCE_LEVELS = new Set(['violation', 'risk', 'clear']);
+
+/** 只转发合规检查已经写好的中文字段，避免把异常对象里的其它内容带给浏览器。 */
+function compliancePayload(resp: Record<string, any>) {
+  const disclaimer = typeof resp.disclaimer === 'string' && containsCjk(resp.disclaimer) ? resp.disclaimer : undefined;
+  const level = COMPLIANCE_LEVELS.has(resp.level) ? String(resp.level) : undefined;
+  const hits = Array.isArray(resp.hits)
+    ? resp.hits.slice(0, 20).flatMap((hit) => {
+        if (!hit || typeof hit !== 'object') return [];
+        const reason = typeof hit.reason === 'string' && containsCjk(hit.reason) ? hit.reason.slice(0, 200) : '';
+        if (!reason) return [];
+        const severity = hit.severity === 'block' || hit.severity === 'review' ? hit.severity : 'review';
+        const ruleId = typeof hit.ruleId === 'string' && /^[A-Z0-9-]{3,40}$/.test(hit.ruleId) ? hit.ruleId : '';
+        return [{ ruleId, severity, reason }];
+      })
+    : [];
+  if (!disclaimer && !level && !hits.length) return undefined;
+  return { ...(disclaimer ? { disclaimer } : {}), ...(level ? { level } : {}), ...(hits.length ? { hits } : {}) };
+}
+
 function chineseOnly(message: string | string[], status: number): string | string[] {
   if (Array.isArray(message)) {
     const kept = [...new Set(message.filter((item) => typeof item === 'string' && containsCjk(item)))];
@@ -48,6 +68,8 @@ export class HttpExceptionFilter implements ExceptionFilter {
     let message: string | string[];
     let error = 'Error';
     let details: any;
+    let codeOverride: string | undefined;
+    let compliance: ReturnType<typeof compliancePayload> | undefined;
 
     if (exception instanceof HttpException) {
       status = exception.getStatus();
@@ -60,6 +82,8 @@ export class HttpExceptionFilter implements ExceptionFilter {
         message = resp.message || exception.message;
         error = resp.error || 'Error';
         details = resp.details;
+        if (typeof resp.code === 'string' && /^[A-Z][A-Z0-9_]{2,63}$/.test(resp.code)) codeOverride = resp.code;
+        compliance = compliancePayload(resp);
       } else {
         message = exception.message;
       }
@@ -93,6 +117,7 @@ export class HttpExceptionFilter implements ExceptionFilter {
                 : 'The request could not be processed';
     }
     if (globalMarket && containsCjk(details)) details = undefined;
+    if (globalMarket && compliance && containsCjk(compliance)) compliance = undefined;
     if (!globalMarket) {
       // 国内版：界面只允许中文。框架自带的英文（Unauthorized、Cannot GET /x、
       // "email must be an email"、Internal server error）一律换成对应的中文；
@@ -109,9 +134,10 @@ export class HttpExceptionFilter implements ExceptionFilter {
     const errorResponse = {
       success: false,
       error: {
-        code: error?.replace(/\s+/g, '_').toUpperCase() || 'ERROR',
+        code: codeOverride || error?.replace(/\s+/g, '_').toUpperCase() || 'ERROR',
         message,
         details,
+        ...(compliance ? { compliance } : {}),
         timestamp: new Date().toISOString(),
         path: request.url,
       },

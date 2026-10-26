@@ -32,7 +32,8 @@
     "test:sentry-domestic": "node --import ./scripts/ts-extensionless.mjs --experimental-strip-types scripts/test-sentry-domestic.mjs",
     "test:mobile-layout": "node scripts/test-mobile-layout.mjs",
     "test:chinese-display": "node --experimental-strip-types scripts/test-chinese-display.mjs",
-    "test:manual-publish": "node --import ./scripts/ts-extensionless.mjs --experimental-strip-types scripts/test-manual-publish.mjs"
+    "test:manual-publish": "node --import ./scripts/ts-extensionless.mjs --experimental-strip-types scripts/test-manual-publish.mjs",
+    "test:e2e": "playwright test"
   },
   "dependencies": {
     "@ant-design/icons": "^5.4.0",
@@ -57,6 +58,7 @@
     "zustand": "^4.5.0"
   },
   "devDependencies": {
+    "@playwright/test": "^1.64.1",
     "@tailwindcss/postcss": "^4.1.11",
     "@types/canvas-confetti": "^1.6.0",
     "@types/fluent-ffmpeg": "^2.1.28",

@@ -15,6 +15,8 @@ import { trackEvent } from '@/lib/analytics';
 import { safeErrorText } from '@/lib/api-error';
 import { isAiGeneratedText } from '@/lib/ai-content-label';
 import { ComplianceReviewNotice } from '@/components/compliance/ComplianceReviewNotice';
+import { ComplianceResultView } from '@/components/compliance/ComplianceResultView';
+import { parseCompliance, type ComplianceView } from '@/lib/compliance-view';
 import { isManualPlatform, PUBLISH_CHANNEL_NOTICE } from '@/lib/manual-publish';
 import { describeAiAllowance, generatedCoverUrl, parseAccountList, type AiAllowanceView } from '@/lib/page-data';
 
@@ -49,6 +51,7 @@ function StudioContent() {
   const [visualPrompts, setVisualPrompts] = useState<string[]>([]);
   const [isGenerating, setIsGenerating] = useState(false);
   const [generationError, setGenerationError] = useState('');
+  const [complianceView, setComplianceView] = useState<ComplianceView | null>(null);
   const [isGeneratingImage, setIsGeneratingImage] = useState(false);
 
   const [accounts, setAccounts] = useState<any[]>([]);
@@ -145,6 +148,7 @@ function StudioContent() {
       return;
     }
     setGenerationError('');
+    setComplianceView(null);
     setIsGenerating(true);
     try {
       message.loading({ content: '正在构建内容包...', key: 'gen' });
@@ -160,6 +164,11 @@ function StudioContent() {
       }
       setScript(articleData.content);
       setScriptIsAi(true);
+      try {
+        setComplianceView(parseCompliance(await apiClient.post('/ai/compliance/check', { text: articleData.content })));
+      } catch {
+        setComplianceView(null);
+      }
       setVisualPrompts(Array.isArray(articleData?.visualPrompts) ? articleData.visualPrompts.filter((p: unknown) => typeof p === 'string') : []);
 
       const titleRes: any = await apiClient.post('/ai/generate/titles', {
@@ -453,6 +462,7 @@ function StudioContent() {
           </div>
           <Divider className="my-4" />
           {generationError && <div role="alert" className="mb-4 rounded-lg bg-red-50 p-3 text-sm text-red-700">{generationError}</div>}
+          {complianceView && <ComplianceResultView view={complianceView} />}
           {coverError && <div role="alert" className="mb-4 rounded-lg bg-red-50 p-3 text-sm text-red-700">{coverError}</div>}
           {isGenerating ? (
             <Skeleton active paragraph={{ rows: 6 }} />

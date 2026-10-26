@@ -210,7 +210,11 @@ export function describeAiAllowance(subscription: unknown): AiAllowanceView {
   const t = payload?.aiTokens;
   const limit = Number(t?.limit), used = Number(t?.used), remaining = Number(t?.remaining);
   const perImage = Number(t?.imageTokenEquivalent);
-  const rule = `按实际用量扣减：文案、标题按模型返回的令牌数计${Number.isFinite(perImage) && perImage > 0 ? `，封面每张计 ${perImage.toLocaleString('zh-CN')} 令牌` : ''}；每月 1 日（北京时间）恢复。`;
+  const reserved = Number(t?.reserved);
+  const reserveNote = Number.isFinite(reserved) && reserved > 0
+    ? `当前有 ${formatTokens(reserved)} 令牌处于生成预占，完成或失败后按实际用量结算或退回。`
+    : '生成前会先预占额度，成功后按实际用量结算，失败则退回。';
+  const rule = `按实际用量扣减：文案、标题按模型返回的令牌数计${Number.isFinite(perImage) && perImage > 0 ? `，封面每张计 ${perImage.toLocaleString('zh-CN')} 令牌` : ''}；每月 1 日（北京时间）恢复。${reserveNote}`;
   if (!t || typeof t !== 'object' || !Number.isFinite(limit) || !Number.isFinite(used)) {
     return { available: false, unlimited: false, exhausted: false, summary: '本月 AI 额度暂时无法读取', rule };
   }
