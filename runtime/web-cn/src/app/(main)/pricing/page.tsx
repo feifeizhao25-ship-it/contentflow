@@ -414,7 +414,7 @@ function PricingContent() {
                     onCancel={closeCheckout}
                     footer={null}
                     title={checkoutPlan ? `开通${checkoutPlan.name}` : ''}
-                    destroyOnClose
+                    destroyOnHidden
                 >
                     {checkout.step === 'choose' || checkout.step === 'creating' ? (
                         <div className="space-y-5">
