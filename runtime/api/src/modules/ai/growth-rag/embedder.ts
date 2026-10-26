@@ -1,3 +1,4 @@
+import { FENFAXIA_DASHSCOPE_EMBED, FENFAXIA_MODELS } from '../domestic-model-router';
 import { TextEmbedder } from './types';
 
 export const EMBED_DIM = 32;
@@ -25,13 +26,16 @@ export class LocalHashEmbedder implements TextEmbedder {
 
 export interface EmbedResult {
   vector: number[];
-  embedder: 'local-hash' | 'bge-m3';
+  embedder: 'local-hash' | 'bge-m3' | 'text-embedding-v4';
   fallback: boolean;
 }
 
 export interface EmbedEnv {
   GROWTH_EMBEDDING_PROVIDER?: string;
   GROWTH_EMBEDDING_URL?: string;
+  FENFAXIA_DASHSCOPE_API_KEY?: string;
+  DASHSCOPE_API_KEY?: string;
+  QWEN_API_KEY?: string;
 }
 
 /**
@@ -43,6 +47,26 @@ export async function embedWithFallback(
   env: EmbedEnv = process.env,
   fetchImpl?: typeof fetch,
 ): Promise<EmbedResult> {
+  if (env.GROWTH_EMBEDDING_PROVIDER === 'text-embedding-v4') {
+    const key = [env.FENFAXIA_DASHSCOPE_API_KEY, env.DASHSCOPE_API_KEY, env.QWEN_API_KEY].map((item) => String(item ?? '').trim()).find(Boolean);
+    if (!key || !fetchImpl) {
+      return { vector: localHashEmbed(text), embedder: 'local-hash', fallback: true };
+    }
+    try {
+      const response = await fetchImpl(FENFAXIA_DASHSCOPE_EMBED, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', authorization: `Bearer ${key}` },
+        body: JSON.stringify({ model: FENFAXIA_MODELS.embed, input: text }),
+      });
+      if (!response.ok) throw new Error('embedder http');
+      const payload = (await response.json()) as { data?: Array<{ embedding?: number[] }> };
+      const embedding = payload.data?.[0]?.embedding;
+      if (!embedding?.length) throw new Error('embedder empty');
+      return { vector: embedding, embedder: 'text-embedding-v4', fallback: false };
+    } catch {
+      return { vector: localHashEmbed(text), embedder: 'local-hash', fallback: true };
+    }
+  }
   const wantBge = env.GROWTH_EMBEDDING_PROVIDER === 'bge-m3';
   if (!wantBge || !env.GROWTH_EMBEDDING_URL || !fetchImpl) {
     return { vector: localHashEmbed(text), embedder: 'local-hash', fallback: wantBge };

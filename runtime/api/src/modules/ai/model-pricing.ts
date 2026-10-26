@@ -74,6 +74,9 @@ export const DOMESTIC_TEXT_MODEL_PRICES: Record<string, TextModelPrice> = {
   'qwen-max': { inputCnyPerMillion: 2.4, outputCnyPerMillion: 9.6, verified: true, source: QWEN_PRICING_ZH, checkedAt: QWEN_CHECKED_AT, note: '官方：输入 2.4 元、输出 9.6 元（无阶梯，仅非思考）' },
   // 官方价目页已不再列出 qwen-turbo（第三方转售方公告 2026-10-11 随官方下线）。保留原保守估值只为给历史调用记录计价。
   'qwen-turbo': { inputCnyPerMillion: 0.6, outputCnyPerMillion: 1.2, verified: false, note: '待核实：2026-10-13 官方价目页已不再列出，默认模型已改为 qwen-flash；保留原保守估值' },
+  'qwen3.5-plus': { inputCnyPerMillion: 0.8, outputCnyPerMillion: 4.8, verified: true, source: QWEN_PRICING_ZH, checkedAt: '2026-10-26', note: '官方非思考模式：输入 0.8 元、输出 4.8 元（≤128K）。文档 12 评审模型' },
+  'doubao-seed-2-0-mini-260428': { inputCnyPerMillion: 0.2, outputCnyPerMillion: 2, verified: false, note: '待核实：火山方舟价目不在已核对来源规则内，按文档 12 基准价暂计' },
+  'doubao-seed-2-0-lite-260428': { inputCnyPerMillion: 0.6, outputCnyPerMillion: 3.6, verified: false, note: '待核实：火山方舟价目不在已核对来源规则内，按文档 12 基准价暂计' },
 };
 
 /** 不在表里的模型按表中最贵的一档计价（保守），并在日志里提示补表。 */
@@ -88,6 +91,16 @@ export const UNKNOWN_TEXT_MODEL_PRICE: TextModelPrice = {
 export const DOMESTIC_IMAGE_MODEL_PRICES: Record<string, { cnyPerImage: number; verified: boolean; note: string }> = {
   'wanx2.1-t2i-turbo': { cnyPerImage: 0.3, verified: false, note: '待核实：未能打开阿里云百炼官方价目页核对，保持原保守估值' },
   'wanx2.1-t2i-plus': { cnyPerImage: 0.4, verified: false, note: '待核实：未能打开阿里云百炼官方价目页核对，保持原保守估值' },
+  'doubao-seedream-5-0-flash-260915': { cnyPerImage: 0.12, verified: false, note: '待核实：文档 12 基准价，方舟价目未纳入已核对来源' },
+  'qwen-image-2.0': { cnyPerImage: 0.25, verified: false, note: '待核实：文档 12 的 qwen-image 基准价；官方现行模型 ID 为 qwen-image-2.0' },
+  'wan2.5-t2i-preview': { cnyPerImage: 0.2, verified: false, note: '待核实：文档 12 的 wan2.5-t2i 基准价' },
+};
+
+/** 视频单价：人民币元 / 秒。文档 12 基准价，方舟与可灵条目待核实，不进入文本核对循环。 */
+export const DOMESTIC_VIDEO_CNY_PER_SECOND: Record<string, number> = {
+  'doubao-seedance-2-0-mini-260615': 0.5,
+  'kling-v3': 0.6,
+  'wan2.5-t2v-preview': 0.6,
 };
 export const UNKNOWN_IMAGE_MODEL_CNY = 0.5;
 

@@ -48,8 +48,10 @@ describe('BillingController', () => {
     expect(CN_PLANS[3].platformLimit).toBe(100);
     expect(result.plans[3].aiTokenQuota).toBeNull();
     expect(result.plans[3].platformLimit).toBeNull();
+    expect(result.plans[3].monthlyPostQuota).toBeNull();
     expect(result.plans[3].quotaNote).toContain('待确认');
     expect(JSON.stringify(result.plans[3])).not.toContain(String(CN_PLANS[3].aiTokenQuota));
+    expect(JSON.stringify(result.plans[3].features)).not.toContain('5000');
   });
 
   it('applies free limits when a paid subscription has expired', async () => {

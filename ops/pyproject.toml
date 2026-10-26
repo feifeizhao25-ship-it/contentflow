@@ -1,0 +1,17 @@
+[project]
+name = "airui-ops"
+version = "2.0.0"
+description = "艾瑞见时 OpenClaw 运营中枢（企业微信审批、开机自检、发布包、A 档发布、国产模型网关）"
+requires-python = ">=3.11"
+dependencies = [
+  "cryptography>=41",
+  "PyYAML>=6",
+]
+
+[project.scripts]
+ops = "airui_ops.cli:main"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+addopts = "-q"

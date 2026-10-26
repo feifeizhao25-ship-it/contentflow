@@ -62,14 +62,15 @@ export const CN_PLANS: ChinaPlanDefinition[] = LEGACY_CN_PLANS.map((plan) => {
     free: { memberLimit: 1, storageGb: 1, platformLimit: 1, monthlyPostQuota: 5, features: ['1个平台账号', '每月5条发布', '人工智能生成内容标识'] },
     pro: { name: 'Solo', memberLimit: 1, storageGb: 5, priceMonthlyCny: 99, priceYearlyCny: 990, monthlyPostQuota: 200, features: ['10个平台账号', '每月200条发布', '内容日历与排期'] },
     team: { name: 'Team', memberLimit: 5, storageGb: 50, priceMonthlyCny: 499, priceYearlyCny: 4990, monthlyPostQuota: 1000, features: ['30个平台账号', '团队协作与审批', '每月1000条发布'] },
-    enterprise: { name: 'Business', quotaStatus: 'unconfirmed', memberLimit: 20, storageGb: -1, priceMonthlyCny: 1999, priceYearlyCny: 19990, custom: false, monthlyPostQuota: 5000, aiTokenQuota: 40000000, platformLimit: 100, features: ['每月5000条发布', '操作审计', '团队协作与审批'] },
+    enterprise: { name: 'Business', quotaStatus: 'unconfirmed', memberLimit: 20, storageGb: -1, priceMonthlyCny: 1999, priceYearlyCny: 19990, custom: false, monthlyPostQuota: 5000, aiTokenQuota: 40000000, platformLimit: 100, features: ['发布额度待确认', '操作审计', '团队协作与审批'] },
   };
   return { ...plan, ...updates[plan.id] };
 });
 
-export type PublicChinaPlan = Omit<ChinaPlanDefinition, 'aiTokenQuota' | 'platformLimit'> & {
+export type PublicChinaPlan = Omit<ChinaPlanDefinition, 'aiTokenQuota' | 'platformLimit' | 'monthlyPostQuota'> & {
   aiTokenQuota: number | null;
   platformLimit: number | null;
+  monthlyPostQuota: number | null;
   quotaNote?: string;
 };
 
@@ -80,7 +81,9 @@ export function presentChinaPlan(plan: ChinaPlanDefinition): PublicChinaPlan {
     ...plan,
     aiTokenQuota: null,
     platformLimit: null,
-    quotaNote: 'AI 令牌额度与平台账号上限待确认，确认前不构成承诺',
+    monthlyPostQuota: null,
+    features: plan.features.map((feature) => (/\d/.test(feature) ? '发布额度待确认' : feature)),
+    quotaNote: 'AI 令牌额度、发布条数与平台账号上限待确认，确认前不构成承诺',
   };
 }
 
