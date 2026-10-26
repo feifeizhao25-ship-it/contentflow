@@ -23,7 +23,7 @@ export class PublishController {
   }
 
   @Post('manual-tasks')
-  @ApiOperation({ summary: '创建人工确认发布任务（小红书 / 视频号 / 公众号）' })
+  @ApiOperation({ summary: '创建人工确认发布任务（抖音、B站、小红书、视频号、公众号，均非自动发布）' })
   async createManualTasks(@Request() req: any, @Body() body: CreateManualPublishDto) {
     return this.publishService.createManualTasks(req.user.tenantId, req.user.sub, body);
   }

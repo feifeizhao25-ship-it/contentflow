@@ -14,7 +14,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { parseContentList, mapPublishTasks, parseHotTopics, describePlan, parseAnalyticsOverview, describeAiAllowance, flattenViralAnalysis, planBadge, contentCoverUrl, parseAccountList } from '../src/lib/page-data.ts';
+import { parseContentList, mapPublishTasks, parseHotTopics, describePlan, parseAnalyticsOverview, describeAiAllowance, generatedCoverUrl, flattenViralAnalysis, planBadge, contentCoverUrl, parseAccountList } from '../src/lib/page-data.ts';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const src = (rel) => fs.readFileSync(path.join(ROOT, 'src', rel), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/[^\n]*/g, '$1');
@@ -24,6 +24,14 @@ async function check(name, fn) {
 }
 
 console.log('Page data tests');
+await check('封面：空响应、空白地址及非图片网络地址协议不能报成功', () => {
+  for (const response of [null, {}, {url:''}, {url:'  '}, {url:123}, {url:'javascript:alert(1)'}, {data:{url:null}}]) {
+    assert.throws(() => generatedCoverUrl(response), /未收到有效的封面图片/);
+  }
+  assert.equal(generatedCoverUrl({ url: ' https://example.cn/a.png ' }), 'https://example.cn/a.png');
+  assert.equal(generatedCoverUrl({ success:true, data:{ url:'https://example.cn/a.png' } }), 'https://example.cn/a.png');
+});
+
 
 await check('内容库：解开信封后的 { contents, pagination } 直接得到行', () => {
   const rows = parseContentList({ contents: [{ id: 'c1', content_type: 'article', created_at: '2026-09-01T00:00:00Z', status: 'draft', title: 'T' }], pagination: { total: 1 } });
@@ -69,6 +77,9 @@ await check('热点：有数据时按后端给的展示（topic 字段作标题�
   const r = parseHotTopics({ available: true, topics: [{ id: '1', topic: '某话题', heat: 5000, platform: 'xhs' }] });
   assert.equal(r.topics[0].title, '某话题');
   assert.equal(r.notice, '');
+  const stamped = parseHotTopics({ available: true, source: '示例数据服务', fetchedAt: '2026-10-23T01:02:03.000Z', topics: [{ id: '1', topic: '某话题', heat: 1, platform: 'douyin' }] });
+  assert.equal(stamped.topics[0].fetchedAt, '2026-10-23T01:02:03.000Z');
+  assert.equal(stamped.topics[0].source, '示例数据服务');
 });
 
 await check('热点：异常形状得到空列表与中文说明，不抛错', () => {
@@ -99,6 +110,23 @@ await check('套餐与用量：用真实的工作区限额与用量，日期来�
   ]);
   // 从未累加的 ai_calls_this_month 不再上屏
   assert.equal('aiCallsThisMonth' in plan, false);
+});
+
+await check('Business 未确认额度：页面不展示令牌或平台账号数字', () => {
+  const plan = describePlan({
+    plan: 'enterprise',
+    plan_expires_at: '2026-12-31T00:00:00.000Z',
+    limits: { max_accounts: 100, max_publishes_monthly: 5000, max_storage_gb: 50 },
+    usage_stats: { accounts_count: 2, publishes_this_month: 3, storage_used_mb: 100 },
+  }, { quotaStatus: 'unconfirmed', monthlyQuota: 40000000, usedQuota: 10 });
+  assert.equal(plan.name, 'Business');
+  assert.match(plan.renewText, /待确认/);
+  assert.equal(plan.usage.some((u) => u.title === '本月 AI 令牌' || u.title === '账号绑定'), false);
+  assert.doesNotMatch(JSON.stringify(plan), /40000000|100/);
+  const allowance = describeAiAllowance({ aiTokens: { quotaStatus: 'unconfirmed', limit: 40000000, used: 10, remaining: 39999990 } });
+  assert.match(allowance.summary, /待确认/);
+  assert.equal(allowance.exhausted, false);
+  assert.doesNotMatch(allowance.summary, /4000|40000000/);
 });
 
 await check('套餐与用量：免费版没有到期日，如实写「无账单」；缺数据时不编数字', () => {
@@ -160,6 +188,9 @@ await check('创作工作室：AI 额度来自 /billing/subscription 的 aiToken
   assert.equal(a.exhausted, false);
   assert.match(a.summary, /已用 1\.2万 \/ 5万 令牌，剩余 3\.8万/);
   assert.match(a.rule, /封面每张计 2,500 令牌/);
+  assert.match(a.rule, /生成前会先预占额度/);
+  const holding = describeAiAllowance({ aiTokens: { limit: 50000, used: 8000, remaining: 42000, reserved: 8000, unlimited: false } });
+  assert.match(holding.rule, /8,000 令牌处于生成预占/);
   const done = describeAiAllowance({ aiTokens: { limit: 50000, used: 50000, remaining: 0, unlimited: false } });
   assert.equal(done.exhausted, true);
   assert.equal(describeAiAllowance({ aiTokens: { limit: -1, used: 5, remaining: -1, unlimited: true } }).unlimited, true);

@@ -52,7 +52,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
     // 侧栏套餐卡：读真实套餐（原来写死「免费版」）
     const [plan, setPlan] = useState(() => planBadge(null));
     useEffect(() => {
-        apiClient.get('/billing/subscription').then((r) => setPlan(planBadge(r))).catch(() => setPlan(planBadge(null)));
+        apiClient.get('/billing/subscription', { redirectOn401: false }).then((r) => setPlan(planBadge(r))).catch(() => setPlan(planBadge(null)));
     }, []);
     const [isMobile, setIsMobile] = useState(false);
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -110,6 +110,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
         { key: '/community', icon: <AppstoreOutlined />, label: <Link href="/community">创作者社区</Link> },
         { type: 'divider' as const },
         { key: '/settings', icon: <SettingOutlined />, label: <Link href="/settings">系统设置</Link> },
+        { key: '/settings/developer', icon: <SettingOutlined />, label: <Link href="/settings/developer">对外通知</Link> },
         { key: '/pricing', icon: <CreditCardOutlined />, label: <Link href="/pricing">升级会员</Link> },
     ];
 

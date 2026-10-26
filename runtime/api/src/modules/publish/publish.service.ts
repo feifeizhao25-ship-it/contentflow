@@ -11,6 +11,7 @@ import { MANUAL_DONE, MANUAL_PENDING, MANUAL_PLATFORMS, isManualPlatform, normal
 import { PUBLISH_LOG_MAX_ROWS, PublishTaskFilter, channelUnavailableReason, publishTaskWhere, publishTasksToCsv } from './publish-log';
 import { adaptBodyForPlatform } from '../ai/platform-adaptation';
 import { WebhookService } from '../developer/webhook.service';
+import { RagPolicyService } from '../ai/rag-policy.service';
 
 @Injectable()
 export class PublishService {
@@ -23,6 +24,7 @@ export class PublishService {
     private readonly adapterRegistry: AdapterRegistry,
     private readonly config: ConfigService,
     @Optional() private readonly webhooks?: WebhookService,
+    @Optional() private readonly rag?: RagPolicyService,
   ) {}
 
   /**
@@ -49,6 +51,7 @@ export class PublishService {
     platformAccountIds: string[];
     publishType: 'immediate' | 'scheduled';
     scheduledAt?: Date;
+    riskAcknowledged?: boolean;
   }) {
     if (!['immediate', 'scheduled'].includes(data.publishType)) throw new BadRequestException('发布类型无效');
     const accountIds = [...new Set(data.platformAccountIds || [])];
@@ -72,19 +75,10 @@ export class PublishService {
       throw new BadRequestException('内容未通过审核');
     }
 
-    if (this.config.get<string>('MARKET_REGION', 'cn') === 'cn') {
-      const compliance = evaluateDomesticContent(
-        [content.title, content.body, content.body_html].filter(Boolean).join('\n'),
-      );
-      if (!compliance.passed) {
-        throw new BadRequestException({
-          code: 'CONTENT_COMPLIANCE_BLOCKED',
-          message: '内容未通过国内版发布前六道闸检查',
-          ruleSetVersion: compliance.ruleSetVersion,
-          hits: compliance.hits,
-        });
-      }
-    }
+    await this.assertDomesticCompliance(
+      [content.title, content.body, content.body_html].filter(Boolean).join('\n'),
+      data.riskAcknowledged === true,
+    );
 
     // 检查配额
     // 一次发到 N 个账号计 N 条；按北京时间自然月计数（见 TenantService.currentUsageStats）。
@@ -153,23 +147,52 @@ export class PublishService {
     return tasks;
   }
 
-  /** 发布前的共同检查：内容存在、已审核通过、过国内版六道闸。 */
-  private async loadPublishableContent(tenantId: string, contentId: string) {
+  /** 发布前的共同检查：内容存在、已审核通过、过国内版合规检查。 */
+  private async loadPublishableContent(tenantId: string, contentId: string, riskAcknowledged = false) {
     const content = await this.prisma.content.findFirst({ where: { id: contentId, tenant_id: tenantId } });
     if (!content) throw new NotFoundException('内容不存在');
     if (content.status !== 'approved' && content.status !== 'published') throw new BadRequestException('内容未通过审核');
-    if (this.config.get<string>('MARKET_REGION', 'cn') === 'cn') {
-      const compliance = evaluateDomesticContent([content.title, content.body, content.body_html].filter(Boolean).join('\n'));
-      if (!compliance.passed) {
-        throw new BadRequestException({
-          code: 'CONTENT_COMPLIANCE_BLOCKED',
-          message: '内容未通过国内版发布前六道闸检查',
-          ruleSetVersion: compliance.ruleSetVersion,
-          hits: compliance.hits,
-        });
-      }
-    }
+    await this.assertDomesticCompliance(
+      [content.title, content.body, content.body_html].filter(Boolean).join('\n'),
+      riskAcknowledged,
+    );
     return content;
+  }
+
+  /**
+   * 国内发布前检查。明确违规直接拒绝。资料过期（保守模式）时，
+   * “可能有风险”不停止生成，但发布前必须由用户确认已自行核对。
+   */
+  private async assertDomesticCompliance(text: string, riskAcknowledged = false): Promise<void> {
+    if (this.config.get<string>('MARKET_REGION', 'cn') !== 'cn') return;
+    let conservative = false;
+    try {
+      conservative = !!(await this.rag?.freshnessReport())?.needsReview;
+    } catch {
+      conservative = false;
+    }
+    const compliance = evaluateDomesticContent(text, { conservative });
+    if (!compliance.passed) {
+      throw new BadRequestException({
+        code: 'CONTENT_COMPLIANCE_BLOCKED',
+        message: '内容未通过国内版发布前检查。这不是法律意见。',
+        ruleSetVersion: compliance.ruleSetVersion,
+        level: compliance.level,
+        disclaimer: compliance.disclaimer,
+        hits: compliance.hits,
+      });
+    }
+    const review = compliance.hits.filter((hit) => hit.severity === 'review');
+    if (conservative && review.length && !riskAcknowledged) {
+      throw new BadRequestException({
+        code: 'COMPLIANCE_RISK_ACK_REQUIRED',
+        message: '规则资料已过期，本次按更严格的标准提示风险。确认你已自行核对后才能发布。这不是法律意见。',
+        ruleSetVersion: compliance.ruleSetVersion,
+        level: compliance.level,
+        disclaimer: compliance.disclaimer,
+        hits: review,
+      });
+    }
   }
 
   /**
@@ -177,15 +200,15 @@ export class PublishService {
    * 只记录任务（manual_pending），由用户复制文案、下载封面后自己到平台发出。
    * 计入每月发布条数（与自动发布同一口径）。
    */
-  async createManualTasks(tenantId: string, userId: string, data: { contentId: string; platforms: string[]; scheduledAt?: Date }) {
+  async createManualTasks(tenantId: string, userId: string, data: { contentId: string; platforms: string[]; scheduledAt?: Date; riskAcknowledged?: boolean }) {
     const platforms = [...new Set(data.platforms || [])];
     if (!platforms.length) throw new BadRequestException('请至少选择一个平台');
     const unsupported = platforms.filter((p) => !isManualPlatform(p));
-    if (unsupported.length) throw new BadRequestException('人工确认发布支持小红书、视频号、公众号、抖音、B站（均为手动发布，非自动发布）');
+    if (unsupported.length) throw new BadRequestException('人工确认发布支持小红书、视频号、公众号、抖音、B站、知乎（均为手动发布，非自动发布）');
     const scheduledAt = data.scheduledAt ? new Date(data.scheduledAt) : new Date();
     if (Number.isNaN(scheduledAt.getTime())) throw new BadRequestException('计划发布时间格式不正确');
     await this.assertRealNameIfRequired(userId);
-    const content = await this.loadPublishableContent(tenantId, data.contentId);
+    const content = await this.loadPublishableContent(tenantId, data.contentId, data.riskAcknowledged === true);
     if (!(await this.tenantService.checkQuota(tenantId, 'publish', platforms.length))) {
       throw new BadRequestException('本月发布次数已达上限，请升级套餐或下月再发');
     }

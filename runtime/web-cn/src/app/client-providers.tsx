@@ -1,5 +1,6 @@
 "use client";
 
+import '@ant-design/v5-patch-for-react-19';
 import { AntdRegistry } from '@ant-design/nextjs-registry';
 import { App, ConfigProvider, theme } from 'antd';
 import { AntdAppBridge } from '@/lib/antd-app';

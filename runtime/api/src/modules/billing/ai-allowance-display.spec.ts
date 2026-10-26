@@ -43,6 +43,19 @@ describe('本月 AI 额度：界面显示与接口拦截同一来源', () => {
     });
   }
 
+  it('预占中的令牌算进已用，界面剩余和接口闸门一致', async () => {
+    const prisma: any = {
+      tenant: { findUnique: jest.fn().mockResolvedValue({ plan: 'pro', plan_expires_at: new Date(Date.now() + 86400000), limits: { max_ai_tokens_monthly: 5000 } }) },
+      usageMeter: { findFirst: jest.fn().mockResolvedValue({ ai_tokens: 1000, ai_tokens_reserved: 4000 }) },
+    };
+    const shown = await new BillingController(prisma, {} as any).getSubscription({ user: { tenantId: 't1' } });
+    const allowed = await new UsageService(prisma).checkQuota('t1', ResourceType.TOKENS);
+    expect(shown.aiTokens.used).toBe(5000);
+    expect(shown.aiTokens.reserved).toBe(4000);
+    expect(shown.aiTokens.remaining).toBe(0);
+    expect(allowed).toBe(false);
+  });
+
   it('旧数据只有调用次数时按 1 次 = 2500 令牌折算（与原 checkQuota 口径一致）', async () => {
     const prisma: any = {
       tenant: { findUnique: jest.fn().mockResolvedValue({ plan: 'starter', plan_expires_at: new Date(Date.now() + 86400000), limits: { max_ai_tokens_monthly: undefined, max_ai_calls_monthly: 10 } }) },

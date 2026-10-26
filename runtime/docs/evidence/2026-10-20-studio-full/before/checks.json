@@ -1,0 +1,16 @@
+[
+  {
+    "width": 390,
+    "bodyEqual": true,
+    "fullHeight": false,
+    "promptsVisible": false,
+    "noOverflow": true
+  },
+  {
+    "width": 1440,
+    "bodyEqual": true,
+    "fullHeight": false,
+    "promptsVisible": false,
+    "noOverflow": true
+  }
+]

@@ -1,4 +1,7 @@
-export const DOMESTIC_RULESET_VERSION = 'cn-content-2026.10.16';
+export const DOMESTIC_RULESET_VERSION = 'cn-content-2026.10.23';
+
+/** 每次检查都带上。关键词命中不是律师意见，也不是“通过即可发布”。 */
+export const COMPLIANCE_DISCLAIMER = '这不是法律意见。未发现风险不等于可以发布，发布前请自行核对。';
 
 export type DomesticGateId =
   | 'illegal_content'
@@ -7,6 +10,10 @@ export type DomesticGateId =
   | 'minor_protection'
   | 'misinformation'
   | 'intellectual_property';
+
+/** block：法条原文或既有硬性规则，生成和发布都拦住。review：可能有风险，生成仍可用，保守模式下发布前须人工确认。 */
+export type ComplianceSeverity = 'block' | 'review';
+export type ComplianceLevel = 'violation' | 'risk' | 'clear';
 
 export interface DomesticComplianceHit {
   gate: DomesticGateId;
@@ -18,6 +25,7 @@ export interface DomesticComplianceHit {
   matchedTerms: string[];
   /** 结构化词表命中时，每个词对应的法条出处 */
   matchedDetails?: Array<{ term: string; legalBasis: string }>;
+  severity: ComplianceSeverity;
   humanOverrideAllowed: boolean;
 }
 
@@ -68,7 +76,13 @@ function matchStructuredTerms(content: string, terms: readonly StructuredTerm[])
 }
 
 export interface DomesticComplianceResult {
+  /** 没有 block 级命中。review 级不把生成停掉。 */
   passed: boolean;
+  /** violation：有明确拦截；risk：只有“可能有风险”；clear：这批规则未发现。 */
+  level: ComplianceLevel;
+  disclaimer: string;
+  /** 资料过期时调用方传入。本身不改变 passed，发布侧用它要求人工确认。 */
+  mode: 'normal' | 'conservative';
   ruleSetVersion: string;
   hits: DomesticComplianceHit[];
 }
@@ -170,18 +184,103 @@ export function checkAdDisclosure(content: string): DomesticComplianceHit | null
   return {
     gate: 'advertising_law',
     ruleId: 'CN-AD-NET-ART9-3',
-    source: '《互联网广告管理办法》（国家市场监督管理总局令第72号）第九条第三款',
+    source: '《互联网广告管理办法》（国家市场监督管理总局令第72号）第八条（广告应当具有可识别性）、第九条第三款（种草/测评等附购买方式应当显著标明“广告”）',
     sourceUrl: 'https://www.gov.cn/zhengce/202305/content_6858084.htm',
     sourceRetrievedAt: '2026-10-16',
     reason: '以种草/测评/体验分享形式推销并附购买方式，但未显著标明“广告”',
     matchedTerms: [...forms],
+    severity: 'block',
     humanOverrideAllowed: true,
   } as DomesticComplianceHit;
 }
 
-export function evaluateDomesticContent(content: string): DomesticComplianceResult {
+const HEALTH_CLAIM = /(?:吃了|喝了|用了|敷了|贴了)[^。\n]{0,16}(?:血压|血糖|血脂|肿瘤|癌症|糖尿病|高血压)[^。\n]{0,8}(?:稳|降|好|消失|正常)|降血压|降血糖|降血脂|抗癌|防癌|调理三高/;
+
+/** 《广告法》第十七条、第十八条里写明的疾病治疗/预防功能。只做关键词筛查，不代表律师已抽样验收。 */
+function checkHealthClaim(content: string): DomesticComplianceHit | null {
+  const text = String(content || '').normalize('NFKC');
+  const matched = text.match(HEALTH_CLAIM);
+  if (!matched) return null;
+  return {
+    gate: 'regulated_industry',
+    ruleId: 'CN-AD-ART17-18',
+    source: '《中华人民共和国广告法》第十七条（非医疗广告不得涉及疾病治疗功能）、第十八条（保健食品广告不得涉及疾病预防、治疗功能）',
+    sourceUrl: 'https://sjfg.samr.gov.cn/law/file/pdf/3235243/1663323599406.pdf',
+    sourceRetrievedAt: '2026-08-30',
+    reason: '疑似把商品写成具有疾病治疗或预防功能',
+    matchedTerms: [matched[0].slice(0, 40)],
+    severity: 'block',
+    humanOverrideAllowed: true,
+  };
+}
+
+const ART25_TERMS = ['保本', '无风险', '保收益'] as const;
+const ART25_YIELD = /年化[^。\n]{0,16}(?:稳赚|保证|保本|无风险|保收益)/;
+
+/** 第二十五条原文写了保本、无风险、保收益。年化搭配保证性用语一并拦截。稳赚仍走原有风险词，不改挂法条。 */
+function checkInvestmentGuarantee(content: string): DomesticComplianceHit | null {
+  const text = String(content || '').normalize('NFKC');
+  const terms = ART25_TERMS.filter((term) => text.includes(term));
+  const yieldHit = text.match(ART25_YIELD);
+  const matchedTerms = [...terms, ...(yieldHit ? [yieldHit[0].slice(0, 40)] : [])];
+  if (!matchedTerms.length) return null;
+  return {
+    gate: 'advertising_law',
+    ruleId: 'CN-AD-ART25',
+    source: '《中华人民共和国广告法》第二十五条（不得对投资回报作保证性承诺，不得明示或者暗示保本、无风险或者保收益）',
+    sourceUrl: 'https://sjfg.samr.gov.cn/law/file/pdf/3235243/1663323599406.pdf',
+    sourceRetrievedAt: '2026-08-30',
+    reason: '疑似对收益作保证性承诺',
+    matchedTerms,
+    severity: 'block',
+    humanOverrideAllowed: true,
+  };
+}
+
+function reviewHit(content: string, terms: readonly string[], hit: Omit<DomesticComplianceHit, 'matchedTerms' | 'severity'>): DomesticComplianceHit | null {
+  const text = String(content || '').normalize('NFKC').toLowerCase();
+  const matchedTerms = terms.filter((term) => text.includes(term.toLowerCase()));
+  if (!matchedTerms.length) return null;
+  return { ...hit, matchedTerms, severity: 'review' };
+}
+
+/** 平台站外导流、借灾难营销、保证涨粉：没有经人工复核的平台原文，只标“可能有风险”，不在普通模式下停生成。 */
+function checkReviewOnly(content: string): DomesticComplianceHit[] {
+  const hits = [
+    reviewHit(content, ['加微信', '加v', '私信领取', '站外下单', '微信领资料'], {
+      gate: 'misinformation',
+      ruleId: 'CN-PLATFORM-OFFSITE',
+      source: '常见短视频与社区规范禁止站外导流（平台原文尚未人工复核，不能当成已审核条款）',
+      sourceUrl: 'https://www.douyin.com',
+      sourceRetrievedAt: '2026-08-23',
+      reason: '疑似引导到站外联系或交易，发布前请对照目标平台现行规范',
+      humanOverrideAllowed: true,
+    }),
+    reviewHit(content, ['趁灾', '借地震', '借疫情带货', '灾难营销', '蹭灾难'], {
+      gate: 'misinformation',
+      ruleId: 'CN-ECO-DISASTER',
+      source: '《网络信息内容生态治理规定》第七条（不得借自然灾害、事故灾难等制作、发布不良信息）',
+      sourceUrl: 'https://www.cac.gov.cn',
+      sourceRetrievedAt: '2026-08-30',
+      reason: '疑似借灾难、事故带货或博流量',
+      humanOverrideAllowed: true,
+    }),
+    reviewHit(content, ['保证涨粉', '保证爆款', '平台内部渠道'], {
+      gate: 'advertising_law',
+      ruleId: 'CN-PROMO-RESULT',
+      source: '产品合规口径：宣传不承诺涨粉、保证爆款或平台内部渠道（未写成法条硬性条款）',
+      sourceUrl: 'https://www.cac.gov.cn',
+      sourceRetrievedAt: '2026-10-23',
+      reason: '疑似承诺涨粉、爆款或内部渠道',
+      humanOverrideAllowed: true,
+    }),
+  ];
+  return hits.filter((hit): hit is DomesticComplianceHit => !!hit);
+}
+
+export function evaluateDomesticContent(content: string, options?: { conservative?: boolean }): DomesticComplianceResult {
   const normalized = String(content || '').normalize('NFKC').toLowerCase();
-  const hits = RULES.flatMap((rule) => {
+  const hits: DomesticComplianceHit[] = RULES.flatMap((rule) => {
     const details = rule.structuredTerms ? matchStructuredTerms(content, rule.structuredTerms) : [];
     const matchedTerms = rule.structuredTerms
       ? details.map((detail) => detail.term)
@@ -195,16 +294,27 @@ export function evaluateDomesticContent(content: string): DomesticComplianceResu
       reason: rule.reason,
       matchedTerms,
       ...(rule.structuredTerms ? { matchedDetails: details } : {}),
+      severity: 'block' as const,
       humanOverrideAllowed: rule.humanOverrideAllowed,
     }] : [];
   });
-  const disclosure = checkAdDisclosure(content);
-  if (disclosure) {
-    const order = (gate: DomesticGateId) => DOMESTIC_GATE_ORDER_INTERNAL.indexOf(gate);
-    const at = hits.findIndex((hit) => order(hit.gate) > order('advertising_law'));
-    hits.splice(at === -1 ? hits.length : at, 0, disclosure as (typeof hits)[number]);
+  const extras = [checkAdDisclosure(content), checkHealthClaim(content), checkInvestmentGuarantee(content), ...checkReviewOnly(content)];
+  const order = (gate: DomesticGateId) => DOMESTIC_GATE_ORDER_INTERNAL.indexOf(gate);
+  for (const extra of extras) {
+    if (!extra) continue;
+    const at = hits.findIndex((hit) => order(hit.gate) > order(extra.gate));
+    hits.splice(at === -1 ? hits.length : at, 0, extra);
   }
-  return { passed: hits.length === 0, ruleSetVersion: DOMESTIC_RULESET_VERSION, hits };
+  const blocked = hits.some((hit) => hit.severity === 'block');
+  const review = hits.some((hit) => hit.severity === 'review');
+  return {
+    passed: !blocked,
+    level: blocked ? 'violation' : review ? 'risk' : 'clear',
+    disclaimer: COMPLIANCE_DISCLAIMER,
+    mode: options?.conservative ? 'conservative' : 'normal',
+    ruleSetVersion: DOMESTIC_RULESET_VERSION,
+    hits,
+  };
 }
 
 const DOMESTIC_GATE_ORDER_INTERNAL: readonly DomesticGateId[] = [

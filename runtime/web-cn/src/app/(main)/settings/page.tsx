@@ -68,7 +68,7 @@ export default function SettingsPage() {
         { key: 'douyin', name: '抖音', icon: '🎵' },
         { key: 'channels', name: '视频号', icon: '📹' },
         { key: 'wechat', name: '公众号', icon: '💬' },
-        { key: 'bilibili', name: 'Bilibili', icon: '📺' },
+        { key: 'bilibili', name: 'B站', icon: '📺' },
         { key: 'weibo', name: '微博', icon: '👁️' },
         { key: 'zhihu', name: '知乎', icon: '🎓' },
         { key: 'toutiao', name: '今日头条', icon: '📰' },

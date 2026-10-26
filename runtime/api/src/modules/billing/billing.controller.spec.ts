@@ -1,4 +1,4 @@
-import { BillingController } from './billing.controller';
+import { BillingController, domesticRenewalNotice } from './billing.controller';
 import { CN_PLANS, PLANS } from './plans.constant';
 import { createHmac, createSign, generateKeyPairSync } from 'crypto';
 import { canonicalAlipayParams } from './alipay.adapter';
@@ -36,14 +36,20 @@ describe('BillingController', () => {
     const controller = new BillingController({} as any, {} as any);
     const result = controller.getPlans('cn');
     expect(result.market).toBe('cn');
-    expect(result.plans).toBe(CN_PLANS);
-    expect(CN_PLANS.map((plan) => plan.id)).toEqual(['free', 'pro', 'team', 'enterprise']);
+    expect(result.plans.map((plan) => plan.id)).toEqual(['free', 'pro', 'team', 'enterprise']);
     expect(CN_PLANS.map((plan) => plan.priceMonthlyCny)).toEqual([0, 99, 499, 1999]);
     expect(CN_PLANS[0].monthlyPostQuota).toBe(5);
     expect(CN_PLANS[3].custom).toBe(false);
-    // Business 不能与 Team 同额度，也不能误继承“不限”平台数
+    // 内部安全上限：Business 的 AI 令牌按价格比例为 Team 的 4 倍，平台账号上限 100，不能与 Team 同额，也不能误继承「不限」。
+    // 对外接口把这两项标成待确认，不把未确认数字当成承诺。
+    expect(CN_PLANS[3].quotaStatus).toBe('unconfirmed');
     expect(CN_PLANS[3].aiTokenQuota).toBeGreaterThan(CN_PLANS[2].aiTokenQuota);
+    expect(CN_PLANS[3].aiTokenQuota).toBe(40000000);
     expect(CN_PLANS[3].platformLimit).toBe(100);
+    expect(result.plans[3].aiTokenQuota).toBeNull();
+    expect(result.plans[3].platformLimit).toBeNull();
+    expect(result.plans[3].quotaNote).toContain('待确认');
+    expect(JSON.stringify(result.plans[3])).not.toContain(String(CN_PLANS[3].aiTokenQuota));
   });
 
   it('applies free limits when a paid subscription has expired', async () => {
@@ -61,6 +67,34 @@ describe('BillingController', () => {
     expect(result.plan).toBe('free');
     expect(result.monthlyQuota).toBe(50000);
     expect(result.limits.max_ai_tokens_monthly).toBe(50000);
+  });
+
+  it('marks Business quota unconfirmed without changing the free fallback', async () => {
+    const previous = process.env.MARKET_REGION;
+    process.env.MARKET_REGION = 'cn';
+    try {
+      const prisma = {
+        tenant: { findUnique: jest.fn().mockResolvedValue({
+          plan: 'enterprise',
+          plan_expires_at: new Date(Date.now() + 86_400_000),
+          limits: {},
+        }) },
+        usageMeter: { findFirst: jest.fn().mockResolvedValue({ ai_tokens: 10 }) },
+      };
+      const result = await new BillingController(prisma as any, {} as any).getSubscription({
+        user: { tenantId: 'tenant-1' },
+      });
+      expect(result.plan).toBe('enterprise');
+      expect(result.quotaStatus).toBe('unconfirmed');
+      expect(result.aiTokens.quotaStatus).toBe('unconfirmed');
+      expect(result.renewalNotice).toContain('不会自动扣款');
+      const now = Date.parse('2026-10-23T00:00:00Z');
+      expect(domesticRenewalNotice('pro', new Date(now + 3 * 86400000), now)).toContain('不会自动扣款');
+      expect(domesticRenewalNotice('pro', new Date(now + 30 * 86400000), now)).toBeNull();
+      expect(domesticRenewalNotice('free', new Date(now + 86400000), now)).toBeNull();
+    } finally {
+      process.env.MARKET_REGION = previous;
+    }
   });
 
   it('accepts a fresh correctly signed internal payment callback', async () => {

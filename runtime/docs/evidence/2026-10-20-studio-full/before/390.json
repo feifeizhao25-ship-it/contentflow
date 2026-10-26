@@ -1,0 +1,140 @@
+[
+  {
+    "path": "/api/health",
+    "data": {},
+    "testFixture": true
+  },
+  {
+    "path": "/api/health",
+    "data": {},
+    "testFixture": true
+  },
+  {
+    "path": "/api/health",
+    "data": {},
+    "testFixture": true
+  },
+  {
+    "path": "/api/health",
+    "data": {},
+    "testFixture": true
+  },
+  {
+    "path": "/api/v1/billing/subscription",
+    "data": {
+      "plan": "pro",
+      "aiTokens": {
+        "limit": 50000,
+        "used": 123,
+        "remaining": 49877,
+        "imageTokenEquivalent": 2500
+      }
+    },
+    "testFixture": true
+  },
+  {
+    "path": "/api/v1/auth/profile",
+    "data": {},
+    "testFixture": true
+  },
+  {
+    "path": "/api/v1/billing/subscription",
+    "data": {
+      "plan": "pro",
+      "aiTokens": {
+        "limit": 50000,
+        "used": 123,
+        "remaining": 49877,
+        "imageTokenEquivalent": 2500
+      }
+    },
+    "testFixture": true
+  },
+  {
+    "path": "/api/v1/auth/profile",
+    "data": {},
+    "testFixture": true
+  },
+  {
+    "path": "/api/v1/ai/compliance-sources/status",
+    "data": {},
+    "testFixture": true
+  },
+  {
+    "path": "/api/v1/accounts",
+    "data": [],
+    "testFixture": true
+  },
+  {
+    "path": "/api/v1/billing/subscription",
+    "data": {
+      "plan": "pro",
+      "aiTokens": {
+        "limit": 50000,
+        "used": 123,
+        "remaining": 49877,
+        "imageTokenEquivalent": 2500
+      }
+    },
+    "testFixture": true
+  },
+  {
+    "path": "/api/v1/ai/compliance-sources/status",
+    "data": {},
+    "testFixture": true
+  },
+  {
+    "path": "/api/v1/accounts",
+    "data": [],
+    "testFixture": true
+  },
+  {
+    "path": "/api/v1/billing/subscription",
+    "data": {
+      "plan": "pro",
+      "aiTokens": {
+        "limit": 50000,
+        "used": 123,
+        "remaining": 49877,
+        "imageTokenEquivalent": 2500
+      }
+    },
+    "testFixture": true
+  },
+  {
+    "path": "/api/v1/ai/generate/article",
+    "data": {
+      "content": "第1段：这是明确标记的接口测试正文，核对完整显示、手机换行与末段可见性。不能当成真实模型回答或专业建议。\n\n第2段：这是明确标记的接口测试正文，核对完整显示、手机换行与末段可见性。不能当成真实模型回答或专业建议。\n\n第3段：这是明确标记的接口测试正文，核对完整显示、手机换行与末段可见性。不能当成真实模型回答或专业建议。\n\n第4段：这是明确标记的接口测试正文，核对完整显示、手机换行与末段可见性。不能当成真实模型回答或专业建议。\n\n第5段：这是明确标记的接口测试正文，核对完整显示、手机换行与末段可见性。不能当成真实模型回答或专业建议。\n\n第6段：这是明确标记的接口测试正文，核对完整显示、手机换行与末段可见性。不能当成真实模型回答或专业建议。\n\n第7段：这是明确标记的接口测试正文，核对完整显示、手机换行与末段可见性。不能当成真实模型回答或专业建议。\n\n第8段：这是明确标记的接口测试正文，核对完整显示、手机换行与末段可见性。不能当成真实模型回答或专业建议。\n\n第9段：这是明确标记的接口测试正文，核对完整显示、手机换行与末段可见性。不能当成真实模型回答或专业建议。\n\n第10段：这是明确标记的接口测试正文，核对完整显示、手机换行与末段可见性。不能当成真实模型回答或专业建议。\n\n第11段：这是明确标记的接口测试正文，核对完整显示、手机换行与末段可见性。不能当成真实模型回答或专业建议。\n\n第12段：这是明确标记的接口测试正文，核对完整显示、手机换行与末段可见性。不能当成真实模型回答或专业建议。\n\n第13段：这是明确标记的接口测试正文，核对完整显示、手机换行与末段可见性。不能当成真实模型回答或专业建议。\n\n第14段：这是明确标记的接口测试正文，核对完整显示、手机换行与末段可见性。不能当成真实模型回答或专业建议。\n\n第15段：这是明确标记的接口测试正文，核对完整显示、手机换行与末段可见性。不能当成真实模型回答或专业建议。\n\n第16段：这是明确标记的接口测试正文，核对完整显示、手机换行与末段可见性。不能当成真实模型回答或专业建议。\n\n第17段：这是明确标记的接口测试正文，核对完整显示、手机换行与末段可见性。不能当成真实模型回答或专业建议。\n\n第18段：这是明确标记的接口测试正文，核对完整显示、手机换行与末段可见性。不能当成真实模型回答或专业建议。",
+      "visualPrompts": [
+        "封面提示词1：完整展示这个测试提示词，不应静默丢弃。",
+        "封面提示词2：完整展示这个测试提示词，不应静默丢弃。",
+        "封面提示词3：完整展示这个测试提示词，不应静默丢弃。",
+        "封面提示词4：完整展示这个测试提示词，不应静默丢弃。"
+      ]
+    },
+    "testFixture": true
+  },
+  {
+    "path": "/api/v1/ai/generate/titles",
+    "data": {
+      "titles": [
+        "完整测试标题完整测试标题完整测试标题完整测试标题完整测试标题完整测试标题完整测试标题完整测试标题完整测试标题完整测试标题完整测试标题完整测试标题完整测试标题完整测试标题完整测试标题完整测试标题完整测试标题完整测试标题",
+        "第二个测试标题"
+      ]
+    },
+    "testFixture": true
+  },
+  {
+    "path": "/api/v1/billing/subscription",
+    "data": {
+      "plan": "pro",
+      "aiTokens": {
+        "limit": 50000,
+        "used": 123,
+        "remaining": 49877,
+        "imageTokenEquivalent": 2500
+      }
+    },
+    "testFixture": true
+  }
+]

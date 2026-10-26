@@ -51,7 +51,11 @@ export const LEGACY_CN_PLANS: ChinaPlanDefinition[] = [
   },
 ];
 
-// 2026-09-01 已批准定价；Business AI 令牌按价格比例为 Team 的 4 倍（4000 万/月），平台账号上限 100（此前误继承“不限”与 Team 同额）——2026-10-16 待负责人确认；档名按 0S1 统一为 Solo / Team / Business（分D04）；旧订单使用下单快照或 LEGACY_CN_PLANS，禁止重定价。
+// 2026-09-01 已批准定价。档名按 0S1 统一为 Solo / Team / Business（分D04）。
+// Business 的 AI 令牌按价格比例为 Team 的 4 倍（4000 万/月），平台账号上限 100。
+// 这两项是内部安全上限（避免误继承「不限」或与 Team 同额），2026-10-16 起仍待负责人确认，
+// 不是对客户的承诺。对外展示走 presentChinaPlan，不输出这些数字。
+// 旧订单使用下单快照或 LEGACY_CN_PLANS，禁止重定价。
 export const CN_PLAN_VERSION = '2026-09-01';
 export const CN_PLANS: ChinaPlanDefinition[] = LEGACY_CN_PLANS.map((plan) => {
   const updates: Record<string, Partial<ChinaPlanDefinition>> = {
@@ -62,6 +66,23 @@ export const CN_PLANS: ChinaPlanDefinition[] = LEGACY_CN_PLANS.map((plan) => {
   };
   return { ...plan, ...updates[plan.id] };
 });
+
+export type PublicChinaPlan = Omit<ChinaPlanDefinition, 'aiTokenQuota' | 'platformLimit'> & {
+  aiTokenQuota: number | null;
+  platformLimit: number | null;
+  quotaNote?: string;
+};
+
+/** 给定价接口和页面的国内套餐。未确认额度不带具体数字。 */
+export function presentChinaPlan(plan: ChinaPlanDefinition): PublicChinaPlan {
+  if (plan.quotaStatus !== 'unconfirmed') return plan;
+  return {
+    ...plan,
+    aiTokenQuota: null,
+    platformLimit: null,
+    quotaNote: 'AI 令牌额度与平台账号上限待确认，确认前不构成承诺',
+  };
+}
 
 export const PLANS: PlanDefinition[] = [
   {

@@ -10,11 +10,12 @@ import {
   isDomesticMarket,
   resolveTextProvider,
 } from './market-routing';
+import { localAiStubEnabled, localStubCompletion } from './local-ai-stub';
 
 interface AIResponse {
   content: string;
   model: string;
-  provider: 'openrouter' | 'deepseek' | 'qwen';
+  provider: 'openrouter' | 'deepseek' | 'qwen' | 'local';
   latency_ms: number;
   cost_amount: number | null;
   usage: {
@@ -114,6 +115,9 @@ function aiUnavailable(message: string, code: string) {
   return new ServiceUnavailableException({ message, error: code });
 }
 
+/** 国内文生图每次 HTTP 请求的上限。轮询次数另有 DASHSCOPE_IMAGE_POLL_ATTEMPTS。 */
+export const DOMESTIC_IMAGE_REQUEST_TIMEOUT_MS = 30_000;
+
 export const DOMESTIC_CHAT_ENDPOINTS = {
   qwen: 'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions',
   deepseek: 'https://api.deepseek.com/chat/completions',
@@ -163,6 +167,7 @@ export class AIService {
   private readonly marketRegion: string;
   private openRouterFailures = 0;
   private openRouterOpenUntil = 0;
+  private localStub = false;
 
   constructor(
     private readonly prisma: PrismaService,
@@ -180,10 +185,15 @@ export class AIService {
       : this.configService.get('OPENROUTER_API_KEY', '');
     // 国内栈没有任何境内 key 时，在启动阶段就说清楚，
     // 而不是等第一个用户点了生成才报。
+    this.localStub = localAiStubEnabled({
+      NODE_ENV: this.configService.get('NODE_ENV', process.env.NODE_ENV ?? ''),
+      AI_LOCAL_STUB: this.configService.get('AI_LOCAL_STUB', ''),
+    });
     assertDomesticProviderConfigured({
       marketRegion: this.marketRegion,
       qwenApiKey: this.qwenApiKey,
       deepseekApiKey: this.deepseekApiKey,
+      localStub: this.localStub,
     });
     // 隐式标识要求写入服务提供者编码（GB 45438-2025）。不编造：没配就留空，并在启动时说清楚。
     if (isDomesticMarket(this.marketRegion) && !aigcProviderCode()) {
@@ -271,6 +281,18 @@ export class AIService {
     maxTokens: number,
     startedAt: number,
   ): Promise<AIResponse> {
+    if (this.localStub) {
+      const stub = localStubCompletion(params.prompt);
+      this.logger.log('AI generation completed via local stub (no provider call)');
+      return {
+        content: stub.content,
+        model: 'local-stub',
+        provider: 'local',
+        latency_ms: Date.now() - startedAt,
+        cost_amount: 0,
+        usage: stub.usage,
+      };
+    }
     const candidates: Array<{ provider: 'qwen' | 'deepseek'; model: string; key: string }> = [];
     if (params.model) {
       const provider = model.includes('deepseek') ? 'deepseek' : 'qwen';
@@ -289,6 +311,7 @@ export class AIService {
     for (const candidate of usable) {
       try {
         const response = await fetch(DOMESTIC_CHAT_ENDPOINTS[candidate.provider], {
+          signal: AbortSignal.timeout(30000),
           method: 'POST',
           headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${candidate.key}` },
           body: JSON.stringify({
@@ -303,16 +326,24 @@ export class AIService {
           continue;
         }
         const data = await response.json();
-        const content = data?.choices?.[0]?.message?.content || '';
-        if (!content) {
+        const content = data?.choices?.[0]?.message?.content;
+        if (typeof content !== 'string' || !content.trim()) {
           failures.push(`${candidate.provider}:empty`);
           continue;
         }
         const usage = {
-          prompt_tokens: data.usage?.prompt_tokens || 0,
-          completion_tokens: data.usage?.completion_tokens || 0,
-          total_tokens: data.usage?.total_tokens || 0,
+          prompt_tokens: data.usage?.prompt_tokens,
+          completion_tokens: data.usage?.completion_tokens,
+          total_tokens: data.usage?.total_tokens,
         };
+        // 不把缺失、字符串或负数用量归零后报告成功，避免免费生成和错误成本统计。
+        if (!Number.isSafeInteger(usage.prompt_tokens) || usage.prompt_tokens < 0 ||
+            !Number.isSafeInteger(usage.completion_tokens) || usage.completion_tokens < 0 ||
+            !Number.isSafeInteger(usage.total_tokens) || usage.total_tokens <= 0 ||
+            usage.total_tokens < usage.prompt_tokens || usage.total_tokens < usage.completion_tokens) {
+          failures.push(`${candidate.provider}:invalid_usage`);
+          continue;
+        }
         this.logger.log(`AI generation completed via ${candidate.provider}: ${usage.total_tokens} tokens`);
         // 境内接口只回 token 数、不回金额：按集中价目表折算，否则每日预算永远统计为 0。
         const cost = estimateTextCost(candidate.model, usage.prompt_tokens, usage.completion_tokens);
@@ -652,6 +683,7 @@ ${content}
     const size = sizes[params.size || '1024x1024'] ?? '1024*1024';
     const model = this.configService.get('DASHSCOPE_IMAGE_MODEL', 'wanx2.1-t2i-turbo');
     const submit = await fetch(DASHSCOPE_IMAGE_SYNTHESIS, {
+      signal: AbortSignal.timeout(DOMESTIC_IMAGE_REQUEST_TIMEOUT_MS),
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -673,6 +705,7 @@ ${content}
     for (let i = 0; i < attempts; i += 1) {
       if (intervalMs) await new Promise((resolve) => setTimeout(resolve, intervalMs));
       const res = await fetch(`${DASHSCOPE_TASKS}${encodeURIComponent(taskId)}`, {
+        signal: AbortSignal.timeout(DOMESTIC_IMAGE_REQUEST_TIMEOUT_MS),
         headers: { Authorization: `Bearer ${this.qwenApiKey}` },
       });
       if (!res.ok) continue;

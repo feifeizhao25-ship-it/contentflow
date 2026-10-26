@@ -138,6 +138,11 @@ function PricingContent() {
         color: plan.id === 'pro' ? 'text-indigo-500' : 'text-zinc-500',
         badge: plan.id === 'pro' ? '推荐' : undefined,
         credits: undefined as string | undefined,
+        quotaNote: typeof plan.quotaNote === 'string' && plan.quotaNote.trim()
+            ? plan.quotaNote.trim()
+            : plan.id === 'enterprise'
+                ? 'AI 令牌额度与平台账号上限待确认，确认前不构成承诺'
+                : '',
     }));
 
     // ── 下单 ──────────────────────────────────────────────────────────
@@ -316,9 +321,9 @@ function PricingContent() {
                     </Radio.Group>
                 </div>
 
-                {/* 批1售卖真实性：Business 的 AI 令牌（4000万/月）与平台账号上限（100）为按价格比例推算、未经负责人确认的口径，确认前如实说明，不冒充已承诺额度 */}
+                {/* 内部安全上限是 4000 万令牌/月、100 个平台账号，仍待负责人确认。页面不展示这些数字。 */}
                 <div className="max-w-4xl mx-auto mb-8 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900" role="note">
-                    关于 Business：其 AI 令牌额度（4000 万/月）与平台账号上限（100 个）目前为推算口径，尚未经负责人最终确认；确认前请以商务沟通的书面约定为准，页面数字不构成承诺。其余套餐额度以付款时展示为准。
+                    关于 Business：AI 令牌额度与平台账号上限尚未确认，页面不展示未确认的数字，也不构成承诺。确认前请以商务书面约定为准。其余套餐额度以付款时展示为准。
                 </div>
 
                 {/* Plans Grid */}
@@ -368,20 +373,20 @@ function PricingContent() {
                                 )}
                             </div>
 
-                            <ul className="space-y-4 mb-8 flex-1">
-                                {plan.features.map((f, i) => (
+                            <ul className="space-y-4 mb-4 flex-1">
+                                {plan.features.filter((f) => !isComingSoonFeature(typedRegistry, f)).map((f, i) => (
                                     <li key={i} className="flex items-start gap-3 text-sm font-medium text-zinc-600 dark:text-zinc-300">
                                         <CheckCircleFilled className={clsx("mt-0.5", plan.highlight ? "text-indigo-500" : "text-zinc-300")} />
-                                        <span>
-                                            {f}
-                                            {isComingSoonFeature(typedRegistry, f) && (
-                                                <span className="ml-2 rounded-full bg-amber-50 px-2 py-0.5 text-xs font-bold text-amber-700">即将上线</span>
-                                            )}
-                                        </span>
+                                        <span>{f}</span>
                                     </li>
                                 ))}
                             </ul>
-                            {/* 未开通权益只在对应卖点旁标一次「即将上线」，汇总说明放在卡片组下方，避免每张卡重复堆叠。 */}
+                            {plan.quotaNote && (
+                                <p className="mb-4 text-xs leading-5 text-amber-800" data-testid="quota-note">{plan.quotaNote}</p>
+                            )}
+                            {plan.features.some((f) => isComingSoonFeature(typedRegistry, f)) && (
+                                <p className="mb-8 text-xs leading-5 text-amber-700">路线图（即将上线）：{plan.features.filter((f) => isComingSoonFeature(typedRegistry, f)).join('、')}</p>
+                            )}
 
                             <Button
                                 type="primary"
@@ -403,14 +408,14 @@ function PricingContent() {
                     ))}
 
                 </div>
-                <p className="mb-20 text-xs text-zinc-500">标「即将上线」的权益暂未开通（如平台授权、团队审批、操作审计），开通前不影响当前价格。</p>
+                <p className="mb-20 text-xs text-zinc-500">每张卡底部一行「路线图（即将上线）」列出尚未开通的卖点（如平台授权、团队审批、操作审计），开通前不影响当前价格。</p>
 
                 <Modal
                     open={checkoutPlan !== null}
                     onCancel={closeCheckout}
                     footer={null}
                     title={checkoutPlan ? `开通${checkoutPlan.name}` : ''}
-                    destroyOnClose
+                    destroyOnHidden
                 >
                     {checkout.step === 'choose' || checkout.step === 'creating' ? (
                         <div className="space-y-5">

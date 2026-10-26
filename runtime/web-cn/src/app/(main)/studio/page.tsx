@@ -15,8 +15,10 @@ import { trackEvent } from '@/lib/analytics';
 import { safeErrorText } from '@/lib/api-error';
 import { isAiGeneratedText } from '@/lib/ai-content-label';
 import { ComplianceReviewNotice } from '@/components/compliance/ComplianceReviewNotice';
+import { ComplianceResultView } from '@/components/compliance/ComplianceResultView';
+import { parseCompliance, type ComplianceView } from '@/lib/compliance-view';
 import { isManualPlatform, PUBLISH_CHANNEL_NOTICE } from '@/lib/manual-publish';
-import { describeAiAllowance, parseAccountList, type AiAllowanceView } from '@/lib/page-data';
+import { describeAiAllowance, generatedCoverUrl, parseAccountList, type AiAllowanceView } from '@/lib/page-data';
 
 const { TextArea } = Input;
 
@@ -26,6 +28,7 @@ const PLATFORMS = [
   { id: 'weixin', name: '视频号', color: '#07c160', icon: '💬' },
   { id: 'bilibili', name: 'B站', color: '#00a1d6', icon: '📺' },
   { id: 'wechat_mp', name: '公众号', color: '#16a34a', icon: '📰' },
+  { id: 'zhihu', name: '知乎', color: '#0066ff', icon: '🎓' },
 ];
 
 function StudioContent() {
@@ -42,11 +45,14 @@ function StudioContent() {
   const [selectedTitle, setSelectedTitle] = useState('');
   const [script, setScript] = useState('');
   const [coverUrl, setCoverUrl] = useState('');
+  const [coverError, setCoverError] = useState('');
   // 本次会话里的内容 / 封面是 AI 生成的：保存到内容库时标记 source=ai，分发时才会保留 AI 生成标识
   const [scriptIsAi, setScriptIsAi] = useState(false);
   const [coverIsAi, setCoverIsAi] = useState(false);
   const [visualPrompts, setVisualPrompts] = useState<string[]>([]);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [generationError, setGenerationError] = useState('');
+  const [complianceView, setComplianceView] = useState<ComplianceView | null>(null);
   const [isGeneratingImage, setIsGeneratingImage] = useState(false);
 
   const [accounts, setAccounts] = useState<any[]>([]);
@@ -142,6 +148,8 @@ function StudioContent() {
       message.warning('请输入主题或一句话灵感');
       return;
     }
+    setGenerationError('');
+    setComplianceView(null);
     setIsGenerating(true);
     try {
       message.loading({ content: '正在构建内容包...', key: 'gen' });
@@ -152,9 +160,17 @@ function StudioContent() {
       });
 
       const articleData = articleRes?.data || articleRes;
-      setScript(articleData?.content || '');
+      if (typeof articleData?.content !== 'string' || !articleData.content.trim()) {
+        throw new Error('没有收到有效正文，请重试；已有正文已保留');
+      }
+      setScript(articleData.content);
       setScriptIsAi(true);
-      setVisualPrompts(articleData?.visualPrompts || []);
+      try {
+        setComplianceView(parseCompliance(await apiClient.post('/ai/compliance/check', { text: articleData.content })));
+      } catch {
+        setComplianceView(null);
+      }
+      setVisualPrompts(Array.isArray(articleData?.visualPrompts) ? articleData.visualPrompts.filter((p: unknown) => typeof p === 'string') : []);
 
       const titleRes: any = await apiClient.post('/ai/generate/titles', {
         topic,
@@ -162,6 +178,9 @@ function StudioContent() {
         count: 6,
       });
       const nextTitles = titleRes?.data?.titles || titleRes?.titles || [];
+      if (!Array.isArray(nextTitles) || !nextTitles.length || nextTitles.some((t: unknown) => typeof t !== 'string' || !t.trim())) {
+        throw new Error('正文已生成，但没有收到有效标题；正文已保留，请手动填写标题或稍后重试');
+      }
       setTitles(nextTitles);
       if (nextTitles.length > 0) {
         setSelectedTitle(nextTitles[0]);
@@ -175,7 +194,9 @@ function StudioContent() {
       message.success({ content: '内容包生成完成', key: 'gen' });
     } catch (e: any) {
       console.error('Generation Error Detail:', e);
-      message.error({ content: `生成失败: ${safeErrorText(e, '未知错误')}`, key: 'gen' });
+      const errorText = safeErrorText(e, '生成失败，请稍后重试');
+      setGenerationError(errorText);
+      message.error({ content: errorText, key: 'gen' });
     } finally {
       setIsGenerating(false);
     }
@@ -186,6 +207,7 @@ function StudioContent() {
       message.warning('请先生成内容包或填写主题');
       return;
     }
+    setCoverError('');
     setIsGeneratingImage(true);
     try {
       message.loading({ content: '正在生成封面...', key: 'cover' });
@@ -193,8 +215,22 @@ function StudioContent() {
         prompt: derivedPrompt,
         style: style === 'xhs_influencer' ? 'xhs_influencer' : 'professional',
       });
-      const imageData = res?.data || res;
-      setCoverUrl(imageData?.url || '');
+      const nextCoverUrl = generatedCoverUrl(res);
+      // 先确认图片可加载，再替换用户已有封面；接口返回 URL 不等于图片可用。
+      await new Promise<void>((resolve, reject) => {
+        const preview = new window.Image();
+        const finish = (error?: Error) => {
+          clearTimeout(timer);
+          preview.onload = null;
+          preview.onerror = null;
+          if (error) reject(error); else resolve();
+        };
+        const timer = setTimeout(() => finish(new Error('封面图片加载超时，请重试；已有封面已保留')), 20000);
+        preview.onload = () => finish();
+        preview.onerror = () => finish(new Error('封面图片加载失败，请重试；已有封面已保留'));
+        preview.src = nextCoverUrl;
+      });
+      setCoverUrl(nextCoverUrl);
       setCoverIsAi(true);
       await refreshBalance();
       trackEvent('cover_generated', {
@@ -202,7 +238,9 @@ function StudioContent() {
       });
       message.success({ content: '封面已生成', key: 'cover' });
     } catch (e: any) {
-      message.error({ content: safeErrorText(e, '封面生成失败'), key: 'cover' });
+      const errorText = safeErrorText(e, '封面生成失败');
+      setCoverError(errorText);
+      message.error({ content: errorText, key: 'cover' });
     } finally {
       setIsGeneratingImage(false);
     }
@@ -271,7 +309,7 @@ function StudioContent() {
         await apiClient.post('/publish/manual-tasks', { contentId, platforms: manualPlatforms, scheduledAt: scheduleAt });
       }
 
-      // 批3：抖音/B站已纳入人工确认发布（见 isManualPlatform），此分支只剩未支持平台；官方自动发布未开通前不创建自动任务
+      // 抖音/B站已纳入人工确认发布（见 isManualPlatform）。此分支只剩未支持平台；官方自动发布未开通前不创建自动任务
       const autoPlatforms = selectedPlatforms.filter((p) => !isManualPlatform(p));
       let nextAccounts = accounts;
       if (autoPlatforms.length && !nextAccounts.length) {
@@ -341,12 +379,12 @@ function StudioContent() {
           items={[
             { title: '主题与平台', description: '定义核心方向' },
             { title: '内容生成', description: 'AI 文案与封面' },
-            { title: '分发排期', description: '复制文案到平台发布；平台授权开通后可自动发布' },
+            { title: '分发排期', description: '目前所有平台都是人工确认发布，复制文案后到平台手动发出' },
           ]}
         />
       </Card>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 items-start gap-6">
         <Card className="lg:col-span-1 rounded-[24px] border-none">
           <h3 className="text-lg font-serif mb-4 flex items-center gap-2">
             <Sparkles className="w-4 h-4 text-amber-500" />
@@ -419,11 +457,14 @@ function StudioContent() {
               <Layers className="w-4 h-4 text-emerald-600" />
               内容包结构预览
             </h3>
-            <Button icon={<ImageIcon className="w-4 h-4" />} onClick={handleGenerateCover} loading={isGeneratingImage} disabled={allowance.exhausted}>
+            <Button aria-label="生成封面" aria-busy={isGeneratingImage} icon={<ImageIcon className="w-4 h-4" />} onClick={handleGenerateCover} loading={isGeneratingImage} disabled={allowance.exhausted}>
               生成封面
             </Button>
           </div>
           <Divider className="my-4" />
+          {generationError && <div role="alert" className="mb-4 rounded-lg bg-red-50 p-3 text-sm text-red-700">{generationError}</div>}
+          {complianceView && <ComplianceResultView view={complianceView} />}
+          {coverError && <div role="alert" className="mb-4 rounded-lg bg-red-50 p-3 text-sm text-red-700">{coverError}</div>}
           {isGenerating ? (
             <Skeleton active paragraph={{ rows: 6 }} />
           ) : (
@@ -434,6 +475,7 @@ function StudioContent() {
                   {titles.length > 0 ? titles.map((t, idx) => (
                     <Tag
                       key={idx}
+                      style={{ whiteSpace: 'normal', overflowWrap: 'anywhere', maxWidth: '100%' }}
                       className={clsx('cursor-pointer', selectedTitle === t ? 'bg-emerald-50 border-emerald-300 text-emerald-700' : 'bg-zinc-100')}
                       onClick={() => setSelectedTitle(t)}
                     >
@@ -445,16 +487,25 @@ function StudioContent() {
               <div>
                 <div className="text-xs text-zinc-500 mb-2">正文脚本</div>
                 <TextArea
-                  rows={10}
+                  autoSize={{ minRows: 10 }}
                   value={script}
                   onChange={(e) => setScript(e.target.value)}
                   placeholder="内容包生成后自动填充，可继续编辑"
                 />
               </div>
+              {visualPrompts.length > 0 && (
+                <section aria-label="封面提示词" className="space-y-2">
+                  <h4 className="text-sm font-medium text-zinc-700">封面提示词</h4>
+                  <p className="text-xs text-zinc-500">以下为本次返回的全部提示词；生成封面默认使用第一条。</p>
+                  <ol className="list-decimal pl-5 space-y-2 text-sm text-zinc-700">
+                    {visualPrompts.map((prompt, index) => <li key={index} style={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>{prompt}</li>)}
+                  </ol>
+                </section>
+              )}
               <div>
                 <div className="text-xs text-zinc-500 mb-2 flex justify-between items-center">
                   <span>封面预览</span>
-                  {coverUrl && <Button type="link" size="small" className="p-0 h-auto text-xs" loading={isGeneratingImage} disabled={allowance.exhausted} onClick={handleGenerateCover}>重新生成</Button>}
+                  {coverUrl && <Button aria-label="重新生成" aria-busy={isGeneratingImage} type="link" size="small" className="p-0 h-auto text-xs" loading={isGeneratingImage} disabled={allowance.exhausted} onClick={handleGenerateCover}>重新生成</Button>}
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="relative aspect-video rounded-2xl border border-zinc-200 overflow-hidden bg-zinc-100">
@@ -463,6 +514,11 @@ function StudioContent() {
                       <NextImage
                         src={coverUrl}
                         alt="封面预览"
+                        onError={() => {
+                          const text = '封面图片加载失败，请重新生成；正文和发布设置已保留';
+                          setCoverError(text);
+                          message.error({ content: text, key: 'cover' });
+                        }}
                         fill
                         sizes="(max-width: 768px) 100vw, 50vw"
                         unoptimized

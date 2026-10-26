@@ -1,0 +1,142 @@
+
+> fenfaxia-api@1.0.0 test
+> jest --runInBand src/modules/billing
+
+PASS src/modules/billing/refund-identifiers.spec.ts
+[Nest] 24104  - 10/18/2026, 3:01:36 PM   ERROR [HttpExceptionFilter] POST /api/v1/billing/callbacks/alipay - 401: 支付宝回调签名无效
+UnauthorizedException: 支付宝回调签名无效
+    at BillingController.alipayCallback (/Users/feifei00/Documents/CodexWorktrees/contentflow-production/runtime/api/src/modules/billing/billing.controller.ts:80:42)
+    at /Users/feifei00/Documents/CodexWorktrees/contentflow-production/runtime/api/node_modules/@nestjs/core/router/router-execution-context.js:38:29
+    at processTicksAndRejections (node:internal/process/task_queues:104:5)
+[Nest] 24104  - 10/18/2026, 3:01:36 PM   ERROR [HttpExceptionFilter] POST /api/v1/billing/callbacks/alipay - 401: 支付宝回调签名无效
+UnauthorizedException: 支付宝回调签名无效
+    at BillingController.alipayCallback (/Users/feifei00/Documents/CodexWorktrees/contentflow-production/runtime/api/src/modules/billing/billing.controller.ts:80:42)
+    at /Users/feifei00/Documents/CodexWorktrees/contentflow-production/runtime/api/node_modules/@nestjs/core/router/router-execution-context.js:38:29
+    at processTicksAndRejections (node:internal/process/task_queues:104:5)
+[Nest] 24104  - 10/18/2026, 3:01:36 PM   ERROR [HttpExceptionFilter] POST /api/v1/billing/callbacks/alipay - 401: 支付宝回调签名无效
+UnauthorizedException: 支付宝回调签名无效
+    at BillingController.alipayCallback (/Users/feifei00/Documents/CodexWorktrees/contentflow-production/runtime/api/src/modules/billing/billing.controller.ts:80:42)
+    at /Users/feifei00/Documents/CodexWorktrees/contentflow-production/runtime/api/node_modules/@nestjs/core/router/router-execution-context.js:38:29
+    at processTicksAndRejections (node:internal/process/task_queues:104:5)
+[Nest] 24104  - 10/18/2026, 3:01:36 PM   ERROR [HttpExceptionFilter] POST /api/v1/billing/callbacks/alipay - 401: 支付宝应用不匹配
+UnauthorizedException: 支付宝应用不匹配
+    at BillingController.alipayCallback (/Users/feifei00/Documents/CodexWorktrees/contentflow-production/runtime/api/src/modules/billing/billing.controller.ts:81:58)
+    at /Users/feifei00/Documents/CodexWorktrees/contentflow-production/runtime/api/node_modules/@nestjs/core/router/router-execution-context.js:38:29
+    at processTicksAndRejections (node:internal/process/task_queues:104:5)
+[Nest] 24104  - 10/18/2026, 3:01:36 PM   ERROR [HttpExceptionFilter] POST /api/v1/billing/callbacks/alipay - 500: 服务暂时出错，请稍后重试
+Error: x
+    at Object.<anonymous> (/Users/feifei00/Documents/CodexWorktrees/contentflow-production/runtime/api/src/modules/billing/billing-callbacks-http.spec.ts:114:60)
+    at Promise.then.completed (/Users/feifei00/Documents/CodexWorktrees/contentflow-production/runtime/api/node_modules/jest-circus/build/utils.js:298:28)
+    at new Promise (<anonymous>)
+    at callAsyncCircusFn (/Users/feifei00/Documents/CodexWorktrees/contentflow-production/runtime/api/node_modules/jest-circus/build/utils.js:231:10)
+    at _callCircusTest (/Users/feifei00/Documents/CodexWorktrees/contentflow-production/runtime/api/node_modules/jest-circus/build/run.js:316:40)
+    at processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at _runTest (/Users/feifei00/Documents/CodexWorktrees/contentflow-production/runtime/api/node_modules/jest-circus/build/run.js:252:3)
+    at _runTestsForDescribeBlock (/Users/feifei00/Documents/CodexWorktrees/contentflow-production/runtime/api/node_modules/jest-circus/build/run.js:126:9)
+    at _runTestsForDescribeBlock (/Users/feifei00/Documents/CodexWorktrees/contentflow-production/runtime/api/node_modules/jest-circus/build/run.js:121:9)
+    at _runTestsForDescribeBlock (/Users/feifei00/Documents/CodexWorktrees/contentflow-production/runtime/api/node_modules/jest-circus/build/run.js:121:9)
+    at run (/Users/feifei00/Documents/CodexWorktrees/contentflow-production/runtime/api/node_modules/jest-circus/build/run.js:71:3)
+    at runAndTransformResultsToJestFormat (/Users/feifei00/Documents/CodexWorktrees/contentflow-production/runtime/api/node_modules/jest-circus/build/legacy-code-todo-rewrite/jestAdapterInit.js:122:21)
+    at jestAdapter (/Users/feifei00/Documents/CodexWorktrees/contentflow-production/runtime/api/node_modules/jest-circus/build/legacy-code-todo-rewrite/jestAdapter.js:79:19)
+    at runTestInternal (/Users/feifei00/Documents/CodexWorktrees/contentflow-production/runtime/api/node_modules/jest-runner/build/runTest.js:367:16)
+    at runTest (/Users/feifei00/Documents/CodexWorktrees/contentflow-production/runtime/api/node_modules/jest-runner/build/runTest.js:444:34)
+[Nest] 24104  - 10/18/2026, 3:01:36 PM   ERROR [HttpExceptionFilter] POST /api/v1/billing/callbacks/wechat - 401: 微信支付回调签名无效
+UnauthorizedException: 微信支付回调签名无效
+    at BillingController.wechatCallback (/Users/feifei00/Documents/CodexWorktrees/contentflow-production/runtime/api/src/modules/billing/billing.controller.ts:49:13)
+    at /Users/feifei00/Documents/CodexWorktrees/contentflow-production/runtime/api/node_modules/@nestjs/core/router/router-execution-context.js:38:29
+    at processTicksAndRejections (node:internal/process/task_queues:104:5)
+[Nest] 24104  - 10/18/2026, 3:01:36 PM   ERROR [HttpExceptionFilter] POST /api/v1/billing/callbacks/wechat - 401: 微信支付回调签名无效
+UnauthorizedException: 微信支付回调签名无效
+    at BillingController.wechatCallback (/Users/feifei00/Documents/CodexWorktrees/contentflow-production/runtime/api/src/modules/billing/billing.controller.ts:49:13)
+    at /Users/feifei00/Documents/CodexWorktrees/contentflow-production/runtime/api/node_modules/@nestjs/core/router/router-execution-context.js:38:29
+    at processTicksAndRejections (node:internal/process/task_queues:104:5)
+[Nest] 24104  - 10/18/2026, 3:01:36 PM   ERROR [HttpExceptionFilter] POST /api/v1/billing/callbacks/wechat - 401: 微信支付回调签名无效
+UnauthorizedException: 微信支付回调签名无效
+    at BillingController.wechatCallback (/Users/feifei00/Documents/CodexWorktrees/contentflow-production/runtime/api/src/modules/billing/billing.controller.ts:49:13)
+    at /Users/feifei00/Documents/CodexWorktrees/contentflow-production/runtime/api/node_modules/@nestjs/core/router/router-execution-context.js:38:29
+    at processTicksAndRejections (node:internal/process/task_queues:104:5)
+[Nest] 24104  - 10/18/2026, 3:01:36 PM   ERROR [HttpExceptionFilter] POST /api/v1/billing/callbacks/wechat - 401: 微信支付回调签名无效
+UnauthorizedException: 微信支付回调签名无效
+    at BillingController.wechatCallback (/Users/feifei00/Documents/CodexWorktrees/contentflow-production/runtime/api/src/modules/billing/billing.controller.ts:49:13)
+    at /Users/feifei00/Documents/CodexWorktrees/contentflow-production/runtime/api/node_modules/@nestjs/core/router/router-execution-context.js:38:29
+    at processTicksAndRejections (node:internal/process/task_queues:104:5)
+[Nest] 24104  - 10/18/2026, 3:01:36 PM   ERROR [HttpExceptionFilter] POST /api/v1/billing/callbacks/wechat - 400: 微信支付回调内容无效
+BadRequestException: 微信支付回调内容无效
+    at BillingController.wechatCallback (/Users/feifei00/Documents/CodexWorktrees/contentflow-production/runtime/api/src/modules/billing/billing.controller.ts:56:13)
+    at /Users/feifei00/Documents/CodexWorktrees/contentflow-production/runtime/api/node_modules/@nestjs/core/router/router-execution-context.js:38:29
+    at processTicksAndRejections (node:internal/process/task_queues:104:5)
+[Nest] 24104  - 10/18/2026, 3:01:36 PM   ERROR [HttpExceptionFilter] POST /api/v1/billing/callbacks/wechat - 400: 微信支付回调内容无效
+BadRequestException: 微信支付回调内容无效
+    at BillingController.wechatCallback (/Users/feifei00/Documents/CodexWorktrees/contentflow-production/runtime/api/src/modules/billing/billing.controller.ts:56:13)
+    at /Users/feifei00/Documents/CodexWorktrees/contentflow-production/runtime/api/node_modules/@nestjs/core/router/router-execution-context.js:38:29
+    at processTicksAndRejections (node:internal/process/task_queues:104:5)
+[Nest] 24104  - 10/18/2026, 3:01:36 PM   ERROR [HttpExceptionFilter] POST /api/v1/billing/callbacks/wechat - 400: 微信支付回调内容无效
+BadRequestException: 微信支付回调内容无效
+    at BillingController.wechatCallback (/Users/feifei00/Documents/CodexWorktrees/contentflow-production/runtime/api/src/modules/billing/billing.controller.ts:56:13)
+    at /Users/feifei00/Documents/CodexWorktrees/contentflow-production/runtime/api/node_modules/@nestjs/core/router/router-execution-context.js:38:29
+    at processTicksAndRejections (node:internal/process/task_queues:104:5)
+[Nest] 24104  - 10/18/2026, 3:01:36 PM   ERROR [HttpExceptionFilter] POST /api/v1/billing/callbacks/wechat - 400: 微信支付回调参数不完整
+BadRequestException: 微信支付回调参数不完整
+    at BillingController.wechatCallback (/Users/feifei00/Documents/CodexWorktrees/contentflow-production/runtime/api/src/modules/billing/billing.controller.ts:62:13)
+    at /Users/feifei00/Documents/CodexWorktrees/contentflow-production/runtime/api/node_modules/@nestjs/core/router/router-execution-context.js:38:29
+    at processTicksAndRejections (node:internal/process/task_queues:104:5)
+[Nest] 24104  - 10/18/2026, 3:01:36 PM   ERROR [HttpExceptionFilter] POST /api/v1/billing/callbacks/wechat - 400: 微信支付回调参数不完整
+BadRequestException: 微信支付回调参数不完整
+    at BillingController.wechatCallback (/Users/feifei00/Documents/CodexWorktrees/contentflow-production/runtime/api/src/modules/billing/billing.controller.ts:62:13)
+    at /Users/feifei00/Documents/CodexWorktrees/contentflow-production/runtime/api/node_modules/@nestjs/core/router/router-execution-context.js:38:29
+    at processTicksAndRejections (node:internal/process/task_queues:104:5)
+[Nest] 24104  - 10/18/2026, 3:01:36 PM   ERROR [HttpExceptionFilter] POST /api/v1/billing/callbacks/internal - 401: 支付回调签名无效
+UnauthorizedException: 支付回调签名无效
+    at BillingController.trustedPaymentCallback (/Users/feifei00/Documents/CodexWorktrees/contentflow-production/runtime/api/src/modules/billing/billing.controller.ts:126:13)
+    at /Users/feifei00/Documents/CodexWorktrees/contentflow-production/runtime/api/node_modules/@nestjs/core/router/router-execution-context.js:38:29
+    at processTicksAndRejections (node:internal/process/task_queues:104:5)
+[Nest] 24104  - 10/18/2026, 3:01:36 PM   ERROR [HttpExceptionFilter] POST /api/v1/billing/callbacks/internal - 401: 支付回调已过期
+UnauthorizedException: 支付回调已过期
+    at BillingController.trustedPaymentCallback (/Users/feifei00/Documents/CodexWorktrees/contentflow-production/runtime/api/src/modules/billing/billing.controller.ts:116:13)
+    at /Users/feifei00/Documents/CodexWorktrees/contentflow-production/runtime/api/node_modules/@nestjs/core/router/router-execution-context.js:38:29
+    at processTicksAndRejections (node:internal/process/task_queues:104:5)
+[Nest] 24104  - 10/18/2026, 3:01:36 PM   ERROR [HttpExceptionFilter] POST /api/v1/billing/callbacks/internal - 401: 支付回调签名无效
+UnauthorizedException: 支付回调签名无效
+    at BillingController.trustedPaymentCallback (/Users/feifei00/Documents/CodexWorktrees/contentflow-production/runtime/api/src/modules/billing/billing.controller.ts:126:13)
+    at /Users/feifei00/Documents/CodexWorktrees/contentflow-production/runtime/api/node_modules/@nestjs/core/router/router-execution-context.js:38:29
+    at processTicksAndRejections (node:internal/process/task_queues:104:5)
+[Nest] 24104  - 10/18/2026, 3:01:36 PM   ERROR [HttpExceptionFilter] POST /api/v1/billing/callbacks/internal - 401: 支付回调签名无效
+UnauthorizedException: 支付回调签名无效
+    at BillingController.trustedPaymentCallback (/Users/feifei00/Documents/CodexWorktrees/contentflow-production/runtime/api/src/modules/billing/billing.controller.ts:126:13)
+    at /Users/feifei00/Documents/CodexWorktrees/contentflow-production/runtime/api/node_modules/@nestjs/core/router/router-execution-context.js:38:29
+    at processTicksAndRejections (node:internal/process/task_queues:104:5)
+[Nest] 24104  - 10/18/2026, 3:01:36 PM   ERROR [HttpExceptionFilter] POST /api/v1/billing/callbacks/internal - 503: 支付回调密钥未配置
+ServiceUnavailableException: 支付回调密钥未配置
+    at BillingController.trustedPaymentCallback (/Users/feifei00/Documents/CodexWorktrees/contentflow-production/runtime/api/src/modules/billing/billing.controller.ts:113:46)
+    at /Users/feifei00/Documents/CodexWorktrees/contentflow-production/runtime/api/node_modules/@nestjs/core/router/router-execution-context.js:38:29
+    at processTicksAndRejections (node:internal/process/task_queues:104:5)
+[Nest] 24104  - 10/18/2026, 3:01:36 PM   ERROR [HttpExceptionFilter] POST /api/v1/billing/callbacks/internal - 503: 支付回调密钥未配置
+ServiceUnavailableException: 支付回调密钥未配置
+    at BillingController.trustedPaymentCallback (/Users/feifei00/Documents/CodexWorktrees/contentflow-production/runtime/api/src/modules/billing/billing.controller.ts:113:46)
+    at /Users/feifei00/Documents/CodexWorktrees/contentflow-production/runtime/api/node_modules/@nestjs/core/router/router-execution-context.js:38:29
+    at processTicksAndRejections (node:internal/process/task_queues:104:5)
+[Nest] 24104  - 10/18/2026, 3:01:36 PM   ERROR [HttpExceptionFilter] POST /api/v1/billing/callbacks/internal - 400: 支付金额缺失
+BadRequestException: 支付金额缺失
+    at BillingController.trustedPaymentCallback (/Users/feifei00/Documents/CodexWorktrees/contentflow-production/runtime/api/src/modules/billing/billing.controller.ts:131:46)
+    at /Users/feifei00/Documents/CodexWorktrees/contentflow-production/runtime/api/node_modules/@nestjs/core/router/router-execution-context.js:38:29
+    at processTicksAndRejections (node:internal/process/task_queues:104:5)
+PASS src/modules/billing/billing-callbacks-http.spec.ts
+PASS src/modules/billing/billing.controller.spec.ts
+PASS src/modules/billing/billing-permissions.spec.ts
+PASS src/modules/billing/ai-allowance-display.spec.ts
+PASS src/modules/billing/billing-payment-link.spec.ts
+PASS src/modules/billing/billing-callback-binding.spec.ts
+PASS src/modules/billing/billing.service.spec.ts
+PASS src/modules/billing/billing-state-races.spec.ts
+PASS src/modules/billing/payment-reconciliation.spec.ts
+PASS src/modules/billing/wechat-pay.adapter.spec.ts
+PASS src/modules/billing/alipay.adapter.spec.ts
+PASS src/modules/billing/payment-gateway.spec.ts
+PASS src/modules/billing/subscription-period.spec.ts
+PASS src/modules/billing/effective-limits.spec.ts
+
+Test Suites: 15 passed, 15 total
+Tests:       118 passed, 118 total
+Snapshots:   0 total
+Time:        4.059 s
+Ran all test suites matching /src\/modules\/billing/i.

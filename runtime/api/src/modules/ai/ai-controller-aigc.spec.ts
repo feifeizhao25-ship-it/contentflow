@@ -17,7 +17,7 @@ import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { AIController } from './ai.controller';
 import { AIService } from './ai.service';
 import { AiAllowanceService } from './ai-allowance.service';
-import { UsageService } from '../system/usage.service';
+import { finalizeReservedResponse, UsageService } from '../system/usage.service';
 
 describe('AI 接口的 AIGC 标识', () => {
   let app: INestApplication;
@@ -27,14 +27,19 @@ describe('AI 接口的 AIGC 标识', () => {
     generateImage: jest.fn(),
     recordGeneration: jest.fn(),
   };
-  const usage = { checkQuota: jest.fn(), trackUsage: jest.fn() };
+  const usage = { withAiHold: jest.fn(), saved: [] as Array<{ generation?: { outputContent?: string; modelProvider?: string } }> };
   const previousRegion = process.env.MARKET_REGION;
 
   beforeEach(async () => {
     jest.resetAllMocks();
     process.env.MARKET_REGION = 'cn';
     ai.assertTenantDailyBudget.mockResolvedValue(undefined);
-    usage.checkQuota.mockResolvedValue(true);
+    usage.saved = [];
+    usage.withAiHold.mockImplementation(async (_input: unknown, run: () => Promise<{ generation?: { outputContent?: string; modelProvider?: string }; response: unknown; attachContentId?: 'image' | 'text' | null }>) => {
+      const produced = await run();
+      usage.saved.push(produced);
+      return finalizeReservedResponse(produced, 'gen-1');
+    });
     ai.generateArticle.mockResolvedValue({ content: '一篇正文', visualPrompts: [], usage: { prompt_tokens: 1, completion_tokens: 2, total_tokens: 3 }, provider: 'dashscope', model: 'qwen-plus', latency_ms: 5, cost_amount: null });
     ai.generateImage.mockResolvedValue({ url: 'https://dashscope-result.oss-cn-beijing.aliyuncs.com/a.png', provider: 'dashscope', model: 'wanx2.1-t2i-turbo' });
     const moduleRef = await Test.createTestingModule({
@@ -69,7 +74,7 @@ describe('AI 接口的 AIGC 标识', () => {
 
   it('generate/article：留存的生成记录里也是带标识的正文（导出个人信息时同样可辨识）', async () => {
     await request(app.getHttpServer()).post('/api/v1/ai/generate/article').send({ topic: '主题' });
-    expect(ai.recordGeneration.mock.calls[0][2].outputContent.startsWith(AI_TEXT_LABEL)).toBe(true);
+    expect(usage.saved[0].generation?.outputContent?.startsWith(AI_TEXT_LABEL)).toBe(true);
   });
 
   it('generate/image：返回显式标识与隐式标识元数据', async () => {
@@ -91,8 +96,8 @@ describe('AI 接口的 AIGC 标识', () => {
 
   it('generate/image：生成记录写真实的供应商，国内版不再记成 fal.ai', async () => {
     await request(app.getHttpServer()).post('/api/v1/ai/generate/image').send({ prompt: '一只猫' });
-    const record = ai.recordGeneration.mock.calls[0][2];
-    expect(record.modelProvider).toBe('dashscope');
+    const record = usage.saved[0].generation;
+    expect(record?.modelProvider).toBe('dashscope');
     expect(JSON.stringify(record)).not.toMatch(/fal\.ai|nano-banana/);
   });
 });

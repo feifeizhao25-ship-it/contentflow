@@ -22,6 +22,8 @@ interface HotTopic {
     platform: string;
     prediction: 'rising' | 'stable' | 'falling';
     tags: string[];
+    fetchedAt?: string;
+    source?: string;
 }
 
 export default function HotPage() {
@@ -107,9 +109,10 @@ export default function HotPage() {
                                     <div className="w-10 h-10 rounded-xl bg-zinc-100 flex items-center justify-center text-xl">
                                         {topic.platform === 'xhs' ? '📕' : topic.platform === 'douyin' ? '🎵' : '💬'}
                                     </div>
-                                    <Tag color={topic.prediction === 'rising' ? 'red' : 'blue'} className="m-0 border-none font-bold px-2 rounded-lg">{topic.prediction === 'rising' ? '🔥 飙升' : '⚡ 推荐'}</Tag>
+                                    {topic.prediction === 'rising' && <Tag color="red" className="m-0 border-none font-bold px-2 rounded-lg">热度上升</Tag>}
                                 </div>
-                                <h3 className="text-lg font-black text-zinc-800 mb-4 line-clamp-2 h-14">{topic.title}</h3>
+                                <h3 className="text-lg font-black text-zinc-800 mb-2 line-clamp-2 h-14">{topic.title}</h3>
+                                <p className="mb-4 text-xs leading-5 text-zinc-400">截至 {topic.fetchedAt ? topic.fetchedAt.slice(0, 16).replace('T', ' ') : '时间未提供'} · 来源 {topic.source || '未标明'}</p>
                                 <div className="flex items-center justify-between mt-auto">
                                     <div className="text-zinc-400 text-xs font-bold"><AreaChartOutlined /> {Math.round(topic.heat / 1000)}k 指数</div>
                                     <Button shape="circle" icon={<ArrowRightOutlined />} onClick={() => router.push(`/studio?topic=${encodeURIComponent(topic.title)}`)} className="bg-zinc-900 border-none text-white transition-transform" />

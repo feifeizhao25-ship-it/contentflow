@@ -45,7 +45,7 @@ interface ProfileResponse {
 export async function fetchCurrentUser(): Promise<{ profile: Profile; tenant: Tenant | null } | null> {
     let data: ProfileResponse;
     try {
-        data = await apiClient.get<ProfileResponse>('/auth/profile');
+        data = await apiClient.get<ProfileResponse>('/auth/profile', { redirectOn401: false });
     } catch {
         return null;
     }

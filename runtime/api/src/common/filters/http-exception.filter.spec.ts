@@ -123,4 +123,39 @@ describe('国内版：校验消息去重', () => {
     new HttpExceptionFilter().catch(new BadRequestException(['请输入邮箱', '密码至少 8 位', '请输入邮箱']), hostFor(json, jest.fn()));
     expect(json.mock.calls[0][0].error.message).toEqual(['请输入邮箱', '密码至少 8 位']);
   });
+
+  it('合规拒绝把规则编号、级别和免责声明交给界面，不把无关字段带出去', () => {
+    process.env.MARKET_REGION = 'cn';
+    const json = jest.fn();
+    new HttpExceptionFilter().catch(new BadRequestException({
+      code: 'CONTENT_COMPLIANCE_BLOCKED',
+      message: '内容未通过国内版发布前检查。这不是法律意见。',
+      disclaimer: '这不是法律意见。未发现风险不等于可以发布，发布前请自行核对。',
+      level: 'violation',
+      hits: [{ ruleId: 'CN-AD-ART9-3', severity: 'block', reason: '包含绝对化用语', extra: 'drop-me' }],
+      stack: 'Error: secret',
+    }), hostFor(json, jest.fn()));
+    const error = json.mock.calls[0][0].error;
+    expect(error.code).toBe('CONTENT_COMPLIANCE_BLOCKED');
+    expect(error.compliance).toEqual({
+      disclaimer: '这不是法律意见。未发现风险不等于可以发布，发布前请自行核对。',
+      level: 'violation',
+      hits: [{ ruleId: 'CN-AD-ART9-3', severity: 'block', reason: '包含绝对化用语' }],
+    });
+    expect(JSON.stringify(error)).not.toContain('secret');
+  });
+
+  it('国际接口不返回中文合规字段', () => {
+    process.env.MARKET_REGION = 'global';
+    const json = jest.fn();
+    new HttpExceptionFilter().catch(new BadRequestException({
+      code: 'CONTENT_COMPLIANCE_BLOCKED',
+      message: '内容未通过检查',
+      disclaimer: '这不是法律意见。',
+      level: 'violation',
+    }), hostFor(json, jest.fn()));
+    const body = json.mock.calls[0][0];
+    expect(JSON.stringify(body)).not.toMatch(/[\u3400-\u9fff]/);
+    expect(body.error.compliance).toBeUndefined();
+  });
 });

@@ -19,6 +19,9 @@ import { contentCoverUrl, parseContentList } from '@/lib/page-data';
 import { safeErrorText } from '@/lib/api-error';
 import { CONTENT_STATUS_COLORS, contentStatusText, contentTypeText } from '@/lib/status-labels';
 import { MANUAL_PLATFORMS, PUBLISH_CHANNEL_NOTICE } from '@/lib/manual-publish';
+import { ComplianceResultView } from '@/components/compliance/ComplianceResultView';
+import { complianceFromError, parseCompliance, type ComplianceView } from '@/lib/compliance-view';
+import { FriendlyApiError } from '@/lib/api-client';
 import { contentReviewState, parseReviewPolicy, reviewNote, validateRejectReason, type ReviewPolicy } from '@/lib/content-review';
 
 const { Search } = Input;
@@ -191,18 +194,48 @@ function ContentsContent() {
     const [manualFor, setManualFor] = useState<any>(null);
     const [manualPlatforms, setManualPlatforms] = useState<string[]>(['xhs']);
     const [creatingManual, setCreatingManual] = useState(false);
+    const [compliance, setCompliance] = useState<ComplianceView | null>(null);
+    const [riskAck, setRiskAck] = useState(false);
+    const [publishError, setPublishError] = useState('');
     const router = useRouter();
     const canPublish = (record: any) => record.status === 'approved' || record.status === 'published';
+    React.useEffect(() => {
+        if (!manualFor) {
+            setCompliance(null);
+            setRiskAck(false);
+            setPublishError('');
+            return;
+        }
+        const text = [manualFor.title, manualFor.body].filter(Boolean).join('\n');
+        let cancelled = false;
+        apiClient.post('/ai/compliance/check', { text }).then((res) => {
+            if (!cancelled) setCompliance(parseCompliance(res));
+        }).catch(() => {
+            if (!cancelled) setCompliance(null);
+        });
+        return () => { cancelled = true; };
+    }, [manualFor]);
     const createManualTasks = async () => {
         if (!manualFor || !manualPlatforms.length) return;
+        if (compliance?.level === 'violation') return;
+        if (compliance?.level === 'risk' && !riskAck) return;
         setCreatingManual(true);
+        setPublishError('');
         try {
-            await apiClient.post('/publish/manual-tasks', { contentId: manualFor.id, platforms: manualPlatforms });
+            await apiClient.post('/publish/manual-tasks', {
+                contentId: manualFor.id,
+                platforms: manualPlatforms,
+                ...(riskAck ? { riskAcknowledged: true } : {}),
+            });
             message.success('已创建人工发布任务，去发布中心复制文案、下载封面');
             setManualFor(null);
             router.push('/publish');
         } catch (error: any) {
-            message.error(safeErrorText(error, '创建失败，请稍后重试'));
+            const fromError = error instanceof FriendlyApiError ? complianceFromError(error) : null;
+            if (fromError) setCompliance(fromError);
+            const text = safeErrorText(error, '创建失败，请稍后重试');
+            setPublishError(text);
+            message.error(text);
         } finally {
             setCreatingManual(false);
         }
@@ -529,12 +562,23 @@ function ContentsContent() {
                 okText="创建人工发布任务"
                 cancelText="取消"
                 confirmLoading={creatingManual}
-                okButtonProps={{ disabled: manualPlatforms.length === 0 }}
+                okButtonProps={{
+                    disabled: manualPlatforms.length === 0
+                        || compliance?.level === 'violation'
+                        || (compliance?.level === 'risk' && !riskAck),
+                }}
                 onOk={() => void createManualTasks()}
                 onCancel={() => setManualFor(null)}
                 style={{ maxWidth: 'calc(100vw - 32px)' }}
             >
                 <Alert type="info" showIcon className="mb-4" message={PUBLISH_CHANNEL_NOTICE} />
+                {compliance && <ComplianceResultView view={compliance} />}
+                {compliance?.level === 'risk' && (
+                    <Checkbox className="mt-3" checked={riskAck} onChange={(e) => setRiskAck(e.target.checked)}>
+                        我已自行核对以上风险。这不是法律意见。
+                    </Checkbox>
+                )}
+                {publishError && <p className="mt-2 text-sm text-red-600" role="alert">{publishError}</p>}
                 <Checkbox.Group
                     value={manualPlatforms}
                     onChange={(v) => setManualPlatforms(v as string[])}

@@ -1,0 +1,20 @@
+{
+  "install": "human",
+  "warning": "不要由本仓库写入 ~/.openclaw。下面只是给人工安装 OpenClaw cron 的说明。",
+  "jobs": [
+    {
+      "name": "cn-trio-growth-daily",
+      "schedule": "40 7 * * *",
+      "timezone": "Asia/Shanghai",
+      "command": "npx ts-node src/modules/growth/improvement/cli.ts cycle.json",
+      "behavior": "读入指标，评测，提案，过合规闸，永久 15% 对照，再决定晋升或回滚。闸门失败则 no_change。"
+    },
+    {
+      "name": "cn-trio-growth-weekly-research",
+      "schedule": "20 9 * * 0",
+      "timezone": "Asia/Shanghai",
+      "command": "npx ts-node src/modules/growth/improvement/cli.ts weekly.json",
+      "behavior": "新词雷达只产草稿。GEO 只记录人工或官方接口观测。规则更新需人批。"
+    }
+  ]
+}

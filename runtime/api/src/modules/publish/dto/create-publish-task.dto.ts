@@ -1,5 +1,5 @@
 import { Type } from 'class-transformer';
-import { ArrayMaxSize, ArrayNotEmpty, IsArray, IsDate, IsIn, IsOptional, IsString, MaxLength } from 'class-validator';
+import { ArrayMaxSize, ArrayNotEmpty, IsArray, IsBoolean, IsDate, IsIn, IsOptional, IsString, MaxLength } from 'class-validator';
 
 /** POST /publish/tasks 的请求体。原来是 any：什么都能传，且没有账号数量上限。 */
 export class CreatePublishTaskDto {
@@ -20,4 +20,8 @@ export class CreatePublishTaskDto {
   @Type(() => Date)
   @IsDate({ message: '定时发布时间格式不正确' })
   scheduledAt?: Date;
+
+  @IsOptional()
+  @IsBoolean({ message: '请明确是否已自行核对风险提示' })
+  riskAcknowledged?: boolean;
 }

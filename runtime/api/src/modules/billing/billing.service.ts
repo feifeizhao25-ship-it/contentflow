@@ -18,12 +18,12 @@ export type PaymentMethod = 'wechat' | 'alipay' | 'bank_transfer';
 
 const PAYABLE_ORDER_STATES: string[] = ['pending'];
 
-
 const ORDER_STATUS_TEXT: Record<string, string> = {
   pending: '待支付', paid: '已支付', refund_pending: '退款处理中', refunded: '已退款',
   closed: '已关闭', cancelled: '已取消', canceled: '已取消', failed: '支付失败', expired: '已过期',
 };
-/** 订单状态的中文说明 —— 不把内部状态码（pending/paid…）直接展示给国内用户。 */
+
+/** 订单状态的中文说明。不把 pending、paid 这类内部码直接展示给国内用户。 */
 export function orderStatusText(status: string): string {
   return ORDER_STATUS_TEXT[status] ?? '状态异常';
 }
@@ -306,13 +306,17 @@ export class BillingService {
   }
 
   async markRefunded(orderNo: string, providerRefundNo: string) {
+    if (typeof orderNo !== 'string' || !orderNo.trim()
+      || typeof providerRefundNo !== 'string' || !providerRefundNo.trim()) {
+      throw new BadRequestException('退款凭据不完整，请核对订单号和渠道退款号');
+    }
     return this.prisma.$transaction(async (tx: any) => {
       const initial = await tx.paymentOrder.findUnique({ where: { order_no: orderNo } });
       if (!initial) throw new BadRequestException('退款订单不存在');
       await tx.$queryRaw`SELECT id FROM "Tenant" WHERE id = ${initial.tenant_id} FOR UPDATE`;
       const order = await tx.paymentOrder.findUnique({ where: { order_no: orderNo } });
       if (!order) throw new BadRequestException('退款订单不存在');
-      if (order.status === 'refunded' && order.payment_channel_order_no === providerRefundNo) {
+      if (order.status === 'refunded' && order.refund_channel_order_no === providerRefundNo) {
         return order;
       }
       if (order.status !== 'refund_pending') {
@@ -342,7 +346,7 @@ export class BillingService {
       });
       return tx.paymentOrder.update({
         where: { order_no: orderNo },
-        data: { status: 'refunded', payment_channel_order_no: providerRefundNo },
+        data: { status: 'refunded', refund_channel_order_no: providerRefundNo },
       });
     });
   }

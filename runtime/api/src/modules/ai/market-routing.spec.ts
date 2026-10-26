@@ -106,6 +106,15 @@ describe('国内栈必须有境内供应商凭据', () => {
     ).not.toThrow();
   });
 
+  it('非生产环境的本地文本桩可以代替供应商密钥', () => {
+    expect(() =>
+      assertDomesticProviderConfigured({ marketRegion: 'cn', qwenApiKey: '', deepseekApiKey: '', localStub: true }),
+    ).not.toThrow();
+    expect(() =>
+      assertDomesticProviderConfigured({ marketRegion: 'cn', qwenApiKey: '', deepseekApiKey: '', localStub: false }),
+    ).toThrow('QWEN_API_KEY 或 DEEPSEEK_API_KEY');
+  });
+
   it('境外市场不做这项检查', () => {
     expect(() =>
       assertDomesticProviderConfigured({
