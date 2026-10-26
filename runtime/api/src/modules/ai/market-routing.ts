@@ -82,8 +82,11 @@ export function assertDomesticProviderConfigured(input: {
   marketRegion?: string | null;
   qwenApiKey?: string | null;
   deepseekApiKey?: string | null;
+  /** 仅非生产环境的本地文本桩。生产环境即使传入 true 也不算已配置。 */
+  localStub?: boolean;
 }): void {
   if (!isDomesticMarket(input.marketRegion)) return;
+  if (input.localStub) return;
   if (String(input.qwenApiKey ?? '') || String(input.deepseekApiKey ?? '')) return;
   throw new Error(
     'MARKET_REGION=cn 时必须配置 QWEN_API_KEY 或 DEEPSEEK_API_KEY 之一；' +

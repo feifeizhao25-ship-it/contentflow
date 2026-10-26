@@ -9,11 +9,12 @@ import { ComplianceService } from './compliance.service';
 import { RagPolicyService } from './rag-policy.service';
 import { AiAllowanceService } from './ai-allowance.service';
 import { ComplianceSourcesController } from './compliance-sources.controller';
+import { ComplianceCheckController } from './compliance-check.controller';
 
 @Module({
   imports: [QueueModule, SystemModule],
   providers: [AIService, AiAllowanceService, ContentPackService, ComplianceService, RagPolicyService],
-  controllers: [AIController, ContentPackController, ComplianceSourcesController],
+  controllers: [AIController, ContentPackController, ComplianceSourcesController, ComplianceCheckController],
   exports: [AIService, AiAllowanceService, ContentPackService, RagPolicyService],
 })
 export class AIModule {}

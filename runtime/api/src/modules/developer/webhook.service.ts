@@ -1,4 +1,4 @@
-import { BadRequestException, ForbiddenException, Injectable, Logger } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Inject, Injectable, Logger, Optional } from '@nestjs/common';
 import { effectiveEntitlements } from '../billing/effective-limits';
 import * as crypto from 'crypto';
 import { PrismaService } from '../../database/prisma.service';
@@ -7,7 +7,14 @@ import { WEBHOOK_EVENTS, WebhookDeliveryDeps, assertPublicHttpsWebhookUrl, decry
 @Injectable()
 export class WebhookService {
   private readonly logger = new Logger(WebhookService.name);
-  constructor(private readonly prisma: PrismaService, private readonly delivery: WebhookDeliveryDeps = {}) {}
+  private readonly delivery: WebhookDeliveryDeps;
+  // 第二个参数只给测试替换投递。Nest 不能把这个对象类型当成依赖，否则进程起不来。
+  constructor(
+    private readonly prisma: PrismaService,
+    @Optional() @Inject('WEBHOOK_DELIVERY') delivery?: WebhookDeliveryDeps,
+  ) {
+    this.delivery = delivery ?? {};
+  }
   private db() { return (this.prisma as any).webhookSubscription; }
 
   /** 定稿（2026-10-18）：Webhook 订阅仅 Business 档（plan=enterprise）开放，其余档关闭；过期按免费档处理。 */

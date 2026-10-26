@@ -10,11 +10,12 @@ import {
   isDomesticMarket,
   resolveTextProvider,
 } from './market-routing';
+import { localAiStubEnabled, localStubCompletion } from './local-ai-stub';
 
 interface AIResponse {
   content: string;
   model: string;
-  provider: 'openrouter' | 'deepseek' | 'qwen';
+  provider: 'openrouter' | 'deepseek' | 'qwen' | 'local';
   latency_ms: number;
   cost_amount: number | null;
   usage: {
@@ -166,6 +167,7 @@ export class AIService {
   private readonly marketRegion: string;
   private openRouterFailures = 0;
   private openRouterOpenUntil = 0;
+  private localStub = false;
 
   constructor(
     private readonly prisma: PrismaService,
@@ -183,10 +185,15 @@ export class AIService {
       : this.configService.get('OPENROUTER_API_KEY', '');
     // 国内栈没有任何境内 key 时，在启动阶段就说清楚，
     // 而不是等第一个用户点了生成才报。
+    this.localStub = localAiStubEnabled({
+      NODE_ENV: this.configService.get('NODE_ENV', process.env.NODE_ENV ?? ''),
+      AI_LOCAL_STUB: this.configService.get('AI_LOCAL_STUB', ''),
+    });
     assertDomesticProviderConfigured({
       marketRegion: this.marketRegion,
       qwenApiKey: this.qwenApiKey,
       deepseekApiKey: this.deepseekApiKey,
+      localStub: this.localStub,
     });
     // 隐式标识要求写入服务提供者编码（GB 45438-2025）。不编造：没配就留空，并在启动时说清楚。
     if (isDomesticMarket(this.marketRegion) && !aigcProviderCode()) {
@@ -274,6 +281,18 @@ export class AIService {
     maxTokens: number,
     startedAt: number,
   ): Promise<AIResponse> {
+    if (this.localStub) {
+      const stub = localStubCompletion(params.prompt);
+      this.logger.log('AI generation completed via local stub (no provider call)');
+      return {
+        content: stub.content,
+        model: 'local-stub',
+        provider: 'local',
+        latency_ms: Date.now() - startedAt,
+        cost_amount: 0,
+        usage: stub.usage,
+      };
+    }
     const candidates: Array<{ provider: 'qwen' | 'deepseek'; model: string; key: string }> = [];
     if (params.model) {
       const provider = model.includes('deepseek') ? 'deepseek' : 'qwen';
