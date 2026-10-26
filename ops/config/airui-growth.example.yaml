@@ -1,0 +1,146 @@
+# 由文档 03 导出的配置骨架。这里只有占位，没有任何密钥。
+# 复制到常开主机 /etc/airui-growth/airui-growth.yaml 后填写。
+# 改开关不会立刻生效：OpenClaw 提交 WECOM_TPL_SWITCH，批准后才采用新值。
+company:
+  name: 北京艾瑞见时科技有限公司
+  icp_no: ""                      # 京ICP备xxxxxxxx号
+host:
+  public_ipv4: ""                 # 企业微信可信 IP
+timezone: Asia/Shanghai
+transition_mode: false            # true 时只出 B 档发布包，A 档不自动发布
+kill_switch_file: /var/lib/airui-growth/KILL
+people:
+  owner: ""
+  founder: ""
+  legal: ""
+  reviewer: ""
+  publisher: ""
+  dev: ""
+  rollback: ""
+  pro04: ""
+  deputy: ""
+wecom:
+  corp_id: ""                     # ww 开头
+  agent_id: ""
+  submitter_userid: ""            # 专用提交人，不能出现在审批人里
+  callback_url: ""                # https://ops.<备案域名>/wecom/callback
+  group_name: 增长日报群
+  tpl:
+    WECOM_TPL_CONTENT: ""
+    WECOM_TPL_COMPLIANCE: ""
+    WECOM_TPL_PROMOTION: ""
+    WECOM_TPL_BUSINESS: ""
+    WECOM_TPL_SWITCH: ""
+    WECOM_TPL_INCIDENT: ""
+  # 模板里每个 Text 控件的 id。没填时 OA 提交失败，按未批准处理，不会自动通过。
+  controls:
+    P1: {sha: "", summary: "", link: ""}
+    P2: {sha: "", summary: "", link: ""}
+    P3: {sha: "", summary: "", link: ""}
+    P4: {sha: "", summary: "", link: ""}
+    P5: {sha: "", summary: "", link: ""}
+    P6: {sha: "", summary: "", link: ""}
+    P7: {sha: "", summary: "", link: ""}
+shunshi:
+  api_base: ""
+fenfaxia:
+  api_base: ""
+repos:
+  shunshi: shunshi@main
+  fenfaxia: contentflow@main
+  jianji: jianji-tianji@main
+site:
+  domains: []
+preview:
+  domain: ""
+channels:
+  - {product: shunshi, platform: xiaohongshu, account_name: "", tier: B, publisher: "", per_week: 3, windows: "12:00-13:00, 20:00-22:00"}
+  - {product: shunshi, platform: wechat_mp, account_name: "", tier: B, publisher: "", per_week: 1, windows: "周日 20:00"}
+  - {product: shunshi, platform: channels, account_name: "", tier: B, publisher: "", per_week: 2, windows: "12:00, 19:00-21:00"}
+  - {product: shunshi, platform: zhihu, account_name: "", tier: B, publisher: "", per_week: 1, windows: "工作日晚间"}
+  - {product: shunshi, platform: douyin, account_name: "", tier: B, publisher: "", per_week: 2, windows: "12:00, 18:00-21:00"}
+  - {product: fenfaxia, platform: xiaohongshu, account_name: "", tier: B, publisher: "", per_week: 2, windows: "12:00-13:00, 20:00-22:00"}
+  - {product: fenfaxia, platform: wechat_mp, account_name: "", tier: B, publisher: "", per_week: 1, windows: "周一 08:00"}
+  - {product: fenfaxia, platform: channels, account_name: "", tier: B, publisher: "", per_week: 1, windows: "12:00, 19:00-21:00"}
+  - {product: fenfaxia, platform: zhihu, account_name: "", tier: B, publisher: "", per_week: 1, windows: "工作日晚间"}
+  - {product: fenfaxia, platform: douyin, account_name: "", tier: B, publisher: "", per_week: 1, windows: "12:00, 18:00-21:00"}
+  - {product: fenfaxia, platform: bilibili, account_name: "", tier: B, publisher: "", per_week: 1, windows: "周四晚间"}
+tier_a:
+  website_seo: off
+  fenfaxia_template_pages: off
+  baidu_push: off
+  baidu_site: ""
+  in_app_cards: off
+  push_subscribed: off
+  email_opt_in: off
+  wecom_community: off
+  window: "08:00-21:30"
+schedule:
+  daily_run: "07:40"
+  batch_review: "08:30"
+  daily_report: "21:00"
+  reconcile_minutes: 15
+sla:
+  P1: "当天 21:00"
+  P2: 72h
+  P4: 7d
+  P6: 48h
+  P7: 4h
+content:
+  pillars:
+    shunshi: ["节气作息", "记录方法", "周复盘"]
+    fenfaxia: ["平台规则", "人机协作发布", "模板页"]
+  solar_terms:
+    - {name: 立冬, date: "2026-11-07"}
+    - {name: 小雪, date: "2026-11-22"}
+assets:
+  root: /srv/airui-growth/assets
+models:
+  # 文档 12 的名字。版本化 ID 以方舟/百炼官方模型列表为准，可在这里改。
+  plan: deepseek-v4-pro
+  draft: deepseek-flash
+  review: qwen3.5-plus
+  image: doubao-seedream-5-0-flash-260915
+  qwen_image: qwen-image-2.0          # 文档写 qwen-image；限流页 ID 为 qwen-image-2.0
+  wan_image: wan2.5-t2i-preview
+  video: doubao-seedance-2-0-mini-260615
+  wan_video: wan2.5-t2v-preview
+  tts: cosyvoice-v3.5-flash
+  tts_voice: ""                       # 预置音色，待核实；禁止声音复刻
+  embedding: text-embedding-v4
+  rerank: qwen3-rerank
+  doubao_lite: doubao-seed-2-0-lite-260428
+  kling_base: ""                      # 可灵开发者入口待核实，留空则不调用
+  guard:
+    endpoint: ""                      # 阿里云 AI 安全护栏接非百炼模型的方式待核实
+    model: ""
+aigc:
+  provider_code: ""
+gates:
+  shunshi:
+    allow_publish: false
+  jianji:
+    legal_signoff: false
+    age_gate: false
+    psychology_review_signoff: false
+    resign_consent: false
+budget:
+  ads_monthly_cny: 0
+  ai_monthly_cny: {openclaw: 1500, shunshi: 500, fenfaxia: 3000, jianji: 0}
+targets:
+  arpu: {fenfaxia: 4000, shunshi: 600, jianji: 573.75}
+  y3_wan: {fenfaxia: 6200, shunshi: 3000, jianji: 800}
+fenfaxia_quota:
+  business: {text: 5000, image: 600, video_10s: 8}   # 内部口径；对外页面仍写待确认
+growth:
+  control_share: 0.15
+incident:
+  oncall: ""
+  p0_response_minutes: 15
+stop_words: ["停止所有操作", "急停", "PAUSE"]
+analytics:
+  umami_site_ids: []
+  growthbook_host: ""
+attribution:
+  scene_prefix: ss_xhs_1102_a
+  wecom_contact_way: ch_xhs_ss

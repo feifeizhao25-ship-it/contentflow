@@ -11,11 +11,23 @@ import {
   resolveTextProvider,
 } from './market-routing';
 import { localAiStubEnabled, localStubCompletion } from './local-ai-stub';
+import {
+  chatBody,
+  FENFAXIA_ARK_IMAGE,
+  FENFAXIA_ARK_VIDEO,
+  FENFAXIA_DASHSCOPE_VIDEO,
+  FENFAXIA_MODELS,
+  isDomesticHttpUrl,
+  resolveFenfaxiaKeys,
+  textCandidates,
+  type FenfaxiaTextRoute,
+} from './domestic-model-router';
+import { DOMESTIC_VIDEO_CNY_PER_SECOND } from './model-pricing';
 
 interface AIResponse {
   content: string;
   model: string;
-  provider: 'openrouter' | 'deepseek' | 'qwen' | 'local';
+  provider: 'openrouter' | 'deepseek' | 'qwen' | 'ark' | 'local';
   latency_ms: number;
   cost_amount: number | null;
   usage: {
@@ -162,6 +174,9 @@ export class AIService {
   private readonly logger = new Logger(AIService.name);
   private readonly qwenApiKey: string;
   private readonly deepseekApiKey: string;
+  private readonly arkApiKey: string;
+  private readonly klingAccessKey: string;
+  private readonly klingSecretKey: string;
   private readonly falApiKey: string;
   private readonly openRouterApiKey: string;
   private readonly marketRegion: string;
@@ -173,16 +188,34 @@ export class AIService {
     private readonly prisma: PrismaService,
     private readonly configService: ConfigService,
   ) {
-    this.qwenApiKey = this.configService.get('QWEN_API_KEY', '');
-    this.deepseekApiKey = this.configService.get('DEEPSEEK_API_KEY', '');
-    this.falApiKey = this.configService.get('FAL_API_KEY', '');
     this.marketRegion = this.configService.get('MARKET_REGION', '');
+    const read = (name: string) => String(this.configService.get(name, '') ?? '');
+    const keys = resolveFenfaxiaKeys({
+      FENFAXIA_DEEPSEEK_API_KEY: read('FENFAXIA_DEEPSEEK_API_KEY'),
+      DEEPSEEK_API_KEY: read('DEEPSEEK_API_KEY'),
+      FENFAXIA_DASHSCOPE_API_KEY: read('FENFAXIA_DASHSCOPE_API_KEY'),
+      DASHSCOPE_API_KEY: read('DASHSCOPE_API_KEY'),
+      QWEN_API_KEY: read('QWEN_API_KEY'),
+      FENFAXIA_ARK_API_KEY: read('FENFAXIA_ARK_API_KEY'),
+      ARK_API_KEY: read('ARK_API_KEY'),
+      FENFAXIA_KLING_ACCESS_KEY: read('FENFAXIA_KLING_ACCESS_KEY'),
+      KLING_ACCESS_KEY: read('KLING_ACCESS_KEY'),
+      FENFAXIA_KLING_SECRET_KEY: read('FENFAXIA_KLING_SECRET_KEY'),
+      KLING_SECRET_KEY: read('KLING_SECRET_KEY'),
+    });
+    this.qwenApiKey = keys.dashscope;
+    this.deepseekApiKey = keys.deepseek;
+    this.arkApiKey = keys.ark;
+    this.klingAccessKey = keys.klingAccess;
+    this.klingSecretKey = keys.klingSecret;
+    // 国内栈一律不持有境外图片 key，即使环境里有。国际版仍走原来的 FAL 路径。
+    this.falApiKey = isDomesticMarket(this.marketRegion) ? '' : read('FAL_API_KEY');
     // 国内栈一律不持有这把 key，**即使环境里有**。
     // 边界写在代码里而不是只靠 compose：compose 删掉了，下一个人
     // 加回来就又出境了，而且不会有任何报错。
     this.openRouterApiKey = isDomesticMarket(this.marketRegion)
       ? ''
-      : this.configService.get('OPENROUTER_API_KEY', '');
+      : read('OPENROUTER_API_KEY');
     // 国内栈没有任何境内 key 时，在启动阶段就说清楚，
     // 而不是等第一个用户点了生成才报。
     this.localStub = localAiStubEnabled({
@@ -206,6 +239,8 @@ export class AIService {
     model?: string;
     maxTokens?: number;
     temperature?: number;
+    /** 文档 12：bulk 长文、title 标题、review 评审。不传则保持原来的千问优先顺序。 */
+    route?: FenfaxiaTextRoute;
   }): Promise<AIResponse> {
     const startedAt = Date.now();
     const maxTokens = Math.min(4000, Math.max(1, params.maxTokens || 2000));
@@ -276,7 +311,7 @@ export class AIService {
    * 前一家失败换下一家。
    */
   private async generateDomesticText(
-    params: { prompt: string; model?: string; temperature?: number },
+    params: { prompt: string; model?: string; temperature?: number; route?: FenfaxiaTextRoute },
     model: string,
     maxTokens: number,
     startedAt: number,
@@ -292,6 +327,9 @@ export class AIService {
         cost_amount: 0,
         usage: stub.usage,
       };
+    }
+    if (params.route && !params.model) {
+      return this.generateRoutedText(params.route, params, maxTokens, startedAt);
     }
     const candidates: Array<{ provider: 'qwen' | 'deepseek'; model: string; key: string }> = [];
     if (params.model) {
@@ -358,6 +396,76 @@ export class AIService {
     throw aiUnavailable(AI_UNAVAILABLE_MESSAGE, 'AI_UNAVAILABLE');
   }
 
+  /** 文档 12 路由。评审没有写稿模型可退；长文在 DeepSeek 与方舟都没配时才用千问。 */
+  private async generateRoutedText(
+    route: FenfaxiaTextRoute,
+    params: { prompt: string; temperature?: number },
+    maxTokens: number,
+    startedAt: number,
+  ): Promise<AIResponse> {
+    const overrides: { bulk?: string; bulkFallback?: string; title?: string; review?: string } = {};
+    const bulk = String(this.configService.get('FENFAXIA_BULK_MODEL', '') ?? '').trim();
+    const bulkFallback = String(this.configService.get('FENFAXIA_BULK_FALLBACK_MODEL', '') ?? '').trim();
+    const title = String(this.configService.get('FENFAXIA_TITLE_MODEL', '') ?? '').trim();
+    const review = String(this.configService.get('FENFAXIA_REVIEW_MODEL', '') ?? '').trim();
+    if (bulk) overrides.bulk = bulk;
+    if (bulkFallback) overrides.bulkFallback = bulkFallback;
+    if (title) overrides.title = title;
+    if (review) overrides.review = review;
+    const usable = textCandidates(route, {
+      deepseek: this.deepseekApiKey,
+      dashscope: this.qwenApiKey,
+      ark: this.arkApiKey,
+      klingAccess: '',
+      klingSecret: '',
+    }, overrides);
+    if (!usable.length) {
+      this.logger.error(route === 'review' ? 'review route requires QWEN_API_KEY' : 'routed text has no domestic key');
+      throw aiUnavailable(AI_NOT_CONFIGURED_MESSAGE, 'AI_NOT_CONFIGURED');
+    }
+    const failures: string[] = [];
+    for (const candidate of usable) {
+      try {
+        const response = await fetch(candidate.endpoint, {
+          signal: AbortSignal.timeout(30000),
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${candidate.key}` },
+          body: JSON.stringify(chatBody(candidate, params.prompt, maxTokens, params.temperature ?? 0.7)),
+        });
+        if (!response.ok) {
+          failures.push(`${candidate.provider}:${response.status}`);
+          continue;
+        }
+        const data = await response.json();
+        const content = data?.choices?.[0]?.message?.content;
+        if (typeof content !== 'string' || !content.trim()) {
+          failures.push(`${candidate.provider}:empty`);
+          continue;
+        }
+        const usage = {
+          prompt_tokens: data.usage?.prompt_tokens,
+          completion_tokens: data.usage?.completion_tokens,
+          total_tokens: data.usage?.total_tokens,
+        };
+        if (!Number.isSafeInteger(usage.prompt_tokens) || usage.prompt_tokens < 0 ||
+            !Number.isSafeInteger(usage.completion_tokens) || usage.completion_tokens < 0 ||
+            !Number.isSafeInteger(usage.total_tokens) || usage.total_tokens <= 0 ||
+            usage.total_tokens < usage.prompt_tokens || usage.total_tokens < usage.completion_tokens) {
+          failures.push(`${candidate.provider}:invalid_usage`);
+          continue;
+        }
+        this.logger.log(`AI generation completed via ${candidate.provider}: ${usage.total_tokens} tokens`);
+        const cost = estimateTextCost(candidate.model, usage.prompt_tokens, usage.completion_tokens);
+        if (!cost.known) this.logger.warn(`模型 ${candidate.model} 不在价目表中，已按最高单价计费，请补充 model-pricing.ts`);
+        return { content, model: candidate.model, provider: candidate.provider, latency_ms: Date.now() - startedAt, cost_amount: cost.cny, usage };
+      } catch (error) {
+        failures.push(`${candidate.provider}:${error instanceof Error ? error.name : 'error'}`);
+      }
+    }
+    this.logger.error(`Routed domestic providers all failed (${route}): ${failures.join(', ')}`);
+    throw aiUnavailable(AI_UNAVAILABLE_MESSAGE, 'AI_UNAVAILABLE');
+  }
+
   private registerOpenRouterFailure() {
     this.openRouterFailures += 1;
     const threshold = Math.max(1, this.configService.get<number>('OPENROUTER_CIRCUIT_FAILURES', 3));
@@ -396,6 +504,7 @@ export class AIService {
 
 请在回答最后输出3个用于AI生图的英文提示词（Visual Prompts），每个占一行，用---分隔`,
       maxTokens: 3000,
+      route: 'bulk',
     });
 
     // 解析视觉提示词
@@ -503,6 +612,7 @@ ${content}
     const result = await this.generateText({
       prompt: `请为"${topic}"在${platform}平台生成${count}个吸引人的标题，每个标题20字以内，用换行分隔`,
       maxTokens: 500,
+      route: 'title',
     });
 
     // 结构化解析：剥离「以下是……」等说明性前后缀，
@@ -555,6 +665,15 @@ ${content}
     // 原来国内版也只会调 fal.ai（境外），给了 key 就出境，不给就永远「未配置」。
     if (isDomesticMarket(this.marketRegion)) {
       try {
+        if (this.arkApiKey) {
+          try {
+            return await this.generateImageArk(params);
+          } catch (arkError) {
+            const detail = arkError instanceof Error ? arkError.message : 'error';
+            this.logger.warn(`Seedream image generation failed: ${detail}`);
+            if (!this.qwenApiKey) throw arkError;
+          }
+        }
         return await this.generateImageDashScope(params);
       } catch (error) {
         if (error instanceof HttpException) throw error;
@@ -564,7 +683,7 @@ ${content}
         if (/DataInspectionFailed/.test(detail)) {
           throw new BadRequestException({ message: '封面描述没有通过内容安全检查，请修改主题或描述后重试', error: 'AI_IMAGE_INSPECTION_FAILED' });
         }
-        throw this.qwenApiKey
+        throw (this.qwenApiKey || this.arkApiKey)
           ? aiUnavailable(AI_IMAGE_UNAVAILABLE_MESSAGE, 'AI_IMAGE_UNAVAILABLE')
           : aiUnavailable(AI_NOT_CONFIGURED_MESSAGE, 'AI_NOT_CONFIGURED');
       }
@@ -681,7 +800,7 @@ ${content}
       '1280x720': '1280*720', '720x1280': '720*1280',
     };
     const size = sizes[params.size || '1024x1024'] ?? '1024*1024';
-    const model = this.configService.get('DASHSCOPE_IMAGE_MODEL', 'wanx2.1-t2i-turbo');
+    const model = this.configService.get('DASHSCOPE_IMAGE_MODEL', FENFAXIA_MODELS.imageWan);
     const submit = await fetch(DASHSCOPE_IMAGE_SYNTHESIS, {
       signal: AbortSignal.timeout(DOMESTIC_IMAGE_REQUEST_TIMEOUT_MS),
       method: 'POST',
@@ -722,6 +841,97 @@ ${content}
     throw new Error('通义万相生成超时');
   }
 
+  /** 方舟 Seedream。失败时由 generateImage 退回通义万相，不调用境外图片接口。 */
+  private async generateImageArk(params: { prompt: string }): Promise<{ url: string; revisedPrompt?: string; provider: string; model: string; cost_amount: number }> {
+    const model = String(this.configService.get('ARK_IMAGE_MODEL', FENFAXIA_MODELS.image) || FENFAXIA_MODELS.image);
+    const response = await fetch(FENFAXIA_ARK_IMAGE, {
+      signal: AbortSignal.timeout(DOMESTIC_IMAGE_REQUEST_TIMEOUT_MS),
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${this.arkApiKey}` },
+      body: JSON.stringify({ model, prompt: params.prompt, size: '2K', response_format: 'url', watermark: false }),
+    });
+    if (!response.ok) throw new Error(`Seedream 提交失败：${response.status}`);
+    const url = (await response.json())?.data?.[0]?.url;
+    if (!url) throw new Error('Seedream 未返回图片地址');
+    return { url, revisedPrompt: params.prompt, provider: 'ark', model, cost_amount: estimateImageCost(model, 1).cny };
+  }
+
+  /**
+   * 国内短视频：Seedance，其次可灵（仅当 FENFAXIA_KLING_API_BASE 已配置），再通义万相。
+   * 都不可用时只返回脚本，不调用 FAL。可灵的鉴权细节文档标为待核实，这里只在基址已填写时发送。
+   */
+  async generateDomesticVideo(params: { prompt: string; seconds?: number }): Promise<{
+    mode: 'task' | 'script_only';
+    provider: string;
+    model: string;
+    taskId: string;
+    fallback: boolean;
+    cost_amount: number | null;
+  }> {
+    const empty = { mode: 'script_only' as const, provider: '', model: '', taskId: '', fallback: true, cost_amount: null };
+    if (!isDomesticMarket(this.marketRegion)) return empty;
+    const seconds = Math.max(4, Math.min(15, Math.round(Number(params.seconds) || 10)));
+    if (this.arkApiKey) {
+      try {
+        const model = String(this.configService.get('ARK_VIDEO_MODEL', FENFAXIA_MODELS.video) || FENFAXIA_MODELS.video);
+        const response = await fetch(FENFAXIA_ARK_VIDEO, {
+          signal: AbortSignal.timeout(DOMESTIC_IMAGE_REQUEST_TIMEOUT_MS),
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${this.arkApiKey}` },
+          body: JSON.stringify({ model, content: [{ type: 'text', text: params.prompt }], resolution: '720p', ratio: '9:16', duration: seconds }),
+        });
+        if (!response.ok) throw new Error(`seedance ${response.status}`);
+        const data = await response.json();
+        const taskId = String(data?.id || data?.data?.id || '');
+        if (!taskId) throw new Error('seedance missing task');
+        return { mode: 'task', provider: 'ark', model, taskId, fallback: false, cost_amount: (DOMESTIC_VIDEO_CNY_PER_SECOND[model] ?? null) === null ? null : DOMESTIC_VIDEO_CNY_PER_SECOND[model] * seconds };
+      } catch (error) {
+        this.logger.warn(`Seedance video submit failed: ${error instanceof Error ? error.name : 'error'}`);
+      }
+    }
+    const klingBase = String(this.configService.get('FENFAXIA_KLING_API_BASE', '') ?? '').trim();
+    if (klingBase && this.klingAccessKey && this.klingSecretKey && isDomesticHttpUrl(klingBase)) {
+      try {
+        const response = await fetch(`${klingBase.replace(/\/$/, '')}/v1/videos/text2video`, {
+          signal: AbortSignal.timeout(DOMESTIC_IMAGE_REQUEST_TIMEOUT_MS),
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${this.klingAccessKey}` },
+          body: JSON.stringify({ model: 'kling-v3', prompt: params.prompt, duration: seconds, mode: '720p' }),
+        });
+        if (!response.ok) throw new Error(`kling ${response.status}`);
+        const data = await response.json();
+        const taskId = String(data?.data?.task_id || data?.task_id || '');
+        if (!taskId) throw new Error('kling missing task');
+        return { mode: 'task', provider: 'kling', model: 'kling-v3', taskId, fallback: true, cost_amount: DOMESTIC_VIDEO_CNY_PER_SECOND['kling-v3'] * seconds };
+      } catch (error) {
+        this.logger.warn(`Kling video submit failed: ${error instanceof Error ? error.name : 'error'}`);
+      }
+    }
+    if (this.qwenApiKey) {
+      try {
+        const model = String(this.configService.get('DASHSCOPE_VIDEO_MODEL', FENFAXIA_MODELS.videoWan) || FENFAXIA_MODELS.videoWan);
+        const response = await fetch(FENFAXIA_DASHSCOPE_VIDEO, {
+          signal: AbortSignal.timeout(DOMESTIC_IMAGE_REQUEST_TIMEOUT_MS),
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${this.qwenApiKey}`,
+            'X-DashScope-Async': 'enable',
+          },
+          body: JSON.stringify({ model, input: { prompt: params.prompt }, parameters: { resolution: '720P', duration: seconds } }),
+        });
+        if (!response.ok) throw new Error(`wan ${response.status}`);
+        const taskId = String((await response.json())?.output?.task_id || '');
+        if (!taskId) throw new Error('wan missing task');
+        return { mode: 'task', provider: 'dashscope', model, taskId, fallback: true, cost_amount: (DOMESTIC_VIDEO_CNY_PER_SECOND[model] ?? null) === null ? null : DOMESTIC_VIDEO_CNY_PER_SECOND[model] * seconds };
+      } catch (error) {
+        this.logger.warn(`Wan video submit failed: ${error instanceof Error ? error.name : 'error'}`);
+      }
+    }
+    this.logger.warn('国内视频供应商都不可用，只保留脚本');
+    return empty;
+  }
+
   /**
    * 短视频分镜脚本。原来在 web-cn 的 Next 路由里直连 openrouter.ai（境外）；
    * 现在由后端按市场选择供应商（国内版只走境内），并记预算与生成记录。
@@ -734,6 +944,7 @@ ${content}
       prompt: buildScriptPrompt(input.topic, input.type || '爆款解说', input.platform || '抖音'),
       maxTokens: 2000,
       temperature: 0.8,
+      route: 'bulk',
     });
     const parsed = parseScriptJson(result.content);
     const scenes = (Array.isArray(parsed?.scenes) ? parsed.scenes : [])

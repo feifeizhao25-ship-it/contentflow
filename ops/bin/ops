@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+# OpenClaw 入口。在 ops/ 目录内可直接：./bin/ops preflight
+set -euo pipefail
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+export PYTHONPATH="${ROOT}${PYTHONPATH:+:$PYTHONPATH}"
+exec python3 -m airui_ops "$@"

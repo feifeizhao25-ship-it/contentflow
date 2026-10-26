@@ -50,7 +50,7 @@ export class ContentPackService {
             // 资料过期时如实告诉用户「合规规则资料需要人工复核」，而不是笼统的「未引用」。
             const freshness = policySources.length ? null : await this.ragPolicyService.freshnessReport?.().catch(() => null);
             const scriptPrompt = `请根据主题 "${dto.topic}" 和标题 "${titles[0]}" 创作一篇深度脚本。要求：逻辑清晰、使用普通人能理解的表达；如资料包含合规要求，在结尾增加发布前核对清单。${this.ragPolicyService.buildContext(policySources)}`;
-            const scriptData = await this.aiService.generateText({ prompt: scriptPrompt });
+            const scriptData = await this.aiService.generateText({ prompt: scriptPrompt, route: 'bulk' });
             let script = scriptData?.content;
             if (typeof script !== 'string' || !script.trim()) {
                 throw new Error('AI provider did not return usable body content');
