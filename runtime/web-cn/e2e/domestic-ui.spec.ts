@@ -41,8 +41,12 @@ async function tenantId(page: Page): Promise<string> {
 }
 
 async function openNav(page: Page) {
+  const width = page.viewportSize()?.width ?? 1440;
+  if (width >= 768) return;
+  // 侧栏第一次渲染按桌面算，量完窗口宽度才变成抽屉。先等「打开导航菜单」出现再点。
   const toggle = page.getByRole('button', { name: '打开导航菜单' });
-  if (await toggle.isVisible().catch(() => false)) await toggle.click();
+  await toggle.waitFor({ state: 'visible' });
+  await toggle.click();
 }
 
 async function gotoApp(page: Page, path: string, linkName: string) {
