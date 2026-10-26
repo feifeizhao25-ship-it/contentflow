@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Inject, Injectable, Logger, Optional } from '@nestjs/common';
 import { PrismaService } from '../../database/prisma.service';
 
 /**
@@ -13,7 +13,14 @@ import { PrismaService } from '../../database/prisma.service';
 @Injectable()
 export class HotService {
   private readonly logger = new Logger(HotService.name);
-  constructor(private readonly prisma?: PrismaService, private readonly fetchFn: typeof fetch = fetch) {}
+  private readonly fetchFn: typeof fetch;
+  // 第二个参数只给测试替换请求函数。Nest 不能把 fetch 本身当成依赖，否则进程起不来。
+  constructor(
+    private readonly prisma?: PrismaService,
+    @Optional() @Inject('HOT_FETCH') fetchFn?: typeof fetch,
+  ) {
+    this.fetchFn = fetchFn ?? fetch;
+  }
 
   private provider() {
     const url = (process.env.HOT_PROVIDER_URL || '').replace(/\/$/, '');
