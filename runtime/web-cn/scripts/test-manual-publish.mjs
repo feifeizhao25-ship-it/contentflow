@@ -9,7 +9,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { buildCopyText, copyTextHasAiLabel, MANUAL_PLATFORMS, PUBLISH_CHANNEL_NOTICE, isManualPlatform } from '../src/lib/manual-publish.ts';
+import { buildCopyText, copyTextHasAiLabel, MANUAL_PLATFORMS, PUBLISH_CHANNEL_NOTICE, isManualPlatform, officialAutoPublishAllowed, AUTO_PLATFORMS } from '../src/lib/manual-publish.ts';
 import { AI_TEXT_LABEL } from '../src/lib/ai-content-label.ts';
 import { mapPublishTasks } from '../src/lib/page-data.ts';
 
@@ -26,16 +26,20 @@ check('导航不再写「一键多平台发布」，发布页顶部常驻如实�
   const layout = read('components/layout/MainLayout.tsx');
   assert.doesNotMatch(layout, /一键多平台发布/);
   assert.doesNotMatch(layout, />分发中心</);
-  assert.equal(PUBLISH_CHANNEL_NOTICE, '目前所有平台均为人工确认发布（非自动发布）：小红书、视频号、公众号、抖音、B站都需你复制文案、下载带 AI 标识的封面后到平台手动发出，再回填作品链接确认。各平台官方自动发布授权完成并通过审核后，才会另行开通并明确标注');
-  assert.doesNotMatch(PUBLISH_CHANNEL_NOTICE, /自动发布后|一键发布/);
+  assert.equal(PUBLISH_CHANNEL_NOTICE, '目前所有平台均为人工确认发布（非自动发布）：小红书、视频号、公众号、抖音、B站、知乎都需你复制文案、下载带 AI 标识的封面后到平台手动发出，再回填作品链接确认。各平台官方自动发布授权完成并通过审核后，才会另行开通并明确标注');
+  assert.doesNotMatch(PUBLISH_CHANNEL_NOTICE, /自动发布后|一键发布|全自动发布/);
   const page = read('app/(main)/publish/page.tsx');
   assert.match(page, /PUBLISH_CHANNEL_NOTICE/);
   assert.doesNotMatch(read('app/(main)/studio/page.tsx'), /多平台一键搞定|一键多平台发布|见证 AI 电影工厂/);
 });
 
-check('官方自动发布未接通前，抖音和 B 站也走人工确认，不假装能自动发', () => {
-  assert.deepEqual(MANUAL_PLATFORMS.map((p) => p.id), ['xhs', 'weixin', 'wechat_mp', 'douyin', 'bilibili']);
-  assert.ok(isManualPlatform('douyin') && isManualPlatform('bilibili') && isManualPlatform('xhs'));
+check('官方自动发布未接通前，抖音、B站和知乎也走人工确认，不假装能自动发', () => {
+  assert.deepEqual(MANUAL_PLATFORMS.map((p) => p.id), ['xhs', 'weixin', 'wechat_mp', 'douyin', 'bilibili', 'zhihu']);
+  assert.ok(isManualPlatform('douyin') && isManualPlatform('bilibili') && isManualPlatform('xhs') && isManualPlatform('zhihu'));
+  assert.deepEqual(AUTO_PLATFORMS, []);
+  assert.equal(officialAutoPublishAllowed('xhs'), false);
+  assert.equal(officialAutoPublishAllowed('zhihu'), false);
+  assert.equal(officialAutoPublishAllowed('douyin'), false);
   assert.match(read('lib/manual-publish.ts'), /AUTO_PLATFORMS = \[\]/);
 });
 

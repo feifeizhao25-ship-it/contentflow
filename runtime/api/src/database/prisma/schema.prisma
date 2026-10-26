@@ -603,6 +603,49 @@ model GrowthGoal {
   @@index([user_id])
 }
 
+// 流量漏斗。访客编号不是账号。公开访问可以没有 tenant_id。
+model GrowthEvent {
+  id           String   @id @default(uuid())
+  tenant_id    String?
+  user_id      String?
+  visitor_id   String
+  event        String
+  utm_source   String?
+  utm_medium   String?
+  utm_campaign String?
+  utm_content  String?
+  utm_term     String?
+  page_type    String?
+  created_at   DateTime @default(now())
+
+  @@index([tenant_id, event])
+  @@index([visitor_id])
+}
+
+// 自改进审计。只追加，应用层不提供更新和删除。
+model GrowthAuditEntry {
+  id         String   @id @default(uuid())
+  sequence   Int      @unique
+  action     String
+  subject    String
+  detail     Json
+  created_at DateTime @default(now())
+}
+
+// 中文 AI 搜索引用观测。由人工或官方接口写入，不由爬虫抓取。
+model GeoCitationObservation {
+  id         String   @id @default(uuid())
+  week       String
+  platform   String
+  surface    String
+  query      String
+  cited      Boolean
+  url        String?
+  created_at DateTime @default(now())
+
+  @@index([week, platform, surface])
+}
+
 model PersonaTemplate {
   id                 String   @id @default(uuid())
   user_id            String?

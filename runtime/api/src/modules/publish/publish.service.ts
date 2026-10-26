@@ -204,7 +204,7 @@ export class PublishService {
     const platforms = [...new Set(data.platforms || [])];
     if (!platforms.length) throw new BadRequestException('请至少选择一个平台');
     const unsupported = platforms.filter((p) => !isManualPlatform(p));
-    if (unsupported.length) throw new BadRequestException('人工确认发布支持小红书、视频号、公众号、抖音、B站（均为手动发布，非自动发布）');
+    if (unsupported.length) throw new BadRequestException('人工确认发布支持小红书、视频号、公众号、抖音、B站、知乎（均为手动发布，非自动发布）');
     const scheduledAt = data.scheduledAt ? new Date(data.scheduledAt) : new Date();
     if (Number.isNaN(scheduledAt.getTime())) throw new BadRequestException('计划发布时间格式不正确');
     await this.assertRealNameIfRequired(userId);

@@ -1,0 +1,162 @@
+import { screenClaim } from '../../ai/compliance/claims';
+import { AI_TEXT_LABEL } from '../../../common/ai-content-label';
+import { SHARED_REDTEAM, SkillGolden, SkillRedteam, goldenFor, skillById } from './catalog';
+
+const PLATFORM_NAMES: Record<string, string> = {
+  xhs: '小红书',
+  wechat_mp: '公众号',
+  weixin: '视频号',
+  douyin: '抖音',
+  zhihu: '知乎',
+  bilibili: 'B站',
+};
+
+export interface SkillDraft {
+  skillId: string;
+  version: string;
+  refused: boolean;
+  reason?: string;
+  status: 'manual_pending' | 'refused' | 'draft';
+  body: string;
+}
+
+function inputText(input: Record<string, unknown>): string {
+  return typeof input.text === 'string' ? input.text : JSON.stringify(input);
+}
+
+function refuseReason(text: string): string | null {
+  if (/全自动发布|无人值守|托管运营|自动涨粉/.test(text)) return '不能提供全自动发布、托管运营或自动涨粉的做法。';
+  if (/养号|矩阵号|cookie/i.test(text)) return '不能提供养号、矩阵号或 Cookie 登录教程。';
+  if (/拉踩|抹黑竞品/.test(text)) return '不能生成竞品拉踩文案。';
+  if (/软文/.test(text) && !/标明广告|标注广告/.test(text)) return '商业软文必须标明广告。';
+  const screened = screenClaim(text);
+  if (!screened.ok) return `话术未通过合规闸：${screened.hits.join('、')}`;
+  return null;
+}
+
+function topicOf(input: Record<string, unknown>): string {
+  const topic = typeof input.topic === 'string' && input.topic.trim() ? input.topic.trim() : '未命名主题';
+  return topic.slice(0, 80);
+}
+
+function bodyFor(skillId: string, input: Record<string, unknown>): { status: SkillDraft['status']; body: string } {
+  const topic = topicOf(input);
+  const platform = PLATFORM_NAMES[String(input.platform ?? 'xhs')] ?? '该平台';
+  const lead = `${AI_TEXT_LABEL}\n`;
+  switch (skillId) {
+    case 'platform-copy':
+      return {
+        status: 'manual_pending',
+        body: `${lead}平台：${platform}\n选题：${topic}\n文案：先写可核对的体验，再列三点要点。发布前请你核对事实。\n发布方式：请人工确认后发布。本产品不代你向平台提交。`,
+      };
+    case 'title-cover':
+      return {
+        status: 'manual_pending',
+        body: `${lead}选题：${topic}\n标题候选：\n1. ${topic}，只记三件可核对的事\n2. 发布前先人工确认的${topic}\n封面：实拍或已授权图片，避免绝对化用语。请人工确认后使用。`,
+      };
+    case 'schedule':
+      return {
+        status: 'manual_pending',
+        body: `${lead}选题：${topic}\n建议时段：工作日 12:15、20:30。这只是建议，请人工确认后自己到平台发布。`,
+      };
+    case 'seo-aso-keywords':
+      return {
+        status: 'draft',
+        body: `${lead}选题：${topic}\n微信搜一搜候选词：${topic}\n百度候选词：${topic} 怎么写\n应用商店候选词：内容草稿 人工确认\n这些词不保证排名。请人工确认后使用。`,
+      };
+    case 'geo-cn-search':
+      return {
+        status: 'draft',
+        body: `${lead}选题：${topic}\n只写已经核对的事实，并附出处。不要编造概念，不要购买引用投放。页面改动请人工确认。`,
+      };
+    case 'cn-fenfaxia-template-seo':
+      return {
+        status: 'draft',
+        body: `${lead}模板页草稿：${topic}\n状态：草稿。未人工批准前不上线。请人工确认事实和出处。`,
+      };
+    case 'cn-fenfaxia-geo-monitor':
+      return {
+        status: 'draft',
+        body: `${lead}监测记录草稿。App 与 Web 分开登记，不抓取、不刷量。请人工确认后录入。`,
+      };
+    case 'cn-fenfaxia-newterm-radar':
+      return {
+        status: 'draft',
+        body: `${lead}选题草稿：${typeof input.term === 'string' ? input.term : topic}\n只生成草稿，不自动上线页面。请人工确认。`,
+      };
+    case 'cn-fenfaxia-mp-article-draft':
+      return {
+        status: 'manual_pending',
+        body: `${lead}公众号长文草稿：${topic}\n开头说明这是 AI 辅助起草。请人工确认后发布，不要写成代发教程。`,
+      };
+    case 'cn-fenfaxia-video-script':
+      return {
+        status: 'manual_pending',
+        body: `${lead}平台：${platform}\n脚本：前三秒给结论，结尾请观众自己判断。请人工确认后发布。`,
+      };
+    case 'cn-fenfaxia-aso':
+      return {
+        status: 'draft',
+        body: `${lead}应用商店文案草稿：${topic}。副标题写人工确认后发布。不承诺榜单。请人工确认。`,
+      };
+    case 'cn-growth-compliance-gate':
+      return {
+        status: 'draft',
+        body: `${lead}合规闸：通过。文案未命中禁止话术。对外仍须人工确认后发布。`,
+      };
+    default:
+      return {
+        status: 'manual_pending',
+        body: `${lead}候选选题：\n1. ${topic}怎么记三件可核对的事\n2. 为什么${topic}发布前要人工确认\n请人工确认后再决定是否使用。`,
+      };
+  }
+}
+
+export function renderSkillDraft(skillId: string, input: Record<string, unknown> = {}): SkillDraft {
+  const skill = skillById(skillId);
+  if (!skill) {
+    return { skillId, version: '0.0.0', refused: true, reason: '未知技能', status: 'refused', body: '' };
+  }
+  const reason = refuseReason(inputText(input));
+  if (reason) {
+    return { skillId, version: skill.version, refused: true, reason, status: 'refused', body: reason };
+  }
+  const rendered = bodyFor(skillId, input);
+  const screened = screenClaim(rendered.body);
+  if (!screened.ok) {
+    return {
+      skillId,
+      version: skill.version,
+      refused: true,
+      reason: `草稿含禁止话术：${screened.hits.join('、')}`,
+      status: 'refused',
+      body: '草稿未通过合规闸',
+    };
+  }
+  return { skillId, version: skill.version, refused: false, status: rendered.status, body: rendered.body };
+}
+
+export function evalCases(skillId: string): { golden: SkillGolden[]; redteam: SkillRedteam[] } {
+  const skill = skillById(skillId);
+  return { golden: skill ? goldenFor(skill) : [], redteam: SHARED_REDTEAM };
+}
+
+export function runSkillEvals(skillId: string): { pass: boolean; failures: string[] } {
+  const { golden, redteam } = evalCases(skillId);
+  const failures: string[] = [];
+  for (const item of golden) {
+    const draft = renderSkillDraft(skillId, item.input);
+    if (draft.refused) failures.push(`${item.id} 被拒绝`);
+    for (const piece of item.expect.includes) {
+      if (!draft.body.includes(piece)) failures.push(`${item.id} 缺少 ${piece}`);
+    }
+    for (const piece of item.expect.excludes) {
+      if (draft.body.includes(piece)) failures.push(`${item.id} 含有 ${piece}`);
+    }
+  }
+  for (const item of redteam) {
+    const draft = renderSkillDraft(skillId, { text: item.input });
+    if (!draft.refused) failures.push(`${item.id} 未被拒绝`);
+  }
+  return { pass: failures.length === 0, failures };
+}

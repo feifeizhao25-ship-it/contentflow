@@ -3,7 +3,7 @@ import { plainToInstance } from 'class-transformer';
 import { validate } from 'class-validator';
 import { PublishService } from './publish.service';
 import { AI_TEXT_LABEL } from '../../common/ai-content-label';
-import { MANUAL_PLATFORMS, normalizeManualPostUrl } from './manual-publish';
+import { MANUAL_PLATFORMS, normalizeManualPostUrl, officialAutoPublishAllowed } from './manual-publish';
 import { CreateManualPublishDto } from './dto/create-manual-publish.dto';
 
 /**
@@ -73,9 +73,10 @@ describe('人工确认发布闭环', () => {
     await expect(service.confirmManualPublished(task.id, 'other')).rejects.toThrow('任务不存在');
   });
 
-  it('批3起支持小红书/视频号/公众号/抖音/B站人工确认（非自动）；未通过审核、额度用完都拒绝', async () => {
+  it('小红书/视频号/公众号/知乎/抖音/B站都是人工确认；未支持的平台、未通过审核、额度用完都拒绝', async () => {
     const a = build();
-    await expect(a.service.createManualTasks('t', 'u', { contentId: 'c1', platforms: ['zhihu'] })).rejects.toThrow('人工确认发布支持');
+    await expect(a.service.createManualTasks('t', 'u', { contentId: 'c1', platforms: ['weibo'] })).rejects.toThrow('人工确认发布支持');
+    await expect(a.service.createManualTasks('t', 'u', { contentId: 'c1', platforms: ['zhihu'] })).resolves.toHaveLength(1);
     await expect(a.service.createManualTasks('t', 'u', { contentId: 'c1', platforms: ['douyin'] })).resolves.toHaveLength(1);
     const b = build({ status: 'draft' });
     await expect(b.service.createManualTasks('t', 'u', { contentId: 'c1', platforms: ['xhs'] })).rejects.toThrow('内容未通过审核');
@@ -120,9 +121,32 @@ describe('人工确认发布闭环', () => {
     expect(() => normalizeManualPostUrl('wechat_mp', 'https://mp.weixin.qq.com.evil.cn/s/abc')).toThrow();
     expect(() => normalizeManualPostUrl('xhs', 'https://user:pw@www.xiaohongshu.com/a')).toThrow();
     expect(normalizeManualPostUrl('xhs', '   ')).toBeNull();
-    expect(Object.keys(MANUAL_PLATFORMS)).toEqual(['douyin', 'bilibili', 'xhs', 'weixin', 'wechat_mp']);
+    expect(Object.keys(MANUAL_PLATFORMS)).toEqual(['douyin', 'bilibili', 'xhs', 'weixin', 'wechat_mp', 'zhihu']);
     expect(normalizeManualPostUrl('douyin', 'https://www.douyin.com/video/1')).toContain('douyin.com');
     expect(() => normalizeManualPostUrl('douyin', 'https://www.bilibili.com/video/1')).toThrow();
+    expect(normalizeManualPostUrl('zhihu', 'https://www.zhihu.com/question/1/answer/2')).toContain('zhihu.com');
+    expect(normalizeManualPostUrl('zhihu', 'https://zhuanlan.zhihu.com/p/1')).toContain('zhuanlan.zhihu.com');
+  });
+
+  it('小红书、公众号、视频号、知乎永远不能自动发布；抖音和 B 站开关打开也不进发布队列', async () => {
+    delete process.env.DOUYIN_ENTERPRISE_AUTHORIZED;
+    delete process.env.BILIBILI_ENTERPRISE_AUTHORIZED;
+    expect(officialAutoPublishAllowed('xhs')).toBe(false);
+    expect(officialAutoPublishAllowed('weixin')).toBe(false);
+    expect(officialAutoPublishAllowed('wechat_mp')).toBe(false);
+    expect(officialAutoPublishAllowed('zhihu')).toBe(false);
+    expect(officialAutoPublishAllowed('douyin')).toBe(false);
+    expect(officialAutoPublishAllowed('bilibili')).toBe(false);
+    process.env.DOUYIN_ENTERPRISE_AUTHORIZED = '1';
+    process.env.BILIBILI_ENTERPRISE_AUTHORIZED = '1';
+    expect(officialAutoPublishAllowed('douyin')).toBe(true);
+    expect(officialAutoPublishAllowed('bilibili')).toBe(true);
+    expect(officialAutoPublishAllowed('zhihu')).toBe(false);
+    const { service, queue } = build();
+    await service.createManualTasks('t', 'u', { contentId: 'c1', platforms: ['douyin', 'bilibili'] });
+    expect(queue.addPublishTask).not.toHaveBeenCalled();
+    delete process.env.DOUYIN_ENTERPRISE_AUTHORIZED;
+    delete process.env.BILIBILI_ENTERPRISE_AUTHORIZED;
   });
 });
 

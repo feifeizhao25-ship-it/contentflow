@@ -1,7 +1,7 @@
 import { Type } from 'class-transformer';
 import { ArrayMaxSize, ArrayNotEmpty, IsArray, IsBoolean, IsDate, IsIn, IsOptional, IsString, MaxLength } from 'class-validator';
 
-/** POST /publish/manual-tasks：五个平台都是人工确认发布，不是自动发布。 */
+/** POST /publish/manual-tasks：六个平台都是人工确认发布，不是自动发布。 */
 export class CreateManualPublishDto {
   @IsString({ message: '请选择要发布的内容' })
   @MaxLength(64)
@@ -9,8 +9,8 @@ export class CreateManualPublishDto {
 
   @IsArray({ message: '请至少选择一个平台' })
   @ArrayNotEmpty({ message: '请至少选择一个平台' })
-  @ArrayMaxSize(5, { message: '一次最多选择 5 个平台' })
-  @IsIn(['douyin', 'bilibili', 'xhs', 'weixin', 'wechat_mp'], { each: true, message: '人工确认发布只支持抖音、B站、小红书、视频号、公众号' })
+  @ArrayMaxSize(6, { message: '一次最多选择 6 个平台' })
+  @IsIn(['douyin', 'bilibili', 'xhs', 'weixin', 'wechat_mp', 'zhihu'], { each: true, message: '人工确认发布只支持抖音、B站、小红书、视频号、公众号、知乎' })
   platforms!: string[];
 
   @IsOptional()
