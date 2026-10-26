@@ -82,7 +82,8 @@ async function createApproved(page: Page, title: string, body: string) {
   await expect(dialog).toBeHidden();
   await page.getByPlaceholder('搜索标题或正文').fill(title);
   await page.getByPlaceholder('搜索标题或正文').press('Enter');
-  await expect(page.getByText(title).first()).toBeVisible();
+  // 手机卡片和桌面表格都在页面里，另一套用 CSS 藏着。只认当前看得到的标题。
+  await expect(page.getByText(title, { exact: true }).locator('visible=true').first()).toBeVisible();
   await page.getByRole('button', { name: '提交审核' }).click();
   await page.getByRole('dialog').getByRole('button', { name: '提交审核' }).click();
   await expect(page.getByRole('button', { name: '确认可发布' })).toBeVisible();
