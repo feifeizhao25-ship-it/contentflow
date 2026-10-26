@@ -18,6 +18,8 @@ export default defineConfig({
     trace: 'off',
     locale: 'zh-CN',
     permissions: ['clipboard-read', 'clipboard-write'],
+    actionTimeout: 20_000,
+    navigationTimeout: 30_000,
   },
   projects: [
     { name: 'desktop', use: { viewport: { width: 1440, height: 900 } } },

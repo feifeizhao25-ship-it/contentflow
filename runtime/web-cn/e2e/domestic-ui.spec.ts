@@ -50,7 +50,7 @@ async function openNav(page: Page) {
 }
 
 async function gotoApp(page: Page, path: string, linkName: string) {
-  await page.goto(path);
+  await openPage(page, path);
   if (page.url().includes(path)) return;
   await openNav(page);
   const more = page.getByText('更多', { exact: true });
@@ -62,8 +62,18 @@ async function activePane(page: Page) {
   return page.locator('.ant-tabs-tabpane-active');
 }
 
+/** 等 React 水合完再点。水合前的点击会被服务端初稿替换掉，选项卡看起来点了却没有切过去。 */
+async function openPage(page: Page, path: string) {
+  await page.goto(path, { waitUntil: 'domcontentloaded' });
+  await page.waitForFunction(
+    () => Object.keys(document.body).some((key) => key.startsWith('__reactFiber')),
+    undefined,
+    { timeout: 20_000 },
+  );
+}
+
 async function createApproved(page: Page, title: string, body: string) {
-  await page.goto('/contents');
+  await openPage(page, '/contents');
   await page.getByRole('button', { name: '新建内容' }).click();
   const dialog = page.getByRole('dialog');
   await dialog.getByLabel('标题').fill(title);
@@ -110,7 +120,7 @@ test('国内版主要流程', async ({ page }, info) => {
   const email = `ui-${info.project.name}-${Date.now()}@example.com`;
 
   await run('home-pricing', async () => {
-    await page.goto('/');
+    await openPage(page, '/');
     await expect(page.getByRole('heading', { name: 'Solo' })).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Team' })).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Business' })).toBeVisible();
@@ -120,7 +130,7 @@ test('国内版主要流程', async ({ page }, info) => {
     expect(businessText.indexOf('待确认')).toBeGreaterThan(-1);
     expect(businessText.indexOf('待确认')).toBeLessThan(businessText.indexOf('路线图（即将上线）'));
     await shot(page, info, 'home-plans');
-    await page.goto('/pricing');
+    await openPage(page, '/pricing');
     await expect(page.getByRole('heading', { name: 'Solo' })).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Team' })).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Business' })).toBeVisible();
@@ -130,7 +140,7 @@ test('国内版主要流程', async ({ page }, info) => {
   });
 
   await run('login-error', async () => {
-    await page.goto('/login');
+    await openPage(page, '/login');
     await page.getByRole('tab', { name: '邮箱密码登录' }).click();
     const pane = await activePane(page);
     await pane.getByPlaceholder('邮箱地址').fill('nobody@example.com');
@@ -141,12 +151,12 @@ test('国内版主要流程', async ({ page }, info) => {
   });
 
   await run('register', async () => {
-    await page.goto('/register');
+    await openPage(page, '/register');
     await page.getByRole('tab', { name: '邮箱注册' }).click();
     const pane = await activePane(page);
-    await pane.getByPlaceholder('姓名').fill('界面测试');
-    await pane.getByPlaceholder('邮箱地址').fill(email);
-    await pane.getByPlaceholder('团队/公司名称').fill('界面测试工作室');
+    await pane.getByPlaceholder('姓名', { exact: true }).fill('界面测试');
+    await pane.getByPlaceholder('邮箱地址', { exact: true }).fill(email);
+    await pane.getByPlaceholder('团队/公司名称', { exact: true }).fill('界面测试工作室');
     await pane.getByPlaceholder('密码（至少6位）').fill(PASSWORD);
     await pane.getByPlaceholder('确认密码').fill(PASSWORD);
     await pane.getByRole('checkbox').check();
@@ -218,7 +228,7 @@ test('国内版主要流程', async ({ page }, info) => {
   });
 
   await run('hot-list', async () => {
-    await page.goto('/hot');
+    await openPage(page, '/hot');
     if (process.env.E2E_HOT_MODE === 'empty') {
       await expect(page.getByText('尚未接入')).toBeVisible();
       await shot(page, info, 'hot-empty');
@@ -246,7 +256,7 @@ test('国内版主要流程', async ({ page }, info) => {
 
     const id = await tenantId(page);
     psql(`UPDATE "Tenant" SET plan = 'enterprise', plan_expires_at = NOW() + INTERVAL '3 days' WHERE id = '${id}'`);
-    await page.goto('/studio');
+    await openPage(page, '/studio');
     await openNav(page);
     await expect(page.getByText('不会自动扣款')).toBeVisible();
     await shot(page, info, 'renewal-notice');
@@ -267,13 +277,13 @@ test('国内版主要流程', async ({ page }, info) => {
   await run('quota-exhausted', async () => {
     const id = await tenantId(page);
     psql(`UPDATE "Tenant" SET limits = jsonb_set(COALESCE(limits::jsonb, '{}'::jsonb), '{max_ai_tokens_monthly}', '1') WHERE id = '${id}'`);
-    await page.goto('/studio');
+    await openPage(page, '/studio');
     await expect(page.getByTestId('ai-allowance')).toContainText('已用完');
     await shot(page, info, 'quota-exhausted');
   });
 
   await run('payment-not-configured', async () => {
-    await page.goto('/pricing');
+    await openPage(page, '/pricing');
     await page.locator('h3', { hasText: 'Business' }).locator('xpath=ancestor::div[contains(@class,"flex-col")][1]').getByRole('button', { name: '立即开通' }).click();
     await page.getByRole('button', { name: '确认并支付' }).click();
     await expect(page.getByText(/尚未配置|未能下单/)).toBeVisible();
