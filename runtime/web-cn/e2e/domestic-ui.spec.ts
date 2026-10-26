@@ -166,7 +166,7 @@ test('国内版主要流程', async ({ page }, info) => {
   });
 
   await run('generate', async () => {
-    await expect(page.getByText('合规规则资料需要人工复核')).toBeVisible();
+    await expect(page.getByText('合规规则资料需要人工复核', { exact: true })).toBeVisible();
     await shot(page, info, 'admin-compliance-banner');
     await page.getByRole('button', { name: '一键生成文案包' }).click();
     await expect(page.getByText('请输入主题或一句话灵感')).toBeVisible();
@@ -181,6 +181,9 @@ test('国内版主要流程', async ({ page }, info) => {
   });
 
   await run('compliance-and-publish', async () => {
+    // 免费版每月 5 条。一次发到五个平台就会用完，后面的风险确认发不出去。走查账号把条数放开，免费版本身的上限不动。
+    const id = await tenantId(page);
+    psql(`UPDATE "Tenant" SET limits = jsonb_set(COALESCE(limits::jsonb, '{}'::jsonb), '{max_publishes_monthly}', '50') WHERE id = '${id}'`);
     await createApproved(page, '秋天读书', '秋天读完一本书，记下三件还想再看的事。');
     await page.getByRole('button', { name: /^发\s*布$/ }).click();
     let dialog = page.getByRole('dialog');
@@ -220,7 +223,7 @@ test('国内版主要流程', async ({ page }, info) => {
     await expect(dialog.getByTestId('compliance-disclaimer')).toContainText('这不是法律意见');
     await expect(dialog.getByRole('button', { name: '创建人工发布任务' })).toBeDisabled();
     await shot(page, info, 'compliance-risk');
-    await dialog.getByText('我已自行核对以上风险').click();
+    await dialog.getByRole('checkbox', { name: '我已自行核对以上风险' }).check();
     await expect(dialog.getByRole('button', { name: '创建人工发布任务' })).toBeEnabled();
     await dialog.getByRole('button', { name: '创建人工发布任务' }).click();
     await page.waitForURL('**/publish**');
@@ -265,7 +268,7 @@ test('国内版主要流程', async ({ page }, info) => {
     await expect(page.getByTestId('webhook-form')).toBeVisible();
     await page.locator('#webhook-url').fill('http://example.com/hooks');
     await page.getByRole('button', { name: '保存通知地址' }).click();
-    await expect(page.getByText('https://')).toBeVisible();
+    await expect(page.getByRole('alert').filter({ hasText: '必须以 https:// 开头' })).toBeVisible();
     await shot(page, info, 'webhook-bad-url');
     await page.locator('#webhook-url').fill('https://example.com/hooks');
     await page.getByRole('button', { name: '保存通知地址' }).click();
@@ -286,7 +289,7 @@ test('国内版主要流程', async ({ page }, info) => {
     await openPage(page, '/pricing');
     await page.locator('h3', { hasText: 'Business' }).locator('xpath=ancestor::div[contains(@class,"flex-col")][1]').getByRole('button', { name: '立即开通' }).click();
     await page.getByRole('button', { name: '确认并支付' }).click();
-    await expect(page.getByText(/尚未配置|未能下单/)).toBeVisible();
+    await expect(page.getByRole('alert').filter({ hasText: '尚未配置' })).toBeVisible();
     await shot(page, info, 'payment-unavailable');
   });
 
