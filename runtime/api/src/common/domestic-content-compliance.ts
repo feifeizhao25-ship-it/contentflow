@@ -184,7 +184,7 @@ export function checkAdDisclosure(content: string): DomesticComplianceHit | null
   return {
     gate: 'advertising_law',
     ruleId: 'CN-AD-NET-ART9-3',
-    source: '《互联网广告管理办法》第八条（广告应当具有可识别性）、第九条第三款（种草/测评等附购买方式应当显著标明“广告”）',
+    source: '《互联网广告管理办法》（国家市场监督管理总局令第72号）第八条（广告应当具有可识别性）、第九条第三款（种草/测评等附购买方式应当显著标明“广告”）',
     sourceUrl: 'https://www.gov.cn/zhengce/202305/content_6858084.htm',
     sourceRetrievedAt: '2026-10-16',
     reason: '以种草/测评/体验分享形式推销并附购买方式，但未显著标明“广告”',

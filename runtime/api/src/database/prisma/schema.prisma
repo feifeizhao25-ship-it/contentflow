@@ -1237,7 +1237,7 @@ model ApiKey {
   @@index([key_hash])
 }
 
-// Webhook 订阅：secret_cipher 为 AES-256-GCM 密文，明文密钥只在创建时返回一次
+// Webhook 订阅（批2）：secret_cipher 为 AES-256-GCM 密文，明文密钥只在创建时返回一次
 model WebhookSubscription {
   id            String   @id @default(uuid())
   tenant_id     String

@@ -1,4 +1,5 @@
-import { Controller, Post, Body, UseGuards, Request, Headers } from '@nestjs/common';
+import { Controller, Post, Body, UseGuards, UseInterceptors, Request, Headers } from '@nestjs/common';
+import { AiConcurrencyInterceptor } from './ai-concurrency.interceptor';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { ContentPackService } from './content-pack.service';
@@ -8,6 +9,7 @@ import { normalizeIdempotencyKey } from '../system/usage.service';
 @ApiTags('ai')
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard)
+@UseInterceptors(AiConcurrencyInterceptor)
 @Controller('content-pack')
 export class ContentPackController {
     constructor(private readonly contentPackService: ContentPackService) { }

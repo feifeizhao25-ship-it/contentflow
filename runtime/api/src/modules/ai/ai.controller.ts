@@ -1,4 +1,5 @@
-import { BadRequestException, Controller, Post, Get, Body, UseGuards, Request, Headers } from '@nestjs/common';
+import { BadRequestException, Controller, Post, Get, Body, UseGuards, UseInterceptors, Request, Headers } from '@nestjs/common';
+import { AiConcurrencyInterceptor } from './ai-concurrency.interceptor';
 import { AI_TEXT_LABEL, labelAiGeneratedText } from '../../common/ai-content-label';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { AIService } from './ai.service';
@@ -8,6 +9,7 @@ import { AI_HOLD_TOKENS } from './ai-holds';
 import { normalizeIdempotencyKey } from '../system/usage.service';
 
 @ApiTags('ai')
+@UseInterceptors(AiConcurrencyInterceptor)
 @Controller('ai')
 export class AIController {
   constructor(

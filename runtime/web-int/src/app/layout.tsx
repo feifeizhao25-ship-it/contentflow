@@ -28,7 +28,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
           <Link href="/login" className="button secondary header-account">Account</Link>
         </header>
         {children}
-        <footer>ContentFlow Global · Human-reviewed AI operations · Privacy by design</footer>
+        <footer>ContentFlow Global · Human-reviewed AI operations · <Link href="/legal/privacy">Privacy</Link> · <Link href="/legal/terms">Terms</Link></footer>
       </body>
     </html>
   );

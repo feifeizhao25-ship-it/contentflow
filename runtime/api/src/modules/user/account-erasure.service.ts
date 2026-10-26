@@ -69,6 +69,7 @@ export const USER_OWNED_TABLES: ReadonlyArray<{ table: string; column: string }>
   { table: 'UserAchievement', column: 'user_id' },
   { table: 'user_quests', column: 'user_id' },
   { table: 'gamification_profiles', column: 'user_id' },
+  { table: 'GrowthEvent', column: 'user_id' },
 ];
 
 /** 工作区拥有的业务数据表（仅在我是唯一在职成员时删除）。顺序：子表在前。 */
@@ -150,6 +151,9 @@ export const TABLE_CLASSIFICATION: Readonly<Record<string, { kind: 'user' | 'ten
   ApiKey: { kind: 'tenant' },
   WebhookSubscription: { kind: 'tenant', note: '含 Webhook 签名密钥密文，随工作区删除' },
   ai_quota_reservations: { kind: 'tenant', note: '含生成结果的额度预占，随工作区删除；已入账令牌仍留在 usage_meters' },
+  GrowthEvent: { kind: 'user', note: '已登录用户的漏斗事件按 user_id 删除；匿名访客事件不含个人身份。工作区唯一成员注销时再按 tenant_id 删除' },
+  GrowthAuditEntry: { kind: 'global', note: '自改进审计，只追加，不含用户个人数据列' },
+  GeoCitationObservation: { kind: 'global', note: '中文 AI 搜索引用观测，公开查询，无用户列' },
   AccountStatsHistory: { kind: 'cascade', note: 'PlatformAccount' },
   PlatformContent: { kind: 'cascade', note: 'Content' },
   PublishTask: { kind: 'cascade', note: 'Content' },
@@ -248,6 +252,8 @@ export class AccountErasureService {
         for (const table of TENANT_OWNED_TABLES) {
           await tx.$executeRawUnsafe(`DELETE FROM "${table}" WHERE tenant_id = $1`, me.tenant_id);
         }
+        // 漏斗事件的 user_id 可空。上面已按用户删过已登录事件，这里清掉只挂在本工作区上的访客事件。
+        await tx.$executeRawUnsafe(`DELETE FROM "GrowthEvent" WHERE tenant_id = $1`, me.tenant_id);
         // 没有人会再续费：进行中的订阅置为已取消（订单与订阅记录本身保留）
         await tx.$executeRawUnsafe(
           `UPDATE "Subscription" SET status = 'cancelled', cancel_at_period_end = TRUE, cancelled_at = NOW(), updated_at = NOW()
@@ -321,6 +327,7 @@ export class AccountErasureService {
         workspace.ai_generations = await select('AIGeneration', 'tenant_id = $1', tenantId);
         workspace.publish_tasks = await select('PublishTask', 'tenant_id = $1', tenantId);
         workspace.ai_quota_reservations = await select('ai_quota_reservations', 'tenant_id = $1', tenantId);
+        workspace.growth_events = await select('GrowthEvent', 'tenant_id = $1 AND user_id IS NULL', tenantId);
       } else {
         workspace.ai_generations = await select('AIGeneration', 'tenant_id = $1 AND user_id = $2', tenantId, userId);
         workspace.ai_quota_reservations = await select('ai_quota_reservations', `tenant_id = $1 AND settlement->'generation'->>'userId' = $2`, tenantId, userId);

@@ -321,6 +321,7 @@ function PricingContent() {
                     </Radio.Group>
                 </div>
 
+                {/* 内部安全上限是 4000 万令牌/月、100 个平台账号，仍待负责人确认。页面不展示这些数字。 */}
                 <div className="max-w-4xl mx-auto mb-8 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900" role="note">
                     关于 Business：AI 令牌额度与平台账号上限尚未确认，页面不展示未确认的数字，也不构成承诺。确认前请以商务书面约定为准。其余套餐额度以付款时展示为准。
                 </div>
@@ -407,7 +408,7 @@ function PricingContent() {
                     ))}
 
                 </div>
-                <p className="mb-20 text-xs text-zinc-500">每张卡底部一行「路线图（即将上线）」列出尚未开通的卖点，开通前不影响当前价格。</p>
+                <p className="mb-20 text-xs text-zinc-500">每张卡底部一行「路线图（即将上线）」列出尚未开通的卖点（如平台授权、团队审批、操作审计），开通前不影响当前价格。</p>
 
                 <Modal
                     open={checkoutPlan !== null}

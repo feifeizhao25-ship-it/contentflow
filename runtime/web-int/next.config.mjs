@@ -3,7 +3,7 @@ const nextConfig = {
   output: 'standalone',
   reactStrictMode: true,
   poweredByHeader: false,
-  // /api/v1 requests must reach the authenticated catch-all route. A rewrite
-  // runs before dynamic routes and would bypass cookie-to-Bearer handling.
+  // No /api/v1 rewrite. It would run before src/app/api/v1/[...path]/route.ts,
+  // skip cookie-to-Bearer handling, and turn every signed-in call into 401.
 };
 export default nextConfig;

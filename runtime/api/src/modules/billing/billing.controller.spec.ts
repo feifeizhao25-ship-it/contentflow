@@ -40,12 +40,12 @@ describe('BillingController', () => {
     expect(CN_PLANS.map((plan) => plan.priceMonthlyCny)).toEqual([0, 99, 499, 1999]);
     expect(CN_PLANS[0].monthlyPostQuota).toBe(5);
     expect(CN_PLANS[3].custom).toBe(false);
-    // 内部保留有限上限，避免 Business 误继承「不限」；对外接口不把未确认数字当成承诺
+    // 内部安全上限：Business 的 AI 令牌按价格比例为 Team 的 4 倍，平台账号上限 100，不能与 Team 同额，也不能误继承「不限」。
+    // 对外接口把这两项标成待确认，不把未确认数字当成承诺。
     expect(CN_PLANS[3].quotaStatus).toBe('unconfirmed');
-    expect(CN_PLANS[3].aiTokenQuota).toBeGreaterThan(0);
-    expect(CN_PLANS[3].platformLimit).toBeGreaterThan(0);
-    expect(CN_PLANS[3].aiTokenQuota).not.toBe(-1);
-    expect(CN_PLANS[3].platformLimit).not.toBe(-1);
+    expect(CN_PLANS[3].aiTokenQuota).toBeGreaterThan(CN_PLANS[2].aiTokenQuota);
+    expect(CN_PLANS[3].aiTokenQuota).toBe(40000000);
+    expect(CN_PLANS[3].platformLimit).toBe(100);
     expect(result.plans[3].aiTokenQuota).toBeNull();
     expect(result.plans[3].platformLimit).toBeNull();
     expect(result.plans[3].quotaNote).toContain('待确认');

@@ -52,8 +52,9 @@ export const LEGACY_CN_PLANS: ChinaPlanDefinition[] = [
 ];
 
 // 2026-09-01 已批准定价。档名按 0S1 统一为 Solo / Team / Business（分D04）。
-// Business 的 AI 令牌与平台账号上限尚未经负责人确认：下面的数字只是内部安全上限
-// （避免误继承「不限」），不是对客户的承诺。对外展示走 presentChinaPlan，不输出这些数字。
+// Business 的 AI 令牌按价格比例为 Team 的 4 倍（4000 万/月），平台账号上限 100。
+// 这两项是内部安全上限（避免误继承「不限」或与 Team 同额），2026-10-16 起仍待负责人确认，
+// 不是对客户的承诺。对外展示走 presentChinaPlan，不输出这些数字。
 // 旧订单使用下单快照或 LEGACY_CN_PLANS，禁止重定价。
 export const CN_PLAN_VERSION = '2026-09-01';
 export const CN_PLANS: ChinaPlanDefinition[] = LEGACY_CN_PLANS.map((plan) => {
