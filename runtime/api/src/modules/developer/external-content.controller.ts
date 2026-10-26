@@ -1,4 +1,4 @@
-import { Controller, Post, Body, UseGuards, Request, UseInterceptors } from '@nestjs/common';
+import { Controller, Optional, Post, Body, UseGuards, Request, UseInterceptors } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiHeader } from '@nestjs/swagger';
 import { ExternalApiGuard } from './external-api.guard';
 import { ContentPackService } from '../ai/content-pack.service';
@@ -11,7 +11,7 @@ import { WebhookService } from './webhook.service';
 @UseInterceptors(ApiRequestInterceptor)
 @Controller('external/v1/content-pack')
 export class ExternalContentController {
-    constructor(private readonly contentPackService: ContentPackService, private readonly webhooks?: WebhookService) { }
+    constructor(private readonly contentPackService: ContentPackService, @Optional() private readonly webhooks?: WebhookService) { }
 
     @Post('generate')
     @ApiHeader({
