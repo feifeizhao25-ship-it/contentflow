@@ -38,6 +38,7 @@
   "dependencies": {
     "@ant-design/icons": "^5.4.0",
     "@ant-design/nextjs-registry": "^1.0.0",
+    "@ant-design/v5-patch-for-react-19": "^1.0.3",
     "@sentry/nextjs": "^10.69.0",
     "@tiptap/core": "3.31.3",
     "@tiptap/pm": "3.31.3",
