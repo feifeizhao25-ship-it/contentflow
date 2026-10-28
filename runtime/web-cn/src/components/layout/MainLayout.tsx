@@ -161,7 +161,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
                 initial={false}
                 animate={{ width: sidebarWidth }}
                 className={clsx(
-                    "fixed left-0 top-0 bottom-0 z-50 h-screen transition-all duration-300 flex flex-col",
+                    "fixed left-0 z-50 h-screen transition-all duration-300 flex flex-col safe-sidebar",
                     isMobile && (mobileMenuOpen ? "translate-x-0 shadow-2xl" : "-translate-x-full"),
                     isDarkMode 
                         ? "bg-zinc-900/95 backdrop-blur-xl border-r border-zinc-800" 
@@ -250,7 +250,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
                             </div>
                             <div className={clsx(
                                 "text-[11px]",
-                                isDarkMode ? "text-zinc-500" : "text-zinc-400"
+                                isDarkMode ? "text-zinc-300" : "text-amber-900"
                             )}>
                                 {plan.detail}
                             </div>
@@ -261,8 +261,10 @@ export default function MainLayout({ children }: MainLayoutProps) {
 
             {/* 主内容区 */}
             <main
-                className="flex-1 transition-all duration-300 flex flex-col min-h-screen relative"
-                style={{ marginLeft: isMobile ? 0 : sidebarWidth, minWidth: 0 }}
+                className={clsx(
+                    "flex-1 transition-all duration-300 flex flex-col min-h-screen relative min-w-0 ml-0",
+                    sidebarCollapsed ? "md:ml-20" : "md:ml-60",
+                )}
             >
                 {/* 顶部栏 */}
                 <header

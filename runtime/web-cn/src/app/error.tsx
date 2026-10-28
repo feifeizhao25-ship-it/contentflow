@@ -18,10 +18,10 @@ export default function Error({
     return (
         <div className="min-h-screen flex items-center justify-center bg-black relative overflow-hidden">
             {/* Background Effects */}
-            <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-red-500/20 blur-[120px] rounded-full point-events-none" />
-            <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-indigo-500/10 blur-[120px] rounded-full point-events-none" />
+            <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-red-500/20 blur-[120px] rounded-full pointer-events-none" />
+            <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-indigo-500/10 blur-[120px] rounded-full pointer-events-none" />
 
-            <div className="glass-card p-12 rounded-3xl border border-white/10 text-center max-w-md w-full relative z-10 backdrop-blur-xl bg-zinc-900/40">
+            <div className="glass-card mx-4 p-6 sm:p-12 rounded-3xl border border-white/10 text-center max-w-md w-full relative z-10 backdrop-blur-xl bg-zinc-900/80">
                 <div className="w-20 h-20 bg-red-500/10 rounded-full flex items-center justify-center mx-auto mb-6 border border-red-500/20">
                     <span className="text-4xl">⚠️</span>
                 </div>
@@ -46,7 +46,7 @@ export default function Error({
                         size="large"
                         icon={<HomeOutlined />}
                         href="/dashboard"
-                        className="!rounded-xl !text-zinc-400 hover:!text-white hover:!bg-white/5 !h-12 !border-white/5"
+                        className="!rounded-xl !text-zinc-100 hover:!text-white hover:!bg-white/10 !h-12 !border-white/20"
                     >
                         返回工作台
                     </Button>

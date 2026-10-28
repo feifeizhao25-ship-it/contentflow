@@ -54,7 +54,7 @@ export const StrategyPanel = () => {
                         <div className="flex items-center gap-3">
                             <div className="w-8 h-8 rounded-lg bg-black text-white flex items-center justify-center text-lg">🎵</div>
                             <div className="flex-1">
-                                <div className="font-bold text-xs">抖音 (Douyin)</div>
+                                <div className="font-bold text-xs">抖音</div>
                                 <div className="text-xs text-green-600 font-mono flex items-center gap-1">
                                     <ClockCircleOutlined /> 今日推荐 12:05 / 20:30
                                 </div>
@@ -64,7 +64,7 @@ export const StrategyPanel = () => {
                         <div className="flex items-center gap-3">
                             <div className="w-8 h-8 rounded-lg bg-red-500 text-white flex items-center justify-center text-lg">📕</div>
                             <div className="flex-1">
-                                <div className="font-bold text-xs">小红书 (RedBook)</div>
+                                <div className="font-bold text-xs">小红书</div>
                                 <div className="text-xs text-green-600 font-mono flex items-center gap-1">
                                     <ClockCircleOutlined /> 今日推荐 11:40 / 22:10
                                 </div>

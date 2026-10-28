@@ -16,6 +16,7 @@ import { message } from '@/lib/antd-app';
 import { motion, AnimatePresence } from 'framer-motion';
 import clsx from 'clsx';
 import { apiErrorText, safeErrorText } from '@/lib/api-error';
+import { platformDisplay } from '@/lib/cn-display';
 
 interface PlatformAccount {
     id: string;
@@ -31,12 +32,12 @@ interface PlatformAccount {
 }
 
 const availablePlatforms = [
-    { key: 'douyin', name: '抖音', color: '#000000', icon: '🎵' },
-    { key: 'xiaohongshu', name: '小红书', color: '#ff2442', icon: '📕' },
-    { key: 'weixin', name: '微信视频号', color: '#07c160', icon: '💬' },
-    { key: 'bilibili', name: 'B站', color: '#00a1d6', icon: '📺' },
-    { key: 'weibo', name: '微博', color: '#ff8200', icon: '👁️' },
-    { key: 'kuaishou', name: '快手', color: '#ff6600', icon: '⚡' },
+    { key: 'douyin', name: '抖音', color: '#000000', icon: platformDisplay('douyin').icon },
+    { key: 'xiaohongshu', name: '小红书', color: '#ff2442', icon: platformDisplay('xiaohongshu').icon },
+    { key: 'weixin', name: '微信视频号', color: '#07c160', icon: platformDisplay('weixin').icon },
+    { key: 'bilibili', name: 'B站', color: '#00a1d6', icon: platformDisplay('bilibili').icon },
+    { key: 'weibo', name: '微博', color: '#ff8200', icon: platformDisplay('weibo').icon },
+    { key: 'kuaishou', name: '快手', color: '#ff6600', icon: platformDisplay('kuaishou').icon },
 ];
 
 export default function AccountsPage() {
@@ -70,12 +71,11 @@ export default function AccountsPage() {
                 const mappedAccounts: PlatformAccount[] = data.accounts.map((acc: any) => ({
                     id: acc.id,
                     platform: acc.platform,
-                    platformName: availablePlatforms.find(p => p.key === acc.platform)?.name || acc.platform,
+                    platformName: availablePlatforms.find(p => p.key === acc.platform)?.name || platformDisplay(acc.platform).name,
                     accountName: acc.account_name,
                     followers: acc.follower_count || 0,
                     status: (acc.status as any) || 'active',
                     authType: acc.auth_type || 'OAuth',
-                    expiresAt: acc.expires_at ? new Date(acc.expires_at).toLocaleDateString() : '永久',
                     color: availablePlatforms.find(p => p.key === acc.platform)?.color || '#9ca3af',
                     avatar: acc.avatar_url,
                 }));
@@ -192,24 +192,26 @@ export default function AccountsPage() {
                                         </div>
                                         <div className={clsx(
                                             "px-2 py-1 rounded-lg text-xs font-medium flex items-center gap-1.5",
-                                            account.status === 'active' ? "bg-emerald-500/10 text-emerald-400" : "bg-red-500/10 text-red-400"
+                                            account.status === 'active' ? "bg-emerald-50 text-emerald-800" : "bg-red-50 text-red-700"
                                         )}>
-                                            <span className={clsx("w-1.5 h-1.5 rounded-full animate-pulse",
-                                                account.status === 'active' ? "bg-emerald-400" : "bg-red-400"
+                                            <span className={clsx("w-1.5 h-1.5 rounded-full",
+                                                account.status === 'active' ? "bg-emerald-600" : "bg-red-600"
                                             )} />
-                                            {account.status === 'active' ? '运行中' : '异常'}
+                                            {account.status === 'active' ? '运行中' : account.status === 'expired' ? '授权已过期' : '异常'}
                                         </div>
                                     </div>
 
                                     <div className="flex items-center justify-between mt-6 pt-4 border-t border-zinc-100">
                                         <div className="text-xs text-zinc-500">
-                                            粉丝数 <span className="text-zinc-900 font-medium ml-1">{account.followers.toLocaleString()}</span>
+                                            粉丝数 <span className="text-zinc-900 font-medium ml-1">{account.followers.toLocaleString('zh-CN')}</span>
                                         </div>
-                                        <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                        <div className="flex gap-2">
                                             <Tooltip title="解绑">
                                                 <button
+                                                    type="button"
+                                                    aria-label="解绑"
                                                     onClick={() => handleUnbind(account.id)}
-                                                    className="p-2 rounded-lg hover:bg-red-50 text-zinc-400 hover:text-red-500 transition-colors"
+                                                    className="p-2 rounded-lg hover:bg-red-50 text-zinc-600 hover:text-red-600 transition-colors"
                                                 >
                                                     <DeleteOutlined />
                                                 </button>

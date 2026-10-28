@@ -46,7 +46,7 @@ export const GrowthSidebar = () => {
                                 <div>
                                     <div className="font-bold text-sm text-zinc-800 flex items-center gap-1">
                                         生成封面
-                                        <Tag color="gold" className="m-0 text-[8px] px-1 py-0 h-4 leading-4 border-0">PRO</Tag>
+                                        <Tag color="gold" className="m-0 text-[8px] px-1 py-0 h-4 leading-4 border-0">专业版</Tag>
                                     </div>
                                     <div className="text-[10px] text-zinc-400">10版精美封面</div>
                                 </div>
@@ -71,7 +71,7 @@ export const GrowthSidebar = () => {
 
                 {/* Module 2: Viral Hooks */}
                 <div>
-                    <h3 className="text-xs font-bold text-zinc-400 uppercase tracking-wider mb-3 px-1">爆款开头 Hook</h3>
+                    <h3 className="text-xs font-bold text-zinc-600 mb-3 px-1">爆款开头</h3>
                     <div className="bg-white rounded-xl border border-zinc-100 overflow-hidden shadow-sm">
                         {[
                             { title: '反常识开头', text: '99%的人都做错了，其实...', tag: '推荐', score: 9.8 },
@@ -87,7 +87,7 @@ export const GrowthSidebar = () => {
                                         <span className="font-bold text-xs text-zinc-700">{hook.title}</span>
                                         {hook.tag && <Badge status="processing" color="indigo" />}
                                     </div>
-                                    <span className="text-[10px] text-green-500 font-mono">HR {hook.score}</span>
+                                    <span className="text-[10px] text-green-700 font-medium">参考 {hook.score}</span>
                                 </div>
                                 <div className="text-xs text-zinc-500 mb-2">{hook.text}</div>
                                 <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity justify-end">
@@ -106,7 +106,7 @@ export const GrowthSidebar = () => {
                 <div>
                     <h3 className="text-xs font-bold text-zinc-400 uppercase tracking-wider mb-3 px-1">多平台预览</h3>
                     <div className="space-y-2">
-                        {['抖音 (TikTok)', '小红书 (RedBook)'].map(p => (
+                        {['抖音', '小红书'].map(p => (
                             <div key={p} className="flex items-center justify-between p-3 bg-white rounded-lg border border-zinc-100">
                                 <span className="text-xs font-medium text-zinc-600">{p}</span>
                                 <RightOutlined className="text-zinc-300 text-xs" />
@@ -123,7 +123,7 @@ export const GrowthSidebar = () => {
                     <div className="relative z-10">
                         <div className="flex items-center gap-2 mb-1">
                             <CrownFilled className="text-yellow-300" />
-                            <span className="font-bold text-sm">解锁 Pro 版</span>
+                            <span className="font-bold text-sm">升级到专业版</span>
                         </div>
                         <p className="text-xs text-indigo-100 leading-relaxed mb-3">
                             获得 批量适配 + 高清导出 + 专属客服支持。

@@ -102,7 +102,7 @@ export default function TrafficSandwichPage() {
     const steps = [
         { title: '确立主题', description: '定义核心方向' },
         { title: '三明治架构', description: '钩子+内容+转化' },
-        { title: '一键分发', description: '流量闭环' },
+        { title: '检查后发布', description: '先看结构再决定发不发' },
     ];
 
     return (
@@ -117,12 +117,12 @@ export default function TrafficSandwichPage() {
                     <TrendingUp className="w-4 h-4" />
                     <span>进阶增长模型 2.0</span>
                 </div>
-                <Title level={1} className="font-serif !text-5xl !mb-0 tracking-tight">
-                    流量三明治 <span className="text-zinc-400 font-light">策略工作台</span>
+                <Title level={1} className="font-serif !mb-0 !text-4xl !leading-tight sm:!text-5xl">
+                    流量三明治
                 </Title>
-                <Paragraph className="text-zinc-500 text-lg max-w-2xl mx-auto">
-                    通过“钩子引流、价值留存、钩子转化”的爆款逻辑，
-                    将您的每一份内容都打造成一台精准的流量收割机。
+                <p className="text-2xl font-light text-zinc-600">策略工作台</p>
+                <Paragraph className="text-zinc-600 text-lg max-w-2xl mx-auto">
+                    用「开头吸引注意、中间讲清楚价值、结尾写出下一步」组织一条内容。这是写作结构，不代表播放量或成交。
                 </Paragraph>
             </motion.div>
 
@@ -166,7 +166,7 @@ export default function TrafficSandwichPage() {
                                     >
                                         AI 规划三明治策略
                                     </Button>
-                                    <div className="text-xs text-zinc-400">实际用量和权益扣减以服务端记录为准</div>
+                                    <div className="text-xs text-zinc-600">实际用量和权益扣减以服务端记录为准</div>
                                 </div>
 
                                 <div className="pt-10 flex flex-wrap justify-center gap-3 opacity-60 group-hover:opacity-100 transition-opacity" aria-label="支持的平台">
@@ -203,7 +203,7 @@ export default function TrafficSandwichPage() {
                                                         <Text strong className="text-amber-800 cursor-help border-b border-dotted border-amber-300">上层：流量钩子</Text>
                                                     </Popover>
                                                     <br />
-                                                    <Text type="secondary" text-xs>前3秒的核心内容，负责从信息流中“抢夺”注意力</Text>
+                                                    <Text type="secondary" className="text-xs">前 3 秒要让人愿意看下去，不保证一定被推荐</Text>
                                                 </div>
                                             </div>
                                             <TextArea
@@ -228,7 +228,7 @@ export default function TrafficSandwichPage() {
                                                         <Text strong className="text-emerald-800 cursor-help border-b border-dotted border-emerald-300">中层：价值交付</Text>
                                                     </Popover>
                                                     <br />
-                                                    <Text type="secondary" text-xs>核心的产品点或知识干货，负责建立品牌信任</Text>
+                                                    <Text type="secondary" className="text-xs">把产品或知识讲清楚，方便读者自己判断</Text>
                                                 </div>
                                             </div>
                                             <TextArea
@@ -253,7 +253,7 @@ export default function TrafficSandwichPage() {
                                                         <Text strong className="text-blue-800 cursor-help border-b border-dotted border-blue-300">下层：转化指令</Text>
                                                     </Popover>
                                                     <br />
-                                                    <Text type="secondary" text-xs>结尾的高能引导，负责将观看转化为实际价值</Text>
+                                                    <Text type="secondary" className="text-xs">结尾写明希望读者做的下一步，例如收藏或查看详情</Text>
                                                 </div>
                                             </div>
                                             <TextArea
@@ -327,7 +327,7 @@ export default function TrafficSandwichPage() {
                                                             <div className="text-sm font-medium text-emerald-400">待验证</div>
                                                             <div className="text-[10px] text-zinc-500">完播率需发布后数据</div>
                                                         </div>
-                                                        <Divider type="vertical" className="bg-zinc-800" h-8 />
+                                                        <Divider type="vertical" className="!h-8 bg-zinc-800" />
                                                         <div className="text-center px-4">
                                                             <div className="text-sm font-medium text-amber-400">待验证</div>
                                                             <div className="text-[10px] text-zinc-500">点击率需发布后数据</div>
@@ -348,7 +348,7 @@ export default function TrafficSandwichPage() {
                                 animate={{ opacity: 1, y: 0 }}
                                 className="max-w-3xl mx-auto py-10"
                             >
-                                <div className="bg-zinc-50 rounded-[40px] p-10 border border-zinc-100 relative overflow-hidden">
+                                <div className="bg-zinc-50 rounded-3xl p-5 sm:rounded-[40px] sm:p-10 border border-zinc-100 relative overflow-hidden">
                                     <div className="absolute top-0 right-0 p-8 opacity-10">
                                         <Target className="w-32 h-32" />
                                     </div>
@@ -356,7 +356,7 @@ export default function TrafficSandwichPage() {
                                     <div className="relative z-10 space-y-10">
                                         <div className="text-center space-y-2">
                                             <Tag color="success" className="rounded-full px-4">策略生成成功</Tag>
-                                            <Title level={2} className="font-serif">属于您的全自动流量闭环</Title>
+                                            <Title level={2} className="font-serif">这条内容的三层结构</Title>
                                         </div>
 
                                         <div className="p-8 bg-white rounded-3xl space-y-6 shadow-sm">
@@ -366,15 +366,15 @@ export default function TrafficSandwichPage() {
                                             </div>
                                             <div className="space-y-4">
                                                 <div className="p-4 bg-zinc-50 rounded-xl border-l-4 border-amber-400">
-                                                    <Text type="secondary" text-xs>流量钩子</Text>
+                                                    <Text type="secondary" className="text-xs">开头</Text>
                                                     <Paragraph className="mt-1 mb-0">{hook}</Paragraph>
                                                 </div>
                                                 <div className="p-4 bg-zinc-50 rounded-xl border-l-4 border-emerald-400">
-                                                    <Text type="secondary" text-xs>核心内容</Text>
+                                                    <Text type="secondary" className="text-xs">正文</Text>
                                                     <Paragraph className="mt-1 mb-0 line-clamp-2">{coreContent}</Paragraph>
                                                 </div>
                                                 <div className="p-4 bg-zinc-50 rounded-xl border-l-4 border-blue-400">
-                                                    <Text type="secondary" text-xs>转化指令</Text>
+                                                    <Text type="secondary" className="text-xs">下一步</Text>
                                                     <Paragraph className="mt-1 mb-0">{cta}</Paragraph>
                                                 </div>
                                             </div>

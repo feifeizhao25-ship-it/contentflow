@@ -252,8 +252,8 @@ export default function SettingsPage() {
                                 sync_enabled: true,
                             }}
                         >
-                            <Row gutter={48}>
-                                <Col span={12} style={{ maxHeight: 600, overflowY: 'auto' }}>
+                            <Row gutter={[16, 16]}>
+                                <Col xs={24} lg={12} style={{ maxHeight: 600, overflowY: 'auto' }}>
                                     <Title level={5}>平台发帖频率设置</Title>
                                     <Divider style={{ margin: '12px 0' }} />
 
@@ -276,7 +276,7 @@ export default function SettingsPage() {
                                     ))}
                                 </Col>
 
-                                <Col span={12}>
+                                <Col xs={24} lg={12}>
                                     <Title level={5}>内容逻辑与连贯性</Title>
                                     <Divider style={{ margin: '12px 0' }} />
 
@@ -296,7 +296,7 @@ export default function SettingsPage() {
                                         </Text>
                                     </Form.Item>
 
-                                    <Form.Item label="年度主题规划 (Meta-Planning)" name="meta_plan">
+                                    <Form.Item label="年度主题规划" name="meta_plan">
                                         <Input.TextArea
                                             rows={4}
                                             placeholder="在此输入您的年度内容目标，AI 将以此为核心规划季、月度内容..."

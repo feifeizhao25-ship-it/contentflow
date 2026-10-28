@@ -36,7 +36,7 @@ class ContentFlowApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'ContentFlow Mobile',
+      title: '分发侠',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         useMaterial3: true,
@@ -44,7 +44,6 @@ class ContentFlowApp extends StatelessWidget {
           seedColor: const Color(0xFF6366F1), // Indigo
           brightness: Brightness.light,
         ),
-        fontFamily: 'SF Pro Text',
       ),
       home: const AuthGate(),
     );
@@ -103,43 +102,14 @@ class MainScreen extends ConsumerWidget {
       ),
       child: SafeArea(
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
           child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
-              _buildNavItem(context, ref, 0, Icons.today, '今日', currentTab),
-              _buildNavItem(
-                context,
-                ref,
-                1,
-                Icons.add_circle_outline,
-                '创作',
-                currentTab,
-              ),
-              _buildNavItem(
-                context,
-                ref,
-                2,
-                Icons.folder_outlined,
-                '素材',
-                currentTab,
-              ),
-              _buildNavItem(
-                context,
-                ref,
-                3,
-                Icons.insights_outlined,
-                '复盘',
-                currentTab,
-              ),
-              _buildNavItem(
-                context,
-                ref,
-                4,
-                Icons.person_outline,
-                '我的',
-                currentTab,
-              ),
+              Expanded(child: _buildNavItem(context, ref, 0, Icons.today, '今日', currentTab)),
+              Expanded(child: _buildNavItem(context, ref, 1, Icons.add_circle_outline, '创作', currentTab)),
+              Expanded(child: _buildNavItem(context, ref, 2, Icons.folder_outlined, '素材', currentTab)),
+              Expanded(child: _buildNavItem(context, ref, 3, Icons.insights_outlined, '复盘', currentTab)),
+              Expanded(child: _buildNavItem(context, ref, 4, Icons.person_outline, '我的', currentTab)),
             ],
           ),
         ),
@@ -165,7 +135,7 @@ class MainScreen extends ConsumerWidget {
       behavior: HitTestBehavior.opaque,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
         decoration: BoxDecoration(
           color: isSelected
               ? Theme.of(context).primaryColor.withValues(alpha: 0.1)

@@ -28,6 +28,7 @@ import { getUserMaterials, getStorageUsage, Material } from '@/lib/materials-ser
 import { usePermissions } from '@/hooks/usePermissions';
 import clsx from 'clsx';
 import { safeErrorText } from '@/lib/api-error';
+import { formatCnDate } from '@/lib/cn-display';
 
 const { Search } = Input;
 const { Title, Text, Paragraph } = Typography;
@@ -190,12 +191,12 @@ export default function MaterialsPage() {
     ];
 
     return (
-        <div className="min-h-screen bg-zinc-50">
-            <div className="max-w-7xl mx-auto p-6">
+        <div className="min-h-screen">
+            <div className="max-w-7xl mx-auto p-4 sm:p-6">
                 {/* 页面标题 */}
-                <div className="flex items-center justify-between mb-6">
+                <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <div>
-                        <h1 className="text-2xl font-bold text-zinc-900">素材库</h1>
+                        <h1 className="text-2xl font-bold">素材库</h1>
                         <p className="text-zinc-500 text-sm mt-1">管理您的图片和视频素材</p>
                     </div>
                     <Upload
@@ -222,7 +223,7 @@ export default function MaterialsPage() {
                                 <Search
                                     placeholder="搜索素材..."
                                     onSearch={setSearchText}
-                                    style={{ width: 250 }}
+                                    className="w-full sm:max-w-xs"
                                     prefix={<SearchOutlined />}
                                     allowClear
                                 />
@@ -280,7 +281,7 @@ export default function MaterialsPage() {
                                                         {item.name}
                                                     </div>
                                                     <div className="text-xs text-zinc-500 mt-1">
-                                                        {formatFileSize(item.file_size || 0)} • {new Date(item.created_at || '').toLocaleDateString()}
+                                                        {formatFileSize(item.file_size || 0)} · {formatCnDate(item.created_at) || '时间未知'}
                                                     </div>
                                                 </div>
                                                 <Divider style={{ margin: '8px 0' }} />
@@ -331,7 +332,8 @@ export default function MaterialsPage() {
                             <div className="text-center mb-4">
                                 <Progress 
                                     type="circle" 
-                                    percent={Math.round(storageUsage.percentage)} 
+                                    percent={storageUsage.percentage > 0 && storageUsage.percentage < 1 ? 1 : Math.round(storageUsage.percentage)}
+                                    format={() => (storageUsage.used > 0 && storageUsage.percentage < 1 ? '<1%' : `${Math.round(storageUsage.percentage)}%`)} 
                                     strokeColor={storageUsage.percentage > 80 ? '#ef4444' : { '0%': '#10b981', '100%': '#3b82f6' }}
                                     size={120}
                                 />

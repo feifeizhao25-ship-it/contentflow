@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:fl_chart/fl_chart.dart';
 import '../../core/providers.dart';
+import '../../core/cn_format.dart';
 import '../../data/models.dart';
 import '../../core/error_text.dart';
 
@@ -138,38 +138,11 @@ class InsightsScreen extends ConsumerWidget {
       ),
       child: Column(
         children: [
-          SizedBox(
-            height: 200,
-            child: LineChart(
-              LineChartData(
-                gridData: const FlGridData(show: false),
-                titlesData: const FlTitlesData(show: false),
-                borderData: FlBorderData(show: false),
-                lineBarsData: [
-                  LineChartBarData(
-                    spots: [
-                      const FlSpot(0, 30),
-                      const FlSpot(1, 45),
-                      const FlSpot(2, 35),
-                      const FlSpot(3, 60),
-                      const FlSpot(4, 55),
-                      const FlSpot(5, 80),
-                      const FlSpot(6, 75),
-                    ],
-                    isCurved: true,
-                    color: Theme.of(context).primaryColor,
-                    barWidth: 3,
-                    isStrokeCapRound: true,
-                    dotData: const FlDotData(show: false),
-                    belowBarData: BarAreaData(
-                      show: true,
-                      color: Theme.of(
-                        context,
-                      ).primaryColor.withValues(alpha: 0.1),
-                    ),
-                  ),
-                ],
-              ),
+          const Align(
+            alignment: Alignment.centerLeft,
+            child: Text(
+              '还没有按日曲线。下面是累计数字，不是示例走势。',
+              style: TextStyle(color: Color(0xFF3F3F46), fontSize: 13, height: 1.4),
             ),
           ),
           const SizedBox(height: 16),
@@ -239,7 +212,7 @@ class InsightsScreen extends ConsumerWidget {
           ),
           const SizedBox(height: 12),
           Text(
-            '原因: 钩子强 + 标题短 + 互动率高',
+            '这条内容的互动高于 5%。具体原因需要对照原文，这里不替你下结论。',
             style: TextStyle(color: Colors.white.withValues(alpha: 0.9)),
           ),
           const SizedBox(height: 16),
@@ -261,14 +234,9 @@ class InsightsScreen extends ConsumerWidget {
               const SizedBox(width: 12),
               Expanded(
                 child: ElevatedButton.icon(
-                  onPressed: () {
-                    // TODO: Recreate
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('正在创建复刻版本...')),
-                    );
-                  },
+                  onPressed: null,
                   icon: const Icon(Icons.copy, size: 18),
-                  label: const Text('一键复刻'),
+                  label: const Text('尚未接通'),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.white,
                     foregroundColor: Colors.orange,
@@ -347,17 +315,10 @@ class InsightsScreen extends ConsumerWidget {
   }
 
   Color _getEngagementColor(double rate) {
-    if (rate > 0.1) return Colors.green;
-    if (rate > 0.05) return Colors.orange;
-    return Colors.grey;
+    if (rate > 0.1) return Colors.green.shade800;
+    if (rate > 0.05) return Colors.orange.shade800;
+    return const Color(0xFF3F3F46);
   }
 
-  String _formatNumber(int number) {
-    if (number >= 10000) {
-      return '${(number / 10000).toStringAsFixed(1)}w';
-    } else if (number >= 1000) {
-      return '${(number / 1000).toStringAsFixed(1)}k';
-    }
-    return number.toString();
-  }
+  String _formatNumber(int number) => formatCount(number);
 }

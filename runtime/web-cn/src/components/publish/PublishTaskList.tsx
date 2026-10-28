@@ -19,6 +19,7 @@ import { apiClient } from '@/lib/api-client';
 import { safeErrorText } from '@/lib/api-error';
 import { buildCopyText, downloadLabelledCover, isManualPlatform, manualPlatformName, type ManualKit } from '@/lib/manual-publish';
 import { displayFailureReason, isFilterActive, publishFilterQuery, type PublishFilter } from '@/lib/publish-filter';
+import { formatCnDate, platformDisplay } from '@/lib/cn-display';
 
 type PublishTask = {
     id: string;
@@ -83,8 +84,8 @@ export const PublishTaskList = ({ filter, reloadKey = 0, onLoaded }: Props) => {
                             ? `${manualPlatformName(task.platform_content.platform)} · 人工发布`
                             : '未绑定账号',
                     status: task.status || 'pending',
-                    date: scheduledAt ? scheduledAt.toLocaleDateString('zh-CN') : '尚未排期',
-                    time: scheduledAt ? scheduledAt.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' }) : '',
+                    date: scheduledAt ? formatCnDate(scheduledAt) : '尚未排期',
+                    time: scheduledAt ? formatCnDate(scheduledAt, true).slice(11) : '',
                     error: task.error_message,
                     errorCode: task.error_code,
                     externalUrl: task.platform_post_url,
@@ -177,10 +178,7 @@ export const PublishTaskList = ({ filter, reloadKey = 0, onLoaded }: Props) => {
         }
     };
 
-    const getPlatformIcon = (key: string) => {
-        const map: any = { douyin: '🎵', xhs: '📕', weixin: '💬', wechat_mp: '📰', bilibili: '📺' };
-        return map[key] || '📱';
-    };
+    const getPlatformIcon = (key: string) => platformDisplay(key).icon;
 
     if (loading) return <Skeleton active paragraph={{ rows: 4 }} />;
     if (tasks.length === 0) {
@@ -241,7 +239,7 @@ export const PublishTaskList = ({ filter, reloadKey = 0, onLoaded }: Props) => {
                                 <Tag icon={status.icon} color={status.color} className="border-0 px-2 py-0.5 rounded-full text-xs font-medium">
                                     {status.text}
                                 </Tag>
-                                <div className="text-[10px] text-zinc-400 mt-1">
+                                <div className="text-[11px] text-zinc-600 mt-1">
                                     {task.date} {task.time}
                                 </div>
                             </div>

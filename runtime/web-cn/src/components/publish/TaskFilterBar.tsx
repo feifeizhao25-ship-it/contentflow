@@ -75,6 +75,8 @@ export const TaskFilterBar = ({ value, onChange, failedCount, onBatchRetry, onEx
 
                 <RangePicker
                     className="col-span-2 w-full rounded-xl sm:w-auto"
+                    inputReadOnly
+                    format="YYYY-MM-DD"
                     placeholder={['开始日期', '结束日期']}
                     value={value.from && value.to ? [dayjs(value.from), dayjs(value.to)] : null}
                     onChange={(range) => onChange({

@@ -7,6 +7,7 @@ import { message } from '@/lib/antd-app';
 import { motion, AnimatePresence } from 'framer-motion';
 import { apiClient } from '@/lib/api-client';
 import { flattenViralAnalysis, parseHotTopics } from '@/lib/page-data';
+import { formatCnDate, formatHeat, platformDisplay } from '@/lib/cn-display';
 import { AI_TEXT_LABEL } from '@/lib/ai-content-label';
 import { safeErrorText } from '@/lib/api-error';
 import { useRouter } from 'next/navigation';
@@ -81,12 +82,12 @@ export default function HotPage() {
 
     return (
         <div className="max-w-[1400px] mx-auto p-4 md:p-8 space-y-12">
-            <div className="bg-zinc-900 rounded-[40px] p-10 text-white relative overflow-hidden shadow-2xl">
+            <div className="bg-zinc-900 rounded-3xl p-6 text-white relative overflow-hidden shadow-2xl sm:rounded-[40px] sm:p-10">
                 <div aria-hidden className="pointer-events-none absolute top-0 right-0 w-[500px] h-[500px] bg-indigo-500/20 rounded-full blur-[120px] -translate-y-1/2 translate-x-1/2" />
                 <div className="max-w-2xl relative z-10">
                     <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
-                        <h1 className="text-4xl md:text-5xl font-black mb-4">热点与爆款拆解</h1>
-                        <p className="text-zinc-400 text-lg mb-8">接入合规授权的热点数据后，为您提供有据可依的选题灵感；目前可以用「AI 爆款拆解」分析您手上的爆款内容。</p>
+                        <h1 className="text-3xl md:text-5xl font-black mb-4">热点与爆款拆解</h1>
+                        <p className="text-zinc-300 text-base sm:text-lg mb-8">接入合规授权的热点数据后，为您提供有据可依的选题灵感；目前可以用「AI 爆款拆解」分析您手上的爆款内容。</p>
                         <div className="flex gap-4">
                             <Button size="large" icon={<ThunderboltOutlined />} onClick={() => setShowAnalyzer(true)} className="h-14 px-8 rounded-2xl bg-white text-zinc-900 border-none font-bold hover:scale-105 transition-all">AI 爆款拆解</Button>
                         </div>
@@ -104,17 +105,17 @@ export default function HotPage() {
                 {isLoading ? [1, 2, 3, 4].map(i => <div key={i} className="h-64 bg-zinc-100 animate-pulse rounded-3xl" />) :
                     hotTopics.map((topic, idx) => (
                         <motion.div key={topic.id} initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: idx * 0.1 }}>
-                            <Card className="rounded-[32px] border-none shadow-sm hover:shadow-xl transition-all cursor-pointer group hover:-translate-y-2 bg-gradient-to-br from-white to-zinc-50" styles={{ body: { padding: '24px' } }}>
+                            <Card className="rounded-[32px] border-none shadow-sm hover:shadow-xl transition-all cursor-pointer group hover:-translate-y-2 !bg-white dark:!bg-zinc-900" styles={{ body: { padding: '24px' } }}>
                                 <div className="flex justify-between mb-6">
-                                    <div className="w-10 h-10 rounded-xl bg-zinc-100 flex items-center justify-center text-xl">
-                                        {topic.platform === 'xhs' ? '📕' : topic.platform === 'douyin' ? '🎵' : '💬'}
+                                    <div data-testid="hot-platform" data-name={platformDisplay(topic.platform).name} className="w-10 h-10 rounded-xl bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center text-xl" aria-label={platformDisplay(topic.platform).name}>
+                                        {platformDisplay(topic.platform).icon}
                                     </div>
                                     {topic.prediction === 'rising' && <Tag color="red" className="m-0 border-none font-bold px-2 rounded-lg">热度上升</Tag>}
                                 </div>
-                                <h3 className="text-lg font-black text-zinc-800 mb-2 line-clamp-2 h-14">{topic.title}</h3>
-                                <p className="mb-4 text-xs leading-5 text-zinc-400">截至 {topic.fetchedAt ? topic.fetchedAt.slice(0, 16).replace('T', ' ') : '时间未提供'} · 来源 {topic.source || '未标明'}</p>
+                                <h3 className="text-lg font-black text-zinc-900 dark:text-zinc-50 mb-2 line-clamp-2 min-h-14">{topic.title}</h3>
+                                <p className="mb-4 text-xs leading-5 text-zinc-600 dark:text-zinc-300">截至 {formatCnDate(topic.fetchedAt, true) || '时间未提供'} · 来源 {topic.source || '未标明'}</p>
                                 <div className="flex items-center justify-between mt-auto">
-                                    <div className="text-zinc-400 text-xs font-bold"><AreaChartOutlined /> {Math.round(topic.heat / 1000)}k 指数</div>
+                                    <div data-testid="hot-heat" className="text-zinc-700 dark:text-zinc-200 text-xs font-bold"><AreaChartOutlined /> {formatHeat(topic.heat)} 热度</div>
                                     <Button shape="circle" icon={<ArrowRightOutlined />} onClick={() => router.push(`/studio?topic=${encodeURIComponent(topic.title)}`)} className="bg-zinc-900 border-none text-white transition-transform" />
                                 </div>
                             </Card>
@@ -122,7 +123,7 @@ export default function HotPage() {
                     ))}
             </div>
 
-            <Modal title={null} open={showAnalyzer} footer={null} onCancel={() => { setShowAnalyzer(false); setAnalysisResult(null); setAnalysisError(''); }} width={800} centered>
+            <Modal title={null} open={showAnalyzer} footer={null} onCancel={() => { setShowAnalyzer(false); setAnalysisResult(null); setAnalysisError(''); }} width="min(800px, calc(100vw - 24px))" centered>
                 <div className="p-4 space-y-6">
                     <Title level={3}>AI 爆款内容拆解</Title>
                     <TextArea rows={6} value={analysisInput} onChange={e => setAnalysisInput(e.target.value)} placeholder="粘贴爆款内容原文..." className="rounded-2xl border-zinc-200 bg-zinc-50 p-4 focus:bg-white transition-all text-lg" />
