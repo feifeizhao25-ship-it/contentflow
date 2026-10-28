@@ -81,6 +81,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 const Text(
+                  '分发侠',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(fontSize: 14, color: Color(0xFF6366F1), fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 8),
+                const Text(
                   '欢迎登录',
                   textAlign: TextAlign.center,
                   style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),

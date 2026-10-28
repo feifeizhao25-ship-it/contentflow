@@ -1,7 +1,7 @@
 @import "tailwindcss";
 
 :root {
-  --font-inter: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-inter: "PingFang SC", "Hiragino Sans GB", "Noto Sans SC", "Source Han Sans SC", "Microsoft YaHei", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
   --font-space-grotesk: "Avenir Next", ui-sans-serif, system-ui, sans-serif;
   /* Premium Soft Tech Palette (Zinc + Indigo/Violet) */
   --background: #fdfdff;
@@ -105,10 +105,60 @@
   background: var(--muted-foreground);
 }
 
+/* 固定宽度的弹窗在手机上不能比屏幕更宽，否则左右被裁掉。 */
+.ant-modal {
+  max-width: calc(100vw - 16px);
+  padding-bottom: 0;
+}
+
+/* Safari 地址栏收起时 100vh 比可视区域更高。根节点用 dvh，内层页面不要再叠一层 100vh。 */
+@supports (height: 100dvh) {
+  .h-screen { height: 100dvh; }
+}
+
+.safe-auth {
+  box-sizing: border-box;
+  width: 100%;
+  padding: 20px;
+}
+
+/* 吸顶栏贴在刘海下面，而不是滑进状态栏。 */
+.sticky.top-0 { top: env(safe-area-inset-top); }
+
+.safe-sidebar {
+  top: env(safe-area-inset-top);
+  bottom: env(safe-area-inset-bottom);
+  height: auto;
+}
+
+.ant-picker-dropdown { max-width: calc(100vw - 16px); }
+.ant-picker-panel-container { max-width: calc(100vw - 16px); overflow-x: auto; }
+
+/* 手机上区间日期默认并排两个月，会超出屏幕。窄屏只留一个月，左右滑动换月。 */
+@media (max-width: 720px) {
+  .ant-picker-dropdown {
+    left: 8px !important;
+    right: 8px !important;
+    max-width: calc(100vw - 16px) !important;
+  }
+  .ant-picker-panels > *:nth-child(2) { display: none; }
+  .ant-picker-panel-layout, .ant-picker-panel-container { max-width: calc(100vw - 16px); }
+}
+
 body {
   background-color: var(--background);
   color: var(--foreground);
-  font-family: var(--font-outfit), var(--font-sans);
+  font-family: var(--font-inter);
+  /* 刘海、底部横条、横屏圆角。viewport-fit=cover 之后这些值才非 0。 */
+  padding-top: env(safe-area-inset-top);
+  padding-right: env(safe-area-inset-right);
+  padding-bottom: env(safe-area-inset-bottom);
+  padding-left: env(safe-area-inset-left);
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  min-height: 100dvh;
   overflow-x: hidden;
   position: relative;
   letter-spacing: -0.015em;
@@ -116,6 +166,8 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
+
+body > * { flex: 1 0 auto; min-width: 0; width: 100%; }
 
 /* Subtle Dynamic Background Mesh - Premium Light */
 body::before {

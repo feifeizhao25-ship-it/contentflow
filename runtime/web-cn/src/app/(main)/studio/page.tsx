@@ -558,8 +558,8 @@ function StudioContent() {
             ]} />
             {publishType === 'scheduled' && (
               <>
-                <DatePicker value={scheduledDate} onChange={(val) => val && setScheduledDate(val)} />
-                <TimePicker value={scheduledTime} onChange={(val) => val && setScheduledTime(val)} format="HH:mm" />
+                <DatePicker inputReadOnly format="YYYY-MM-DD" value={scheduledDate} onChange={(val) => val && setScheduledDate(val)} />
+                <TimePicker inputReadOnly value={scheduledTime} onChange={(val) => val && setScheduledTime(val)} format="HH:mm" />
               </>
             )}
           </div>

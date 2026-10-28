@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/providers.dart';
 import '../../data/models.dart';
 import '../../core/error_text.dart';
+import '../../core/cn_format.dart';
 
 class CreateScreen extends ConsumerStatefulWidget {
   const CreateScreen({super.key});
@@ -100,7 +101,7 @@ class _CreateScreenState extends ConsumerState<CreateScreen> {
                     ...payloads.entries.map(
                       (entry) => Card(
                         child: ListTile(
-                          title: Text(entry.key),
+                          title: Text(platformName(entry.key)),
                           subtitle: Text(
                             entry.value.adaptedContent ?? '暂无适配正文',
                             maxLines: 4,

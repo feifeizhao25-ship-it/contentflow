@@ -284,7 +284,7 @@ function ContentsContent() {
             <div className="min-w-0">
                 <Tag color={statusColors[status] || 'default'}>{contentStatusText(status)}</Tag>
                 {note && <div className={note.kind === 'rejected' ? 'mt-1 text-xs text-red-600 break-words' : 'mt-1 text-xs text-zinc-500 break-words'}>{note.text}</div>}
-                {!note && state.hint && <div className="mt-1 text-xs text-zinc-400">{state.hint}</div>}
+                {!note && state.hint && <div className="mt-1 text-xs text-zinc-600">{state.hint}</div>}
             </div>
         );
     };
@@ -401,7 +401,7 @@ function ContentsContent() {
                         {record.source === 'ai' ? <Tag color="purple">AI 生成</Tag> : <Tag>手动创建</Tag>}
                     </div>
                     <div className="mt-2">{renderStatus(record)}</div>
-                    <p className="mt-2 text-xs text-zinc-400">{record.created_at}</p>
+                    <p className="mt-2 text-xs text-zinc-600">{record.created_at}</p>
                 </div>
             </div>
             <div className="mt-3 flex flex-wrap gap-x-1 border-t border-zinc-100 pt-2">
@@ -468,7 +468,7 @@ function ContentsContent() {
                     ) : (
                         filteredData.map(renderCard)
                     )}
-                    {!loading && filteredData.length > 0 && <p className="text-center text-xs text-zinc-400">共 {filteredData.length} 条内容</p>}
+                    {!loading && filteredData.length > 0 && <p className="text-center text-xs text-zinc-600">共 {filteredData.length} 条内容</p>}
                 </div>
 
                 <div className="hidden md:block">
@@ -512,7 +512,7 @@ function ContentsContent() {
                 <Input id="content-editor-title" className="mb-4" maxLength={200} value={draftTitle} onChange={(e) => setDraftTitle(e.target.value)} placeholder="内容标题" />
                 <label className="mb-1 block text-sm text-zinc-600" htmlFor="content-editor-body">正文</label>
                 <Input.TextArea id="content-editor-body" rows={10} value={draftBody} onChange={(e) => setDraftBody(e.target.value)} placeholder="正文内容" />
-                <p className="mt-2 text-xs text-zinc-400">{editorError && (draftTitle || draftBody) ? editorError : '保存后是草稿，点「提交审核」，审核通过后才能发布。'}</p>
+                <p className="mt-2 text-xs text-zinc-600">{editorError && (draftTitle || draftBody) ? editorError : '保存后是草稿，点「提交审核」，审核通过后才能发布。'}</p>
             </Modal>
 
             <Modal

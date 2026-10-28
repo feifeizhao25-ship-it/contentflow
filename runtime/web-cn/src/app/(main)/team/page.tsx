@@ -14,6 +14,27 @@ import {
 } from '@ant-design/icons';
 import { useSearchParams } from 'next/navigation';
 import { apiErrorText } from '@/lib/api-error';
+import { formatCnDate } from '@/lib/cn-display';
+
+const ACTIVITY_LABELS: Record<string, string> = {
+    'team.member_removed': '移除了成员',
+    submit: '提交了审核',
+    approve: '通过了审核',
+    reject: '驳回了内容',
+    self_confirm: '自行确认可以发布',
+};
+
+function activityText(item: any): { title: string; when: string; initial: string } {
+    const name = String(item?.user?.name || item?.actor_name || item?.actor || '').trim();
+    const raw = String(item?.action ?? '');
+    const action = ACTIVITY_LABELS[raw] || (/[一-鿿]/.test(raw) ? raw : '记录了一条操作');
+    const when = formatCnDate(item?.created_at || item?.time, true) || '时间未知';
+    return {
+        title: name ? `${name} ${action}` : action,
+        when,
+        initial: (name || '成').slice(0, 1),
+    };
+}
 
 const { Option } = Select;
 const { Text } = Typography;
@@ -174,8 +195,8 @@ function TeamContent() {
                 <Space>
                     <Avatar icon={<UserOutlined />} src={record.avatar_url} />
                     <div>
-                        <div style={{ fontWeight: 500 }}>{record.name || record.email.split('@')[0] || '未命名成员'}</div>
-                        {record.email && <div style={{ fontSize: 12, color: '#9ca3af' }}>{record.email}</div>}
+                        <div style={{ fontWeight: 500 }}>{record.name || record.email?.split('@')[0] || '未命名成员'}</div>
+                        {record.email && <div style={{ fontSize: 12, color: '#3f3f46' }}>{record.email}</div>}
                     </div>
                 </Space>
             ),
@@ -204,7 +225,7 @@ function TeamContent() {
             title: '加入时间',
             dataIndex: 'created_at',
             key: 'created_at',
-            render: (date: string) => new Date(date).toLocaleDateString(),
+            render: (date: string) => formatCnDate(date) || '时间未知',
         },
         {
             title: '操作',
@@ -252,6 +273,23 @@ function TeamContent() {
                             </span>
                         )}
                     </div>
+                    <div className="space-y-3 md:hidden">
+                        {members.map((member) => (
+                            <div key={member.id} className="rounded-xl border border-zinc-200 p-3">
+                                <div className="break-words font-bold text-zinc-900">{member.name || '未命名成员'}</div>
+                                {member.email && <div className="break-all text-sm text-zinc-700">{member.email}</div>}
+                                <div className="mt-2 flex flex-wrap items-center gap-2 text-sm">
+                                    <Tag icon={roleIcons[member.role]} color={roleColors[member.role]}>{roleLabels[member.role] || '成员'}</Tag>
+                                    <Tag color={member.status === 'active' ? 'success' : 'default'}>{member.status === 'active' ? '活跃' : '待激活'}</Tag>
+                                    <span className="text-zinc-600">{formatCnDate(member.created_at) || '时间未知'}</span>
+                                </div>
+                                {member.role !== 'owner' && (
+                                    <Button type="link" size="small" danger className="px-0" onClick={() => handleDelete(member.id)}>移除</Button>
+                                )}
+                            </div>
+                        ))}
+                    </div>
+                    <div className="hidden md:block">
                     <Table
                         columns={columns as any}
                         dataSource={members}
@@ -260,6 +298,7 @@ function TeamContent() {
                         pagination={false}
                         scroll={{ x: 'max-content' }}
                     />
+                    </div>
                 </div>
             ),
         },
@@ -307,23 +346,20 @@ function TeamContent() {
                     )}
                     <List
                         itemLayout="horizontal"
-                        dataSource={activities}
-                        renderItem={(item) => (
-                            <List.Item>
+                        dataSource={Array.isArray(activities) ? activities : []}
+                        locale={{ emptyText: activitiesUnavailable ? '活动日志尚未开放' : '暂无团队动态' }}
+                        renderItem={(item) => {
+                            const view = activityText(item);
+                            return (
+                            <List.Item data-testid="team-activity">
                                 <List.Item.Meta
-                                    avatar={<Avatar>{item.user.name?.[0] || 'U'}</Avatar>}
-                                    title={
-                                        <Space>
-                                            <Text strong>{item.user.name}</Text>
-                                            <Text>{item.action}</Text>
-                                            <Tag color="purple">{item.module}</Tag>
-                                            <Text type="secondary">{item.target}</Text>
-                                        </Space>
-                                    }
-                                    description={new Date(item.time).toLocaleString()}
+                                    avatar={<Avatar>{view.initial}</Avatar>}
+                                    title={<span className="break-words">{view.title}</span>}
+                                    description={view.when}
                                 />
                             </List.Item>
-                        )}
+                            );
+                        }}
                     />
                 </Card>
             ),

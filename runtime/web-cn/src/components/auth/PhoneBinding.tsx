@@ -57,7 +57,7 @@ export function PhoneBinding({
         </div>
         <div>
           <Typography.Text strong>实名认证：</Typography.Text>{' '}
-          {realNameVerified ? <Tag color="green">已实名</Tag> : <Tag>未认证</Tag>}
+          {realNameVerified ? <Tag color="green">已实名</Tag> : <Tag color="gold">未认证</Tag>}
           {!realNameVerified && (
             <Typography.Text type="secondary">实名认证服务暂未开通，开通后会在这里通知并引导完成。</Typography.Text>
           )}

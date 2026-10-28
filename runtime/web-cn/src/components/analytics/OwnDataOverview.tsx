@@ -18,7 +18,7 @@ function StatCard({ label, value, hint, tone = 'default' }: { label: string; val
         <div className="min-w-0 rounded-2xl border border-zinc-200 bg-white p-4">
             <p className="truncate text-xs font-medium text-zinc-500">{label}</p>
             <p className={`mt-1 text-2xl font-black tabular-nums ${color}`}>{value}</p>
-            {hint && <p className="mt-1 text-xs leading-5 text-zinc-400">{hint}</p>}
+            {hint && <p className="mt-1 text-xs leading-5 text-zinc-600">{hint}</p>}
         </div>
     );
 }
@@ -74,7 +74,7 @@ export function AiUsage({ period, label }: { period: AnalyticsPeriod; label: str
                     ))}
                 </div>
             )}
-            <p className="mt-3 text-xs leading-5 text-zinc-400">「采纳」按 AI 生成后保存进内容库的篇数计，不代表平台上的表现。</p>
+            <p className="mt-3 text-xs leading-5 text-zinc-600">「采纳」按 AI 生成后保存进内容库的篇数计，不代表平台上的表现。</p>
         </section>
     );
 }
@@ -83,7 +83,7 @@ export function EngagementPlaceholder({ engagement }: { engagement: AnalyticsOve
     return (
         <section className="min-w-0 rounded-2xl border border-dashed border-zinc-300 bg-zinc-50 p-5">
             <h2 className="text-base font-black">播放、互动与涨粉</h2>
-            <p className="mt-2 text-lg font-black text-zinc-400">{engagement.message}</p>
+            <p className="mt-2 text-lg font-black text-zinc-800 dark:text-zinc-100">{engagement.message}</p>
             {engagement.detail && <p className="mt-2 text-sm leading-6 text-zinc-500">{engagement.detail}</p>}
             <Link href="/accounts" className="mt-3 inline-block text-sm font-bold text-indigo-600 hover:underline">查看平台授权状态</Link>
         </section>

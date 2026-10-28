@@ -5,6 +5,7 @@ import '../../data/models.dart';
 import '../../core/error_text.dart';
 import 'package:flutter/services.dart';
 import '../../config/cn_config.dart';
+import '../../core/cn_format.dart';
 
 class AccountScreen extends ConsumerWidget {
   const AccountScreen({super.key});
@@ -44,7 +45,7 @@ class AccountScreen extends ConsumerWidget {
           child: _buildMenuItem(context, Icons.people, '团队管理', '管理团队成员'),
         ),
         SliverToBoxAdapter(
-          child: _buildMenuItem(context, Icons.key, 'API 配置', '管理 API 密钥'),
+          child: _buildMenuItem(context, Icons.key, '连接设置', '平台授权在网页端完成'),
         ),
 
         SliverToBoxAdapter(child: _buildSectionTitle('设置')),
@@ -93,7 +94,7 @@ class AccountScreen extends ConsumerWidget {
                 : null,
             child: user.avatar == null
                 ? Text(
-                    user.name.substring(0, 1),
+                    user.name.trim().isEmpty ? '创' : user.name.trim().substring(0, 1),
                     style: TextStyle(
                       fontSize: 32,
                       color: Theme.of(context).primaryColor,
@@ -156,7 +157,7 @@ class AccountScreen extends ConsumerWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text(
-                  '升级到 Pro',
+                  '升级到专业版',
                   style: TextStyle(
                     color: Colors.white,
                     fontWeight: FontWeight.bold,
@@ -210,7 +211,7 @@ class AccountScreen extends ConsumerWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('API 调用', style: TextStyle(fontSize: 14)),
+                    const Text('接口调用', style: TextStyle(fontSize: 14)),
                     const SizedBox(height: 8),
                     ClipRRect(
                       borderRadius: BorderRadius.circular(4),
@@ -473,12 +474,5 @@ class AccountScreen extends ConsumerWidget {
     );
   }
 
-  String _formatNumber(int number) {
-    if (number >= 10000) {
-      return '${(number / 10000).toStringAsFixed(1)}w';
-    } else if (number >= 1000) {
-      return '${(number / 1000).toStringAsFixed(1)}k';
-    }
-    return number.toString();
-  }
+  String _formatNumber(int number) => formatCount(number);
 }

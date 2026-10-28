@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import '../../core/providers.dart';
 import '../../data/models.dart';
 import '../../core/error_text.dart';
+import '../../core/cn_format.dart';
 
 class TodayScreen extends ConsumerWidget {
   const TodayScreen({super.key});
@@ -74,7 +75,7 @@ class TodayScreen extends ConsumerWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'ContentFlow',
+                  '分发侠',
                   style: TextStyle(
                     fontSize: 24,
                     fontWeight: FontWeight.bold,
@@ -305,7 +306,7 @@ class TodayScreen extends ConsumerWidget {
                         child: OutlinedButton.icon(
                           onPressed: null,
                           icon: const Icon(Icons.schedule_send),
-                          label: const Text('等待队列与平台回执'),
+                          label: const Text('等待回执', overflow: TextOverflow.ellipsis),
                         ),
                       ),
                     if (isFailed)
@@ -353,12 +354,31 @@ class TodayScreen extends ConsumerWidget {
         color = Colors.blue;
         break;
       case 'weibo':
-        icon = Icons.public;
-        color = Colors.orange;
+        icon = Icons.campaign_outlined;
+        color = Colors.orange.shade800;
+        break;
+      case 'weixin':
+      case 'channels':
+      case 'wechat_channels':
+        icon = Icons.videocam_outlined;
+        color = const Color(0xFF07C160);
+        break;
+      case 'wechat':
+      case 'wechat_mp':
+        icon = Icons.article_outlined;
+        color = const Color(0xFF16A34A);
+        break;
+      case 'kuaishou':
+        icon = Icons.movie_outlined;
+        color = const Color(0xFFFF6600);
+        break;
+      case 'zhihu':
+        icon = Icons.lightbulb_outline;
+        color = const Color(0xFF0066FF);
         break;
       default:
-        icon = Icons.smart_display;
-        color = Colors.grey;
+        icon = Icons.devices_other;
+        color = Colors.blueGrey;
     }
 
     return Container(
@@ -371,20 +391,7 @@ class TodayScreen extends ConsumerWidget {
     );
   }
 
-  String _getPlatformName(String platform) {
-    switch (platform.toLowerCase()) {
-      case 'douyin':
-        return '抖音';
-      case 'xiaohongshu':
-        return '小红书';
-      case 'bilibili':
-        return 'B站';
-      case 'weibo':
-        return '微博';
-      default:
-        return platform;
-    }
-  }
+  String _getPlatformName(String platform) => platformName(platform);
 
   Widget _buildStatusChip(ScheduleStatus status) {
     Color color;
@@ -396,7 +403,7 @@ class TodayScreen extends ConsumerWidget {
         text = '草稿';
         break;
       case ScheduleStatus.scheduled:
-        color = Colors.amber;
+        color = Colors.amber.shade800;
         text = '已排期';
         break;
       case ScheduleStatus.queued:
@@ -518,12 +525,5 @@ class TodayScreen extends ConsumerWidget {
     );
   }
 
-  String _formatNumber(int number) {
-    if (number >= 10000) {
-      return '${(number / 10000).toStringAsFixed(1)}w';
-    } else if (number >= 1000) {
-      return '${(number / 1000).toStringAsFixed(1)}k';
-    }
-    return number.toString();
-  }
+  String _formatNumber(int number) => formatCount(number);
 }

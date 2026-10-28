@@ -5,6 +5,7 @@
  * 各页面此前按「没解开」的形状读（result?.success、res.data），永远读不到东西。
  */
 import dayjs from 'dayjs';
+import { formatCnDate } from './cn-display';
 
 const asArray = (value: unknown): any[] => (Array.isArray(value) ? value : []);
 const unwrap = (value: any): any => (value && typeof value === 'object' && value.success === true && 'data' in value ? value.data : value);
@@ -16,7 +17,7 @@ export function parseContentList(result: unknown): Array<Record<string, any>> {
     ...item,
     key: item.id,
     type: item.content_type,
-    created_at: item.created_at ? new Date(item.created_at).toLocaleString('zh-CN') : '',
+    created_at: formatCnDate(item.created_at, true),
   }));
 }
 
