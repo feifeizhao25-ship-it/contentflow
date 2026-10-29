@@ -5,12 +5,18 @@ import { ClientProviders } from './client-providers';
 export const metadata: Metadata = {
   title: '分发侠 - AI 驱动的全渠道内容分发平台',
   description: '面向中国内容团队的创作、审核、排期与复盘工作台',
+  manifest: '/site.webmanifest',
+  icons: {
+    icon: [{ url: '/favicon.ico', sizes: 'any' }],
+    apple: [{ url: '/apple-touch-icon.png' }],
+  },
 };
 
 export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
   viewportFit: 'cover',
+  themeColor: '#323799',
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
