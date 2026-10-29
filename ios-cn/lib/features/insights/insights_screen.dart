@@ -1,3 +1,4 @@
+import '../../core/app_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/providers.dart';
@@ -14,8 +15,7 @@ class InsightsScreen extends ConsumerWidget {
     final contentAsync = ref.watch(contentAnalyticsProvider);
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF8F9FA),
-      body: SafeArea(
+            body: SafeArea(
         child: RefreshIndicator(
           onRefresh: () async {
             ref.invalidate(analyticsSummaryProvider);
@@ -133,7 +133,7 @@ class InsightsScreen extends ConsumerWidget {
       margin: const EdgeInsets.symmetric(horizontal: 20),
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.card(context),
         borderRadius: BorderRadius.circular(16),
       ),
       child: Column(
@@ -255,7 +255,7 @@ class InsightsScreen extends ConsumerWidget {
       margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.card(context),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
