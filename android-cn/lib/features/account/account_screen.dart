@@ -1,3 +1,4 @@
+import '../../core/app_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/providers.dart';
@@ -15,8 +16,7 @@ class AccountScreen extends ConsumerWidget {
     final userAsync = ref.watch(userProvider);
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF8F9FA),
-      body: SafeArea(
+            body: SafeArea(
         child: userAsync.when(
           data: (user) => _buildContent(context, ref, user),
           loading: () => const Center(child: CircularProgressIndicator()),
@@ -191,7 +191,7 @@ class AccountScreen extends ConsumerWidget {
       margin: const EdgeInsets.all(20),
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.card(context),
         borderRadius: BorderRadius.circular(16),
       ),
       child: Column(
@@ -297,7 +297,7 @@ class AccountScreen extends ConsumerWidget {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.card(context),
         borderRadius: BorderRadius.circular(12),
       ),
       child: ListTile(
@@ -323,7 +323,7 @@ class AccountScreen extends ConsumerWidget {
   Widget _buildLinkItem(BuildContext context, IconData icon, String title, String url) {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12)),
+      decoration: BoxDecoration(color: AppColors.card(context), borderRadius: BorderRadius.circular(12)),
       child: ListTile(
         leading: Icon(icon, color: Theme.of(context).primaryColor),
         title: Text(title),
@@ -357,7 +357,7 @@ class AccountScreen extends ConsumerWidget {
   Widget _buildDeleteAccountItem(BuildContext context, WidgetRef ref) {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12)),
+      decoration: BoxDecoration(color: AppColors.card(context), borderRadius: BorderRadius.circular(12)),
       child: ListTile(
         leading: const Icon(Icons.person_remove_outlined, color: Colors.red),
         title: const Text('注销账号', style: TextStyle(color: Colors.red)),

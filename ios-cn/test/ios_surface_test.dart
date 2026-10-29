@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:contentflow_cn/features/auth/login_screen.dart';
 
@@ -25,7 +26,7 @@ void main() {
       'lib/features/auth/login_screen.dart',
       'lib/features/account/account_screen.dart',
     ]) {
-      expect(File(screen).readAsStringSync(), contains('SafeArea('), screen);
+      expect(File(screen).readAsStringSync(), contains('SafeArea('), reason: screen);
     }
   });
 
@@ -35,14 +36,17 @@ void main() {
     tester.view.devicePixelRatio = 3;
     tester.view.physicalSize = const Size(393 * 3, 852 * 3);
     addTearDown(tester.view.reset);
-    await tester.pumpWidget(const MaterialApp(
-      home: MediaQuery(
-        data: MediaQueryData(padding: EdgeInsets.only(top: 59, bottom: 34), size: Size(393, 852)),
-        child: LoginScreen(),
+    await tester.pumpWidget(const ProviderScope(
+      child: MaterialApp(
+        home: MediaQuery(
+          data: MediaQueryData(padding: EdgeInsets.only(top: 59, bottom: 34), size: Size(393, 852)),
+          child: LoginScreen(),
+        ),
       ),
     ));
     expect(find.text('分发侠'), findsOneWidget);
     expect(find.text('欢迎登录'), findsOneWidget);
     expect(tester.takeException(), isNull);
+    debugDefaultTargetPlatformOverride = null;
   });
 }
