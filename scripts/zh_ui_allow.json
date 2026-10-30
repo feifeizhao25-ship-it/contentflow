@@ -1,0 +1,9 @@
+{
+  "tokens": ["Python"],
+  "literals": [
+    {"file": "lib/data/models.dart", "text": "Solo", "why": "在售套餐档名（分D04/0S1 已批准的定价命名）；改名（如 个人版/团队版/商务版）需业主决定，且后端 plan 名要同步"},
+    {"file": "lib/data/models.dart", "text": "Team", "why": "同上"},
+    {"file": "lib/data/models.dart", "text": "Business", "why": "同上"}
+  ],
+  "_说明": "tokens.Python：创建页输入框示例「Python入门教程」里的编程语言名称，属专有名称。"
+}

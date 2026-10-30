@@ -31,7 +31,7 @@ class TrafficSandwichService {
             const { userVideoUrl, productName, style = 'High Energy', aspectRatio = '16:9' } = params;
 
             // 1. Generate Intro (Hook)
-            onProgress?.(10, 'Generating High-Energy Hook...');
+            onProgress?.(10, '正在生成开场片段…');
             const hookPrompt = `Commercial intro for ${productName}, ${style} style, text "${productName}", exciting, cinematic lighting, 4k`;
             console.log('Generating Hook:', hookPrompt);
 
@@ -44,11 +44,11 @@ class TrafficSandwichService {
                 platform: 'douyin'
             });
 
-            if (!hookResult?.videoUrl) throw new Error("Failed to generate Hook video");
+            if (!hookResult?.videoUrl) throw new Error("开场片段生成失败，请稍后重试");
             const hookUrl = hookResult.videoUrl;
 
             // 2. Generate Outro (CTA)
-            onProgress?.(40, 'Generating Call-to-Action...');
+            onProgress?.(40, '正在生成结尾引导片段…');
             const ctaPrompt = `Commercial outro for ${productName}, ${style} style, text "Buy Now", smooth transition, logo animation, 4k`;
             console.log('Generating CTA:', ctaPrompt);
 
@@ -61,11 +61,11 @@ class TrafficSandwichService {
                 platform: 'douyin'
             });
 
-            if (!ctaResult?.videoUrl) throw new Error("Failed to generate CTA video");
+            if (!ctaResult?.videoUrl) throw new Error("结尾片段生成失败，请稍后重试");
             const ctaUrl = ctaResult.videoUrl;
 
             // 3. Merge Videos
-            onProgress?.(70, 'Merging Sandwich...');
+            onProgress?.(70, '正在合成视频…');
             const videoUrls = [hookUrl, userVideoUrl, ctaUrl];
             console.log('Merging URLs:', videoUrls);
 
@@ -75,9 +75,9 @@ class TrafficSandwichService {
                 outputFormat: 'mp4'
             });
 
-            if (mergeResult.status !== 'completed') throw new Error("Failed to merge videos");
+            if (mergeResult.status !== 'completed') throw new Error("视频合成失败，请稍后重试");
 
-            onProgress?.(100, 'Done!');
+            onProgress?.(100, '已完成');
 
             return {
                 url: mergeResult.url,

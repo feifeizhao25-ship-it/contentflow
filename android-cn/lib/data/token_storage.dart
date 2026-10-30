@@ -79,7 +79,7 @@ String _detail(Object error) {
     final code = error.code;
     final message = error.message ?? '';
     // -34018：未签名进程没有钥匙串 entitlement，SecItemCopyMatching 直接失败。
-    return 'PlatformException code=$code message=$message';
+    return 'PlatformException code=$code message=$message'; // zh-gate:allow 诊断文字，不显示给用户
   }
   return error.runtimeType.toString();
 }

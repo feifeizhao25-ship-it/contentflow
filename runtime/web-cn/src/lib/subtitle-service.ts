@@ -399,7 +399,7 @@ export async function generateSubtitlesFromAudio(
     });
     
     if (!response.ok) {
-        throw new Error('Failed to generate subtitles from audio');
+        throw new Error('无法从音频生成字幕，请稍后重试');
     }
     
     const result = await response.json();
