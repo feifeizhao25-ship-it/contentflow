@@ -18,6 +18,6 @@ describe('国内版在售档名（分D04）', () => {
   it('网页端权益注册表档名与 API 一致', () => {
     const names = JSON.stringify(entitlements);
     for (const n of ['"个人版"', '"团队版"', '"商务版"']) expect(names).toContain(n);
-    expect(names).not.toMatch(/"name": ?"(专业版|团队版|企业版)"/);
+    expect(names).not.toMatch(/"name": ?"(专业版|企业版)"/);
   });
 });
