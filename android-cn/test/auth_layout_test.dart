@@ -62,9 +62,15 @@ Future<void> _shot(WidgetTester tester, String name) async {
     final boundary = tester.renderObject<RenderRepaintBoundary>(find.byType(RepaintBoundary).first);
     final image = await boundary.toImage(pixelRatio: 1);
     final bytes = await image.toByteData(format: ui.ImageByteFormat.png);
-    final dir = Directory('/opt/cursor/artifacts/screenshots/after');
-    dir.createSync(recursive: true);
-    File('${dir.path}/$name').writeAsBytesSync(bytes!.buffer.asUint8List());
+    // 截图只是留档：目录不可写（比如本机没有 /opt/cursor）时跳过，不让测试失败。
+    // 可用环境变量 SCREENSHOT_DIR 指定输出目录。
+    final dir = Directory(Platform.environment['SCREENSHOT_DIR'] ?? '/opt/cursor/artifacts/screenshots/after');
+    try {
+      dir.createSync(recursive: true);
+      File('${dir.path}/$name').writeAsBytesSync(bytes!.buffer.asUint8List());
+    } on FileSystemException {
+      return;
+    }
   });
 }
 
