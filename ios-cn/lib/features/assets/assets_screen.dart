@@ -189,7 +189,7 @@ class AssetsScreen extends ConsumerWidget {
           borderRadius: BorderRadius.circular(12),
           child: Column(
             children: [
-              Expanded(child: _buildAssetPreview(asset)),
+              Expanded(child: _buildAssetPreview(context, asset)),
               Padding(
                 padding: const EdgeInsets.all(8),
                 child: Row(
@@ -214,14 +214,14 @@ class AssetsScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildAssetPreview(Asset asset) {
+  Widget _buildAssetPreview(BuildContext context, Asset asset) {
     switch (asset.type) {
       case AssetType.image:
         return Image.network(
           asset.thumbnail ?? asset.url,
           fit: BoxFit.cover,
           errorBuilder: (_, __, ___) => Container(
-            color: Colors.grey.shade200,
+            color: Theme.of(context).colorScheme.surfaceContainerHighest,
             child: const Icon(Icons.image, color: Colors.grey),
           ),
         );
@@ -234,9 +234,9 @@ class AssetsScreen extends ConsumerWidget {
                     asset.thumbnail!,
                     fit: BoxFit.cover,
                     errorBuilder: (_, __, ___) =>
-                        Container(color: Colors.grey.shade200),
+                        Container(color: Theme.of(context).colorScheme.surfaceContainerHighest),
                   )
-                : Container(color: Colors.grey.shade200),
+                : Container(color: Theme.of(context).colorScheme.surfaceContainerHighest),
             Center(
               child: Container(
                 padding: const EdgeInsets.all(8),
@@ -333,41 +333,8 @@ class AssetsScreen extends ConsumerWidget {
               borderRadius: BorderRadius.circular(12),
               child: AspectRatio(
                 aspectRatio: 16 / 9,
-                child: _buildAssetPreview(asset),
+                child: _buildAssetPreview(context, asset),
               ),
-            ),
-            const SizedBox(height: 20),
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: () {
-                      // TODO: Delete
-                      Navigator.pop(context);
-                    },
-                    icon: const Icon(Icons.delete_outline, color: Colors.red),
-                    label: const Text(
-                      '删除',
-                      style: TextStyle(color: Colors.red),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: ElevatedButton.icon(
-                    onPressed: () {
-                      // TODO: Use
-                      Navigator.pop(context);
-                    },
-                    icon: const Icon(Icons.check),
-                    label: const Text('使用'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Theme.of(context).primaryColor,
-                      foregroundColor: Colors.white,
-                    ),
-                  ),
-                ),
-              ],
             ),
             const SizedBox(height: 20),
           ],
@@ -417,22 +384,6 @@ class AssetsScreen extends ConsumerWidget {
               title: const Text('拍摄'),
               subtitle: const Text('使用相机拍摄'),
               onTap: () => _pickImage(context, ref, ImageSource.camera),
-            ),
-            ListTile(
-              leading: Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: Colors.blue.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: const Icon(Icons.description, color: Colors.blue),
-              ),
-              title: const Text('上传脚本'),
-              subtitle: const Text('上传文本文件'),
-              onTap: () {
-                Navigator.pop(context);
-                // TODO: Pick file
-              },
             ),
             const SizedBox(height: 20),
           ],
