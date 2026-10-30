@@ -1,5 +1,7 @@
 import { screenClaim } from '../../ai/compliance/claims';
 import { AI_TEXT_LABEL } from '../../../common/ai-content-label';
+import { checkCompliance } from '../self-improve/compliance';
+import { scanInjection } from '../self-improve/sources';
 import { SHARED_REDTEAM, SkillGolden, SkillRedteam, goldenFor, skillById } from './catalog';
 
 const PLATFORM_NAMES: Record<string, string> = {
@@ -29,6 +31,12 @@ function refuseReason(text: string): string | null {
   if (/养号|矩阵号|cookie/i.test(text)) return '不能提供养号、矩阵号或 Cookie 登录教程。';
   if (/拉踩|抹黑竞品/.test(text)) return '不能生成竞品拉踩文案。';
   if (/软文/.test(text) && !/标明广告|标注广告/.test(text)) return '商业软文必须标明广告。';
+  if (/(无需|不用|不必|绕过|规避|跳过).{0,6}(备案|发行许可|许可证|节目编号|内容审核)/.test(text)) return '微短剧须按分类备案、取得发行许可或节目编号后播出，不能绕过。';
+  if (/(批量|群发).{0,6}(私信|加好友|骚扰)/.test(text)) return '不能提供批量私信、骚扰引流的做法。';
+  if (/未成年人.{0,10}(酒|医疗|药品|保健|美容).{0,4}广告/.test(text)) return '不得向未成年人投放此类广告。';
+  if (scanInjection(text).length) return '输入含改写规则的指令，已拒绝。';
+  const semantic = checkCompliance(text, ['traffic_promise', 'strip_ai_label', 'investment_advice', 'return_promise', 'medical_claim', 'absolute_claim', 'ad_law_superlative', 'fake_authority']);
+  if (!semantic.ok) return `话术未通过合规闸：${semantic.families.join('、')}`;
   const screened = screenClaim(text);
   if (!screened.ok) return `话术未通过合规闸：${screened.hits.join('、')}`;
   return null;

@@ -1,6 +1,7 @@
 import { AchievementModule } from './modules/achievement/achievement.module';
 import { CompetitorModule } from './modules/competitor/competitor.module';
 import { GrowthModule } from './modules/growth/growth.module';
+import { SelfImproveModule } from './modules/growth/self-improve/self-improve.module';
 import { HotModule } from './modules/hot/hot.module';
 import { PointsModule } from './modules/points/points.module';
 import { QuestModule } from './modules/quest/quest.module';
@@ -12,6 +13,7 @@ describe('market module isolation', () => {
     HotModule,
     CompetitorModule,
     GrowthModule,
+    SelfImproveModule,
     PointsModule,
     RewardsModule,
     QuestModule,

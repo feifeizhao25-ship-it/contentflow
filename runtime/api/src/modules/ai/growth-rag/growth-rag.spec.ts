@@ -1,7 +1,7 @@
 import { embedWithFallback, localHashEmbed } from './embedder';
 import { runFreshnessJob } from './freshness';
 import { hashText } from './hash';
-import { decideRagPolicy, policyFromDefaultRegistry, runFrozenEval, frozenCases } from './policy';
+import { decideRagPolicy, policyFromDefaultRegistry, runFrozenEval, frozenCases, usableSources } from './policy';
 import { complianceConclusionsPaused, loadRegistry, markIfHashChanged, validateSource } from './registry';
 import { retrieve } from './retrieve';
 import { rerankWithFallback } from './reranker';
@@ -28,12 +28,27 @@ describe('增长 RAG', () => {
   const now = new Date('2026-10-26T00:00:00.000Z');
 
   it('空注册表在开关打开时仍然关闭', () => {
-    const registry = loadRegistry();
-    expect(registry.sources).toEqual([]);
-    expect(registry.sources_status).toBe('none');
-    const decision = decideRagPolicy({ enabledFlag: true, registry, now, freshnessRan: true, evalPassed: true });
+    const empty = { sources_status: 'none' as const, sources: [] };
+    const decision = decideRagPolicy({ enabledFlag: true, registry: empty, now, freshnessRan: true, evalPassed: true });
     expect(decision).toMatchObject({ enabled: false, sources_status: 'none' });
-    expect(policyFromDefaultRegistry({ GROWTH_RAG_ENABLED: '1', GROWTH_RAG_EVAL_PASSED: '1' }, now).enabled).toBe(false);
+  });
+
+  it('默认注册表只登记官方来源且全部待人工复核：开关打开也不 enabled', () => {
+    const registry = loadRegistry();
+    expect(registry.sources.length).toBeGreaterThanOrEqual(5);
+    expect(registry.sources_status).toBe('review_required');
+    for (const item of registry.sources) {
+      expect(item.review_status).toBe('needs_review');
+      expect(item.license).toBe('official-public');
+      expect(item.url.startsWith('https://')).toBe(true);
+      expect(item.content_hash).toBe(hashText(item.text));
+    }
+    const ids = registry.sources.map((item) => item.source_id);
+    expect(ids).toEqual(expect.arrayContaining(['cn-cac-ai-labeling-measures-2025', 'cn-nrta-microdrama-measures-2026', 'cn-gb45438-2025-meta']));
+    const decision = policyFromDefaultRegistry({ GROWTH_RAG_ENABLED: '1', GROWTH_RAG_EVAL_PASSED: '1' }, now);
+    expect(decision.enabled).toBe(false);
+    expect(decision.sources_status).toBe('review_required');
+    expect(usableSources(registry.sources, now)).toEqual([]);
   });
 
   it('许可、新鲜度和评测都通过且开关打开才 enabled', () => {

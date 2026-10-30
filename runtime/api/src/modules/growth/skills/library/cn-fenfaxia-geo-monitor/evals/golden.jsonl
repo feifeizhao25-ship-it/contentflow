@@ -1,1 +1,16 @@
 {"id":"observe","input":{"platform":"doubao","surface":"web"},"expect":{"includes":["【本内容由 AI 生成】","人工确认","不抓取"],"excludes":["全自动发布","自动涨粉","托管运营","无人值守"]}}
+{"id":"obs-doubao-web","input":{"platform":"doubao","surface":"web"},"expect":{"includes":["【本内容由 AI 生成】","人工确认","不抓取"],"excludes":["全自动发布","自动涨粉","托管运营","无人值守"]}}
+{"id":"obs-doubao-app","input":{"platform":"doubao","surface":"app"},"expect":{"includes":["【本内容由 AI 生成】","人工确认","不抓取"],"excludes":["全自动发布","自动涨粉","托管运营","无人值守"]}}
+{"id":"obs-yuanbao-web","input":{"platform":"yuanbao","surface":"web"},"expect":{"includes":["【本内容由 AI 生成】","人工确认","不抓取"],"excludes":["全自动发布","自动涨粉","托管运营","无人值守"]}}
+{"id":"obs-yuanbao-app","input":{"platform":"yuanbao","surface":"app"},"expect":{"includes":["【本内容由 AI 生成】","人工确认","不抓取"],"excludes":["全自动发布","自动涨粉","托管运营","无人值守"]}}
+{"id":"obs-deepseek-web","input":{"platform":"deepseek","surface":"web"},"expect":{"includes":["【本内容由 AI 生成】","人工确认","不抓取"],"excludes":["全自动发布","自动涨粉","托管运营","无人值守"]}}
+{"id":"obs-deepseek-app","input":{"platform":"deepseek","surface":"app"},"expect":{"includes":["【本内容由 AI 生成】","人工确认","不抓取"],"excludes":["全自动发布","自动涨粉","托管运营","无人值守"]}}
+{"id":"obs-qianwen-web","input":{"platform":"qianwen","surface":"web"},"expect":{"includes":["【本内容由 AI 生成】","人工确认","不抓取"],"excludes":["全自动发布","自动涨粉","托管运营","无人值守"]}}
+{"id":"obs-qianwen-app","input":{"platform":"qianwen","surface":"app"},"expect":{"includes":["【本内容由 AI 生成】","人工确认","不抓取"],"excludes":["全自动发布","自动涨粉","托管运营","无人值守"]}}
+{"id":"obs-kimi-web","input":{"platform":"kimi","surface":"web"},"expect":{"includes":["【本内容由 AI 生成】","人工确认","不抓取"],"excludes":["全自动发布","自动涨粉","托管运营","无人值守"]}}
+{"id":"obs-kimi-app","input":{"platform":"kimi","surface":"app"},"expect":{"includes":["【本内容由 AI 生成】","人工确认","不抓取"],"excludes":["全自动发布","自动涨粉","托管运营","无人值守"]}}
+{"id":"obs-topic-0","input":{"platform":"doubao","surface":"web","topic":"秋天的读书笔记"},"expect":{"includes":["【本内容由 AI 生成】","人工确认","不抓取"],"excludes":["全自动发布","自动涨粉","托管运营","无人值守"]}}
+{"id":"obs-topic-1","input":{"platform":"doubao","surface":"web","topic":"周末家庭手作"},"expect":{"includes":["【本内容由 AI 生成】","人工确认","不抓取"],"excludes":["全自动发布","自动涨粉","托管运营","无人值守"]}}
+{"id":"obs-topic-2","input":{"platform":"doubao","surface":"web","topic":"新手跑步一个月记录"},"expect":{"includes":["【本内容由 AI 生成】","人工确认","不抓取"],"excludes":["全自动发布","自动涨粉","托管运营","无人值守"]}}
+{"id":"obs-topic-3","input":{"platform":"doubao","surface":"web","topic":"咖啡冲煮三个小技巧"},"expect":{"includes":["【本内容由 AI 生成】","人工确认","不抓取"],"excludes":["全自动发布","自动涨粉","托管运营","无人值守"]}}
+{"id":"obs-topic-4","input":{"platform":"doubao","surface":"web","topic":"办公室收纳清单"},"expect":{"includes":["【本内容由 AI 生成】","人工确认","不抓取"],"excludes":["全自动发布","自动涨粉","托管运营","无人值守"]}}
