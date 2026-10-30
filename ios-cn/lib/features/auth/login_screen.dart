@@ -81,79 +81,109 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             padding: const EdgeInsets.all(24),
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 440),
-              child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Text(
-                  '分发侠',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: wide ? 18 : 14, color: Theme.of(context).colorScheme.primary, fontWeight: FontWeight.bold),
+              // iPad / 宽屏：表单收进一张居中的卡片，不再把输入框直接铺在页面上。
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  color: wide ? AppColors.card(context) : null,
+                  borderRadius: BorderRadius.circular(16),
+                  border: wide
+                      ? Border.all(
+                          color: Theme.of(context).colorScheme.outlineVariant,
+                        )
+                      : null,
                 ),
-                const SizedBox(height: 8),
-                Text(
-                  '欢迎登录',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: wide ? 32 : 24, fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.onSurface),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  '使用您的账号继续',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(color: AppColors.muted(context), fontSize: wide ? 16 : 14),
-                ),
-                const SizedBox(height: 24),
-                TextField(
-                  controller: _emailController,
-                  keyboardType: TextInputType.emailAddress,
-                  decoration: const InputDecoration(
-                    labelText: '邮箱',
-                    border: OutlineInputBorder(),
+                child: Padding(
+                  padding: EdgeInsets.all(wide ? 32 : 0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Text(
+                        '分发侠',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: wide ? 18 : 14,
+                          color: Theme.of(context).colorScheme.primary,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        '欢迎登录',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: wide ? 32 : 24,
+                          fontWeight: FontWeight.bold,
+                          color: Theme.of(context).colorScheme.onSurface,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        '使用您的账号继续',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: AppColors.muted(context),
+                          fontSize: wide ? 16 : 14,
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+                      TextField(
+                        controller: _emailController,
+                        keyboardType: TextInputType.emailAddress,
+                        decoration: const InputDecoration(
+                          labelText: '邮箱',
+                          border: OutlineInputBorder(),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      TextField(
+                        controller: _passwordController,
+                        obscureText: true,
+                        decoration: const InputDecoration(
+                          labelText: '密码',
+                          border: OutlineInputBorder(),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      TextField(
+                        controller: _tenantController,
+                        decoration: const InputDecoration(
+                          labelText: '工作室标识（可选）',
+                          border: OutlineInputBorder(),
+                        ),
+                      ),
+                      if (_error != null) ...[
+                        const SizedBox(height: 12),
+                        Text(
+                          _error!,
+                          style: TextStyle(
+                            color: Theme.of(context).colorScheme.error,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ],
+                      const SizedBox(height: 24),
+                      SizedBox(
+                        height: 48,
+                        child: FilledButton(
+                          onPressed: _loading ? null : _handleLogin,
+                          child: _loading
+                              ? SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: Theme.of(
+                                      context,
+                                    ).colorScheme.onPrimary,
+                                  ),
+                                )
+                              : const Text('登录'),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-                const SizedBox(height: 16),
-                TextField(
-                  controller: _passwordController,
-                  obscureText: true,
-                  decoration: const InputDecoration(
-                    labelText: '密码',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                TextField(
-                  controller: _tenantController,
-                  decoration: const InputDecoration(
-                    labelText: '工作室标识（可选）',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-                if (_error != null) ...[
-                  const SizedBox(height: 12),
-                  Text(
-                    _error!,
-                    style: const TextStyle(color: Colors.red),
-                    textAlign: TextAlign.center,
-                  ),
-                ],
-                const SizedBox(height: 24),
-                SizedBox(
-                  height: 48,
-                  child: ElevatedButton(
-                    onPressed: _loading ? null : _handleLogin,
-                    child: _loading
-                        ? const SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: Colors.white,
-                            ),
-                          )
-                        : const Text('登录'),
-                  ),
-                ),
-              ],
-            ),
+              ),
             ),
           ),
         ),
