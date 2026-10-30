@@ -215,36 +215,6 @@ class InsightsScreen extends ConsumerWidget {
             '这条内容的互动高于 5%。具体原因需要对照原文，这里不替你下结论。',
             style: TextStyle(color: Colors.white.withValues(alpha: 0.9)),
           ),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: () {
-                    // TODO: View details
-                  },
-                  icon: const Icon(Icons.visibility, size: 18),
-                  label: const Text('查看详情'),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: Colors.white,
-                    side: const BorderSide(color: Colors.white),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: ElevatedButton.icon(
-                  onPressed: null,
-                  icon: const Icon(Icons.copy, size: 18),
-                  label: const Text('尚未接通'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.white,
-                    foregroundColor: Colors.orange,
-                  ),
-                ),
-              ),
-            ],
-          ),
         ],
       ),
     );
