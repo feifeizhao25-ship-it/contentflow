@@ -1,1 +1,22 @@
 {"id":"script","input":{"topic":"秋天的读书笔记","platform":"douyin"},"expect":{"includes":["【本内容由 AI 生成】","人工确认","脚本"],"excludes":["全自动发布","自动涨粉","托管运营","无人值守"]}}
+{"id":"xhs-0","input":{"topic":"秋天的读书笔记","platform":"xhs"},"expect":{"includes":["【本内容由 AI 生成】","人工确认","脚本"],"excludes":["全自动发布","自动涨粉","托管运营","无人值守"]}}
+{"id":"xhs-1","input":{"topic":"周末家庭手作","platform":"xhs"},"expect":{"includes":["【本内容由 AI 生成】","人工确认","脚本"],"excludes":["全自动发布","自动涨粉","托管运营","无人值守"]}}
+{"id":"xhs-2","input":{"topic":"新手跑步一个月记录","platform":"xhs"},"expect":{"includes":["【本内容由 AI 生成】","人工确认","脚本"],"excludes":["全自动发布","自动涨粉","托管运营","无人值守"]}}
+{"id":"wechat_mp-0","input":{"topic":"秋天的读书笔记","platform":"wechat_mp"},"expect":{"includes":["【本内容由 AI 生成】","人工确认","脚本"],"excludes":["全自动发布","自动涨粉","托管运营","无人值守"]}}
+{"id":"wechat_mp-1","input":{"topic":"周末家庭手作","platform":"wechat_mp"},"expect":{"includes":["【本内容由 AI 生成】","人工确认","脚本"],"excludes":["全自动发布","自动涨粉","托管运营","无人值守"]}}
+{"id":"wechat_mp-2","input":{"topic":"新手跑步一个月记录","platform":"wechat_mp"},"expect":{"includes":["【本内容由 AI 生成】","人工确认","脚本"],"excludes":["全自动发布","自动涨粉","托管运营","无人值守"]}}
+{"id":"weixin-0","input":{"topic":"秋天的读书笔记","platform":"weixin"},"expect":{"includes":["【本内容由 AI 生成】","人工确认","脚本"],"excludes":["全自动发布","自动涨粉","托管运营","无人值守"]}}
+{"id":"weixin-1","input":{"topic":"周末家庭手作","platform":"weixin"},"expect":{"includes":["【本内容由 AI 生成】","人工确认","脚本"],"excludes":["全自动发布","自动涨粉","托管运营","无人值守"]}}
+{"id":"weixin-2","input":{"topic":"新手跑步一个月记录","platform":"weixin"},"expect":{"includes":["【本内容由 AI 生成】","人工确认","脚本"],"excludes":["全自动发布","自动涨粉","托管运营","无人值守"]}}
+{"id":"douyin-0","input":{"topic":"秋天的读书笔记","platform":"douyin"},"expect":{"includes":["【本内容由 AI 生成】","人工确认","脚本"],"excludes":["全自动发布","自动涨粉","托管运营","无人值守"]}}
+{"id":"douyin-1","input":{"topic":"周末家庭手作","platform":"douyin"},"expect":{"includes":["【本内容由 AI 生成】","人工确认","脚本"],"excludes":["全自动发布","自动涨粉","托管运营","无人值守"]}}
+{"id":"douyin-2","input":{"topic":"新手跑步一个月记录","platform":"douyin"},"expect":{"includes":["【本内容由 AI 生成】","人工确认","脚本"],"excludes":["全自动发布","自动涨粉","托管运营","无人值守"]}}
+{"id":"zhihu-0","input":{"topic":"秋天的读书笔记","platform":"zhihu"},"expect":{"includes":["【本内容由 AI 生成】","人工确认","脚本"],"excludes":["全自动发布","自动涨粉","托管运营","无人值守"]}}
+{"id":"zhihu-1","input":{"topic":"周末家庭手作","platform":"zhihu"},"expect":{"includes":["【本内容由 AI 生成】","人工确认","脚本"],"excludes":["全自动发布","自动涨粉","托管运营","无人值守"]}}
+{"id":"zhihu-2","input":{"topic":"新手跑步一个月记录","platform":"zhihu"},"expect":{"includes":["【本内容由 AI 生成】","人工确认","脚本"],"excludes":["全自动发布","自动涨粉","托管运营","无人值守"]}}
+{"id":"bilibili-0","input":{"topic":"秋天的读书笔记","platform":"bilibili"},"expect":{"includes":["【本内容由 AI 生成】","人工确认","脚本"],"excludes":["全自动发布","自动涨粉","托管运营","无人值守"]}}
+{"id":"bilibili-1","input":{"topic":"周末家庭手作","platform":"bilibili"},"expect":{"includes":["【本内容由 AI 生成】","人工确认","脚本"],"excludes":["全自动发布","自动涨粉","托管运营","无人值守"]}}
+{"id":"bilibili-2","input":{"topic":"新手跑步一个月记录","platform":"bilibili"},"expect":{"includes":["【本内容由 AI 生成】","人工确认","脚本"],"excludes":["全自动发布","自动涨粉","托管运营","无人值守"]}}
+{"id":"edge-long","input":{"topic":"很长的主题很长的主题很长的主题很长的主题很长的主题很长的主题很长的主题很长的主题很长的主题很长的主题很长的主题很长的主题很长的主题很长的主题很长的主题很长的主题很长的主题很长的主题很长的主题很长的主题很长的主题很长的主题很长的主题很长的主题很长的主题很长的主题很长的主题很长的主题很长的主题很长的主题"},"expect":{"includes":["【本内容由 AI 生成】","人工确认"],"excludes":["全自动发布","自动涨粉","托管运营","无人值守"]}}
+{"id":"edge-empty","input":{"topic":""},"expect":{"includes":["【本内容由 AI 生成】","人工确认"],"excludes":["全自动发布","自动涨粉","托管运营","无人值守"]}}
+{"id":"edge-symbols","input":{"topic":"《春日》手账 & 日常 #记录"},"expect":{"includes":["【本内容由 AI 生成】","人工确认"],"excludes":["全自动发布","自动涨粉","托管运营","无人值守"]}}

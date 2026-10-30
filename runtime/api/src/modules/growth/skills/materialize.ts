@@ -11,7 +11,7 @@ export function writeSkillLibrary(root = join(__dirname, 'library')): string[] {
     const files: Record<string, string> = {
       'SKILL.md': skillMarkdown(skill),
       'CHANGELOG.md': changelogMarkdown(skill),
-      'evals/golden.jsonl': `${JSON.stringify(goldenFor(skill)[0])}\n`,
+      'evals/golden.jsonl': goldenFor(skill).map((item) => JSON.stringify(item)).join('\n') + '\n',
       'evals/redteam.jsonl': SHARED_REDTEAM.map((item) => JSON.stringify(item)).join('\n') + '\n',
     };
     for (const [name, contents] of Object.entries(files)) {
