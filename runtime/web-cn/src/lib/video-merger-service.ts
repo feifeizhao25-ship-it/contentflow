@@ -87,10 +87,10 @@ class FFmpegMerger {
                     if (fs.existsSync(localPath)) {
                         fs.copyFileSync(localPath, tempFile);
                     } else {
-                        throw new Error(`Local file not found: ${url}`);
+                        throw new Error(`找不到本地视频文件：${url}`);
                     }
                 } else {
-                    throw new Error(`Invalid video URL: ${url}`);
+                    throw new Error(`视频地址无效：${url}`);
                 }
             }
 
@@ -213,7 +213,7 @@ class ShotstackVideoMerger {
     // per user instruction to "not do so many functions".
     // If we need it back, we can restore from git history.
     async mergeVideos(): Promise<VideoMergeResult> {
-        throw new Error("Shotstack disabled");
+        throw new Error("云端视频合成服务未启用");
     }
 }
 

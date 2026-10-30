@@ -15,7 +15,7 @@ class AppConfig {
         uri.host.isEmpty ||
         !uri.path.endsWith('/api/v1')) {
       throw StateError(
-        'API_BASE_URL must be an explicit HTTPS URL ending in /api/v1',
+        'API_BASE_URL must be an explicit HTTPS URL ending in /api/v1', // zh-gate:allow 启动时的配置断言，面向开发者
       );
     }
     return normalized;

@@ -73,6 +73,24 @@ def check_mobile_en_values() -> list[dict[str, str]]:
     return findings
 
 
+def check_cn_dart_visible_english() -> list[str]:
+    """国内版 Flutter（android-cn / ios-cn）里不得出现会显示给用户的英文。
+
+    规则与白名单见 scripts/verify_zh_ui_dart.py、scripts/zh_ui_allow.json。
+    """
+    import subprocess
+
+    here = Path(__file__).resolve().parent
+    proc = subprocess.run(
+        [sys.executable, str(here / "verify_zh_ui_dart.py"), "--app", "android-cn", "--app", "ios-cn",
+         "--allow", str(here / "zh_ui_allow.json")],
+        capture_output=True, text=True, cwd=str(here.parent),
+    )
+    if proc.returncode == 0:
+        return []
+    return [line for line in (proc.stdout + proc.stderr).splitlines() if line.strip()]
+
+
 def fetch(url: str) -> tuple[bool, str]:
     try:
         with urlopen(url, timeout=10) as resp:
@@ -109,6 +127,7 @@ def main() -> int:
         "int_source_cjk_findings": scan_int_source(),
         "int_locale_lock_issues": check_int_locale_lock(),
         "mobile_en_value_cjk_findings": check_mobile_en_values(),
+        "cn_dart_visible_english": check_cn_dart_visible_english(),
         "live": live_checks(args.cn_base, args.int_base),
     }
 
@@ -119,6 +138,8 @@ def main() -> int:
         failures.append("INT locale lock is not strict.")
     if result["mobile_en_value_cjk_findings"]:
         failures.append("Mobile English locale values contain CJK.")
+    if result["cn_dart_visible_english"]:
+        failures.append("CN Flutter UI contains user-visible English (see cn_dart_visible_english).")
     live = result["live"]
     if live.get("int_landing_has_cjk") is True:
         failures.append("INT landing HTML contains CJK.")
@@ -135,6 +156,9 @@ def main() -> int:
         print(f"  INT source CJK findings: {len(result['int_source_cjk_findings'])}")
         print(f"  INT locale lock issues: {len(result['int_locale_lock_issues'])}")
         print(f"  Mobile EN value CJK findings: {len(result['mobile_en_value_cjk_findings'])}")
+        print(f"  CN Flutter visible-English lines: {len(result['cn_dart_visible_english'])}")
+        for line in result["cn_dart_visible_english"][:40]:
+            print("   ", line)
         if live:
             print(f"  Live: {json.dumps(live, ensure_ascii=False)}")
         print("  Result:", "PASS" if result["passed"] else "FAIL")

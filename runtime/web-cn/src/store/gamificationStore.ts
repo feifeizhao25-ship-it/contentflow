@@ -61,8 +61,8 @@ export const useGamificationStore = create<GamificationState>((set) => ({
                         if (state.achievements.length > 0) {
                             import('@/lib/antd-app').then(({ notification }) => {
                                 notification.success({
-                                    message: '🎉 Achievement Unlocked!',
-                                    description: `You've unlocked: ${a.achievement_id}`,
+                                    message: '🎉 成就已解锁',
+                                    description: `你解锁了新成就：${a.achievement_id}`,
                                     placement: 'topRight',
                                 });
                             });
@@ -93,8 +93,8 @@ export const useGamificationStore = create<GamificationState>((set) => ({
 
             import('@/lib/antd-app').then(({ notification }) => {
                 notification.info({
-                    message: 'Level Up!',
-                    description: `You are now Level ${newLevel}!`,
+                    message: '等级提升',
+                    description: `你现在是 ${newLevel} 级了`,
                     placement: 'topRight',
                 });
             });
