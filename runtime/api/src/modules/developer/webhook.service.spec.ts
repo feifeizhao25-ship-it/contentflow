@@ -7,15 +7,15 @@ function svc(plan: string) {
   };
   return new WebhookService(prisma);
 }
-describe('Webhook Business 门禁（定稿）', () => {
-  it('非 Business 拒绝创建', async () => {
+describe('Webhook 商务版门禁（定稿）', () => {
+  it('非商务版拒绝创建', async () => {
     await expect(svc('team').create('t1', { url: 'https://example.com/h', events: ['content.generated'] })).rejects.toMatchObject({ status: 403 });
   });
-  it('Business 可创建且密钥只返回一次明文', async () => {
+  it('商务版可创建且密钥只返回一次明文', async () => {
     const r: any = await svc('enterprise').create('t1', { url: 'https://example.com/h', events: ['content.generated'] });
     expect(r.secret).toMatch(/^whsec_/); expect(r.url).toContain('example.com');
   });
-  it('非 Business 列表也关闭', async () => {
+  it('非商务版列表也关闭', async () => {
     await expect(svc('free').list('t1')).rejects.toMatchObject({ status: 403 });
   });
   it('拒绝指向本机或内网的地址', async () => {
@@ -24,7 +24,7 @@ describe('Webhook Business 门禁（定稿）', () => {
       await expect(business.create('t1', { url, events: ['content.generated'] })).rejects.toMatchObject({ status: 400 });
     }
   });
-  it('降级或非 Business 即使库里有订阅也不投递', async () => {
+  it('降级或非商务版即使库里有订阅也不投递', async () => {
     const request = jest.fn();
     const prisma: any = {
       tenant: { findUnique: async () => ({ plan: 'team', plan_expires_at: null, limits: {} }) },

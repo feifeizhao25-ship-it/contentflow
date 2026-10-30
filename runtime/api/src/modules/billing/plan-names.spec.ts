@@ -1,11 +1,11 @@
 import { CN_PLANS, LEGACY_CN_PLANS } from './plans.constant';
 import entitlements from '../../../../web-cn/src/lib/entitlements.json';
 
-// 分D04：国内版在售档名按 0S1 统一为 免费 / Solo / Team / Business，价格不变。
+// 分D04：国内版在售档名按 0S1 统一为 免费 / 个人版 / 团队版 / 商务版，价格不变。
 describe('国内版在售档名（分D04）', () => {
-  it('在售档名为 免费版 / Solo / Team / Business', () => {
+  it('在售档名为 免费版 / 个人版 / 团队版 / 商务版', () => {
     expect(CN_PLANS.map((p) => [p.id, p.name])).toEqual([
-      ['free', '免费版'], ['pro', 'Solo'], ['team', 'Team'], ['enterprise', 'Business'],
+      ['free', '免费版'], ['pro', '个人版'], ['team', '团队版'], ['enterprise', '商务版'],
     ]);
   });
   it('价格与 0S1 v2 一致', () => {
@@ -17,7 +17,7 @@ describe('国内版在售档名（分D04）', () => {
   });
   it('网页端权益注册表档名与 API 一致', () => {
     const names = JSON.stringify(entitlements);
-    for (const n of ['"Solo"', '"Team"', '"Business"']) expect(names).toContain(n);
+    for (const n of ['"个人版"', '"团队版"', '"商务版"']) expect(names).toContain(n);
     expect(names).not.toMatch(/"name": ?"(专业版|团队版|企业版)"/);
   });
 });
