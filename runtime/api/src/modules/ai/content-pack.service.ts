@@ -7,6 +7,7 @@ import { GenerateContentPackDto } from './dto/generate-content-pack.dto';
 import { labelAiGeneratedText, buildAiMediaMetadata } from '../../common/ai-content-label';
 import { RagPolicyService } from './rag-policy.service';
 import { adaptForPlatforms } from './platform-adaptation';
+import { isGlobalMarket, mt } from '../../common/i18n/market-text';
 
 @Injectable()
 export class ContentPackService {
@@ -33,7 +34,7 @@ export class ContentPackService {
             }, async () => {
             // 2. Multi-step AI Pipeline
             // Step A: Headlines x 10
-            const platformsStr = dto.platforms?.join(',') || '全渠道';
+            const platformsStr = dto.platforms?.join(',') || mt('全渠道', 'all channels');
             const titleResult = await this.aiService.generateTitlesWithUsage(dto.topic, platformsStr, dto.count ?? 10);
             const titles = titleResult?.titles;
             if (!Array.isArray(titles) || titles.length === 0 ||
@@ -49,8 +50,10 @@ export class ContentPackService {
             const policySources = await this.ragPolicyService.select(dto.platforms || [], dto.topic);
             // 资料过期时如实告诉用户「合规规则资料需要人工复核」，而不是笼统的「未引用」。
             const freshness = policySources.length ? null : await this.ragPolicyService.freshnessReport?.().catch(() => null);
-            const scriptPrompt = `请根据主题 "${dto.topic}" 和标题 "${titles[0]}" 创作一篇深度脚本。要求：逻辑清晰、使用普通人能理解的表达；如资料包含合规要求，在结尾增加发布前核对清单。${this.ragPolicyService.buildContext(policySources)}`;
-            const scriptData = await this.aiService.generateText({ prompt: scriptPrompt, route: 'bulk' });
+            const scriptPrompt = isGlobalMarket()
+                ? `Write an in-depth script on the topic "${dto.topic}" with the headline "${titles[0]}". Be logical and use plain language. If the sources below contain compliance requirements, add a pre-publication checklist at the end. Write in English only.${this.ragPolicyService.buildContext(policySources)}`
+                : `请根据主题 "${dto.topic}" 和标题 "${titles[0]}" 创作一篇深度脚本。要求：逻辑清晰、使用普通人能理解的表达；如资料包含合规要求，在结尾增加发布前核对清单。${this.ragPolicyService.buildContext(policySources)}`;
+            const scriptData = await this.aiService.generateTextForMarket({ prompt: scriptPrompt, route: 'bulk', userText: `${dto.topic} ${titles[0]}` });
             let script = scriptData?.content;
             if (typeof script !== 'string' || !script.trim()) {
                 throw new Error('AI provider did not return usable body content');
@@ -84,7 +87,11 @@ export class ContentPackService {
                     platform_variants: adaptForPlatforms(script, dto.platforms || [], dto.topic),
                     sources: policySources.map(source => ({ id: source.id, source_url: source.source_url, source_name: source.source_name, published_at: source.published_at, retrieved_at: source.retrieved_at, jurisdiction: source.jurisdiction, source_tier: source.source_tier })),
                     sources_status: policySources.length ? 'verified' : freshness?.needsReview ? 'review_required' : 'none',
-                    sources_note: policySources.length
+                    sources_note: isGlobalMarket()
+                        ? (policySources.length
+                            ? 'The sources above were added to this generation as context. The publisher must still check them against the current platform pages.'
+                            : 'This draft did not cite any verified external compliance source. Use it as a draft only and check the latest platform rules before publishing.')
+                        : policySources.length
                         ? '以上资料已加入本次模型上下文；仍需发布者按最新平台页面人工复核'
                         : freshness?.needsReview
                             ? `${freshness.notice ?? '合规规则资料需要人工复核'}${String(freshness.notice ?? '').includes('生成仍然可用') ? '' : '。AI 生成仍然可用，发布前请自行确认。'}`

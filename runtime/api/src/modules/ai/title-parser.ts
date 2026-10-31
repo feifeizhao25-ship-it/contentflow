@@ -18,10 +18,14 @@ const META_LINE_PATTERNS: RegExp[] = [
   /^(注|备注|说明|提示|温馨提示)\s*[:：]/,
   /^(标题|headlines?|titles?)\s*[:：]?\s*$/i,
   /^[-—=*>#\s]{2,}$/, // 分隔线 / 装饰行
+  // English preambles and sign-offs (international edition)
+  /^(here (are|is)|sure|certainly|of course|absolutely|these (are|headlines|titles)|i hope|hope (this|these)|feel free|let me know|note\b)/i,
 ];
 
 /** 标题的合理长度上限（提示词要求 20 字以内，留出余量） */
 const MAX_TITLE_LENGTH = 50;
+/** English headlines run longer than Chinese ones; the international prompt asks for under 80 characters. */
+const MAX_TITLE_LENGTH_LATIN = 90;
 
 /** 去掉行首的序号、项目符号和「标题N：」式前缀 */
 function stripListMarker(line: string): string {
@@ -64,7 +68,7 @@ export function parseGeneratedTitles(raw: string, count: number): string[] {
   for (const rawLine of (raw || '').split(/\r?\n/)) {
     const stripped = stripMarkup(stripListMarker(rawLine));
     if (isMetaLine(stripped)) continue;
-    if (stripped.length > MAX_TITLE_LENGTH) continue;
+    if (stripped.length > (/[\u3400-\u9fff]/.test(stripped) ? MAX_TITLE_LENGTH : MAX_TITLE_LENGTH_LATIN)) continue;
     if (seen.has(stripped)) continue;
     seen.add(stripped);
     titles.push(stripped);
@@ -72,7 +76,9 @@ export function parseGeneratedTitles(raw: string, count: number): string[] {
   }
 
   if (titles.length === 0) {
-    throw new Error('AI 标题生成结果未通过结构化校验：未解析到任何有效标题');
+    throw new Error(process.env.MARKET_REGION === 'global'
+      ? 'The AI headline result failed validation: no usable headline was found'
+      : 'AI 标题生成结果未通过结构化校验：未解析到任何有效标题');
   }
   return titles;
 }
