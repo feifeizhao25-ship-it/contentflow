@@ -1,10 +1,13 @@
+import 'dart:async';
 import '../../core/app_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/providers.dart';
 import '../../data/models.dart';
 import 'platform_options.dart';
+import 'generate_status.dart';
 import '../../core/error_text.dart';
+import '../../data/api_exception.dart';
 
 class CreateScreen extends ConsumerStatefulWidget {
   const CreateScreen({super.key});
@@ -20,9 +23,13 @@ class _CreateScreenState extends ConsumerState<CreateScreen> {
   final Set<String> _platforms = {...kDefaultPlatforms};
   bool _saving = false;
   bool _saved = false;
+  String? _generateError;
+  int _elapsedSeconds = 0;
+  Timer? _ticker;
 
   @override
   void dispose() {
+    _ticker?.cancel();
     _topicController.dispose();
     super.dispose();
   }
@@ -35,8 +42,15 @@ class _CreateScreenState extends ConsumerState<CreateScreen> {
       return;
     }
 
+    FocusManager.instance.primaryFocus?.unfocus();
+    _ticker?.cancel();
+    _elapsedSeconds = 0;
+    _ticker = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (mounted) setState(() => _elapsedSeconds++);
+    });
     setState(() {
       _isGenerating = true;
+      _generateError = null;
     });
 
     try {
@@ -45,23 +59,29 @@ class _CreateScreenState extends ConsumerState<CreateScreen> {
         topic: _topicController.text.trim(),
         platforms: _platforms.toList(),
       );
-      setState(() {
-        _generatedPack = pack;
-        _saved = false;
-      });
-    } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(friendlyError(e, fallback: '生成失败，请稍后重试'))));
+        setState(() {
+          _generatedPack = pack;
+          _saved = false;
+        });
       }
+    } catch (e) {
+      if (mounted) setState(() => _generateError = _describeGenerateError(e));
     } finally {
+      _ticker?.cancel();
       if (mounted) {
         setState(() {
           _isGenerating = false;
         });
       }
     }
+  }
+
+  String _describeGenerateError(Object e) {
+    if (e is ApiException && e.timedOut) {
+      return '生成耗时过长，已中止。你的网络可能较慢，请重试。';
+    }
+    return friendlyError(e, fallback: '生成失败，请稍后重试');
   }
 
   Future<void> _saveGeneratedPack() async {
@@ -227,6 +247,15 @@ class _CreateScreenState extends ConsumerState<CreateScreen> {
                     ),
             ),
           ),
+          if (_isGenerating || _generateError != null) ...[
+            const SizedBox(height: 16),
+            GenerateStatusCard(
+              generating: _isGenerating,
+              elapsedSeconds: _elapsedSeconds,
+              error: _generateError,
+              onRetry: _generateContentPack,
+            ),
+          ],
         ],
       ),
     );

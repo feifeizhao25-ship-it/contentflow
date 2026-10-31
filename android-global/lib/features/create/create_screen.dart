@@ -1,9 +1,11 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/providers.dart';
 import '../../data/api_exception.dart';
 import '../../data/models.dart';
 import 'platform_options.dart';
+import 'generate_status.dart';
 import 'market_options.dart';
 
 class CreateScreen extends ConsumerStatefulWidget {
@@ -22,9 +24,13 @@ class _CreateScreenState extends ConsumerState<CreateScreen> {
   final Set<String> _platforms = {...kDefaultPlatforms};
   bool _saving = false;
   bool _saved = false;
+  String? _generateError;
+  int _elapsedSeconds = 0;
+  Timer? _ticker;
 
   @override
   void dispose() {
+    _ticker?.cancel();
     _topicController.dispose();
     _materialController.dispose();
     super.dispose();
@@ -38,8 +44,15 @@ class _CreateScreenState extends ConsumerState<CreateScreen> {
       return;
     }
 
+    FocusManager.instance.primaryFocus?.unfocus();
+    _ticker?.cancel();
+    _elapsedSeconds = 0;
+    _ticker = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (mounted) setState(() => _elapsedSeconds++);
+    });
     setState(() {
       _isGenerating = true;
+      _generateError = null;
     });
 
     try {
@@ -50,23 +63,30 @@ class _CreateScreenState extends ConsumerState<CreateScreen> {
         material: _materialController.text,
         platforms: _platforms.toList(),
       );
-      setState(() {
-        _generatedPack = pack;
-        _saved = false;
-      });
-    } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Generation failed: $e')));
+        setState(() {
+          _generatedPack = pack;
+          _saved = false;
+        });
       }
+    } catch (e) {
+      if (mounted) setState(() => _generateError = _describeGenerateError(e));
     } finally {
+      _ticker?.cancel();
       if (mounted) {
         setState(() {
           _isGenerating = false;
         });
       }
     }
+  }
+
+  String _describeGenerateError(Object e) {
+    if (e is ApiException && e.timedOut) {
+      return 'Generation took too long and was stopped. Your connection may be slow, so please try again.';
+    }
+    if (e is ApiException) return e.message;
+    return 'Generation failed. Please try again.';
   }
 
   Future<void> _saveGeneratedPack() async {
@@ -243,6 +263,15 @@ class _CreateScreenState extends ConsumerState<CreateScreen> {
                     ),
             ),
           ),
+          if (_isGenerating || _generateError != null) ...[
+            const SizedBox(height: 16),
+            GenerateStatusCard(
+              generating: _isGenerating,
+              elapsedSeconds: _elapsedSeconds,
+              error: _generateError,
+              onRetry: _generateContentPack,
+            ),
+          ],
         ],
       ),
     );

@@ -5,6 +5,10 @@ import 'models.dart';
 import 'subscription_status.dart';
 import 'token_storage.dart';
 
+/// The pack is built from several sequential model calls, so this one request may legitimately
+/// take longer than the 30 s default used everywhere else.
+const Duration kGenerateTimeout = Duration(seconds: 150);
+
 class ApiClient {
   final Dio _dio;
   final TokenStorage _tokenStorage;
@@ -82,6 +86,7 @@ class ApiClient {
     return _handle(
       () => _dio.post(
         '/content-pack/generate',
+        options: Options(receiveTimeout: kGenerateTimeout),
         data: {
           'topic': topic,
           'count': titleCount,

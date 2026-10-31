@@ -4,7 +4,10 @@ class ApiException implements Exception {
   final String message;
   final int? statusCode;
 
-  ApiException(this.message, {this.statusCode});
+  /// True when the connection or the response timed out (the apps offer a retry for these).
+  final bool timedOut;
+
+  ApiException(this.message, {this.statusCode, this.timedOut = false});
 
   factory ApiException.fromDio(DioException error) {
     final statusCode = error.response?.statusCode;
@@ -20,17 +23,17 @@ class ApiException implements Exception {
       case DioExceptionType.connectionTimeout:
         return ApiException(
           'Connection timed out. Check your network.',
-          statusCode: statusCode,
+          statusCode: statusCode, timedOut: true,
         );
       case DioExceptionType.sendTimeout:
         return ApiException(
           'Request timed out while sending.',
-          statusCode: statusCode,
+          statusCode: statusCode, timedOut: true,
         );
       case DioExceptionType.receiveTimeout:
         return ApiException(
           'Response timed out. Please retry.',
-          statusCode: statusCode,
+          statusCode: statusCode, timedOut: true,
         );
       case DioExceptionType.badResponse:
         return ApiException(
