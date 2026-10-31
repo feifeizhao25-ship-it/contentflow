@@ -3,7 +3,7 @@ import type { Metadata } from 'next';
 export const metadata: Metadata = { title: 'Terms of Service · ContentFlow Global', description: 'The rules for using ContentFlow Global.' };
 
 // Plain-language summary. Final wording must be reviewed by counsel before general availability.
-const LAST_UPDATED = '2026-10-16';
+const LAST_UPDATED = '2026-10-31';
 
 export default function Page() {
   return (
@@ -15,6 +15,10 @@ export default function Page() {
         <section className="card">
           <h2>Using the service</h2>
           <p>You must be authorised to act for your organisation, keep your credentials safe, and use ContentFlow Global only for lawful content that complies with each platform you publish to.</p>
+        </section>
+        <section className="card">
+          <h2>Eligibility</h2>
+          <p>You must be at least 16 years old to use ContentFlow Global. We do not knowingly provide the service to anyone under 16 and may close an account if we learn the user is under 16.</p>
         </section>
         <section className="card">
           <h2>Your content</h2>
