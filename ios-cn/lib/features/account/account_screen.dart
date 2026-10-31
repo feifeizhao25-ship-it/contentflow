@@ -85,7 +85,7 @@ class AccountScreen extends ConsumerWidget {
       padding: const EdgeInsets.all(20),
       child: Column(
         children: [
-          const Text('👤', style: TextStyle(fontSize: 28)),
+          Icon(Icons.account_circle_outlined, size: 30, color: Theme.of(context).colorScheme.primary),
           const SizedBox(height: 16),
           // Avatar
           CircleAvatar(

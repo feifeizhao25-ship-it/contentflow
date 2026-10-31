@@ -1,3 +1,4 @@
+import '../../core/illustrated.dart';
 import '../../core/app_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -77,7 +78,7 @@ class TodayScreen extends ConsumerWidget {
       padding: const EdgeInsets.all(20),
       child: Row(
         children: [
-          const Text('📅', style: TextStyle(fontSize: 28)),
+          Icon(Icons.calendar_month, size: 30, color: Theme.of(context).colorScheme.primary),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
@@ -183,13 +184,15 @@ class TodayScreen extends ConsumerWidget {
       return SliverToBoxAdapter(
         child: Container(
           margin: const EdgeInsets.symmetric(horizontal: 20),
-          padding: const EdgeInsets.all(32),
+          padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
             color: AppColors.card(context),
             borderRadius: BorderRadius.circular(12),
           ),
-          child: const Center(
-            child: Text('今日暂无发布任务', style: TextStyle(color: Colors.grey)),
+          child: const CfEmptyState(
+            asset: 'assets/images/cf_empty_tasks.webp',
+            title: '今日暂无发布任务',
+            message: '在「创作」里生成内容并安排发布时间，当天的任务会出现在这里。',
           ),
         ),
       );

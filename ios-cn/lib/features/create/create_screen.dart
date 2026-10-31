@@ -1,3 +1,4 @@
+import '../../core/illustrated.dart';
 import 'dart:async';
 import '../../core/app_theme.dart';
 import 'package:flutter/material.dart';
@@ -143,33 +144,10 @@ class _CreateScreenState extends ConsumerState<CreateScreen> {
   }
 
   Widget _buildHeader(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      child: Row(
-        children: [
-          const Text('✨', style: TextStyle(fontSize: 28)),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  '快速创作',
-                  style: TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                    color: Theme.of(context).primaryColor,
-                  ),
-                ),
-                const Text(
-                  'AI 帮你生成内容',
-                  style: TextStyle(fontSize: 14, color: Colors.grey),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
+    return const CfHeroBanner(
+      asset: 'assets/images/cf_create_hero.webp',
+      title: '快速创作',
+      subtitle: 'AI 帮你生成内容',
     );
   }
 
@@ -265,15 +243,44 @@ class _CreateScreenState extends ConsumerState<CreateScreen> {
   Widget _buildGeneratedContent(BuildContext context) {
     final pack = _generatedPack!;
 
+    final primary = Theme.of(context).colorScheme.primary;
+    Widget chip(IconData i, String t) => Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+          decoration: BoxDecoration(color: primary.withValues(alpha: 0.10), borderRadius: BorderRadius.circular(999)),
+          child: Row(mainAxisSize: MainAxisSize.min, children: [
+            Icon(i, size: 16, color: primary),
+            const SizedBox(width: 6),
+            Text(t, style: TextStyle(fontSize: 14, color: primary, fontWeight: FontWeight.w600)),
+          ]),
+        );
+
     return Container(
       margin: const EdgeInsets.all(20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          Row(children: [
+            ClipRRect(
+              borderRadius: BorderRadius.circular(16),
+              child: Image.asset('assets/images/cf_ai_result.webp', width: 72, height: 72, fit: BoxFit.cover,
+                  errorBuilder: (_, __, ___) => const SizedBox(width: 72, height: 72)),
+            ),
+            const SizedBox(width: 14),
+            const Expanded(
+              child: Text('内容包已生成', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800, height: 1.3)),
+            ),
+          ]),
+          const SizedBox(height: 12),
+          Wrap(spacing: 8, runSpacing: 8, children: [
+            chip(Icons.title, '${pack.titles.length} 个标题'),
+            chip(Icons.bolt, '${pack.hooks.length} 个钩子'),
+            chip(Icons.tag, '${pack.hashtags.length} 个标签'),
+          ]),
+          const SizedBox(height: 16),
           // Titles
           _buildContentCard(
             context,
-            '📝 生成的标题',
+            '生成的标题',
             Column(
               children: pack.titles.asMap().entries.map((entry) {
                 return Padding(
@@ -282,8 +289,8 @@ class _CreateScreenState extends ConsumerState<CreateScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Container(
-                        width: 24,
-                        height: 24,
+                        width: 28,
+                        height: 28,
                         decoration: BoxDecoration(
                           color: Theme.of(
                             context,
@@ -296,13 +303,13 @@ class _CreateScreenState extends ConsumerState<CreateScreen> {
                             style: TextStyle(
                               color: Theme.of(context).primaryColor,
                               fontWeight: FontWeight.bold,
-                              fontSize: 12,
+                              fontSize: 14,
                             ),
                           ),
                         ),
                       ),
                       const SizedBox(width: 12),
-                      Expanded(child: Text(entry.value)),
+                      Expanded(child: Text(entry.value, style: const TextStyle(fontSize: 15, height: 1.55))),
                     ],
                   ),
                 );
@@ -315,7 +322,7 @@ class _CreateScreenState extends ConsumerState<CreateScreen> {
           // Hooks
           _buildContentCard(
             context,
-            '🎣 钩子',
+            '钩子',
             Column(
               children: pack.hooks.map((hook) {
                 return Padding(
@@ -324,7 +331,7 @@ class _CreateScreenState extends ConsumerState<CreateScreen> {
                     children: [
                       const Icon(Icons.bolt, color: Colors.orange, size: 18),
                       const SizedBox(width: 8),
-                      Expanded(child: Text(hook)),
+                      Expanded(child: Text(hook, style: const TextStyle(fontSize: 15, height: 1.55))),
                     ],
                   ),
                 );
@@ -337,8 +344,14 @@ class _CreateScreenState extends ConsumerState<CreateScreen> {
           // Script
           _buildContentCard(
             context,
-            '📜 脚本',
-            Text(pack.script, style: const TextStyle(height: 1.6)),
+            '脚本',
+            Container(
+              padding: const EdgeInsets.fromLTRB(14, 4, 4, 4),
+              decoration: BoxDecoration(
+                border: Border(left: BorderSide(color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.5), width: 3)),
+              ),
+              child: Text(pack.script, style: const TextStyle(fontSize: 15, height: 1.75)),
+            ),
           ),
 
           const SizedBox(height: 16),
@@ -346,7 +359,7 @@ class _CreateScreenState extends ConsumerState<CreateScreen> {
           // Hashtags
           _buildContentCard(
             context,
-            '#️⃣ 标签',
+            '标签',
             Wrap(
               spacing: 8,
               runSpacing: 8,
@@ -407,6 +420,16 @@ class _CreateScreenState extends ConsumerState<CreateScreen> {
     );
   }
 
+  IconData _iconForTitle(String t) {
+    switch (t) {
+      case '生成的标题': return Icons.title;
+      case '钩子': return Icons.bolt;
+      case '脚本': return Icons.description_outlined;
+      case '标签': return Icons.tag;
+      default: return Icons.auto_awesome;
+    }
+  }
+
   Widget _buildContentCard(BuildContext context, String title, Widget content) {
     return Container(
       padding: const EdgeInsets.all(16),
@@ -417,10 +440,22 @@ class _CreateScreenState extends ConsumerState<CreateScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            title,
-            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-          ),
+          Row(children: [
+            Container(
+              width: 30,
+              height: 30,
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(9),
+              ),
+              child: Icon(_iconForTitle(title), size: 18, color: Theme.of(context).colorScheme.primary),
+            ),
+            const SizedBox(width: 10),
+            Text(
+              title,
+              style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
+            ),
+          ]),
           const SizedBox(height: 12),
           content,
         ],
