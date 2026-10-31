@@ -62,6 +62,12 @@ final assetsProvider = FutureProvider<List<Asset>>((ref) async {
   return api.getAssets(type: selectedType);
 });
 
+final showDraftsProvider = StateProvider<bool>((ref) => false);
+
+final contentDraftsProvider = FutureProvider.autoDispose<List<ContentDraft>>((ref) async {
+  return ref.read(apiClientProvider).getContentDrafts();
+});
+
 // ============== Analytics Providers ==============
 final analyticsSummaryProvider = FutureProvider<AnalyticsSummary>((ref) async {
   final api = ref.read(apiClientProvider);

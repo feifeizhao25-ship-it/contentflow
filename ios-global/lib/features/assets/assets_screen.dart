@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../core/providers.dart';
 import '../../data/models.dart';
+import 'drafts_view.dart';
 
 class AssetsScreen extends ConsumerWidget {
   const AssetsScreen({super.key});
@@ -11,6 +12,7 @@ class AssetsScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final assetsAsync = ref.watch(assetsProvider);
     final selectedType = ref.watch(selectedAssetTypeProvider);
+    final showDrafts = ref.watch(showDraftsProvider);
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8F9FA),
@@ -25,7 +27,7 @@ class AssetsScreen extends ConsumerWidget {
 
             // Assets Grid
             Expanded(
-              child: assetsAsync.when(
+              child: showDrafts ? const DraftsView() : assetsAsync.when(
                 data: (assets) => _buildAssetsGrid(context, assets),
                 loading: () => const Center(child: CircularProgressIndicator()),
                 error: (e, _) => Center(child: Text('Failed to load: $e')),
@@ -97,6 +99,18 @@ class AssetsScreen extends ConsumerWidget {
           children: [
             _buildFilterChip(context, ref, null, 'All', selectedType),
             const SizedBox(width: 8),
+            FilterChip(
+              key: const ValueKey('drafts-chip'),
+              label: const Text('Drafts'),
+              selected: ref.watch(showDraftsProvider),
+              onSelected: (_) {
+                ref.read(showDraftsProvider.notifier).state = true;
+                ref.invalidate(contentDraftsProvider);
+              },
+              selectedColor: Theme.of(context).primaryColor.withValues(alpha: 0.2),
+              checkmarkColor: Theme.of(context).primaryColor,
+            ),
+            const SizedBox(width: 8),
             _buildFilterChip(
               context,
               ref,
@@ -133,12 +147,13 @@ class AssetsScreen extends ConsumerWidget {
     String label,
     AssetType? selectedType,
   ) {
-    final isSelected = selectedType == type;
+    final isSelected = selectedType == type && !ref.watch(showDraftsProvider);
 
     return FilterChip(
       label: Text(label),
       selected: isSelected,
       onSelected: (_) {
+        ref.read(showDraftsProvider.notifier).state = false;
         ref.read(selectedAssetTypeProvider.notifier).state = type;
         ref.invalidate(assetsProvider);
       },

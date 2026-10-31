@@ -387,3 +387,33 @@ class User {
     }
   }
 }
+
+/// A saved content (what "Save to content pack" creates). Only the fields the Assets tab needs.
+class ContentDraft {
+  final String id;
+  final String title;
+  final String body;
+  final String source;
+  final String status;
+  final DateTime createdAt;
+
+  ContentDraft({
+    required this.id,
+    required this.title,
+    required this.body,
+    required this.source,
+    required this.status,
+    required this.createdAt,
+  });
+
+  factory ContentDraft.fromJson(Map<String, dynamic> json) {
+    return ContentDraft(
+      id: (json['id'] ?? '').toString(),
+      title: (json['title'] ?? '').toString(),
+      body: (json['body'] ?? '').toString(),
+      source: (json['source'] ?? '').toString(),
+      status: (json['status'] ?? '').toString(),
+      createdAt: DateTime.tryParse((json['created_at'] ?? '').toString()) ?? DateTime.now(),
+    );
+  }
+}

@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../core/providers.dart';
 import '../../data/models.dart';
+import 'drafts_view.dart';
 import '../../core/error_text.dart';
 
 class AssetsScreen extends ConsumerWidget {
@@ -13,6 +14,7 @@ class AssetsScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final assetsAsync = ref.watch(assetsProvider);
     final selectedType = ref.watch(selectedAssetTypeProvider);
+    final showDrafts = ref.watch(showDraftsProvider);
 
     return Scaffold(
             body: SafeArea(
@@ -26,7 +28,7 @@ class AssetsScreen extends ConsumerWidget {
 
             // Assets Grid
             Expanded(
-              child: assetsAsync.when(
+              child: showDrafts ? const DraftsView() : assetsAsync.when(
                 data: (assets) => _buildAssetsGrid(context, assets),
                 loading: () => const Center(child: CircularProgressIndicator()),
                 error: (e, _) => Center(child: Text(friendlyError(e))),
@@ -98,6 +100,18 @@ class AssetsScreen extends ConsumerWidget {
           children: [
             _buildFilterChip(context, ref, null, '全部', selectedType),
             const SizedBox(width: 8),
+            FilterChip(
+              key: const ValueKey('drafts-chip'),
+              label: const Text('草稿'),
+              selected: ref.watch(showDraftsProvider),
+              onSelected: (_) {
+                ref.read(showDraftsProvider.notifier).state = true;
+                ref.invalidate(contentDraftsProvider);
+              },
+              selectedColor: Theme.of(context).primaryColor.withValues(alpha: 0.2),
+              checkmarkColor: Theme.of(context).primaryColor,
+            ),
+            const SizedBox(width: 8),
             _buildFilterChip(context, ref, AssetType.image, '图片', selectedType),
             const SizedBox(width: 8),
             _buildFilterChip(context, ref, AssetType.video, '视频', selectedType),
@@ -122,12 +136,13 @@ class AssetsScreen extends ConsumerWidget {
     String label,
     AssetType? selectedType,
   ) {
-    final isSelected = selectedType == type;
+    final isSelected = selectedType == type && !ref.watch(showDraftsProvider);
 
     return FilterChip(
       label: Text(label),
       selected: isSelected,
       onSelected: (_) {
+        ref.read(showDraftsProvider.notifier).state = false;
         ref.read(selectedAssetTypeProvider.notifier).state = type;
         ref.invalidate(assetsProvider);
       },
