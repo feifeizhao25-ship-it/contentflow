@@ -13,10 +13,11 @@ class ApiClient {
   final Dio _dio;
   final TokenStorage _tokenStorage;
 
-  ApiClient(this._tokenStorage)
+  /// [baseUrl] is for tests that build a fake client; the app always uses the validated AppConfig value.
+  ApiClient(this._tokenStorage, {String? baseUrl})
     : _dio = Dio(
         BaseOptions(
-          baseUrl: AppConfig.apiBaseUrl,
+          baseUrl: baseUrl ?? AppConfig.apiBaseUrl,
           connectTimeout: const Duration(seconds: 10),
           receiveTimeout: const Duration(seconds: 30),
           headers: {'Content-Type': 'application/json', 'X-Client': 'mobile'},
