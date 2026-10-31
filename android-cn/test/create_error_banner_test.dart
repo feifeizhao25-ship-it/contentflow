@@ -14,7 +14,11 @@ class _FailingApi extends ApiClient {
   int calls = 0;
 
   @override
-  Future<ContentPack> generateContentPack({required String topic}) async {
+  Future<ContentPack> generateContentPack({
+    required String topic,
+    int titleCount = 5,
+    List<String>? platforms,
+  }) async {
     calls++;
     throw ApiException(ApiException.statusMessage(400), statusCode: 400);
   }
@@ -27,6 +31,9 @@ void main() {
   });
 
   testWidgets('a failed generation leaves a visible error and a retry button on screen', (tester) async {
+    tester.view.physicalSize = const Size(800, 3000);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
     final api = _FailingApi();
     await tester.pumpWidget(ProviderScope(
       overrides: [apiClientProvider.overrideWithValue(api)],
@@ -37,12 +44,12 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 300));
 
-    expect(find.byKey(const Key('create_error_banner')), findsOneWidget);
-    expect(find.text('生成失败'), findsOneWidget);
+    expect(find.byKey(const ValueKey('generate-error')), findsOneWidget);
+    expect(find.text('生成没有完成'), findsOneWidget);
     expect(find.textContaining('提交的内容不符合要求'), findsWidgets);
     expect(api.calls, 1);
 
-    await tester.tap(find.text('重试'));
+    await tester.tap(find.text('重新生成'));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 300));
     expect(api.calls, 2);

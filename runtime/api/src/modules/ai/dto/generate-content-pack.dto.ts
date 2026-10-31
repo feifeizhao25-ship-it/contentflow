@@ -19,13 +19,6 @@ export class GenerateContentPackDto {
     @IsOptional()
     personaId?: string;
 
-    @ApiProperty({ description: '标题数量（可选，1-10，默认 10）。旧版 App 会发送这个字段，不能因为它被拒绝。', example: 5, required: false })
-    @IsInt()
-    @Min(1)
-    @Max(10)
-    @IsOptional()
-    count?: number;
-
     @ApiProperty({ required: false, enum: TARGET_MARKETS, description: 'International edition only: where the audience is (US, UK, IN, SG). Chooses the ad-disclosure wording hint.' })
     @IsOptional()
     @IsIn(TARGET_MARKETS as unknown as string[])
