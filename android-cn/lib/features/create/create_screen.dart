@@ -3,8 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/providers.dart';
 import '../../data/models.dart';
+import 'platform_options.dart';
 import '../../core/error_text.dart';
-import '../../core/cn_format.dart';
 
 class CreateScreen extends ConsumerStatefulWidget {
   const CreateScreen({super.key});
@@ -17,6 +17,9 @@ class _CreateScreenState extends ConsumerState<CreateScreen> {
   final _topicController = TextEditingController();
   bool _isGenerating = false;
   ContentPack? _generatedPack;
+  final Set<String> _platforms = {...kDefaultPlatforms};
+  bool _saving = false;
+  bool _saved = false;
 
   @override
   void dispose() {
@@ -40,9 +43,11 @@ class _CreateScreenState extends ConsumerState<CreateScreen> {
       final api = ref.read(apiClientProvider);
       final pack = await api.generateContentPack(
         topic: _topicController.text.trim(),
+        platforms: _platforms.toList(),
       );
       setState(() {
         _generatedPack = pack;
+        _saved = false;
       });
     } catch (e) {
       if (mounted) {
@@ -61,10 +66,12 @@ class _CreateScreenState extends ConsumerState<CreateScreen> {
 
   Future<void> _saveGeneratedPack() async {
     final pack = _generatedPack;
-    if (pack == null) return;
+    if (pack == null || _saving || _saved) return;
+    setState(() => _saving = true);
     try {
       await ref.read(apiClientProvider).saveContentPack(pack);
       if (mounted) {
+        setState(() => _saved = true);
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(const SnackBar(content: Text('已保存为云端草稿')));
@@ -75,45 +82,17 @@ class _CreateScreenState extends ConsumerState<CreateScreen> {
           context,
         ).showSnackBar(SnackBar(content: Text(friendlyError(error, fallback: '保存失败，请稍后重试'))));
       }
+    } finally {
+      if (mounted) setState(() => _saving = false);
     }
   }
 
   void _showPlatformAdapters(ContentPack pack) {
-    final payloads = pack.platformPayloads ?? const <String, PlatformPayload>{};
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
-      builder: (sheetContext) => SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(20),
-          child: payloads.isEmpty
-              ? const Text('本次生成未返回平台适配内容，请重新生成或先保存草稿。')
-              : ListView(
-                  shrinkWrap: true,
-                  children: [
-                    const Text(
-                      '平台适配预览',
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    ...payloads.entries.map(
-                      (entry) => Card(
-                        child: ListTile(
-                          title: Text(platformName(entry.key)),
-                          subtitle: Text(
-                            entry.value.adaptedContent ?? '暂无适配正文',
-                            maxLines: 4,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-        ),
+      builder: (sheetContext) => PlatformAdapterSheet(
+        payloads: pack.platformPayloads ?? const <String, PlatformPayload>{},
       ),
     );
   }
@@ -207,6 +186,15 @@ class _CreateScreenState extends ConsumerState<CreateScreen> {
                 ),
               ),
             ),
+          ),
+          const SizedBox(height: 16),
+          PlatformPicker(
+            selected: _platforms,
+            onChanged: (v) => setState(() {
+              _platforms
+                ..clear()
+                ..addAll(v);
+            }),
           ),
           const SizedBox(height: 20),
           SizedBox(
@@ -360,9 +348,9 @@ class _CreateScreenState extends ConsumerState<CreateScreen> {
             children: [
               Expanded(
                 child: OutlinedButton.icon(
-                  onPressed: _saveGeneratedPack,
-                  icon: const Icon(Icons.save),
-                  label: const Text('保存到内容包'),
+                  onPressed: (_saving || _saved) ? null : _saveGeneratedPack,
+                  icon: Icon(_saved ? Icons.check : Icons.save),
+                  label: Text(_saved ? '已保存' : '保存到内容包'),
                   style: OutlinedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 14),
                     side: BorderSide(color: Theme.of(context).primaryColor),

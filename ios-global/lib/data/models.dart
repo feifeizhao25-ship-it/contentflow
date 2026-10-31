@@ -35,13 +35,7 @@ class ContentPack {
       hooks: List<String>.from(json['hooks'] ?? []),
       script: json['script'] ?? '',
       hashtags: List<String>.from(json['hashtags'] ?? []),
-      platformPayloads: json['platform_payloads'] != null
-          ? Map<String, PlatformPayload>.from(
-              json['platform_payloads'].map(
-                (k, v) => MapEntry(k, PlatformPayload.fromJson(v)),
-              ),
-            )
-          : null,
+      platformPayloads: PlatformPayload.mapFromJson(json),
       createdAt: DateTime.tryParse(json['created_at'] ?? '') ?? DateTime.now(),
       serverNotes: {
         for (final key in const [
@@ -77,20 +71,58 @@ class PlatformPayload {
   final String? adaptedTitle;
   final String? adaptedContent;
   final String? coverImage;
+  final List<String> hashtags;
+  final int? charCount;
+  final List<String> notes;
 
   PlatformPayload({
     required this.platform,
     this.adaptedTitle,
     this.adaptedContent,
     this.coverImage,
+    this.hashtags = const [],
+    this.charCount,
+    this.notes = const [],
   });
 
+  /// Reads the server's per-platform rewrite. The server sends `platform_variants` (a list of
+  /// {platform, title, body, hashtags, char_count, notes}); older saved drafts carry `platform_payloads`
+  /// (a map keyed by platform). Order is kept.
+  static Map<String, PlatformPayload>? mapFromJson(Map<String, dynamic> json) {
+    final variants = json['platform_variants'];
+    if (variants is List) {
+      final out = <String, PlatformPayload>{};
+      for (final v in variants) {
+        if (v is! Map) continue;
+        final m = Map<String, dynamic>.from(v);
+        final key = '${m['platform'] ?? ''}';
+        if (key.isEmpty) continue;
+        out[key] = PlatformPayload.fromJson(m);
+      }
+      return out;
+    }
+    final saved = json['platform_payloads'];
+    if (saved is Map) {
+      return {
+        for (final e in saved.entries)
+          '${e.key}': PlatformPayload.fromJson(Map<String, dynamic>.from(e.value as Map)),
+      };
+    }
+    return null;
+  }
+
   factory PlatformPayload.fromJson(Map<String, dynamic> json) {
+    final tags = json['hashtags'];
+    final notes = json['notes'];
+    final count = json['char_count'];
     return PlatformPayload(
       platform: json['platform'] ?? '',
-      adaptedTitle: json['adapted_title'],
-      adaptedContent: json['adapted_content'],
+      adaptedTitle: json['adapted_title'] ?? (json['title'] is String && (json['title'] as String).isNotEmpty ? json['title'] : null),
+      adaptedContent: json['adapted_content'] ?? json['body'],
       coverImage: json['cover_image'],
+      hashtags: tags is List ? tags.map((e) => '$e').toList() : const [],
+      charCount: count is num ? count.toInt() : null,
+      notes: notes is List ? notes.map((e) => '$e').toList() : const [],
     );
   }
 
@@ -100,6 +132,9 @@ class PlatformPayload {
       'adapted_title': adaptedTitle,
       'adapted_content': adaptedContent,
       'cover_image': coverImage,
+      'hashtags': hashtags,
+      'char_count': charCount,
+      'notes': notes,
     };
   }
 }
