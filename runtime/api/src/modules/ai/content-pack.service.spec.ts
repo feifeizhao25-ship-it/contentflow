@@ -5,7 +5,7 @@ import { AI_TEXT_LABEL } from '../../common/ai-content-label';
 describe('ContentPackService token accounting', () => {
   const ai = {
     generateTitlesWithUsage: jest.fn(),
-    generateText: jest.fn(),
+    generateTextForMarket: jest.fn(),
     assertTenantDailyBudget: jest.fn(),
     recordGeneration: jest.fn(),
   };
@@ -32,16 +32,16 @@ describe('ContentPackService token accounting', () => {
 
   it.each([undefined, 0, -1, 0.5, NaN, Infinity, '10'])('rejects invalid title usage %s before generating the body', async (total) => {
     ai.generateTitlesWithUsage.mockResolvedValue({ titles: ['标题'], usage: { total_tokens: total } });
-    ai.generateText.mockResolvedValue({ content: '正文', usage: { total_tokens: 100 } });
+    ai.generateTextForMarket.mockResolvedValue({ content: '正文', usage: { total_tokens: 100 } });
     await expect(service.generatePack('tenant-1', { topic: '主题' }, 'user-1')).rejects.toBeInstanceOf(InternalServerErrorException);
-    expect(ai.generateText).not.toHaveBeenCalled();
+    expect(ai.generateTextForMarket).not.toHaveBeenCalled();
     expect(usage.last).toBeUndefined();
     expect(ai.recordGeneration).not.toHaveBeenCalled();
   });
 
   it.each([undefined, 0, -1, 0.5, NaN, Infinity, '10'])('rejects invalid body usage %s even when combined usage would look valid', async (total) => {
     ai.generateTitlesWithUsage.mockResolvedValue({ titles: ['标题'], usage: { total_tokens: 100 } });
-    ai.generateText.mockResolvedValue({ content: '正文', usage: { total_tokens: total } });
+    ai.generateTextForMarket.mockResolvedValue({ content: '正文', usage: { total_tokens: total } });
     await expect(service.generatePack('tenant-1', { topic: '主题' }, 'user-1')).rejects.toBeInstanceOf(InternalServerErrorException);
     expect(usage.last).toBeUndefined();
     expect(ai.recordGeneration).not.toHaveBeenCalled();
@@ -49,7 +49,7 @@ describe('ContentPackService token accounting', () => {
 
   it.each(['', '   ', null, 123])('rejects empty or malformed body %s without charging', async (content) => {
     ai.generateTitlesWithUsage.mockResolvedValue({ titles: ['标题'], usage: { total_tokens: 2 } });
-    ai.generateText.mockResolvedValue({ content, usage: { total_tokens: 4 } });
+    ai.generateTextForMarket.mockResolvedValue({ content, usage: { total_tokens: 4 } });
     await expect(service.generatePack('tenant-1', { topic: '主题' }, 'user-1')).rejects.toBeInstanceOf(InternalServerErrorException);
     expect(usage.last).toBeUndefined();
     expect(ai.recordGeneration).not.toHaveBeenCalled();
@@ -57,7 +57,7 @@ describe('ContentPackService token accounting', () => {
 
   it('rejects a body emptied by compliance processing before adding the AI label', async () => {
     ai.generateTitlesWithUsage.mockResolvedValue({ titles: ['标题'], usage: { total_tokens: 2 } });
-    ai.generateText.mockResolvedValue({ content: '正文', usage: { total_tokens: 4 } });
+    ai.generateTextForMarket.mockResolvedValue({ content: '正文', usage: { total_tokens: 4 } });
     compliance.scrubOutput.mockResolvedValue('  ');
     await expect(service.generatePack('tenant-1', { topic: '主题' }, 'user-1')).rejects.toBeInstanceOf(InternalServerErrorException);
     expect(usage.last).toBeUndefined();
@@ -66,7 +66,7 @@ describe('ContentPackService token accounting', () => {
   it.each([undefined, [], [' '], [12]].map(titles => [titles]))('rejects missing or malformed titles %s', async (titles) => {
     ai.generateTitlesWithUsage.mockResolvedValue({ titles, usage: { total_tokens: 2 } });
     await expect(service.generatePack('tenant-1', { topic: '主题' })).rejects.toBeInstanceOf(InternalServerErrorException);
-    expect(ai.generateText).not.toHaveBeenCalled();
+    expect(ai.generateTextForMarket).not.toHaveBeenCalled();
     expect(usage.last).toBeUndefined();
   });
 
@@ -75,7 +75,7 @@ describe('ContentPackService token accounting', () => {
       titles: ['A title'],
       usage: { prompt_tokens: 50, completion_tokens: 70, total_tokens: 120 },
     });
-    ai.generateText.mockResolvedValue({
+    ai.generateTextForMarket.mockResolvedValue({
       content: 'A script',
       usage: { prompt_tokens: 80, completion_tokens: 120, total_tokens: 200 },
     });
@@ -98,7 +98,7 @@ describe('ContentPackService token accounting', () => {
       titles: ['A title'],
       usage: { prompt_tokens: 50, completion_tokens: 70, total_tokens: 120 },
     });
-    ai.generateText.mockResolvedValue({
+    ai.generateTextForMarket.mockResolvedValue({
       content: 'A script',
       usage: { prompt_tokens: 80, completion_tokens: 120, total_tokens: 200 },
     });
@@ -117,7 +117,7 @@ describe('ContentPackService token accounting', () => {
       titles: ['A title'],
       usage: { prompt_tokens: 50, completion_tokens: 70, total_tokens: 120 },
     });
-    ai.generateText.mockResolvedValue({
+    ai.generateTextForMarket.mockResolvedValue({
       content: 'A script',
       usage: { prompt_tokens: 80, completion_tokens: 120, total_tokens: 200 },
     });
@@ -134,9 +134,9 @@ describe('ContentPackService token accounting', () => {
     rag.select.mockResolvedValue([source]);
     rag.buildContext.mockReturnValue('\n[1] 官方规则');
     ai.generateTitlesWithUsage.mockResolvedValue({ titles: ['A title'], usage: { prompt_tokens: 1, completion_tokens: 1, total_tokens: 2 } });
-    ai.generateText.mockResolvedValue({ content: 'A script', usage: { prompt_tokens: 2, completion_tokens: 2, total_tokens: 4 } });
+    ai.generateTextForMarket.mockResolvedValue({ content: 'A script', usage: { prompt_tokens: 2, completion_tokens: 2, total_tokens: 4 } });
     const result = await service.generatePack('tenant-1', { topic: 'Topic', platforms: ['douyin'] });
-    expect(ai.generateText).toHaveBeenCalledWith(expect.objectContaining({ prompt: expect.stringContaining('[1] 官方规则') }));
+    expect(ai.generateTextForMarket).toHaveBeenCalledWith(expect.objectContaining({ prompt: expect.stringContaining('[1] 官方规则') }));
     expect(result.data.sources).toEqual([source]);
     expect(result.data.sources_status).toBe('verified');
     expect(result.data.platform_variants.map((item: { platform: string }) => item.platform)).toEqual(['douyin']);
@@ -147,7 +147,7 @@ describe('ContentPackService token accounting', () => {
       titles: ['A title'],
       usage: { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 },
     });
-    ai.generateText.mockResolvedValue({
+    ai.generateTextForMarket.mockResolvedValue({
       content: 'A script',
       usage: { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 },
     });
@@ -163,7 +163,7 @@ describe('ContentPackService token accounting', () => {
       titles: ['A title'],
       usage: { prompt_tokens: 1, completion_tokens: 1, total_tokens: 2 },
     });
-    ai.generateText.mockResolvedValue({
+    ai.generateTextForMarket.mockResolvedValue({
       content: 'blocked content',
       usage: { prompt_tokens: 1, completion_tokens: 1, total_tokens: 2 },
     });
@@ -185,7 +185,7 @@ describe('ContentPackService token accounting', () => {
 
 describe('合规资料过期时如实提示', () => {
   it('没有可用资料且资料过期：sources_status=review_required，提示「合规规则资料需要人工复核」', async () => {
-    const ai = { assertTenantDailyBudget: jest.fn(), recordGeneration: jest.fn(), generateTitlesWithUsage: jest.fn().mockResolvedValue({ titles: ['T'], usage: { prompt_tokens: 1, completion_tokens: 1, total_tokens: 2 } }), generateText: jest.fn().mockResolvedValue({ content: '正文', usage: { prompt_tokens: 1, completion_tokens: 1, total_tokens: 2 } }) };
+    const ai = { assertTenantDailyBudget: jest.fn(), recordGeneration: jest.fn(), generateTitlesWithUsage: jest.fn().mockResolvedValue({ titles: ['T'], usage: { prompt_tokens: 1, completion_tokens: 1, total_tokens: 2 } }), generateTextForMarket: jest.fn().mockResolvedValue({ content: '正文', usage: { prompt_tokens: 1, completion_tokens: 1, total_tokens: 2 } }) };
     const usage = { withAiHold: jest.fn(async (_input: unknown, run: () => Promise<{ response: unknown }>) => (await run()).response) };
     const rag = { select: jest.fn().mockResolvedValue([]), buildContext: jest.fn().mockReturnValue(''), freshnessReport: jest.fn().mockResolvedValue({ needsReview: true, notice: '合规规则资料需要人工复核：平台规则资料超过 30 天未核对' }) };
     const service = new ContentPackService(ai as any, usage as any, { scrubOutput: async (v: string) => v } as any, rag as any);

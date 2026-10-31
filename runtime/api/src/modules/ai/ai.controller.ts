@@ -1,6 +1,6 @@
 import { BadRequestException, Controller, Post, Get, Body, UseGuards, UseInterceptors, Request, Headers } from '@nestjs/common';
 import { AiConcurrencyInterceptor } from './ai-concurrency.interceptor';
-import { AI_TEXT_LABEL, labelAiGeneratedText } from '../../common/ai-content-label';
+import { aiTextLabel, labelAiGeneratedText } from '../../common/ai-content-label';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { AIService } from './ai.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
@@ -48,7 +48,7 @@ export class AIController {
         const labelled = labelAiGeneratedText(result.content);
         return {
           tokens: result.usage.total_tokens,
-          response: { ...result, content: labelled, aiGenerated: true, aiLabel: AI_TEXT_LABEL },
+          response: { ...result, content: labelled, aiGenerated: true, aiLabel: aiTextLabel() },
           generation: {
             userId: req.user.sub,
             generationType: 'article',
@@ -85,7 +85,7 @@ export class AIController {
         const result = await this.aiService.generateScript({ topic, type, platform });
         return {
           tokens: result.usage.total_tokens,
-          response: { title: result.title, scenes: result.scenes, aiLabel: AI_TEXT_LABEL },
+          response: { title: result.title, scenes: result.scenes, aiLabel: aiTextLabel() },
           generation: {
             userId: req.user.sub,
             generationType: 'script',
@@ -189,7 +189,7 @@ export class AIController {
           tokens: AI_HOLD_TOKENS.image,
           images: 1,
           attachContentId: 'image' as const,
-          response: { ...result, aiGenerated: true, aiLabel: AI_TEXT_LABEL },
+          response: { ...result, aiGenerated: true, aiLabel: aiTextLabel() },
           generation: {
             userId: req.user.sub,
             generationType: 'image',

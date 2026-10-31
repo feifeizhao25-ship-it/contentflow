@@ -17,6 +17,8 @@ function cosine(a: number[], b: number[]): number {
   return dot / Math.sqrt(na * nb);
 }
 
+import { mt as marketNote } from '../../../common/i18n/market-text';
+
 export interface RetrieveOptions {
   tenantId?: string | null;
   limit?: number;
@@ -49,7 +51,7 @@ export async function retrieve(query: string, sources: GrowthSource[], options: 
       reranker: 'local-overlap',
       fallback: false,
       refused: true,
-      note: '没有可用资料，不能下结论',
+      note: marketNote('没有可用资料，不能下结论', 'No source is available, so no conclusion can be drawn'),
     };
   }
   const embedded = await embedWithFallback(query, options.env, options.fetchImpl);
@@ -76,6 +78,6 @@ export async function retrieve(query: string, sources: GrowthSource[], options: 
     reranker: reranked.reranker,
     fallback: embedded.fallback || reranked.fallback,
     refused: combined.length === 0,
-    note: combined.length ? '引用仅包含本次检索到的来源' : '没有可用资料，不能下结论',
+    note: combined.length ? marketNote('引用仅包含本次检索到的来源', 'Citations include only the sources retrieved for this request') : marketNote('没有可用资料，不能下结论', 'No source is available, so no conclusion can be drawn'),
   };
 }

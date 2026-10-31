@@ -50,6 +50,7 @@ export interface RagFreshnessReport {
   sources: RagSourceStatus[];
 }
 
+export const CONSERVATIVE_USER_NOTICE_EN = "Today's compliance check is more conservative, so please confirm before you publish. This is not legal advice.";
 export const CONSERVATIVE_USER_NOTICE = '今天的合规检查会更保守，发布前需要你自行确认。这不是法律意见。';
 
 const DAY = 86_400_000;
@@ -158,8 +159,8 @@ export class RagPolicyService implements OnApplicationBootstrap, OnModuleDestroy
       needsReview,
       mode: needsReview ? 'conservative' : 'normal',
       generationAvailable: true,
-      notice: needsReview ? `${COMPLIANCE_REVIEW_NOTICE}：平台规则资料超过 ${maxAgeDays} 天未核对。AI 生成仍然可用，但不再引用这些过期资料，检查改为保守模式，发布前必须人工确认。` : null,
-      userNotice: needsReview ? CONSERVATIVE_USER_NOTICE : null,
+      notice: needsReview && process.env.MARKET_REGION === 'global' ? `Compliance sources need a human review: platform-rule sources have not been checked for over ${maxAgeDays} days. AI generation still works, but stale sources are no longer cited and checks run in conservative mode. A person must confirm before publishing.` : needsReview ? `${COMPLIANCE_REVIEW_NOTICE}：平台规则资料超过 ${maxAgeDays} 天未核对。AI 生成仍然可用，但不再引用这些过期资料，检查改为保守模式，发布前必须人工确认。` : null,
+      userNotice: needsReview ? (process.env.MARKET_REGION === 'global' ? CONSERVATIVE_USER_NOTICE_EN : CONSERVATIVE_USER_NOTICE) : null,
       sources,
     };
   }
@@ -196,6 +197,10 @@ export class RagPolicyService implements OnApplicationBootstrap, OnModuleDestroy
   }
 
   buildContext(sources: RagPolicySource[]) {
+    if (process.env.MARKET_REGION === 'global') {
+      if (!sources.length) return '\n\nNo compliance source has passed the source, freshness and jurisdiction checks. Do not invent platform rules or citations, and do not claim the content passed a compliance review; produce a draft for human review only.';
+      return `\n\nVerified compliance sources follow. Base compliance reminders only on them and add no facts they do not contain:\n${sources.map((source, index) => `[${index + 1}] ${source.source_name} (published: ${source.published_at}; retrieved: ${source.retrieved_at}${source.reviewed_at ? `; human review: ${source.reviewed_at}` : ''})\n${source.content}`).join('\n\n')}`;
+    }
     if (!sources.length) return '\n\n当前没有通过来源、时效和适用范围校验的合规资料。不要编造平台规则、引用或宣称已通过合规审核；仅生成待人工核对的草稿。';
     return `\n\n以下为已核验的合规资料，只能据此形成合规提醒，不得编造资料中没有的事实：\n${sources.map((source, index) => `[${index + 1}] ${source.source_name}（发布：${source.published_at}；检索：${source.retrieved_at}${source.reviewed_at ? `；人工复核：${source.reviewed_at}` : ''}）\n${source.content}`).join('\n\n')}`;
   }
