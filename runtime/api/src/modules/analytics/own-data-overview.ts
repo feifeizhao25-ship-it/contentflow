@@ -36,8 +36,29 @@ const FAILURE_CODE_TEXT: Record<string, string> = {
 
 const CJK = /[㐀-鿿]/;
 
-/** 失败原因只给中文：后端写的中文原样用；英文原文换成按错误码的中文说明。 */
-export function failureReasonText(code?: string | null, message?: string | null): string {
+export type OverviewLang = 'zh' | 'en';
+
+/** 国际版客户端传 ?lang=en；其余一律中文。 */
+export function normalizeLang(raw?: string | null): OverviewLang {
+  return String(raw ?? '').toLowerCase().startsWith('en') ? 'en' : 'zh';
+}
+
+const FAILURE_CODE_TEXT_EN: Record<string, string> = {
+  ADAPTER_NOT_INTEGRATED: 'This platform is not connected to its open API yet',
+  QUEUE_UNAVAILABLE: 'The publishing queue was temporarily unavailable',
+  DISPATCH_FAILED: 'The publishing service call failed',
+  CONTENT_COMPLIANCE_BLOCKED: 'Content did not pass the pre-publish compliance check',
+};
+
+/**
+ * 失败原因：中文版只给中文（后端写的中文原样用；英文原文换成按错误码的中文说明）。
+ * 英文版只给英文：按错误码给英文说明；中文原文无法翻译，也不外露，未知时如实说未记录。
+ */
+export function failureReasonText(code?: string | null, message?: string | null, lang: OverviewLang = 'zh'): string {
+  if (lang === 'en') {
+    if (code && FAILURE_CODE_TEXT_EN[code]) return FAILURE_CODE_TEXT_EN[code];
+    return 'Publishing failed (no specific reason recorded)';
+  }
   if (message && CJK.test(message)) return message.slice(0, 80);
   if (code && FAILURE_CODE_TEXT[code]) return FAILURE_CODE_TEXT[code];
   return '发布失败（未记录具体原因）';
@@ -50,6 +71,15 @@ export const AI_TYPE_TEXT: Record<string, string> = {
   image: '封面图片',
   viral_analysis: '爆款分析',
   content_pack: '内容包',
+};
+
+export const AI_TYPE_TEXT_EN: Record<string, string> = {
+  article: 'Articles',
+  titles: 'Titles',
+  script: 'Scripts',
+  image: 'Cover images',
+  viral_analysis: 'Viral analysis',
+  content_pack: 'Content packs',
 };
 
 export interface PublishSummary {
@@ -80,6 +110,16 @@ export const ENGAGEMENT_UNAVAILABLE = {
   message: '接通平台授权后显示',
   detail: '播放、点赞、评论、涨粉等互动数据只能通过平台开放接口获取。目前抖音、B 站授权尚未开通，小红书、视频号、公众号没有可用的第三方数据接口，所以这里不显示任何互动数字。',
 };
+
+export const ENGAGEMENT_UNAVAILABLE_EN = {
+  available: false as const,
+  message: 'Shown once your platforms are connected',
+  detail: 'Views, likes, comments and follower growth can only be read through each platform\'s official API. Those connections are not available yet, so no engagement numbers are shown here.',
+};
+
+export function engagementUnavailable(lang: OverviewLang) {
+  return lang === 'en' ? ENGAGEMENT_UNAVAILABLE_EN : ENGAGEMENT_UNAVAILABLE;
+}
 
 /**
  * 统计窗口：整周（北京时间周一 0 点到下周一 0 点）、整月（1 日 0 点到下月 1 日 0 点）。

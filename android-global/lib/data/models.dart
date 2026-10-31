@@ -341,6 +341,131 @@ class AnalyticsSummary {
   }
 }
 
+// ============== Analytics overview (GET /analytics/overview, own data only) ==============
+int _ovInt(dynamic v) => v is num ? v.toInt() : int.tryParse('${v ?? ''}') ?? 0;
+
+class PublishCounts {
+  final int total;
+  final int published;
+  final int failed;
+  final int inProgress;
+  final int manualPending;
+  final int manualDone;
+  final int cancelled;
+
+  const PublishCounts({
+    this.total = 0,
+    this.published = 0,
+    this.failed = 0,
+    this.inProgress = 0,
+    this.manualPending = 0,
+    this.manualDone = 0,
+    this.cancelled = 0,
+  });
+
+  factory PublishCounts.fromJson(dynamic json) {
+    final m = json is Map ? json : const {};
+    return PublishCounts(
+      total: _ovInt(m['total']),
+      published: _ovInt(m['published']),
+      failed: _ovInt(m['failed']),
+      inProgress: _ovInt(m['inProgress']),
+      manualPending: _ovInt(m['manualPending']),
+      manualDone: _ovInt(m['manualDone']),
+      cancelled: _ovInt(m['cancelled']),
+    );
+  }
+}
+
+class AiTypeCount {
+  final String type;
+  final String label;
+  final int count;
+  const AiTypeCount({required this.type, required this.label, required this.count});
+}
+
+class AiCounts {
+  final int generations;
+  final List<AiTypeCount> byType;
+  final int savedAsContent;
+  final int approvedOrPublished;
+
+  const AiCounts({
+    this.generations = 0,
+    this.byType = const [],
+    this.savedAsContent = 0,
+    this.approvedOrPublished = 0,
+  });
+
+  factory AiCounts.fromJson(dynamic json) {
+    final m = json is Map ? json : const {};
+    final rows = m['byType'] is List ? m['byType'] as List : const [];
+    return AiCounts(
+      generations: _ovInt(m['generations']),
+      byType: [
+        for (final r in rows)
+          if (r is Map)
+            AiTypeCount(type: '${r['type'] ?? ''}', label: '${r['label'] ?? ''}', count: _ovInt(r['count'])),
+      ],
+      savedAsContent: _ovInt(m['savedAsContent']),
+      approvedOrPublished: _ovInt(m['approvedOrPublished']),
+    );
+  }
+}
+
+class OverviewPeriod {
+  final PublishCounts publish;
+  final AiCounts ai;
+  const OverviewPeriod({this.publish = const PublishCounts(), this.ai = const AiCounts()});
+
+  factory OverviewPeriod.fromJson(dynamic json) {
+    final m = json is Map ? json : const {};
+    return OverviewPeriod(publish: PublishCounts.fromJson(m['publish']), ai: AiCounts.fromJson(m['ai']));
+  }
+}
+
+class FailureReason {
+  final String reason;
+  final int count;
+  const FailureReason({required this.reason, required this.count});
+}
+
+class AnalyticsOverview {
+  final OverviewPeriod week;
+  final OverviewPeriod month;
+  final List<FailureReason> failureReasons;
+
+  /// false until platform authorisation is connected: the server then gives no engagement numbers at all.
+  final bool engagementAvailable;
+  final String engagementMessage;
+  final String engagementDetail;
+
+  const AnalyticsOverview({
+    this.week = const OverviewPeriod(),
+    this.month = const OverviewPeriod(),
+    this.failureReasons = const [],
+    this.engagementAvailable = false,
+    this.engagementMessage = '',
+    this.engagementDetail = '',
+  });
+
+  factory AnalyticsOverview.fromJson(Map<String, dynamic> json) {
+    final eng = json['engagement'] is Map ? json['engagement'] as Map : const {};
+    final reasons = json['failureReasons'] is List ? json['failureReasons'] as List : const [];
+    return AnalyticsOverview(
+      week: OverviewPeriod.fromJson(json['week']),
+      month: OverviewPeriod.fromJson(json['month']),
+      failureReasons: [
+        for (final r in reasons)
+          if (r is Map) FailureReason(reason: '${r['reason'] ?? ''}', count: _ovInt(r['count'])),
+      ],
+      engagementAvailable: eng['available'] == true,
+      engagementMessage: '${eng['message'] ?? ''}',
+      engagementDetail: '${eng['detail'] ?? ''}',
+    );
+  }
+}
+
 // ============== User ==============
 class User {
   final String id;

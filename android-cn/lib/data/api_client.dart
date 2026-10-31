@@ -192,12 +192,17 @@ class ApiClient {
     );
   }
 
-  Future<List<ContentAnalytics>> getContentAnalytics() async {
+  /// 数据分析页：服务端 GET /analytics/overview（只含自有数据：发布任务、AI 生成、失败原因）。
+  Future<AnalyticsOverview> getAnalyticsOverview() async {
     return _handle(
-      () => _dio.get('/analytics/dashboard'),
-      (_) => <ContentAnalytics>[],
+      () => _dio.get('/analytics/overview'),
+      (payload) => AnalyticsOverview.fromJson(_extractMap(payload)),
     );
   }
+
+  /// 单条内容的播放 / 点赞数据：目前没有任何数据来源（平台开放接口未接通），所以这里不请求、直接返回空列表，
+  /// 页面据此显示「接通平台授权后显示」，而不是请求一个不返回列表的接口。
+  Future<List<ContentAnalytics>> getContentAnalytics() async => const <ContentAnalytics>[];
 
   // ============== Subscription ==============
 

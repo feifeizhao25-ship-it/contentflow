@@ -3,13 +3,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/illustrated_gl.dart';
 import '../../core/providers.dart';
 import '../../data/models.dart';
+import 'overview_section.dart';
 
 class InsightsScreen extends ConsumerWidget {
   const InsightsScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final summaryAsync = ref.watch(analyticsSummaryProvider);
     final contentAsync = ref.watch(contentAnalyticsProvider);
 
     return Scaffold(
@@ -17,7 +17,7 @@ class InsightsScreen extends ConsumerWidget {
       body: SafeArea(
         child: RefreshIndicator(
           onRefresh: () async {
-            ref.invalidate(analyticsSummaryProvider);
+            ref.invalidate(analyticsOverviewProvider);
             ref.invalidate(contentAnalyticsProvider);
           },
           child: CustomScrollView(
@@ -25,20 +25,8 @@ class InsightsScreen extends ConsumerWidget {
               // Header
               SliverToBoxAdapter(child: _buildHeader(context)),
 
-              // Analytics Chart
-              SliverToBoxAdapter(
-                child: const GlSectionTitle(icon: Icons.insights, title: 'Recent metrics'),
-              ),
-
-              summaryAsync.when(
-                data: (summary) =>
-                    SliverToBoxAdapter(child: _buildChart(context, summary)),
-                loading: () => const SliverToBoxAdapter(
-                  child: Center(child: CircularProgressIndicator()),
-                ),
-                error: (_, __) =>
-                    const SliverToBoxAdapter(child: SizedBox.shrink()),
-              ),
+              // Own-data overview (GET /analytics/overview)
+              const SliverToBoxAdapter(child: OverviewSection()),
 
               // Winner Alert
               contentAsync.when(
@@ -96,7 +84,7 @@ class InsightsScreen extends ConsumerWidget {
                         child: GlEmptyState(
                           asset: 'assets/images/cfg_empty_insights.webp',
                           title: 'No content data yet',
-                          message: 'Once published posts report views and engagement, they will be compared here.',
+                          message: 'Per-post views, engagement and rates appear once your platforms are connected. No estimated numbers are shown until then.',
                         ),
                       )
                     : SliverList(
@@ -146,38 +134,6 @@ class InsightsScreen extends ConsumerWidget {
                 ),
               ],
             ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildChart(BuildContext context, AnalyticsSummary summary) {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 20),
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Column(
-        children: [
-          const Align(
-            alignment: Alignment.centerLeft,
-            child: Text(
-              'Running totals across your published content.',
-              style: TextStyle(color: Color(0xFF3F3F46), fontSize: 14, height: 1.5),
-            ),
-          ),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              GlStatTile(icon: Icons.play_circle_outline, label: 'Views', value: _formatNumber(summary.totalViews), color: Colors.blue.shade700),
-              const SizedBox(width: 10),
-              GlStatTile(icon: Icons.favorite_border, label: 'Engagement', value: _formatNumber(summary.totalEngagement), color: Colors.orange.shade800),
-              const SizedBox(width: 10),
-              GlStatTile(icon: Icons.article_outlined, label: 'Content', value: '${summary.totalContent}', color: Colors.green.shade700),
-            ],
           ),
         ],
       ),

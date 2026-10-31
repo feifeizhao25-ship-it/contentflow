@@ -1,0 +1,74 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:contentflow_global/core/providers.dart';
+import 'package:contentflow_global/data/models.dart';
+import 'package:contentflow_global/features/insights/overview_section.dart';
+
+const _json = <String, dynamic>{
+  'week': {
+    'publish': {'total': 9, 'published': 2, 'failed': 3, 'inProgress': 1, 'manualPending': 2, 'manualDone': 1, 'cancelled': 0},
+    'ai': {
+      'generations': 10,
+      'byType': [
+        {'type': 'titles', 'label': 'Titles', 'count': 6},
+      ],
+      'savedAsContent': 3,
+      'approvedOrPublished': 1,
+    },
+  },
+  'month': {
+    'publish': {'total': 0},
+    'ai': {'generations': 0, 'byType': []},
+  },
+  'failureReasons': [
+    {'reason': 'This platform is not connected to its open API yet', 'count': 2},
+  ],
+  'engagement': {'available': false, 'message': 'Shown once your platforms are connected', 'detail': 'detail text'},
+};
+
+Future<void> _pump(WidgetTester tester, AnalyticsOverview overview) async {
+  tester.view.physicalSize = const Size(900, 3200);
+  tester.view.devicePixelRatio = 1.0;
+  addTearDown(tester.view.reset);
+  await tester.pumpWidget(ProviderScope(
+    overrides: [analyticsOverviewProvider.overrideWith((ref) async => overview)],
+    child: const MaterialApp(home: Scaffold(body: SingleChildScrollView(child: OverviewSection()))),
+  ));
+  await tester.pump();
+  await tester.pump(const Duration(milliseconds: 200));
+}
+
+void main() {
+  test('parses the server overview as it is, and tolerates missing fields', () {
+    final o = AnalyticsOverview.fromJson(_json);
+    expect(o.week.publish.published, 2);
+    expect(o.week.publish.manualDone, 1);
+    expect(o.week.ai.byType.single.count, 6);
+    expect(o.failureReasons.single.count, 2);
+    expect(o.engagementAvailable, false);
+    final empty = AnalyticsOverview.fromJson(const <String, dynamic>{});
+    expect(empty.week.publish.total, 0);
+    expect(empty.failureReasons, isEmpty);
+    expect(empty.engagementMessage, '');
+  });
+
+  testWidgets('shows real counts for the week, the real failure reason, and the no-engagement note', (tester) async {
+    await _pump(tester, AnalyticsOverview.fromJson(_json));
+    expect(find.text('This week'), findsOneWidget);
+    expect(find.text('Published'), findsWidgets);
+    expect(find.text('3'), findsWidgets); // failed
+    expect(find.text('10'), findsOneWidget); // AI generations
+    expect(find.text('This platform is not connected to its open API yet'), findsOneWidget);
+    expect(find.textContaining('Shown once your platforms are connected'), findsOneWidget);
+    expect(find.text('detail text'), findsOneWidget);
+  });
+
+  testWidgets('a period without tasks shows the empty state, not zeros', (tester) async {
+    await _pump(tester, AnalyticsOverview.fromJson(_json));
+    await tester.tap(find.text('This month'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 200));
+    expect(find.text('No publishing tasks in this period'), findsOneWidget);
+  });
+}
