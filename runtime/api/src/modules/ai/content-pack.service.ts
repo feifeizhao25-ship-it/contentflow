@@ -35,7 +35,7 @@ export class ContentPackService {
             // 2. Multi-step AI Pipeline
             // Step A: Headlines x 10
             const platformsStr = dto.platforms?.join(',') || mt('全渠道', 'all channels');
-            const titleResult = await this.aiService.generateTitlesWithUsage(dto.topic, platformsStr, 10);
+            const titleResult = await this.aiService.generateTitlesWithUsage(dto.topic, platformsStr, dto.count ?? 10);
             const titles = titleResult?.titles;
             if (!Array.isArray(titles) || titles.length === 0 ||
                 titles.some(title => typeof title !== 'string' || !title.trim())) {

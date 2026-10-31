@@ -18,7 +18,7 @@ interface Subscription {
 }
 
 /**
- * 对外通知只对 Business 开放，走已有的订阅接口。
+ * 对外通知只对商务版开放，走已有的订阅接口。
  * API 密钥仍未对外开放，这里不提供创建密钥的入口。
  */
 export function WebhookSettings() {
@@ -38,7 +38,7 @@ export function WebhookSettings() {
       setGate('open');
     } catch (err) {
       const text = safeErrorText(err, '暂时无法读取对外通知设置');
-      if (err instanceof FriendlyApiError && (err.status === 403 || /Business/.test(text))) {
+      if (err instanceof FriendlyApiError && (err.status === 403 || /商务版/.test(text))) {
         setGate('closed');
         setGateMessage(text);
         return;
@@ -79,7 +79,7 @@ export function WebhookSettings() {
       )}
       {gate === 'open' && (
         <Card data-testid="webhook-form">
-          <p className="mb-3 text-sm text-zinc-600">仅 Business 档可以保存。地址必须是公网 https，签名密钥只在创建时显示一次。</p>
+          <p className="mb-3 text-sm text-zinc-600">仅商务版可以保存。地址必须是公网 https，签名密钥只在创建时显示一次。</p>
           <label className="mb-1 block text-sm text-zinc-600" htmlFor="webhook-url">通知地址</label>
           <Input id="webhook-url" value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://example.com/hooks" />
           <div className="mt-3">

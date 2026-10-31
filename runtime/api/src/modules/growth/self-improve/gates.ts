@@ -12,6 +12,8 @@ export interface GateThresholds {
   noise_sigma: number;
   no_skill_lift_min: number;
   notApplicable: string[];
+  /** 产品自带的额外下限，形如 [['refusal_accuracy', 1.0]]。缺失即不通过（fail-closed）；默认不设，不影响现有行为。 */
+  extraFloors?: [string, number][];
 }
 
 export const DEFAULT_THRESHOLDS: GateThresholds = {
@@ -60,6 +62,7 @@ export function evaluateGates(
   floor('citation_accuracy', th.citation_accuracy_min);
   floor('freshness_correctness', th.freshness_correctness_min);
   floor('redteam_pass_rate', th.redteam_pass_min);
+  for (const [k, m] of th.extraFloors ?? []) floor(k, m);
   const cap = (key: string, max: number) => {
     if (na.has(key)) return;
     const v = candidate[key];
