@@ -21,23 +21,31 @@ export class ComplianceCheckController {
   @ApiOperation({ summary: '检查正文的合规级别（不发布）' })
   async check(@Body() body: { text?: string }) {
     const text = String(body?.text ?? '').trim().slice(0, 20000);
-    if (!text) throw new BadRequestException('请输入要检查的正文');
-    let conservative = true;
-    try {
+    const isGlobal = this.compliance.isGlobal();
+    if (!text) throw new BadRequestException(isGlobal ? 'Please enter the text to check' : '请输入要检查的正文');
+    let conservative = !isGlobal;
+    if (!isGlobal) try {
       conservative = !!(await this.rag.freshnessReport()).needsReview;
     } catch {
       conservative = true;
     }
     const result = await this.compliance.checkContent(text, { conservative });
+    // 规则命中数与未检查项一并返回：「clear」只代表这批规则没发现，不代表可以发布。
+    const rulesChecked = 'rulesChecked' in result ? result.rulesChecked : undefined;
+    const notChecked = 'notChecked' in result ? result.notChecked : undefined;
     return {
       passed: result.passed,
       level: result.level,
       disclaimer: result.disclaimer,
       mode: result.mode,
+      ruleSetVersion: result.ruleSetVersion,
+      ...(rulesChecked !== undefined ? { rulesChecked } : {}),
+      ...(notChecked !== undefined ? { notChecked } : {}),
       hits: result.hits.map((hit) => ({
         ruleId: hit.ruleId,
         severity: hit.severity,
         reason: hit.reason,
+        matchedTerms: hit.matchedTerms,
       })),
     };
   }
