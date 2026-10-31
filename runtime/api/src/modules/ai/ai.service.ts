@@ -1,3 +1,4 @@
+import { openRouterHeaderValue } from '../../common/http-header';
 import { splitArticleAndVisualPrompts } from './visual-prompts';
 import { CLAIMS_NOTICE_EN, CLAIMS_NOTICE_ZH, findUnverifiedClaims } from './unverified-claims';
 import { GROUNDING_NOTICE_EN, GROUNDING_NOTICE_ZH, Grounding, groundClaims, materialPromptBlock } from './grounding';
@@ -299,7 +300,7 @@ export class AIService {
       try {
         response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${this.openRouterApiKey}`, 'HTTP-Referer': this.configService.get('OPENROUTER_SITE_URL', 'https://fenfa.ai'), 'X-Title': '分发侠' },
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${this.openRouterApiKey}`, 'HTTP-Referer': this.configService.get('OPENROUTER_SITE_URL', 'https://fenfa.ai'), 'X-Title': openRouterHeaderValue('Fenfa AI') },
           body: JSON.stringify({ models, messages: [{ role: 'user', content: params.prompt }], max_tokens: maxTokens, temperature: params.temperature ?? 0.7, provider: { data_collection: 'deny', zdr: true, require_parameters: true } }),
         });
       } catch (error) {

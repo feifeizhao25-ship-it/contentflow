@@ -24,7 +24,7 @@ describe('流量漏斗', () => {
     expect(() => store.record({ event: 'site_view', visitor_id: 'visitor-01', body: { email: 'a@example.com' } })).toThrow('个人身份');
   });
 
-  it('免费版仍是每月 5 条，Business 配额仍是待确认', () => {
+  it('免费版仍是每月 5 条，商务版配额仍是待确认', () => {
     expect(CN_PLANS.find((plan) => plan.id === 'free')?.monthlyPostQuota).toBe(5);
     expect(CN_PLANS.find((plan) => plan.id === 'enterprise')?.quotaStatus).toBe('unconfirmed');
   });

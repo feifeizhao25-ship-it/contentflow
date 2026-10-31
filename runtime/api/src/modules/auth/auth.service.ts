@@ -10,6 +10,7 @@ import { LoginDto } from './dto/login.dto';
 import { RegisterPhoneDto } from './dto/phone.dto';
 import { maskEmail, maskPhone } from '../../common/pii';
 import { CONSENT_VERSION } from './consent';
+import { defaultTenantSettings, defaultWorkspaceName } from '../../common/i18n/market-text';
 import { placeholderEmail, publicEmail } from './phone-account';
 import { normalizeChinaMobile } from './sms/phone';
 import { SmsCodeService } from './sms/sms-code.service';
@@ -118,7 +119,7 @@ export class AuthService {
       user = await this.prisma.$transaction(async (tx) => {
         const tenant = await tx.tenant.create({
           data: {
-            name: dto.tenantName || (dto.name ? `${dto.name}的工作室` : '我的工作室'),
+            name: dto.tenantName || defaultWorkspaceName(dto.name),
             slug: `u_${id.slice(0, 8)}_${Date.now().toString(36)}`,
             limits,
             usage_stats,
@@ -209,8 +210,9 @@ export class AuthService {
       user = await this.prisma.$transaction(async (tx) => {
         const tenant = await tx.tenant.create({
           data: {
-            name: tenantName || (name ? `${name}的工作室` : '我的工作室'),
+            name: tenantName || defaultWorkspaceName(name),
             slug: email.split('@')[0] + '_' + Date.now().toString(36),
+            ...(defaultTenantSettings() ? { settings: defaultTenantSettings() as any } : {}),
             limits,
             usage_stats,
           },

@@ -192,7 +192,7 @@ export class BillingController {
     const { plan, expired, limits } = effectiveEntitlements(tenant);
     // 与 AI 接口的额度闸同一算法（UsageService.checkQuota → aiTokenAllowance）
     const aiTokens = aiTokenAllowance(limits, meter as any);
-    // 国内 Business 的令牌/平台账号额度尚未经负责人确认。内部仍保留有限上限，避免变成不限；
+    // 国内商务版的令牌/平台账号额度尚未经负责人确认。内部仍保留有限上限，避免变成不限；
     // 对外只标待确认，不把推算数字当成已承诺额度。国际版不使用这套口径。
     const quotaStatus = process.env.MARKET_REGION === 'global'
       ? 'confirmed'
