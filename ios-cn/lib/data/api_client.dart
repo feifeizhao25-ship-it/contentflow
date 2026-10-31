@@ -76,13 +76,17 @@ class ApiClient {
 
   Future<ContentPack> generateContentPack({
     required String topic,
+    int titleCount = 5,
+    List<String>? platforms,
   }) async {
-    // 后端 DTO 只接受 topic / platforms / personaId（forbidNonWhitelisted），
-    // 多发 count 会直接 400。标题数量由服务端决定。
     return _handle(
       () => _dio.post(
         '/content-pack/generate',
-        data: {'topic': topic},
+        data: {
+          'topic': topic,
+          'count': titleCount,
+          if (platforms != null && platforms.isNotEmpty) 'platforms': platforms,
+        },
       ),
       (payload) {
         // 服务端对结果包了两层（{data: {success, data: {...}}}），这里取最里面那层。
@@ -93,12 +97,18 @@ class ApiClient {
     );
   }
 
+  /// The server keeps titles to 200 characters.
+  static String _draftTitle(ContentPack pack) {
+    final t = (pack.titles.isNotEmpty ? pack.titles.first : pack.topic).trim();
+    return t.length > 200 ? t.substring(0, 200) : t;
+  }
+
   Future<ContentPack> saveContentPack(ContentPack pack) async {
     await _handle(
       () => _dio.post(
         '/contents',
         data: {
-          'title': pack.titles.isNotEmpty ? pack.titles.first : pack.topic,
+          'title': _draftTitle(pack),
           'body': pack.script,
           'content_type': 'script',
           'tags': pack.hashtags,

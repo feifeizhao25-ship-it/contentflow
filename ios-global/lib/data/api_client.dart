@@ -79,6 +79,7 @@ class ApiClient {
     int titleCount = 5,
     String? targetMarket,
     String? material,
+    List<String>? platforms,
   }) async {
     return _handle(
       () => _dio.post(
@@ -90,6 +91,7 @@ class ApiClient {
             'targetMarket': targetMarket,
           if (material != null && material.trim().isNotEmpty)
             'material': material.trim(),
+          if (platforms != null && platforms.isNotEmpty) 'platforms': platforms,
         },
       ),
       (payload) {
@@ -103,8 +105,29 @@ class ApiClient {
     );
   }
 
+  /// The server keeps titles to 200 characters.
+  static String _draftTitle(ContentPack pack) {
+    final t = (pack.titles.isNotEmpty ? pack.titles.first : pack.topic).trim();
+    return t.length > 200 ? t.substring(0, 200) : t;
+  }
+
+  /// Saves the generated pack to the account's content as a cloud draft.
   Future<ContentPack> saveContentPack(ContentPack pack) async {
-    throw UnsupportedError('Content pack saving is not available yet');
+    await _handle(
+      () => _dio.post(
+        '/contents',
+        data: {
+          'title': _draftTitle(pack),
+          'body': pack.script,
+          'content_type': 'script',
+          'tags': pack.hashtags,
+          'source': 'ai',
+          'ai_params': pack.toJson(),
+        },
+      ),
+      (payload) => _extractMap(payload),
+    );
+    return pack;
   }
 
   Future<List<ContentPack>> getContentPacks() async {

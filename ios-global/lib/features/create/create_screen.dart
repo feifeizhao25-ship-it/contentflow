@@ -3,6 +3,7 @@ import '../../data/api_exception.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/providers.dart';
 import '../../data/models.dart';
+import 'platform_options.dart';
 import 'market_options.dart';
 
 class CreateScreen extends ConsumerStatefulWidget {
@@ -18,6 +19,9 @@ class _CreateScreenState extends ConsumerState<CreateScreen> {
   String _targetMarket = '';
   bool _isGenerating = false;
   ContentPack? _generatedPack;
+  final Set<String> _platforms = {...kDefaultPlatforms};
+  bool _saving = false;
+  bool _saved = false;
 
   @override
   void dispose() {
@@ -48,9 +52,11 @@ class _CreateScreenState extends ConsumerState<CreateScreen> {
         topic: _topicController.text.trim(),
         targetMarket: _targetMarket,
         material: _materialController.text,
+        platforms: _platforms.toList(),
       );
       setState(() {
         _generatedPack = pack;
+        _saved = false;
       });
     } catch (e) {
       final message = e is ApiException
@@ -69,6 +75,42 @@ class _CreateScreenState extends ConsumerState<CreateScreen> {
         });
       }
     }
+  }
+
+  Future<void> _saveGeneratedPack() async {
+    final pack = _generatedPack;
+    if (pack == null || _saving || _saved) return;
+    setState(() => _saving = true);
+    try {
+      await ref.read(apiClientProvider).saveContentPack(pack);
+      if (mounted) {
+        setState(() => _saved = true);
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Saved as a cloud draft')));
+      }
+    } catch (error) {
+      if (mounted) {
+        final message = error is ApiException
+            ? error.message
+            : 'Could not save. Please try again later.';
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(message)));
+      }
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  void _showPlatformAdapters(ContentPack pack) {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      builder: (sheetContext) => PlatformAdapterSheet(
+        payloads: pack.platformPayloads ?? const <String, PlatformPayload>{},
+      ),
+    );
   }
 
   @override
@@ -169,6 +211,15 @@ class _CreateScreenState extends ConsumerState<CreateScreen> {
           ),
           const SizedBox(height: 16),
           MaterialField(controller: _materialController),
+          const SizedBox(height: 16),
+          PlatformPicker(
+            selected: _platforms,
+            onChanged: (v) => setState(() {
+              _platforms
+                ..clear()
+                ..addAll(v);
+            }),
+          ),
           if (_errorMessage != null) ...[
             const SizedBox(height: 16),
             Container(
@@ -371,14 +422,9 @@ class _CreateScreenState extends ConsumerState<CreateScreen> {
             children: [
               Expanded(
                 child: OutlinedButton.icon(
-                  onPressed: () {
-                    // TODO: Save to local
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Saved to content pack')),
-                    );
-                  },
-                  icon: const Icon(Icons.save),
-                  label: const Text('Save to content pack'),
+                  onPressed: (_saving || _saved) ? null : _saveGeneratedPack,
+                  icon: Icon(_saved ? Icons.check : Icons.save),
+                  label: Text(_saved ? 'Saved' : 'Save to content pack'),
                   style: OutlinedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 14),
                     side: BorderSide(color: Theme.of(context).primaryColor),
@@ -388,14 +434,7 @@ class _CreateScreenState extends ConsumerState<CreateScreen> {
               const SizedBox(width: 12),
               Expanded(
                 child: ElevatedButton.icon(
-                  onPressed: () {
-                    // TODO: Navigate to platform adapter
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Opening platform adaptation...'),
-                      ),
-                    );
-                  },
+                  onPressed: () => _showPlatformAdapters(pack),
                   icon: const Icon(Icons.adjust),
                   label: const Text('Platform adaptation'),
                   style: ElevatedButton.styleFrom(

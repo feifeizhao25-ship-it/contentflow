@@ -20,6 +20,7 @@ class _FakeApi implements ApiClient {
     int titleCount = 5,
     String? targetMarket,
     String? material,
+    List<String>? platforms,
   }) async {
     market = targetMarket;
     this.material = material;
