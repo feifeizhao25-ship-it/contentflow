@@ -132,7 +132,8 @@ class AssetsScreen extends ConsumerWidget {
                 ref.read(showDraftsProvider.notifier).state = true;
                 ref.invalidate(contentDraftsProvider);
                 // The chip sits at the end of a scrolling row: bring it fully into view.
-                WidgetsBinding.instance.addPostFrameCallback((_) {
+                // (after the selection checkmark has animated in, so the final width is known)
+                Future<void>.delayed(const Duration(milliseconds: 350), () {
                   if (chipContext.mounted) {
                     Scrollable.ensureVisible(chipContext, duration: const Duration(milliseconds: 200));
                   }
