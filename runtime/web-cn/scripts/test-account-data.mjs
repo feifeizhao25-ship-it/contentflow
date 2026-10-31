@@ -150,5 +150,15 @@ await check('注册页的同意由后端留痕：两种注册都把 agreedToTerm
   assert.equal((page.match(/agreedToTerms: values\.agreement === true/g) || []).length, 2);
 });
 
+await check('注册页必须勾选「我已满 16 周岁」：两种注册都提交 confirmedAge16，且表单有必填校验', () => {
+  const lib = fs.readFileSync(path.join(ROOT, 'src/lib/auth-service.ts'), 'utf8');
+  assert.equal((lib.match(/confirmedAge16: input\.confirmedAge16/g) || []).length, 2);
+  const page = fs.readFileSync(path.join(ROOT, 'src/app/(auth)/register/page.tsx'), 'utf8');
+  assert.equal((page.match(/confirmedAge16: values\.ageConfirmed === true/g) || []).length, 2);
+  assert.equal((page.match(/\{ageItem\}/g) || []).length, 2);
+  assert.match(page, /我已满 16 周岁/);
+  assert.match(page, /请确认您已年满 16 周岁/);
+});
+
 if (failures) { console.error(`\n${failures} failed`); process.exit(1); }
 console.log('\nAll account-data tests passed');

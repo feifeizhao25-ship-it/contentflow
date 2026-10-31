@@ -177,7 +177,8 @@ test('国内版主要流程', async ({ page }, info) => {
     await pane.getByPlaceholder('团队/公司名称', { exact: true }).fill('界面测试工作室');
     await pane.getByPlaceholder('密码（至少6位）').fill(PASSWORD);
     await pane.getByPlaceholder('确认密码').fill(PASSWORD);
-    await pane.getByRole('checkbox').check();
+    await pane.getByRole('checkbox', { name: /用户协议/ }).check();
+    await pane.getByRole('checkbox', { name: /我已满 16 周岁/ }).check();
     await pane.getByRole('button', { name: /^注\s*册$/ }).click();
     await page.waitForURL('**/studio**');
     await shot(page, info, 'register-studio');

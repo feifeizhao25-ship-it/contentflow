@@ -108,7 +108,7 @@ describe('手机号 + 短信验证码（接口层）', () => {
   const sendCode = (phone: string, purpose: string) => http().post('/api/v1/auth/sms/send').send({ phone, purpose });
   const advance = (ms: number) => { now = new Date(now.getTime() + ms); };
   const lastCode = () => sent[sent.length - 1].code;
-  const registerBody = (over: Record<string, unknown> = {}) => ({ phone: PHONE, code: lastCode(), agreedToTerms: true, ...over });
+  const registerBody = (over: Record<string, unknown> = {}) => ({ phone: PHONE, code: lastCode(), agreedToTerms: true, confirmedAge16: true, ...over });
 
   describe('发送验证码', () => {
     it('手机号格式不对：400 中文提示，不调用短信服务', async () => {
@@ -362,13 +362,42 @@ describe('手机号 + 短信验证码（接口层）', () => {
     });
   });
 
+  describe('必须确认年满 16 周岁（2026-10-31，待法务复核）', () => {
+    it('手机号注册：缺少 / false / 字符串 \'true\' → 400，不建账号；true → 201', async () => {
+      await boot();
+      await sendCode(PHONE, 'register');
+      const code = lastCode();
+      for (const confirmedAge16 of [undefined, false, 'true', 1]) {
+        const res = await http().post('/api/v1/auth/register/phone').send({ phone: PHONE, code, agreedToTerms: true, ...(confirmedAge16 === undefined ? {} : { confirmedAge16 }) });
+        expect(res.status).toBe(400);
+        expect(JSON.stringify(res.body)).toContain('16');
+      }
+      expect(db.users).toHaveLength(0);
+      expect((await http().post('/api/v1/auth/register/phone').send(registerBody({ code }))).status).toBe(201);
+    });
+
+    it('邮箱注册：缺少 / false → 400，提示里有「16 周岁」', async () => {
+      await boot();
+      const base = { email: 'age@example.com', password: 'secret12', agreedToTerms: true };
+      for (const body of [base, { ...base, confirmedAge16: false }, { ...base, confirmedAge16: 'true' }]) {
+        const res = await http().post('/api/v1/auth/register').send(body);
+        expect(res.status).toBe(400);
+        expect(JSON.stringify(res.body)).toContain('16 周岁');
+      }
+      expect(db.users).toHaveLength(0);
+    });
+  });
+
   describe('邮箱注册也必须同意并留痕', () => {
     it('缺少 agreedToTerms → 400；带上 → 记录协议版本', async () => {
       await boot();
       const base = { email: 'new@example.com', password: 'secret12', name: '小李' };
       expect((await http().post('/api/v1/auth/register').send(base)).status).toBe(400);
       expect(db.users).toHaveLength(0);
-      const ok = await http().post('/api/v1/auth/register').send({ ...base, agreedToTerms: true });
+      // 勾了同意但没确认年满 16 周岁 → 400
+      expect((await http().post('/api/v1/auth/register').send({ ...base, agreedToTerms: true })).status).toBe(400);
+      expect(db.users).toHaveLength(0);
+      const ok = await http().post('/api/v1/auth/register').send({ ...base, agreedToTerms: true, confirmedAge16: true });
       expect(ok.status).toBe(201);
       expect(db.users[0].consent_version).toBe(CONSENT_VERSION);
       expect(db.users[0].consent_at).toBeInstanceOf(Date);
@@ -376,7 +405,7 @@ describe('手机号 + 短信验证码（接口层）', () => {
 
     it('没填工作区名也没填姓名时不会得到「undefined的工作室」', async () => {
       await boot();
-      await http().post('/api/v1/auth/register').send({ email: 'n@example.com', password: 'secret12', agreedToTerms: true });
+      await http().post('/api/v1/auth/register').send({ email: 'n@example.com', password: 'secret12', agreedToTerms: true, confirmedAge16: true });
       expect(db.tenants[0].name).not.toContain('undefined');
     });
   });
@@ -391,9 +420,9 @@ describe('手机号 + 短信验证码（接口层）', () => {
       await http().post('/api/v1/auth/login/sms').send({ phone: PHONE, code: lastCode() });
       // 失败路径也不泄露
       await sendCode('13700001111', 'register');
-      await http().post('/api/v1/auth/register/phone').send({ phone: '13700001111', code: '000000', agreedToTerms: true });
+      await http().post('/api/v1/auth/register/phone').send({ phone: '13700001111', code: '000000', agreedToTerms: true, confirmedAge16: true });
       const email = 'someone.private@example.com';
-      await http().post('/api/v1/auth/register').send({ email, password: 'secret12', agreedToTerms: true });
+      await http().post('/api/v1/auth/register').send({ email, password: 'secret12', agreedToTerms: true, confirmedAge16: true });
       await http().post('/api/v1/auth/login').send({ email, password: 'secret12' });
       await http().post('/api/v1/auth/login').send({ email, password: 'wrong-password' });
 

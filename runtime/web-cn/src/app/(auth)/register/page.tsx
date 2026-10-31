@@ -32,6 +32,7 @@ export default function RegisterPage() {
                 name: values.name,
                 tenantName: values.tenantName,
                 agreedToTerms: values.agreement === true,
+                confirmedAge16: values.ageConfirmed === true,
             });
             message.success('注册成功');
             router.push('/studio');
@@ -52,6 +53,7 @@ export default function RegisterPage() {
                 name: values.name || undefined,
                 tenantName: values.tenantName || undefined,
                 agreedToTerms: values.agreement === true,
+                confirmedAge16: values.ageConfirmed === true,
             });
             message.success('注册成功');
             router.push('/studio');
@@ -75,6 +77,21 @@ export default function RegisterPage() {
             <Checkbox>
                 我已阅读并同意 <Link href="/terms" target="_blank">《用户协议》</Link> 和 <Link href="/privacy" target="_blank">《隐私政策》</Link>
             </Checkbox>
+        </Form.Item>
+    );
+
+    // 「我已满 16 周岁」：必须勾选，服务端同样校验（confirmedAge16 只认布尔 true）
+    const ageItem = (
+        <Form.Item
+            name="ageConfirmed"
+            valuePropName="checked"
+            rules={[{
+                validator: (_, value) => value
+                    ? Promise.resolve()
+                    : Promise.reject(new Error('请确认您已年满 16 周岁')),
+            }]}
+        >
+            <Checkbox>我已满 16 周岁</Checkbox>
         </Form.Item>
     );
 
@@ -148,6 +165,7 @@ export default function RegisterPage() {
                                         <Input prefix={<TeamOutlined />} placeholder="团队/公司名称（选填）" maxLength={100} />
                                     </Form.Item>
                                     {agreementItem}
+                                    {ageItem}
                                     <Form.Item>
                                         <Button type="primary" htmlType="submit" block loading={loading}>
                                             注册
@@ -230,6 +248,7 @@ export default function RegisterPage() {
                     </Form.Item>
 
                     {agreementItem}
+                    {ageItem}
 
                     <Form.Item>
                         <Button type="primary" htmlType="submit" block loading={loading}>
