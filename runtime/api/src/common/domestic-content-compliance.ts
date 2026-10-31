@@ -1,4 +1,4 @@
-export const DOMESTIC_RULESET_VERSION = 'cn-content-2026.10.23';
+export const DOMESTIC_RULESET_VERSION = 'cn-content-2026.10.31';
 
 /** 每次检查都带上。关键词命中不是律师意见，也不是“通过即可发布”。 */
 export const COMPLIANCE_DISCLAIMER = '这不是法律意见。未发现风险不等于可以发布，发布前请自行核对。';
@@ -194,7 +194,7 @@ export function checkAdDisclosure(content: string): DomesticComplianceHit | null
   } as DomesticComplianceHit;
 }
 
-const HEALTH_CLAIM = /(?:吃了|喝了|用了|敷了|贴了)[^。\n]{0,16}(?:血压|血糖|血脂|肿瘤|癌症|糖尿病|高血压)[^。\n]{0,8}(?:稳|降|好|消失|正常)|降血压|降血糖|降血脂|抗癌|防癌|调理三高/;
+const HEALTH_CLAIM = /(?:吃了|喝了|用了|敷了|贴了)[^。\n]{0,16}(?:血压|血糖|血脂|肿瘤|癌症|糖尿病|高血压)[^。\n]{0,8}(?:稳|降|好|消失|正常)|(?:治好|治愈|治疗好|根治)了?[^。\n]{0,16}(?:病|症|炎|癌|痛|溃疡|结石|糖尿病|高血压)|降血压|降血糖|降血脂|抗癌|防癌|调理三高/;
 
 /** 《广告法》第十七条、第十八条里写明的疾病治疗/预防功能。只做关键词筛查，不代表律师已抽样验收。 */
 function checkHealthClaim(content: string): DomesticComplianceHit | null {
@@ -216,13 +216,16 @@ function checkHealthClaim(content: string): DomesticComplianceHit | null {
 
 const ART25_TERMS = ['保本', '无风险', '保收益'] as const;
 const ART25_YIELD = /年化[^。\n]{0,16}(?:稳赚|保证|保本|无风险|保收益)/;
+/** 「必涨」「闭眼买入」「没有任何风险」是对投资结果的保证性断言，与「保本、无风险」同属第二十五条禁止的承诺。 */
+const ART25_CERTAINTY = /必涨|必赚|一定(?:会)?涨|闭眼(?:买|入|冲)|稳赚不赔|(?:没有|毫无|零|无)任何风险|绝对安全/;
 
 /** 第二十五条原文写了保本、无风险、保收益。年化搭配保证性用语一并拦截。稳赚仍走原有风险词，不改挂法条。 */
 function checkInvestmentGuarantee(content: string): DomesticComplianceHit | null {
   const text = String(content || '').normalize('NFKC');
   const terms = ART25_TERMS.filter((term) => text.includes(term));
   const yieldHit = text.match(ART25_YIELD);
-  const matchedTerms = [...terms, ...(yieldHit ? [yieldHit[0].slice(0, 40)] : [])];
+  const certainty = text.match(ART25_CERTAINTY);
+  const matchedTerms = [...terms, ...(yieldHit ? [yieldHit[0].slice(0, 40)] : []), ...(certainty ? [certainty[0]] : [])];
   if (!matchedTerms.length) return null;
   return {
     gate: 'advertising_law',
@@ -254,6 +257,15 @@ function checkReviewOnly(content: string): DomesticComplianceHit[] {
       sourceUrl: 'https://www.douyin.com',
       sourceRetrievedAt: '2026-08-23',
       reason: '疑似引导到站外联系或交易，发布前请对照目标平台现行规范',
+      humanOverrideAllowed: true,
+    }),
+    reviewHit(content, ['最好吃', '最好用', '全国最好', '全网第一', '全国第一', '世界第一', '行业第一', '销量第一', '史上最'], {
+      gate: 'advertising_law',
+      ruleId: 'CN-AD-SUPERLATIVE',
+      source: '《中华人民共和国广告法》第九条第（三）项“等用语”（条文只列举「国家级」「最高级」「最佳」；此处的「最好」「第一」类比较性用语是否属于，待广告合规律师审核，所以只提示风险、不直接拦截）',
+      sourceUrl: 'https://sjfg.samr.gov.cn/law/file/pdf/3235243/1663323599406.pdf',
+      sourceRetrievedAt: '2026-10-31',
+      reason: '疑似使用「最好」「第一」类绝对化比较用语，需要有可核验的依据，发布前请核对',
       humanOverrideAllowed: true,
     }),
     reviewHit(content, ['趁灾', '借地震', '借疫情带货', '灾难营销', '蹭灾难'], {

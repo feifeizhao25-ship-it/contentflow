@@ -5,6 +5,7 @@ import { TenantService } from '../tenant/tenant.service';
 import { AdapterRegistry } from './adapters/adapter.registry';
 import { ConfigService } from '@nestjs/config';
 import { evaluateDomesticContent } from '../../common/domestic-content-compliance';
+import { evaluateInternationalContent } from '../../common/international-content-compliance';
 import { isRealNameRequiredForPublish } from '../auth/real-name/real-name.verifier';
 import { labelAiGeneratedText, AI_TEXT_LABEL, aigcProviderCode } from '../../common/ai-content-label';
 import { MANUAL_DONE, MANUAL_PENDING, MANUAL_PLATFORMS, isManualPlatform, normalizeManualPostUrl } from './manual-publish';
@@ -164,7 +165,34 @@ export class PublishService {
    * “可能有风险”不停止生成，但发布前必须由用户确认已自行核对。
    */
   private async assertDomesticCompliance(text: string, riskAcknowledged = false): Promise<void> {
-    if (this.config.get<string>('MARKET_REGION', 'cn') !== 'cn') return;
+    const region = this.config.get<string>('MARKET_REGION', 'cn');
+    if (region === 'global') {
+      // 国际版：美国 FTC/FDA 与英国 CAP Code 关键词筛查。明确违规拒绝；风险提示需用户确认已自行核对。
+      const intl = evaluateInternationalContent(text);
+      if (!intl.passed) {
+        throw new BadRequestException({
+          code: 'CONTENT_COMPLIANCE_BLOCKED',
+          message: 'This content did not pass the pre-publish check. Edit it and try again. This is not legal advice.',
+          ruleSetVersion: intl.ruleSetVersion,
+          level: intl.level,
+          disclaimer: intl.disclaimer,
+          hits: intl.hits,
+        });
+      }
+      const intlReview = intl.hits.filter((hit) => hit.severity === 'review');
+      if (intlReview.length && !riskAcknowledged) {
+        throw new BadRequestException({
+          code: 'COMPLIANCE_RISK_ACK_REQUIRED',
+          message: 'The check found possible risks. Confirm you have reviewed them yourself before publishing. This is not legal advice.',
+          ruleSetVersion: intl.ruleSetVersion,
+          level: intl.level,
+          disclaimer: intl.disclaimer,
+          hits: intlReview,
+        });
+      }
+      return;
+    }
+    if (region !== 'cn') return;
     let conservative = false;
     try {
       conservative = !!(await this.rag?.freshnessReport())?.needsReview;
