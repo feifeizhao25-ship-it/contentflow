@@ -1,6 +1,6 @@
 /**
  * 研究雷达（与 Python 版 self_improve/radar.py 同一套边界）：
- * 只访问白名单主机，只写一份摘要文件（radar/digest_YYYYMMDD.md 和去重用的 seen.json），
+ * 只访问白名单主机，只写摘要文件（radar/digest_YYYYMMDD.md、结构化线索 items_YYYYMMDD.json 和去重用的 seen.json），
  * 不入库、不改技能、不推送。SIL_ENABLED=0（默认）时 runRadarIfEnabled 什么都不做。
  * 抓回的文字一律当数据：去控制字符、截断、含提示注入特征的条目丢弃。许可证类别只是提醒，不是法律意见。
  * 本文件不引用审批、企业微信或任何发送函数。
@@ -202,6 +202,8 @@ export async function runRadar(product: string, outDir: string, opts: RadarOptio
   }
   const path = join(root, `digest_${cst(now).replace(/-/g, '')}.md`);
   writeFileSync(path, renderDigest(product, now, items, errors), 'utf8');
+  // 结构化线索清单，只给“线索 → 待审核入库候选”这一步（radar-stage）读；仍然不入库、不推送。
+  writeFileSync(join(root, `items_${cst(now).replace(/-/g, '')}.json`), JSON.stringify(items, null, 2), 'utf8');
   writeFileSync(seenPath, JSON.stringify([...seen, ...fresh].sort()), 'utf8');
   return { path, new: items.length, errors };
 }

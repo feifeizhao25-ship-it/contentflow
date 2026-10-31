@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import { join } from 'path';
+import { CONTINUOUS_CRON, ContinuousJob, runContinuousIfEnabled } from './continuous';
 import { NullGateway, WeComGateway, approvalPolicyFromEnv } from './approval';
 import { SILConfig, configFromEnv } from './config';
 import { DEFAULT_THRESHOLDS } from './gates';
@@ -67,5 +68,38 @@ export class SelfImproveService {
     } catch (e) {
       this.logger.error(`self-improve monthly failed: ${(e as Error).message}`);
     }
+  }
+
+  /** 持续改进（金标准 / 过期 / 线索入库候选 / 月报）。SIL_ENABLED 未开时返回 null，不写任何文件。 */
+  runContinuous(job: ContinuousJob, now = new Date(), env: NodeJS.ProcessEnv = process.env) {
+    return runContinuousIfEnabled(job, configFromEnv('contentflow', env), now);
+  }
+
+  private safeContinuous(job: ContinuousJob): void {
+    try {
+      this.runContinuous(job);
+    } catch (e) {
+      this.logger.error(`continuous ${job} failed: ${(e as Error).message}`);
+    }
+  }
+
+  @Cron(CONTINUOUS_CRON.golden_eval, { name: 'continuous-golden', timeZone: SIL_TIMEZONE })
+  goldenJob(): void {
+    this.safeContinuous('golden_eval');
+  }
+
+  @Cron(CONTINUOUS_CRON.stale_scan, { name: 'continuous-stale', timeZone: SIL_TIMEZONE })
+  staleJob(): void {
+    this.safeContinuous('stale_scan');
+  }
+
+  @Cron(CONTINUOUS_CRON.radar_stage, { name: 'continuous-radar-stage', timeZone: SIL_TIMEZONE })
+  radarStageJob(): void {
+    this.safeContinuous('radar_stage');
+  }
+
+  @Cron(CONTINUOUS_CRON.monthly_report, { name: 'continuous-monthly-report', timeZone: SIL_TIMEZONE })
+  monthlyReportJob(): void {
+    this.safeContinuous('monthly_report');
   }
 }

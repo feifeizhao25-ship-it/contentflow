@@ -1,0 +1,43 @@
+{
+  "edition": "cn",
+  "generated": "2026-10-31",
+  "review_status": "待审核",
+  "entries": [
+    {
+      "id": "cf-lib-s01",
+      "title": "清朗·整治短视频虚假人设乱象（五类问题）",
+      "text": "中央网信办 2026-09-30 部署为期两个月的专项行动，整治五类虚假人设：假扮弱势群体博同情；虚构职业资质（假医生、假律师、假教师）；AI 仿冒真人或编造真人身份；包装豪门、鼓吹奢靡和迷信（含风水、占星、玄学“改运消灾”）；编造冲突剧情（家暴、弃养、失散等）。不得借“虚构演绎”“AI 生成”等标签规避。",
+      "source_tier": "official",
+      "license": "public-government-document",
+      "valid_from": "2026-09-30",
+      "valid_until": "2026-12-01",
+      "origin": "external",
+      "url": "https://www.cac.gov.cn/2026-09/30/c_1792520301987752.htm",
+      "status": "in_force",
+      "lang": "zh",
+      "review_status": "待审核",
+      "visible": false,
+      "auto_approved": false,
+      "note": "专项为期两个月；到期后须人工复核是否转为常态化规则。",
+      "content_hash": "5b4e600aa1b9a953a159190decac28b231781b2a96ed269f491a379911ef61b5"
+    },
+    {
+      "id": "cf-lib-s02",
+      "title": "《人工智能生成合成内容标识办法》第十条：发布者主动声明，禁止删除篡改标识",
+      "text": "用户使用网络信息内容传播服务发布生成合成内容的，应当主动声明并使用服务提供者提供的标识功能进行标识。任何组织和个人不得恶意删除、篡改、伪造、隐匿办法规定的生成合成内容标识，不得为他人实施上述行为提供工具或者服务。办法自 2025 年 9 月 1 日起施行。",
+      "source_tier": "official",
+      "license": "public-government-document",
+      "valid_from": "2025-09-01",
+      "valid_until": "2027-10-31",
+      "origin": "external",
+      "url": "https://www.cac.gov.cn/2025-03/14/c_1743654684782215.htm",
+      "status": "in_force",
+      "lang": "zh",
+      "review_status": "待审核",
+      "visible": false,
+      "auto_approved": false,
+      "note": "valid_until 为复核到期日，不是失效日。",
+      "content_hash": "4f26713fc11afcf563893bce79916b418f878702a8e6bb927f08f556db17fb72"
+    }
+  ]
+}
