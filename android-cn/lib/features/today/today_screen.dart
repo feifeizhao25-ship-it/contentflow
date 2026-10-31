@@ -303,10 +303,13 @@ class TodayScreen extends ConsumerWidget {
                   children: [
                     if (isPending)
                       Expanded(
-                        child: OutlinedButton.icon(
-                          onPressed: null,
-                          icon: const Icon(Icons.schedule_send),
-                          label: const Text('等待回执', overflow: TextOverflow.ellipsis),
+                        child: Tooltip(
+                          message: '已提交发布，正在等平台回执。通常几分钟内出结果，无需操作。',
+                          child: OutlinedButton.icon(
+                            onPressed: null,
+                            icon: const Icon(Icons.schedule_send),
+                            label: const Text('等待回执', overflow: TextOverflow.ellipsis),
+                          ),
                         ),
                       ),
                     if (isFailed)
