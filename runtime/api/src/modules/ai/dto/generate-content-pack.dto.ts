@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsString, IsNotEmpty, IsOptional, IsArray, IsIn, MaxLength } from 'class-validator';
+import { IsString, IsNotEmpty, IsOptional, IsArray, IsIn, IsInt, Max, MaxLength, Min } from 'class-validator';
 import { TARGET_MARKETS } from '../../../common/target-market';
 import { MATERIAL_MAX_CHARS } from '../grounding';
 
@@ -29,4 +29,11 @@ export class GenerateContentPackDto {
     @IsString()
     @MaxLength(MATERIAL_MAX_CHARS)
     material?: string;
+
+    @ApiProperty({ description: '标题数量（可选，1-10，默认 10）。旧版 App 会发送这个字段，不能因为它被拒绝。', example: 5, required: false })
+    @IsInt()
+    @Min(1)
+    @Max(10)
+    @IsOptional()
+    count?: number;
 }
