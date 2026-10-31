@@ -3,7 +3,7 @@ import type { Metadata } from 'next';
 export const metadata: Metadata = { title: 'Privacy Policy · ContentFlow Global', description: 'How ContentFlow Global collects, uses and protects your data.' };
 
 // Plain-language summary. Final wording must be reviewed by counsel before general availability.
-const LAST_UPDATED = '2026-10-16';
+const LAST_UPDATED = '2026-10-31';
 
 export default function Page() {
   return (
@@ -35,6 +35,10 @@ export default function Page() {
         <section className="card">
           <h2>Retention and security</h2>
           <p>We keep data only as long as your account is active or as required by law, encrypt data in transit, and restrict staff access on a need-to-know basis.</p>
+        </section>
+        <section className="card">
+          <h2>Minimum age</h2>
+          <p>ContentFlow Global is for people aged 16 or over. We do not knowingly collect personal data from anyone under 16; if we learn that we have, we delete it promptly.</p>
         </section>
       </div>
     </main>
