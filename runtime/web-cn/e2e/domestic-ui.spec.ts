@@ -139,19 +139,19 @@ test('国内版主要流程', async ({ page }, info) => {
 
   await run('home-pricing', async () => {
     await openPage(page, '/');
-    await expect(page.getByRole('heading', { name: 'Solo' })).toBeVisible();
-    await expect(page.getByRole('heading', { name: 'Team' })).toBeVisible();
-    await expect(page.getByRole('heading', { name: 'Business' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: '个人版' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: '团队版' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: '商务版' })).toBeVisible();
     await expect(page.getByText('待确认').first()).toBeVisible();
-    const businessCard = page.locator('#plans article').filter({ hasText: 'Business' });
+    const businessCard = page.locator('#plans article').filter({ hasText: '商务版' });
     const businessText = await businessCard.innerText();
     expect(businessText.indexOf('待确认')).toBeGreaterThan(-1);
     expect(businessText.indexOf('待确认')).toBeLessThan(businessText.indexOf('路线图（即将上线）'));
     await shot(page, info, 'home-plans');
     await openPage(page, '/pricing');
-    await expect(page.getByRole('heading', { name: 'Solo' })).toBeVisible();
-    await expect(page.getByRole('heading', { name: 'Team' })).toBeVisible();
-    await expect(page.getByRole('heading', { name: 'Business' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: '个人版' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: '团队版' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: '商务版' })).toBeVisible();
     await expect(page.getByText('待确认').first()).toBeVisible();
     await expect(page.getByText('路线图（即将上线）').first()).toBeVisible();
     await shot(page, info, 'pricing');
@@ -272,7 +272,7 @@ test('国内版主要流程', async ({ page }, info) => {
   await run('webhook-and-renewal', async () => {
     await gotoApp(page, '/settings/developer', '对外通知');
     await expect(page.getByTestId('webhook-gate')).toBeVisible();
-    await expect(page.getByText('Business').first()).toBeVisible();
+    await expect(page.getByText('商务版').first()).toBeVisible();
     await shot(page, info, 'webhook-not-business');
 
     const id = await tenantId(page);
@@ -305,7 +305,7 @@ test('国内版主要流程', async ({ page }, info) => {
 
   await run('payment-not-configured', async () => {
     await openPage(page, '/pricing');
-    await page.locator('h3', { hasText: 'Business' }).locator('xpath=ancestor::div[contains(@class,"flex-col")][1]').getByRole('button', { name: '立即开通' }).click();
+    await page.locator('h3', { hasText: '商务版' }).locator('xpath=ancestor::div[contains(@class,"flex-col")][1]').getByRole('button', { name: '立即开通' }).click();
     await page.getByRole('button', { name: '确认并支付' }).click();
     await expect(page.getByRole('alert').filter({ hasText: '尚未配置' })).toBeVisible();
     await shot(page, info, 'payment-unavailable');

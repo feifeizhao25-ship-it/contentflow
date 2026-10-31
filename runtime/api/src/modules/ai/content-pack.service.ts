@@ -68,8 +68,8 @@ export class ContentPackService {
             const platformsStr = dto.platforms?.join(',') || mt('全渠道', 'all channels');
             const positioning = await this.loadPositioning(tenantId, dto.personaId);
             const titleResult = positioning.promptBlock
-                ? await this.aiService.generateTitlesWithUsage(dto.topic, platformsStr, 10, positioning.promptBlock)
-                : await this.aiService.generateTitlesWithUsage(dto.topic, platformsStr, 10);
+                ? await this.aiService.generateTitlesWithUsage(dto.topic, platformsStr, dto.count ?? 10, positioning.promptBlock)
+                : await this.aiService.generateTitlesWithUsage(dto.topic, platformsStr, dto.count ?? 10);
             const targetMarket = isGlobalMarket() ? resolveTargetMarket(dto.targetMarket) : null;
             const materialBlock = materialPromptBlock(dto.material, isGlobalMarket());
             const titles = titleResult?.titles;

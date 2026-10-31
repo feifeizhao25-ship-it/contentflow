@@ -70,7 +70,19 @@
       "tenant_id": null,
       "review_status": "needs_review",
       "note": "仅登记题录；强制性国家标准，全文见官方平台；待人工复核"
+    },
+    {
+      "source_id": "cn-cac-ai-labeling-measures-2025-art9-10",
+      "url": "https://www.cac.gov.cn/2025-03/14/c_1743654684782215.htm",
+      "tier": "S",
+      "license": "official-public",
+      "fetched_at": "2026-10-31T12:00:00+08:00",
+      "expires_at": "2026-11-30T12:00:00+08:00",
+      "title": "人工智能生成合成内容标识办法（第九条、第十条：发布者声明与禁止删除篡改标识）",
+      "text": "第九条 用户申请服务提供者提供没有添加显式标识的生成合成内容的，服务提供者可以在通过用户协议明确用户的标识义务和使用责任后，提供不含显式标识的生成合成内容，并依法留存提供对象信息等相关日志不少于六个月。\n第十条 用户使用网络信息内容传播服务发布生成合成内容的，应当主动声明并使用服务提供者提供的标识功能进行标识。\n任何组织和个人不得恶意删除、篡改、伪造、隐匿本办法规定的生成合成内容标识，不得为他人实施上述恶意行为提供工具或者服务，不得通过不正当标识手段损害他人合法权益。",
+      "content_hash": "bcea33cf66152304f3d09da73ffc65f3f509b990128a01461851eeaee9b7e7c7",
+      "review_status": "needs_review"
     }
   ],
-  "note": "2026-10-30 由自改进 PR 登记的官方来源（正文为官方页面原文摘录）。全部 review_status=needs_review：需要人工确认 license、摘录准确性后，才可改为 validated；到期日 30 天，与 RAG_MAX_AGE_DAYS 一致。不要把未授权网页放进 sources。"
+  "note": "2026-10-30 由自改进 PR 登记的官方来源（正文为官方页面原文摘录）。全部 review_status=needs_review：需要人工确认 license、摘录准确性后，才可改为 validated；到期日 30 天，与 RAG_MAX_AGE_DAYS 一致。不要把未授权网页放进 sources。 2026-10-31 追加第九条、第十条（发布者须主动声明并标识；不得删除、篡改、伪造、隐匿标识），同样 needs_review。"
 }
