@@ -60,12 +60,12 @@ export async function loginWithPassword(
 }
 
 export async function registerWithEmail(
-  input: { email: string; password: string; name?: string; tenantName?: string; agreedToTerms: boolean },
+  input: { email: string; password: string; name?: string; tenantName?: string; agreedToTerms: boolean; confirmedAge16: boolean },
   fetchImpl: FetchLike = defaultFetch,
 ): Promise<AuthUser> {
   const data = await post(
     '/api/auth/register',
-    { email: input.email, password: input.password, name: input.name, tenantName: input.tenantName, agreedToTerms: input.agreedToTerms },
+    { email: input.email, password: input.password, name: input.name, tenantName: input.tenantName, agreedToTerms: input.agreedToTerms, confirmedAge16: input.confirmedAge16 },
     '注册失败，请稍后重试',
     fetchImpl,
   );
@@ -96,12 +96,12 @@ export async function sendSmsCode(
 }
 
 export async function registerWithPhone(
-  input: { phone: string; code: string; name?: string; tenantName?: string; agreedToTerms: boolean },
+  input: { phone: string; code: string; name?: string; tenantName?: string; agreedToTerms: boolean; confirmedAge16: boolean },
   fetchImpl: FetchLike = defaultFetch,
 ): Promise<AuthUser> {
   const data = await post(
     '/api/auth/register/phone',
-    { phone: input.phone, code: input.code, name: input.name, tenantName: input.tenantName, agreedToTerms: input.agreedToTerms },
+    { phone: input.phone, code: input.code, name: input.name, tenantName: input.tenantName, agreedToTerms: input.agreedToTerms, confirmedAge16: input.confirmedAge16 },
     '注册失败，请稍后重试',
     fetchImpl,
   );

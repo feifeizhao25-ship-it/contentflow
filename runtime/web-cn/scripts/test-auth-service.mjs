@@ -24,10 +24,11 @@ const last = () => seen[seen.length - 1];
 console.log('Auth service tests');
 
 await check('registerWithEmail 必带 agreedToTerms，字段白名单不多不少', async () => {
-  await svc.registerWithEmail({ email: 'a@b.cn', password: '123456', name: '甲', tenantName: '乙', agreedToTerms: true }, reply(200, { user: { id: 'u' } }));
+  await svc.registerWithEmail({ email: 'a@b.cn', password: '123456', name: '甲', tenantName: '乙', agreedToTerms: true, confirmedAge16: true }, reply(200, { user: { id: 'u' } }));
   assert.equal(last().url, '/api/auth/register');
-  assert.deepEqual(Object.keys(last().body).sort(), ['agreedToTerms', 'email', 'name', 'password', 'tenantName']);
+  assert.deepEqual(Object.keys(last().body).sort(), ['agreedToTerms', 'confirmedAge16', 'email', 'name', 'password', 'tenantName']);
   assert.equal(last().body.agreedToTerms, true);
+  assert.equal(last().body.confirmedAge16, true);
 });
 
 await check('sendSmsCode：走后端代理，只带 phone 与 purpose，返回重发等待秒数', async () => {
@@ -52,14 +53,14 @@ await check('后端返回校验数组 / 英文时，不把英文渲染出来，�
 });
 
 await check('registerWithPhone：字段白名单（含 agreedToTerms），走 /api/auth/register/phone', async () => {
-  const user = await svc.registerWithPhone({ phone: '13812345678', code: '123456', name: '甲', tenantName: '乙', agreedToTerms: true }, reply(201, { user: { id: 'u1', phone: '138****5678' } }));
+  const user = await svc.registerWithPhone({ phone: '13812345678', code: '123456', name: '甲', tenantName: '乙', agreedToTerms: true, confirmedAge16: true }, reply(201, { user: { id: 'u1', phone: '138****5678' } }));
   assert.equal(last().url, '/api/auth/register/phone');
-  assert.deepEqual(Object.keys(last().body).sort(), ['agreedToTerms', 'code', 'name', 'phone', 'tenantName']);
+  assert.deepEqual(Object.keys(last().body).sort(), ['agreedToTerms', 'code', 'confirmedAge16', 'name', 'phone', 'tenantName']);
   assert.equal(user.id, 'u1');
 });
 
 await check('registerWithPhone：响应里没有 user 时报错而不是当成功', async () => {
-  await assert.rejects(() => svc.registerWithPhone({ phone: '13812345678', code: '123456', agreedToTerms: true }, reply(200, {})), /注册响应无效/);
+  await assert.rejects(() => svc.registerWithPhone({ phone: '13812345678', code: '123456', agreedToTerms: true, confirmedAge16: true }, reply(200, {})), /注册响应无效/);
 });
 
 await check('loginWithSms：只带 phone 与 code', async () => {

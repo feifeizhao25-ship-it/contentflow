@@ -1,3 +1,4 @@
+import { AGE_CONFIRMATION_MESSAGE } from './age-confirmation';
 import { Transform } from 'class-transformer';
 import { Equals, IsBoolean, IsIn, IsOptional, IsString, Matches, MaxLength } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
@@ -53,4 +54,11 @@ export class RegisterPhoneDto extends BindPhoneDto {
   @IsBoolean({ message: '请先阅读并同意用户协议和隐私政策' })
   @Equals(true, { message: '请先阅读并同意用户协议和隐私政策' })
   agreedToTerms: boolean;
+
+  @ApiProperty({ description: '已确认年满 16 周岁（必须为 true）' })
+  // 同上：取原始值，只认布尔 true
+  @Transform(({ obj }) => obj.confirmedAge16)
+  @IsBoolean({ message: AGE_CONFIRMATION_MESSAGE })
+  @Equals(true, { message: AGE_CONFIRMATION_MESSAGE })
+  confirmedAge16: boolean;
 }

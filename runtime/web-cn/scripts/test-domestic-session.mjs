@@ -47,11 +47,11 @@ await check('register posts only whitelisted fields to /api/auth/register', asyn
   const { registerWithEmail } = await import('../src/lib/auth-service.ts');
   const seen = [];
   await registerWithEmail(
-    { email: 'a@b.cn', password: '123456', name: '甲', tenantName: '乙', agreedToTerms: true },
+    { email: 'a@b.cn', password: '123456', name: '甲', tenantName: '乙', agreedToTerms: true, confirmedAge16: true },
     async (url, init) => { seen.push({ url, body: JSON.parse(init.body) }); return new Response(JSON.stringify({ user: { id: 'u1' } }), { status: 200 }); },
   );
   assert.equal(seen[0].url, '/api/auth/register');
-  assert.deepEqual(Object.keys(seen[0].body).sort(), ['agreedToTerms', 'email', 'name', 'password', 'tenantName']);
+  assert.deepEqual(Object.keys(seen[0].body).sort(), ['agreedToTerms', 'confirmedAge16', 'email', 'name', 'password', 'tenantName']);
 });
 
 const session = await import('../src/lib/session.ts');
