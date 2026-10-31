@@ -205,12 +205,18 @@ class ApiClient {
     );
   }
 
-  Future<List<ContentAnalytics>> getContentAnalytics() async {
+  /// Analytics page: GET /analytics/overview (own data only: publishing tasks, AI generations, failure reasons).
+  /// lang=en makes the server return failure reasons and AI type names in English.
+  Future<AnalyticsOverview> getAnalyticsOverview() async {
     return _handle(
-      () => _dio.get('/analytics/dashboard'),
-      (_) => <ContentAnalytics>[],
+      () => _dio.get('/analytics/overview?lang=en'),
+      (payload) => AnalyticsOverview.fromJson(_extractMap(payload)),
     );
   }
+
+  /// Per-post views and likes have no data source yet (platform open APIs are not connected), so nothing is
+  /// requested and the list is empty; the page then says so instead of calling an endpoint that returns no list.
+  Future<List<ContentAnalytics>> getContentAnalytics() async => const <ContentAnalytics>[];
 
   // ============== Subscription ==============
 

@@ -2,7 +2,9 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../database/prisma.service';
 import {
   AI_TYPE_TEXT,
-  ENGAGEMENT_UNAVAILABLE,
+  AI_TYPE_TEXT_EN,
+  OverviewLang,
+  engagementUnavailable,
   PublishSummary,
   failureReasonText,
   overviewWindows,
@@ -65,7 +67,7 @@ export class AnalyticsService {
    * 「数据分析」页：本周 / 本月（北京时间）的发布任务、失败原因、AI 生成与采纳情况。
    * 只读自有数据；平台互动数据在接通授权前不提供（engagement.available=false）。
    */
-  async getOverview(tenantId: string, now: Date | number = Date.now()) {
+  async getOverview(tenantId: string, now: Date | number = Date.now(), lang: OverviewLang = 'zh') {
     const windows = overviewWindows(now);
     const taskWindow = (range: { start: Date; end: Date }) => ({
       tenant_id: tenantId,
@@ -89,7 +91,7 @@ export class AnalyticsService {
         _count: { _all: true },
       });
       const byType = rows
-        .map((r: any) => ({ type: r.generation_type, label: AI_TYPE_TEXT[r.generation_type] ?? '其他', count: r._count._all }))
+        .map((r: any) => ({ type: r.generation_type, label: (lang === 'en' ? AI_TYPE_TEXT_EN : AI_TYPE_TEXT)[r.generation_type] ?? (lang === 'en' ? 'Other' : '其他'), count: r._count._all }))
         .sort((a: any, b: any) => b.count - a.count);
       const contentWhere = { tenant_id: tenantId, source: 'ai', created_at: { gte: range.start, lt: range.end } };
       const [savedAsContent, approvedOrPublished] = await Promise.all([
@@ -112,7 +114,7 @@ export class AnalyticsService {
     });
     const reasons = new Map<string, number>();
     for (const row of failedRows) {
-      const text = failureReasonText(row.error_code, row.error_message);
+      const text = failureReasonText(row.error_code, row.error_message, lang);
       reasons.set(text, (reasons.get(text) ?? 0) + 1);
     }
 
@@ -132,7 +134,7 @@ export class AnalyticsService {
         .map(([reason, count]) => ({ reason, count }))
         .sort((a, b) => b.count - a.count)
         .slice(0, 5),
-      engagement: ENGAGEMENT_UNAVAILABLE,
+      engagement: engagementUnavailable(lang),
     };
   }
 }

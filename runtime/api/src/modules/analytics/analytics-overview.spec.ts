@@ -1,5 +1,5 @@
 import { AnalyticsService } from './analytics.service';
-import { chinaWeekStart, failureReasonText, summarizePublish, ENGAGEMENT_UNAVAILABLE } from './own-data-overview';
+import { chinaWeekStart, failureReasonText, summarizePublish, ENGAGEMENT_UNAVAILABLE, normalizeLang } from './own-data-overview';
 
 /** 审计 P0-2：数据分析页原来整页写死；现在只给自有数据，互动数据接通授权前不给数字。 */
 describe('AnalyticsService.getOverview（只用自有数据）', () => {
@@ -75,6 +75,49 @@ describe('AnalyticsService.getOverview（只用自有数据）', () => {
     expect(failureReasonText('QUEUE_UNAVAILABLE', 'redis down')).toBe('发布队列暂时不可用');
     expect(failureReasonText(null, 'timeout')).toBe('发布失败（未记录具体原因）');
     expect(summarizePublish([]).total).toBe(0);
+  });
+});
+
+describe('国际版（lang=en）：全部英文，不外露中文或内部报错', () => {
+  const now = new Date('2026-10-08T02:00:00Z');
+  function buildEn() {
+    const prisma = {
+      publishTask: {
+        groupBy: jest.fn().mockResolvedValue([{ status: 'failed', _count: { _all: 3 } }]),
+        findMany: jest.fn().mockResolvedValue([
+          { error_code: 'ADAPTER_NOT_INTEGRATED', error_message: '抖音开放平台尚未接入' },
+          { error_code: 'DISPATCH_FAILED', error_message: 'ECONNREFUSED 10.0.0.1:443' },
+          { error_code: null, error_message: '未知错误' },
+        ]),
+      },
+      aIGeneration: { groupBy: jest.fn().mockResolvedValue([{ generation_type: 'titles', _count: { _all: 2 } }, { generation_type: 'weird', _count: { _all: 1 } }]) },
+      content: { count: jest.fn().mockResolvedValue(0) },
+    } as any;
+    return new AnalyticsService(prisma);
+  }
+
+  it('失败原因、AI 类型名、互动说明都是英文', async () => {
+    const result = await buildEn().getOverview('t1', now, 'en');
+    const text = JSON.stringify(result);
+    expect(text).not.toMatch(/[㐀-鿿]/);
+    expect(text).not.toMatch(/ECONNREFUSED/);
+    expect(result.failureReasons.map((r) => r.reason).sort()).toEqual([
+      'Publishing failed (no specific reason recorded)',
+      'This platform is not connected to its open API yet',
+      'The publishing service call failed',
+    ].sort());
+    expect(result.week.ai.byType.map((r) => r.label).sort()).toEqual(['Other', 'Titles']);
+    expect(result.engagement.available).toBe(false);
+  });
+
+  it('不传 lang 仍是中文（国内版不受影响）；lang 参数规范化', async () => {
+    const result = await buildEn().getOverview('t1', now);
+    expect(result.engagement.message).toBe('接通平台授权后显示');
+    expect(normalizeLang('en-US')).toBe('en');
+    expect(normalizeLang('EN')).toBe('en');
+    expect(normalizeLang('zh-CN')).toBe('zh');
+    expect(normalizeLang(undefined)).toBe('zh');
+    expect(failureReasonText('QUEUE_UNAVAILABLE', 'x', 'en')).toBe('The publishing queue was temporarily unavailable');
   });
 });
 

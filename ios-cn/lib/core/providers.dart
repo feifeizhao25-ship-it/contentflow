@@ -74,6 +74,11 @@ final analyticsSummaryProvider = FutureProvider<AnalyticsSummary>((ref) async {
   return api.getAnalyticsSummary();
 });
 
+final analyticsOverviewProvider = FutureProvider<AnalyticsOverview>((ref) async {
+  final api = ref.read(apiClientProvider);
+  return api.getAnalyticsOverview();
+});
+
 final contentAnalyticsProvider = FutureProvider<List<ContentAnalytics>>((
   ref,
 ) async {

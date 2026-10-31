@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/providers.dart';
 import '../../core/cn_format.dart';
 import '../../data/models.dart';
+import 'overview_section.dart';
 import '../../core/error_text.dart';
 
 class InsightsScreen extends ConsumerWidget {
@@ -12,14 +13,13 @@ class InsightsScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final summaryAsync = ref.watch(analyticsSummaryProvider);
     final contentAsync = ref.watch(contentAnalyticsProvider);
 
     return Scaffold(
             body: SafeArea(
         child: RefreshIndicator(
           onRefresh: () async {
-            ref.invalidate(analyticsSummaryProvider);
+            ref.invalidate(analyticsOverviewProvider);
             ref.invalidate(contentAnalyticsProvider);
           },
           child: CustomScrollView(
@@ -27,18 +27,8 @@ class InsightsScreen extends ConsumerWidget {
               // Header
               SliverToBoxAdapter(child: _buildHeader(context)),
 
-              // Analytics Chart
-              SliverToBoxAdapter(child: const CfSectionTitle(icon: Icons.insights, title: '近期数据')),
-
-              summaryAsync.when(
-                data: (summary) =>
-                    SliverToBoxAdapter(child: _buildChart(context, summary)),
-                loading: () => const SliverToBoxAdapter(
-                  child: Center(child: CircularProgressIndicator()),
-                ),
-                error: (_, __) =>
-                    const SliverToBoxAdapter(child: SizedBox.shrink()),
-              ),
+              // Own-data overview (GET /analytics/overview)
+              const SliverToBoxAdapter(child: OverviewSection()),
 
               // Winner Alert
               contentAsync.when(
@@ -110,7 +100,7 @@ class InsightsScreen extends ConsumerWidget {
                         child: CfEmptyState(
                           asset: 'assets/images/cf_empty_insights.webp',
                           title: '还没有可复盘的内容',
-                          message: '内容发布后，这里会按真实数据展示播放、互动和互动率对比。',
+                          message: '每条内容的播放、互动和互动率，要等平台授权接通后才能显示，现在不会显示任何估算数字。',
                         ),
                       )
                     : SliverList(
@@ -168,64 +158,6 @@ class InsightsScreen extends ConsumerWidget {
           ),
         ],
       ),
-    );
-  }
-
-  Widget _buildSectionTitle(String title) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 16, 20, 12),
-      child: Text(
-        title,
-        style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-      ),
-    );
-  }
-
-  Widget _buildChart(BuildContext context, AnalyticsSummary summary) {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 20),
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: AppColors.card(context),
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Column(
-        children: [
-          const Align(
-            alignment: Alignment.centerLeft,
-            child: Text(
-              '还没有按日曲线。下面是累计数字，不是示例走势。',
-              style: TextStyle(color: Color(0xFF3F3F46), fontSize: 14, height: 1.5),
-            ),
-          ),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              CfStatTile(icon: Icons.play_circle_outline, label: '播放', value: _formatNumber(summary.totalViews), color: Colors.blue.shade700),
-              const SizedBox(width: 10),
-              CfStatTile(icon: Icons.favorite_border, label: '互动', value: _formatNumber(summary.totalEngagement), color: Colors.orange.shade800),
-              const SizedBox(width: 10),
-              CfStatTile(icon: Icons.article_outlined, label: '内容', value: '${summary.totalContent}', color: Colors.green.shade700),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildStatColumn(String label, String value, Color color) {
-    return Column(
-      children: [
-        Text(
-          value,
-          style: TextStyle(
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-            color: color,
-          ),
-        ),
-        Text(label, style: const TextStyle(color: Colors.grey, fontSize: 12)),
-      ],
     );
   }
 
