@@ -93,3 +93,28 @@ export function assertDomesticProviderConfigured(input: {
       '国内栈不接受境外模型供应商作为替代。',
   );
 }
+
+/** OpenRouter 聚合路由的默认地址（仅境外市场使用）。 */
+export const OPENROUTER_CHAT_URL = 'https://openrouter.ai/api/v1/chat/completions';
+
+/**
+ * 境外文本供应商地址。默认是 OpenRouter；测试环境可以用 OPENROUTER_BASE_URL 指向本地假供应商，
+ * 这样不需要真实密钥也能把“生成内容包”整条链路跑通。
+ * 生产环境只接受 https 地址，其它一律回到默认值（避免一个写错的变量把请求发到明文地址）。
+ * 国内市场不使用这个地址（见 resolveTextProvider）。
+ */
+export function resolveOpenRouterUrl(env: { OPENROUTER_BASE_URL?: string | null; NODE_ENV?: string | null }): string {
+  const raw = String(env.OPENROUTER_BASE_URL ?? '').trim();
+  if (!raw) return OPENROUTER_CHAT_URL;
+  let parsed: URL;
+  try {
+    parsed = new URL(raw);
+  } catch {
+    return OPENROUTER_CHAT_URL;
+  }
+  if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') return OPENROUTER_CHAT_URL;
+  if (String(env.NODE_ENV ?? '') === 'production' && parsed.protocol !== 'https:') return OPENROUTER_CHAT_URL;
+  const path = parsed.pathname.replace(/\/+$/, '');
+  parsed.pathname = path.endsWith('/chat/completions') ? path : `${path}/chat/completions`;
+  return parsed.toString();
+}

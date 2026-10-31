@@ -12,6 +12,7 @@ import { createSmsGateway } from './sms/sms-gateway.factory';
 import { PrismaSmsCodeStore, SMS_CODE_STORE, SmsCodeService } from './sms/sms-code.service';
 import { SMS_GATEWAY } from './sms/sms.types';
 import { NotConfiguredRealNameVerifier, REAL_NAME_VERIFIER } from './real-name/real-name.verifier';
+import { GlobalWorkspaceMigration } from '../../common/i18n/global-workspace-migration';
 
 @Module({
   imports: [
@@ -31,6 +32,8 @@ import { NotConfiguredRealNameVerifier, REAL_NAME_VERIFIER } from './real-name/r
   ],
   providers: [
     AuthService,
+    // 国际版：把旧账号里自动生成的中文工作区名/设置改成英文（只在 MARKET_REGION=global 时运行，幂等）
+    GlobalWorkspaceMigration,
     JwtStrategy,
     // 实名认证（公安 / 运营商二要素）属外部资质，尚未接入：接入时在这里换成真实实现
     { provide: REAL_NAME_VERIFIER, useClass: NotConfiguredRealNameVerifier },
