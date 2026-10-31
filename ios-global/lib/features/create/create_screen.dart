@@ -1,9 +1,11 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import '../../data/api_exception.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/providers.dart';
 import '../../data/models.dart';
 import 'platform_options.dart';
+import 'generate_status.dart';
 import 'market_options.dart';
 
 class CreateScreen extends ConsumerStatefulWidget {
@@ -22,16 +24,19 @@ class _CreateScreenState extends ConsumerState<CreateScreen> {
   final Set<String> _platforms = {...kDefaultPlatforms};
   bool _saving = false;
   bool _saved = false;
+  String? _generateError;
+  int _elapsedSeconds = 0;
+  Timer? _ticker;
 
   @override
   void dispose() {
+    _ticker?.cancel();
     _topicController.dispose();
     _materialController.dispose();
     super.dispose();
   }
 
   /// Why the last generation failed. Stays on screen (a snackbar alone disappears).
-  String? _errorMessage;
 
   Future<void> _generateContentPack() async {
     if (_topicController.text.trim().isEmpty) {
@@ -41,9 +46,15 @@ class _CreateScreenState extends ConsumerState<CreateScreen> {
       return;
     }
 
+    FocusManager.instance.primaryFocus?.unfocus();
+    _ticker?.cancel();
+    _elapsedSeconds = 0;
+    _ticker = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (mounted) setState(() => _elapsedSeconds++);
+    });
     setState(() {
       _isGenerating = true;
-      _errorMessage = null;
+      _generateError = null;
     });
 
     try {
@@ -54,27 +65,30 @@ class _CreateScreenState extends ConsumerState<CreateScreen> {
         material: _materialController.text,
         platforms: _platforms.toList(),
       );
-      setState(() {
-        _generatedPack = pack;
-        _saved = false;
-      });
-    } catch (e) {
-      final message = e is ApiException
-          ? e.message
-          : 'Generation failed. Please try again.';
       if (mounted) {
-        setState(() => _errorMessage = message);
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(message)));
+        setState(() {
+          _generatedPack = pack;
+          _saved = false;
+        });
       }
+    } catch (e) {
+      if (mounted) setState(() => _generateError = _describeGenerateError(e));
     } finally {
+      _ticker?.cancel();
       if (mounted) {
         setState(() {
           _isGenerating = false;
         });
       }
     }
+  }
+
+  String _describeGenerateError(Object e) {
+    if (e is ApiException && e.timedOut) {
+      return 'Generation took too long and was stopped. Your connection may be slow, so please try again.';
+    }
+    if (e is ApiException) return e.message;
+    return 'Generation failed. Please try again.';
   }
 
   Future<void> _saveGeneratedPack() async {
@@ -220,43 +234,6 @@ class _CreateScreenState extends ConsumerState<CreateScreen> {
                 ..addAll(v);
             }),
           ),
-          if (_errorMessage != null) ...[
-            const SizedBox(height: 16),
-            Container(
-              key: const Key('create_error_banner'),
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.red.shade50,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.red.shade200),
-              ),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Icon(Icons.error_outline, color: Colors.red.shade700, size: 20),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text('Generation failed',
-                            style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                color: Colors.red.shade900)),
-                        const SizedBox(height: 2),
-                        Text(_errorMessage!,
-                            style: TextStyle(color: Colors.red.shade900)),
-                      ],
-                    ),
-                  ),
-                  TextButton(
-                    onPressed: _isGenerating ? null : _generateContentPack,
-                    child: const Text('Try again'),
-                  ),
-                ],
-              ),
-            ),
-          ],
           const SizedBox(height: 20),
           SizedBox(
             width: double.infinity,
@@ -288,6 +265,15 @@ class _CreateScreenState extends ConsumerState<CreateScreen> {
                     ),
             ),
           ),
+          if (_isGenerating || _generateError != null) ...[
+            const SizedBox(height: 16),
+            GenerateStatusCard(
+              generating: _isGenerating,
+              elapsedSeconds: _elapsedSeconds,
+              error: _generateError,
+              onRetry: _generateContentPack,
+            ),
+          ],
         ],
       ),
     );

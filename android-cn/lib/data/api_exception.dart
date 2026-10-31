@@ -4,7 +4,10 @@ class ApiException implements Exception {
   final String message;
   final int? statusCode;
 
-  ApiException(this.message, {this.statusCode});
+  /// True when the connection or the response timed out (the apps offer a retry for these).
+  final bool timedOut;
+
+  ApiException(this.message, {this.statusCode, this.timedOut = false});
 
   /// 按状态码给出中文说明（后端没有给出可展示的中文原因时使用）。
   static String statusMessage(int? statusCode) {
@@ -48,11 +51,11 @@ class ApiException implements Exception {
 
     switch (error.type) {
       case DioExceptionType.connectionTimeout:
-        return ApiException('连接超时，请检查网络', statusCode: statusCode);
+        return ApiException('连接超时，请检查网络', statusCode: statusCode, timedOut: true);
       case DioExceptionType.sendTimeout:
-        return ApiException('请求发送超时', statusCode: statusCode);
+        return ApiException('请求发送超时', statusCode: statusCode, timedOut: true);
       case DioExceptionType.receiveTimeout:
-        return ApiException('响应超时，请稍后重试', statusCode: statusCode);
+        return ApiException('响应超时，请稍后重试', statusCode: statusCode, timedOut: true);
       case DioExceptionType.badResponse:
         return ApiException(statusMessage(statusCode), statusCode: statusCode);
       case DioExceptionType.cancel:
