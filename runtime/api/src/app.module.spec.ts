@@ -3,6 +3,7 @@ import { CompetitorModule } from './modules/competitor/competitor.module';
 import { GrowthModule } from './modules/growth/growth.module';
 import { SelfImproveModule } from './modules/growth/self-improve/self-improve.module';
 import { HotModule } from './modules/hot/hot.module';
+import { LibraryModule } from './modules/library/library.module';
 import { PointsModule } from './modules/points/points.module';
 import { QuestModule } from './modules/quest/quest.module';
 import { RewardsModule } from './modules/rewards/rewards.module';
@@ -14,6 +15,7 @@ describe('market module isolation', () => {
     CompetitorModule,
     GrowthModule,
     SelfImproveModule,
+    LibraryModule,
     PointsModule,
     RewardsModule,
     QuestModule,

@@ -1,17 +1,17 @@
 'use client';
 
 import Link from 'next/link';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Input, Select, Tag } from 'antd';
 import data from '@/data/rule-library.json';
+import { ForYouSection } from '@/components/library/ForYouSection';
+import { BADGE_TEXT, OFFLINE_NOTE, libraryApi, offlineEntries, tryLoad, type LiveEntry } from '@/lib/library-live';
 import {
     SHOW_PENDING_LIBRARY,
     STATUS_COLOR,
     categoriesOf,
     filterEntries,
     formatDateZh,
-    visibleEntries,
-    type RuleEntry,
     type RuleLibraryFile,
 } from '@/lib/rule-library';
 
@@ -23,7 +23,22 @@ export default function RulesPage() {
     const [category, setCategory] = useState('');
     const [status, setStatus] = useState<string | undefined>(undefined);
 
-    const all = useMemo(() => visibleEntries(library.entries, SHOW_PENDING_LIBRARY), []);
+    const [live, setLive] = useState<LiveEntry[] | null>(null);
+    const [loaded, setLoaded] = useState(false);
+    useEffect(() => {
+        let alive = true;
+        void tryLoad(() => libraryApi.entries()).then((r) => {
+            if (!alive) return;
+            setLive(r ? r.entries : null);
+            setLoaded(true);
+        });
+        return () => {
+            alive = false;
+        };
+    }, []);
+    const offline = loaded && live === null;
+    // 没拿到服务端结论之前不显示任何条目，避免先闪出可能已经过期的内容
+    const all = useMemo<LiveEntry[]>(() => (live ?? (offline ? offlineEntries(library.entries, SHOW_PENDING_LIBRARY) : [])), [live, offline]);
     const categories = useMemo(() => categoriesOf(all), [all]);
     const shown = useMemo(() => filterEntries(all, { query, category, status }), [all, query, category, status]);
 
@@ -40,7 +55,19 @@ export default function RulesPage() {
                 </div>
             )}
 
-            {all.length === 0 ? (
+            {offline && (
+                <div className="mt-4 rounded-xl border border-zinc-300 bg-zinc-50 px-4 py-3 text-sm text-zinc-700" role="note" data-testid="rules-offline">
+                    {OFFLINE_NOTE}
+                </div>
+            )}
+
+            {loaded && !offline && <ForYouSection />}
+
+            {!loaded ? (
+                <p className="mt-8 text-zinc-500" data-testid="rules-loading" aria-busy="true">
+                    正在加载规则库…
+                </p>
+            ) : all.length === 0 ? (
                 <div className="glass-card p-10 mt-8 text-center" data-testid="rules-empty-review">
                     <p className="text-lg font-bold">规则库正在审核中</p>
                     <p className="mt-3 text-sm text-zinc-500 leading-6">
@@ -107,16 +134,37 @@ export default function RulesPage() {
     );
 }
 
-function RuleCard({ entry }: { entry: RuleEntry }) {
+function RuleCard({ entry }: { entry: LiveEntry }) {
+    const d = entry.display;
     return (
         <Link href={`/rules/${entry.id}`} className="glass-card p-5 block" data-testid="rule-card">
             <div className="flex flex-wrap items-center gap-2">
                 <Tag color="geekblue">{entry.category}</Tag>
                 <Tag color={STATUS_COLOR[entry.status]}>{entry.status}</Tag>
                 {entry.review_status === '待审核' && <Tag color="gold">待审核</Tag>}
+                {entry.badge && (
+                    <Tag color={entry.badge === 'updated' ? 'volcano' : 'green'} data-testid="rule-badge">
+                        {BADGE_TEXT[entry.badge]}
+                    </Tag>
+                )}
+                {d?.badges.map((b) => (
+                    <Tag key={b.kind} color={b.kind === 'updated' ? 'orange' : 'default'} data-testid={`rule-badge-${b.kind}`}>
+                        {b.text}
+                    </Tag>
+                ))}
             </div>
             <h2 className="font-bold text-lg mt-3 leading-snug">{entry.title}</h2>
             <p className="mt-2 text-sm leading-6 text-zinc-600">{entry.summary}</p>
+            {d?.banner && (
+                <p className="mt-3 rounded-lg bg-amber-50 text-amber-900 text-xs leading-5 px-3 py-2" data-testid="rule-banner">
+                    {d.banner}
+                </p>
+            )}
+            {d?.change_note && (
+                <p className="mt-3 rounded-lg bg-orange-50 text-orange-900 text-xs leading-5 px-3 py-2" data-testid="rule-change-note">
+                    更新说明：{d.change_note}
+                </p>
+            )}
             <div className="mt-4 text-xs text-zinc-500 leading-5">
                 <div>
                     出处：{entry.source.publisher} · {entry.source.title}
