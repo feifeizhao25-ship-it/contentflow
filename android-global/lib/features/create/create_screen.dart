@@ -95,6 +95,7 @@ class _CreateScreenState extends ConsumerState<CreateScreen> {
     setState(() => _saving = true);
     try {
       await ref.read(apiClientProvider).saveContentPack(pack);
+      ref.invalidate(contentDraftsProvider);
       if (mounted) {
         setState(() => _saved = true);
         ScaffoldMessenger.of(

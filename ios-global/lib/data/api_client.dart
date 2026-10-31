@@ -177,6 +177,19 @@ class ApiClient {
     );
   }
 
+  /// Saved content-pack drafts, newest first.
+  Future<List<ContentDraft>> getContentDrafts() async {
+    return _handle(
+      () => _dio.get(
+        '/contents',
+        queryParameters: {'status': 'draft', 'page': 1, 'pageSize': 50},
+      ),
+      (payload) => _extractList(
+        payload,
+      ).map((e) => ContentDraft.fromJson(Map<String, dynamic>.from(e))).toList(),
+    );
+  }
+
   Future<Asset> uploadAsset(String filePath, AssetType type) async {
     throw UnsupportedError(
       'Asset upload is unavailable until signed object-storage upload is configured',
