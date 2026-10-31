@@ -1,5 +1,6 @@
 import { screenClaim } from '../../ai/compliance/claims';
-import { AI_TEXT_LABEL } from '../../../common/ai-content-label';
+import { aiTextLabel } from '../../../common/ai-content-label';
+import { detectLabelTamperingRequest } from '../../ai/compliance/rules/aigc-label';
 import { checkCompliance } from '../self-improve/compliance';
 import { scanInjection } from '../self-improve/sources';
 import { SHARED_REDTEAM, SkillGolden, SkillRedteam, goldenFor, skillById } from './catalog';
@@ -34,6 +35,12 @@ function refuseReason(text: string): string | null {
   if (/(无需|不用|不必|绕过|规避|跳过).{0,6}(备案|发行许可|许可证|节目编号|内容审核)/.test(text)) return '微短剧须按分类备案、取得发行许可或节目编号后播出，不能绕过。';
   if (/(批量|群发).{0,6}(私信|加好友|骚扰)/.test(text)) return '不能提供批量私信、骚扰引流的做法。';
   if (/未成年人.{0,10}(酒|医疗|药品|保健|美容).{0,4}广告/.test(text)) return '不得向未成年人投放此类广告。';
+  // 2026-10-31（依据：《人工智能生成合成内容标识办法》第十条；视频号《关于创作者规范使用深度合成技术生成内容的建议》）
+  if (detectLabelTamperingRequest(text)) return '不能协助删除、篡改或隐匿 AI 生成合成内容标识（《人工智能生成合成内容标识办法》第十条）。';
+  if (/(不|无需|不用|不必|别|免).{0,3}(标注|标识|标明).{0,6}(AIGC|AI|人工智能)|(AIGC|AI|人工智能).{0,30}(不用|不必|无需|不要|别).{0,2}(标注|标识|标明)/i.test(text)) return 'AI 生成合成内容发布时须主动声明并标识，不能提供不标识的做法。';
+  if (/换脸|克隆.{0,6}(声音|嗓音|人脸|肖像)|(未经|不经|没经过?|无需|不用).{0,4}(授权|同意).{0,10}(声音|人脸|肖像|形象)|(合成|模仿|冒用|盗用).{0,6}(明星|名人|主持人|博主|专家|医生).{0,6}(的)?(声音|口播|形象|人脸|肖像)/.test(text)) return '不得未经授权使用他人肖像、声音生成内容（含换脸、声音克隆）。';
+  if (/(AI|深度合成|数字人|虚拟人).{0,10}(造谣|编造谣言|诈骗|欺诈|制造虚假)|(造谣|诈骗|欺诈).{0,6}(视频|音频|话术|内容)/i.test(text)) return '不得利用深度合成技术制作谣言、虚假信息或实施诈骗。';
+  if (/(虚拟人|数字人|AI).{0,10}(编|冒充|伪装|假扮).{0,6}(真人|医生|专家|教授|律师)|冒充.{0,4}真人/i.test(text)) return '虚拟人物须显著标识，不能冒充真人或伪造专业身份。';
   if (scanInjection(text).length) return '输入含改写规则的指令，已拒绝。';
   const semantic = checkCompliance(text, ['traffic_promise', 'strip_ai_label', 'investment_advice', 'return_promise', 'medical_claim', 'absolute_claim', 'ad_law_superlative', 'fake_authority']);
   if (!semantic.ok) return `话术未通过合规闸：${semantic.families.join('、')}`;
@@ -50,7 +57,7 @@ function topicOf(input: Record<string, unknown>): string {
 function bodyFor(skillId: string, input: Record<string, unknown>): { status: SkillDraft['status']; body: string } {
   const topic = topicOf(input);
   const platform = PLATFORM_NAMES[String(input.platform ?? 'xhs')] ?? '该平台';
-  const lead = `${AI_TEXT_LABEL}\n`;
+  const lead = `${aiTextLabel()}\n`;
   switch (skillId) {
     case 'platform-copy':
       return {

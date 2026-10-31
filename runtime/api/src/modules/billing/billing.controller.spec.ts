@@ -40,7 +40,7 @@ describe('BillingController', () => {
     expect(CN_PLANS.map((plan) => plan.priceMonthlyCny)).toEqual([0, 99, 499, 1999]);
     expect(CN_PLANS[0].monthlyPostQuota).toBe(5);
     expect(CN_PLANS[3].custom).toBe(false);
-    // 内部安全上限：Business 的 AI 令牌按价格比例为 Team 的 4 倍，平台账号上限 100，不能与 Team 同额，也不能误继承「不限」。
+    // 内部安全上限：商务版的 AI 令牌按价格比例为团队版的 4 倍，平台账号上限 100，不能与团队版同额，也不能误继承「不限」。
     // 对外接口把这两项标成待确认，不把未确认数字当成承诺。
     expect(CN_PLANS[3].quotaStatus).toBe('unconfirmed');
     expect(CN_PLANS[3].aiTokenQuota).toBeGreaterThan(CN_PLANS[2].aiTokenQuota);
