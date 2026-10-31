@@ -75,12 +75,13 @@ class ApiClient {
 
   Future<ContentPack> generateContentPack({
     required String topic,
-    int titleCount = 5,
   }) async {
+    // The backend DTO only accepts topic / platforms / personaId (forbidNonWhitelisted);
+    // sending an extra `count` field used to cause a 400. The server decides the title count.
     return _handle(
       () => _dio.post(
         '/content-pack/generate',
-        data: {'topic': topic, 'count': titleCount},
+        data: {'topic': topic},
       ),
       (payload) => ContentPack.fromJson(_extractMap(payload)),
     );

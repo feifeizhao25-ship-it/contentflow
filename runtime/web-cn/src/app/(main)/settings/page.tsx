@@ -329,9 +329,9 @@ export default function SettingsPage() {
                             <Form.Item label="当前版本" name="plan">
                                 <Select disabled>
                                     <Option value="free">免费版</Option>
-                                    <Option value="pro">Solo</Option>
-                                    <Option value="team">Team</Option>
-                                    <Option value="enterprise">Business</Option>
+                                    <Option value="pro">个人版</Option>
+                                    <Option value="team">团队版</Option>
+                                    <Option value="enterprise">商务版</Option>
                                 </Select>
                             </Form.Item>
                             <Text type="secondary">团队名称暂不支持在线修改，如需变更请联系客服。</Text>
@@ -349,7 +349,7 @@ export default function SettingsPage() {
                         <Card title="当前版本" extra={<Link href="/pricing"><Button type="primary">升级版本</Button></Link>}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                 <div>
-                                    <h2 style={{ margin: 0 }}>{planView?.name ?? (tenant?.plan === 'pro' ? 'Solo' : '免费版')}</h2>
+                                    <h2 style={{ margin: 0 }}>{planView?.name ?? (tenant?.plan === 'pro' ? '个人版' : '免费版')}</h2>
                                     <p style={{ color: '#6b7280' }}>{planView ? planView.renewText : '正在读取套餐信息…'}</p>
                                 </div>
                                 <Tag color="blue" style={{ padding: '4px 12px', fontSize: 14 }}>使用中</Tag>
