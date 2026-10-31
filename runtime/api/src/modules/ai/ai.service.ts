@@ -1,4 +1,5 @@
-import { BadRequestException, HttpException, HttpStatus, Injectable, Logger, ServiceUnavailableException } from '@nestjs/common';
+import { isGlobalMarket, hasCjk } from '../../common/i18n/market-text';
+import { BadGatewayException, BadRequestException, HttpException, HttpStatus, Injectable, Logger, ServiceUnavailableException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../database/prisma.service';
 import { parseGeneratedTitles } from './title-parser';
@@ -142,6 +143,21 @@ export const DASHSCOPE_TASKS = 'https://dashscope.aliyuncs.com/api/v1/tasks/';
 export const MAX_SCRIPT_SCENES = 12;
 
 export function buildScriptPrompt(topic: string, type: string, platform: string): string {
+  if (isGlobalMarket()) {
+    return [
+      `Write a storyboard script for a short "${type}" video on ${platform}. Topic: ${topic}`,
+      '',
+      'Requirements:',
+      `1. 4-${MAX_SCRIPT_SCENES} scenes, 30-90 seconds in total`,
+      '2. "visual" drives video generation: a concrete, visual description (setting, subject, camera, lighting), never abstract concepts',
+      '3. "subtitle" is the spoken line or caption for the scene, conversational',
+      '4. "time" is the scene length in whole seconds',
+      '5. English only',
+      '',
+      'Output JSON only, no markdown code fence, in this format:',
+      '{"title":"Title","scenes":[{"visual":"What we see","subtitle":"Caption","time":6}]}',
+    ].join('\n');
+  }
   return [
     `为「${platform}」平台创作一条「${type}」类短视频的分镜脚本，主题：${topic}`,
     '',
@@ -167,6 +183,19 @@ export function parseScriptJson(raw: string): any {
     if (start !== -1 && end > start) return JSON.parse(cleaned.slice(start, end + 1));
     throw new Error('模型未返回可解析的 JSON');
   }
+}
+
+const EN_PLATFORM_NAMES: Record<string, string> = {
+  instagram: 'Instagram', tiktok: 'TikTok', x: 'X (Twitter)', twitter: 'X (Twitter)', linkedin: 'LinkedIn',
+  youtube: 'YouTube', facebook: 'Facebook', pinterest: 'Pinterest', threads: 'Threads', reddit: 'Reddit', blog: 'a blog',
+  // domestic keys an international tenant may still send: map to the nearest international format
+  xhs: 'Instagram', douyin: 'TikTok', wechat: 'LinkedIn', zhihu: 'Quora',
+};
+
+function englishArticleLead(platform: string, topic: string, style: string): string {
+  const name = EN_PLATFORM_NAMES[String(platform || '').toLowerCase()] ?? (platform || 'social media');
+  const form = /tiktok|youtube/i.test(name) ? 'a short-video script' : /linkedin|blog|quora/i.test(name) ? 'an in-depth article' : 'an engaging post';
+  return `Write ${form} for ${name}. Topic: ${topic}. Style: ${style}.`;
 }
 
 @Injectable()
@@ -476,6 +505,35 @@ export class AIService {
     }
   }
 
+  /**
+   * generateText plus the international edition's English-only contract: if the model answers in
+   * Chinese although nothing the user typed was Chinese, ask once more in plain English; if it
+   * still does not, fail with a clear English error instead of leaking Chinese to the client.
+   */
+  async generateTextForMarket(params: Parameters<AIService['generateText']>[0] & { userText?: string }): Promise<AIResponse> {
+    const { userText = '', ...request } = params;
+    const first = await this.generateText(request);
+    if (!isGlobalMarket() || hasCjk(userText) || !hasCjk(first.content)) return first;
+    this.logger.warn('International generation came back with Chinese text; retrying once in English');
+    const second = await this.generateText({
+      ...request,
+      prompt: `${request.prompt}\n\nIMPORTANT: Your previous answer contained Chinese. Answer again in English only, with no Chinese characters at all.`,
+    });
+    if (hasCjk(second.content)) {
+      throw new BadGatewayException({ message: 'The AI did not answer in English. Please try again.', error: 'AI_LANGUAGE_MISMATCH' });
+    }
+    return {
+      ...second,
+      latency_ms: first.latency_ms + second.latency_ms,
+      cost_amount: first.cost_amount === null && second.cost_amount === null ? null : (first.cost_amount ?? 0) + (second.cost_amount ?? 0),
+      usage: {
+        prompt_tokens: first.usage.prompt_tokens + second.usage.prompt_tokens,
+        completion_tokens: first.usage.completion_tokens + second.usage.completion_tokens,
+        total_tokens: first.usage.total_tokens + second.usage.total_tokens,
+      },
+    };
+  }
+
   async generateArticle(params: {
     topic: string;
     style: string;
@@ -493,8 +551,18 @@ export class AIService {
     const basePrompt = platformPrompts[params.platform] || 
       `请创作一篇关于${params.topic}的内容，风格：${params.style}`;
 
-    const result = await this.generateText({
-      prompt: `${basePrompt}
+    const result = await this.generateTextForMarket({
+      prompt: isGlobalMarket()
+        ? `${englishArticleLead(params.platform, params.topic, params.style)}
+Keywords: ${params.keywords?.join(', ') || params.topic}
+
+Requirements:
+1. Open with a strong hook
+2. Give the reader real value
+3. Close with a clear call to action
+
+Write in English only. At the very end, output 3 English prompts for AI image generation (Visual Prompts), one per line, after a line containing ---`
+        : `${basePrompt}
 关键词：${params.keywords?.join('、') || params.topic}
 
 要求：
@@ -505,6 +573,7 @@ export class AIService {
 请在回答最后输出3个用于AI生图的英文提示词（Visual Prompts），每个占一行，用---分隔`,
       maxTokens: 3000,
       route: 'bulk',
+      userText: [params.topic, params.style, ...(params.keywords ?? [])].join(' '),
     });
 
     // 解析视觉提示词
@@ -538,8 +607,20 @@ export class AIService {
   }
 
   async analyzeViralContentWithUsage(content: string): Promise<{ analysis: any } & Omit<AIResponse, 'content'>> {
-    const result = await this.generateText({
-      prompt: `分析以下内容的爆款要素：
+    const result = await this.generateTextForMarket({
+      userText: content,
+      prompt: isGlobalMarket()
+        ? `Analyse what makes the following content go viral:
+
+${content}
+
+Cover these dimensions and answer in JSON with English keys and English text:
+1. Headline appeal score and techniques
+2. Opening hook analysis
+3. Structure of the content
+4. Emotional triggers
+5. A reusable template`
+        : `分析以下内容的爆款要素：
 
 ${content}
 
@@ -609,10 +690,13 @@ ${content}
     platform: string,
     count: number = 5,
   ): Promise<TitlesResponse> {
-    const result = await this.generateText({
-      prompt: `请为"${topic}"在${platform}平台生成${count}个吸引人的标题，每个标题20字以内，用换行分隔`,
+    const result = await this.generateTextForMarket({
+      prompt: isGlobalMarket()
+        ? `Write ${count} catchy headlines for "${topic}" for ${platform}. Each headline must be under 80 characters. English only. One per line, no numbering or commentary.`
+        : `请为"${topic}"在${platform}平台生成${count}个吸引人的标题，每个标题20字以内，用换行分隔`,
       maxTokens: 500,
       route: 'title',
+      userText: `${topic} ${platform}`,
     });
 
     // 结构化解析：剥离「以下是……」等说明性前后缀，
@@ -940,8 +1024,9 @@ ${content}
     title: string;
     scenes: Array<{ visual: string; subtitle: string; time: number }>;
   } & Omit<AIResponse, 'content'>> {
-    const result = await this.generateText({
-      prompt: buildScriptPrompt(input.topic, input.type || '爆款解说', input.platform || '抖音'),
+    const result = await this.generateTextForMarket({
+      userText: `${input.topic} ${input.type ?? ''} ${input.platform ?? ''}`,
+      prompt: buildScriptPrompt(input.topic, input.type || (isGlobalMarket() ? 'viral explainer' : '爆款解说'), input.platform || (isGlobalMarket() ? 'TikTok' : '抖音')),
       maxTokens: 2000,
       temperature: 0.8,
       route: 'bulk',

@@ -5,7 +5,7 @@ import { ConfigService } from '@nestjs/config';
 import type { Job } from 'bull';
 import { PrismaService } from '../../database/prisma.service';
 import type { PublishJobData } from '../../queue/publish-queue.service';
-import { AI_TEXT_LABEL, buildAiMediaMetadata, labelAiGeneratedText } from '../../common/ai-content-label';
+import { aiTextLabel, buildAiMediaMetadata, labelAiGeneratedText } from '../../common/ai-content-label';
 import { evaluateDomesticContent } from '../../common/domestic-content-compliance';
 
 interface DispatchResult { state?: string; remotePostId?: string; remotePostUrl?: string; failureReason?: string }
@@ -78,12 +78,12 @@ export class PublishProcessor {
         id: content.id, title: content.title,
         // AI 生成内容：显式标识随正文一起发出，不能在分发这一步丢掉（幂等，不重复叠加）。
         body: isAi && content.body ? labelAiGeneratedText(content.body) : content.body,
-        bodyHtml: isAi && content.body_html && !String(content.body_html).includes(AI_TEXT_LABEL)
-          ? `<p>${AI_TEXT_LABEL}</p>${content.body_html}` : content.body_html,
+        bodyHtml: isAi && content.body_html && !String(content.body_html).includes(aiTextLabel())
+          ? `<p>${aiTextLabel()}</p>${content.body_html}` : content.body_html,
         coverUrl: content.cover_url, mediaUrls: content.media_urls, tags: content.tags,
         // 隐式标识：机器可读的 AI 生成元数据，分发器必须原样写入目标平台的 AI 生成声明字段。
         aiGenerated: isAi,
-        ...(isAi ? { aiLabel: AI_TEXT_LABEL, aiMetadata: buildAiMediaMetadata({ mediaType: 'text', model: content.ai_model ?? undefined, contentId: content.id }) } : {}),
+        ...(isAi ? { aiLabel: aiTextLabel(), aiMetadata: buildAiMediaMetadata({ mediaType: 'text', model: content.ai_model ?? undefined, contentId: content.id }) } : {}),
       },
     });
     const timestamp = Date.now().toString();

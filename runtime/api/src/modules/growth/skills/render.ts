@@ -1,5 +1,5 @@
 import { screenClaim } from '../../ai/compliance/claims';
-import { AI_TEXT_LABEL } from '../../../common/ai-content-label';
+import { aiTextLabel } from '../../../common/ai-content-label';
 import { checkCompliance } from '../self-improve/compliance';
 import { scanInjection } from '../self-improve/sources';
 import { SHARED_REDTEAM, SkillGolden, SkillRedteam, goldenFor, skillById } from './catalog';
@@ -50,7 +50,7 @@ function topicOf(input: Record<string, unknown>): string {
 function bodyFor(skillId: string, input: Record<string, unknown>): { status: SkillDraft['status']; body: string } {
   const topic = topicOf(input);
   const platform = PLATFORM_NAMES[String(input.platform ?? 'xhs')] ?? '该平台';
-  const lead = `${AI_TEXT_LABEL}\n`;
+  const lead = `${aiTextLabel()}\n`;
   switch (skillId) {
     case 'platform-copy':
       return {
