@@ -1,3 +1,4 @@
+import '../../core/illustrated.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -39,23 +40,11 @@ class DraftsView extends ConsumerWidget {
               key: const ValueKey('drafts-empty'),
               physics: const AlwaysScrollableScrollPhysics(),
               children: [
-                const SizedBox(height: 90),
-                Icon(Icons.edit_note, size: 64, color: Colors.grey.shade400),
-                const SizedBox(height: 16),
-                Center(
-                  child: Text(
-                    '还没有保存的草稿',
-                    style: TextStyle(fontSize: 16, color: Colors.grey.shade600),
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 40),
-                  child: Text(
-                    '在「创作」里生成内容包并点击「保存到内容包」，就会出现在这里。',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(fontSize: 14, color: Colors.grey.shade500),
-                  ),
+                const SizedBox(height: 40),
+                const CfEmptyState(
+                  asset: 'assets/images/cf_ai_result.webp',
+                  title: '还没有保存的草稿',
+                  message: '在「创作」里生成内容包并点击「保存到内容包」，就会出现在这里。',
                 ),
               ],
             ),

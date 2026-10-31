@@ -1,3 +1,4 @@
+import '../../core/illustrated.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/app_theme.dart';
@@ -97,6 +98,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(20),
+                        child: Image.asset('assets/images/cf_login_hero.webp', height: 150, fit: BoxFit.cover,
+                            errorBuilder: (_, __, ___) => const SizedBox(height: 150)),
+                      ),
+                      const SizedBox(height: 16),
                       Text(
                         '分发侠',
                         textAlign: TextAlign.center,

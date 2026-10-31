@@ -1,3 +1,4 @@
+import '../../core/illustrated.dart';
 import '../../core/app_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -50,7 +51,7 @@ class AssetsScreen extends ConsumerWidget {
       padding: const EdgeInsets.all(20),
       child: Row(
         children: [
-          const Text('📁', style: TextStyle(fontSize: 28)),
+          Icon(Icons.folder_copy_outlined, size: 30, color: Theme.of(context).colorScheme.primary),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
@@ -153,22 +154,11 @@ class AssetsScreen extends ConsumerWidget {
 
   Widget _buildAssetsGrid(BuildContext context, List<Asset> assets) {
     if (assets.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.folder_open, size: 64, color: Colors.grey.shade400),
-            const SizedBox(height: 16),
-            Text(
-              '暂无素材',
-              style: TextStyle(fontSize: 16, color: Colors.grey.shade600),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              '点击 + 上传素材',
-              style: TextStyle(fontSize: 14, color: Colors.grey.shade400),
-            ),
-          ],
+      return const Center(
+        child: CfEmptyState(
+          asset: 'assets/images/cf_empty_assets.webp',
+          title: '暂无素材',
+          message: '点击右上角的上传按钮，添加图片、视频或脚本素材。',
         ),
       );
     }

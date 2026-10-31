@@ -1,3 +1,4 @@
+import '../../core/illustrated.dart';
 import '../../core/app_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -27,7 +28,7 @@ class InsightsScreen extends ConsumerWidget {
               SliverToBoxAdapter(child: _buildHeader(context)),
 
               // Analytics Chart
-              SliverToBoxAdapter(child: _buildSectionTitle('📈 近期数据')),
+              SliverToBoxAdapter(child: const CfSectionTitle(icon: Icons.insights, title: '近期数据')),
 
               summaryAsync.when(
                 data: (summary) =>
@@ -40,8 +41,6 @@ class InsightsScreen extends ConsumerWidget {
               ),
 
               // Winner Alert
-              SliverToBoxAdapter(child: _buildSectionTitle('🔥 爆款提示')),
-
               contentAsync.when(
                 data: (contents) {
                   if (contents.isEmpty) {
@@ -50,7 +49,13 @@ class InsightsScreen extends ConsumerWidget {
                   final topContent = contents.first;
                   if (topContent.engagementRate > 0.05) {
                     return SliverToBoxAdapter(
-                      child: _buildWinnerAlert(context, topContent),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const CfSectionTitle(icon: Icons.local_fire_department, title: '爆款提示'),
+                          _buildWinnerAlert(context, topContent),
+                        ],
+                      ),
                     );
                   }
                   return const SliverToBoxAdapter(child: SizedBox.shrink());
@@ -61,17 +66,60 @@ class InsightsScreen extends ConsumerWidget {
                     const SliverToBoxAdapter(child: SizedBox.shrink()),
               ),
 
+              // 互动率对比（真实数据条形图；无数据时不显示）
+              contentAsync.when(
+                data: (contents) {
+                  if (contents.isEmpty) {
+                    return const SliverToBoxAdapter(child: SizedBox.shrink());
+                  }
+                  final top = [...contents]
+                    ..sort((x, y) => y.engagementRate.compareTo(x.engagementRate));
+                  final rows = top.take(6).map((c) => (
+                        c.title.isEmpty ? '（无标题）' : c.title,
+                        c.engagementRate,
+                        '${(c.engagementRate * 100).toStringAsFixed(1)}%',
+                      )).toList();
+                  return SliverToBoxAdapter(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const CfSectionTitle(icon: Icons.stacked_bar_chart, title: '互动率对比'),
+                        Container(
+                          margin: const EdgeInsets.symmetric(horizontal: 20),
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: AppColors.card(context),
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          child: CfBarChart(rows: rows),
+                        ),
+                      ],
+                    ),
+                  );
+                },
+                loading: () => const SliverToBoxAdapter(child: SizedBox.shrink()),
+                error: (_, __) => const SliverToBoxAdapter(child: SizedBox.shrink()),
+              ),
+
               // Content List
-              SliverToBoxAdapter(child: _buildSectionTitle('📋 内容列表')),
+              SliverToBoxAdapter(child: const CfSectionTitle(icon: Icons.list_alt, title: '内容列表')),
 
               contentAsync.when(
-                data: (contents) => SliverList(
-                  delegate: SliverChildBuilderDelegate(
-                    (context, index) =>
-                        _buildContentItem(context, contents[index]),
-                    childCount: contents.length,
-                  ),
-                ),
+                data: (contents) => contents.isEmpty
+                    ? const SliverToBoxAdapter(
+                        child: CfEmptyState(
+                          asset: 'assets/images/cf_empty_insights.webp',
+                          title: '还没有可复盘的内容',
+                          message: '内容发布后，这里会按真实数据展示播放、互动和互动率对比。',
+                        ),
+                      )
+                    : SliverList(
+                        delegate: SliverChildBuilderDelegate(
+                          (context, index) =>
+                              _buildContentItem(context, contents[index]),
+                          childCount: contents.length,
+                        ),
+                      ),
                 loading: () => const SliverToBoxAdapter(
                   child: Center(child: CircularProgressIndicator()),
                 ),
@@ -92,7 +140,12 @@ class InsightsScreen extends ConsumerWidget {
       padding: const EdgeInsets.all(20),
       child: Row(
         children: [
-          const Text('📊', style: TextStyle(fontSize: 28)),
+          Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(14)),
+            child: Icon(Icons.bar_chart_rounded, size: 26, color: Theme.of(context).colorScheme.primary),
+          ),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
@@ -142,24 +195,17 @@ class InsightsScreen extends ConsumerWidget {
             alignment: Alignment.centerLeft,
             child: Text(
               '还没有按日曲线。下面是累计数字，不是示例走势。',
-              style: TextStyle(color: Color(0xFF3F3F46), fontSize: 13, height: 1.4),
+              style: TextStyle(color: Color(0xFF3F3F46), fontSize: 14, height: 1.5),
             ),
           ),
           const SizedBox(height: 16),
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
-              _buildStatColumn(
-                '播放',
-                _formatNumber(summary.totalViews),
-                Colors.blue,
-              ),
-              _buildStatColumn(
-                '互动',
-                _formatNumber(summary.totalEngagement),
-                Colors.orange,
-              ),
-              _buildStatColumn('内容', '${summary.totalContent}', Colors.green),
+              CfStatTile(icon: Icons.play_circle_outline, label: '播放', value: _formatNumber(summary.totalViews), color: Colors.blue.shade700),
+              const SizedBox(width: 10),
+              CfStatTile(icon: Icons.favorite_border, label: '互动', value: _formatNumber(summary.totalEngagement), color: Colors.orange.shade800),
+              const SizedBox(width: 10),
+              CfStatTile(icon: Icons.article_outlined, label: '内容', value: '${summary.totalContent}', color: Colors.green.shade700),
             ],
           ),
         ],
@@ -291,7 +337,7 @@ class InsightsScreen extends ConsumerWidget {
       children: [
         Icon(icon, size: 14, color: color),
         const SizedBox(width: 4),
-        Text(value, style: TextStyle(color: color, fontSize: 12)),
+        Text(value, style: TextStyle(color: color, fontSize: 14)),
       ],
     );
   }
