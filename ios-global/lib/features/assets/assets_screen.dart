@@ -123,16 +123,24 @@ class AssetsScreen extends ConsumerWidget {
               selectedType,
             ),
             const SizedBox(width: 8),
-            FilterChip(
+            Builder(
+              builder: (chipContext) => FilterChip(
               key: const ValueKey('drafts-chip'),
               label: const Text('Drafts'),
               selected: ref.watch(showDraftsProvider),
               onSelected: (_) {
                 ref.read(showDraftsProvider.notifier).state = true;
                 ref.invalidate(contentDraftsProvider);
+                // The chip sits at the end of a scrolling row: bring it fully into view.
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  if (chipContext.mounted) {
+                    Scrollable.ensureVisible(chipContext, duration: const Duration(milliseconds: 200));
+                  }
+                });
               },
               selectedColor: Theme.of(context).primaryColor.withValues(alpha: 0.2),
               checkmarkColor: Theme.of(context).primaryColor,
+            ),
             ),
           ],
         ),
