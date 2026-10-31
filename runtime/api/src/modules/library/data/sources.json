@@ -1,0 +1,10 @@
+{
+  "note": "资料库自动更新用到的来源配置。allowed_domains 之外的域名一律拒绝抓取；manual_hosts 是拒绝程序访问的站点，只能人工到浏览器核对。",
+  "allowed_domains": ["www.gov.cn", "www.samr.gov.cn", "openstd.samr.gov.cn", "www.cac.gov.cn", "www.nhc.gov.cn"],
+  "manual_hosts": { "www.nhc.gov.cn": "国家卫健委网站对程序访问返回 412，需人工到浏览器核对" },
+  "watch": [
+    { "id": "samr-ad", "name": "市场监管总局·广告监管司", "publisher": "国家市场监督管理总局", "listing_url": "https://www.samr.gov.cn/ggjgs/", "title_include": ["广告", "直播", "虚假宣传", "提示性用语", "互联网", "保健", "食品"], "license_note": "政府网站公开信息（官方文件，仅作标题和链接的暂存）", "category_hint": "广告标识" },
+    { "id": "gov-zhengce", "name": "中国政府网·最新政策", "publisher": "中国政府网", "listing_url": "https://www.gov.cn/zhengce/index.htm", "title_include": ["广告", "直播", "网络", "人工智能", "生成合成", "未成年人", "食品安全", "电子商务"], "license_note": "政府网站公开信息（官方文件，仅作标题和链接的暂存）", "category_hint": "" },
+    { "id": "cac-home", "name": "国家网信办", "publisher": "国家互联网信息办公室", "listing_url": "https://www.cac.gov.cn/", "title_include": ["生成合成", "网络直播", "人工智能", "未成年人", "标识", "算法"], "license_note": "政府网站公开信息（官方文件，仅作标题和链接的暂存）", "category_hint": "AI 标识" }
+  ]
+}

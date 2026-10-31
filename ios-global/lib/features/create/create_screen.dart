@@ -1,8 +1,8 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import '../../data/api_exception.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/providers.dart';
-import '../../data/api_exception.dart';
 import '../../data/models.dart';
 import 'platform_options.dart';
 import 'generate_status.dart';
@@ -35,6 +35,8 @@ class _CreateScreenState extends ConsumerState<CreateScreen> {
     _materialController.dispose();
     super.dispose();
   }
+
+  /// Why the last generation failed. Stays on screen (a snackbar alone disappears).
 
   Future<void> _generateContentPack() async {
     if (_topicController.text.trim().isEmpty) {

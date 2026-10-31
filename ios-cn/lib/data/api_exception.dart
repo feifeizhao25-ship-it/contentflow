@@ -9,6 +9,32 @@ class ApiException implements Exception {
 
   ApiException(this.message, {this.statusCode, this.timedOut = false});
 
+  /// 按状态码给出中文说明（后端没有给出可展示的中文原因时使用）。
+  static String statusMessage(int? statusCode) {
+    switch (statusCode) {
+      case 400:
+        return '提交的内容不符合要求，请修改主题后重试';
+      case 401:
+        return '登录已失效，请重新登录';
+      case 402:
+      case 403:
+        return '当前套餐或权限不足，请在网页端查看套餐';
+      case 404:
+        return '没有找到对应的内容';
+      case 409:
+        return '操作冲突，请稍后重试';
+      case 422:
+        return '提交的内容格式不对，请检查后重试';
+      case 429:
+        return '请求太频繁或本月额度已用完，请稍后再试';
+      default:
+        if (statusCode != null && statusCode >= 500) {
+          return '服务暂时不可用，请稍后重试';
+        }
+        return '服务器响应异常';
+    }
+  }
+
   factory ApiException.fromDio(DioException error) {
     final statusCode = error.response?.statusCode;
     final data = error.response?.data;
@@ -31,7 +57,7 @@ class ApiException implements Exception {
       case DioExceptionType.receiveTimeout:
         return ApiException('响应超时，请稍后重试', statusCode: statusCode, timedOut: true);
       case DioExceptionType.badResponse:
-        return ApiException('服务器响应异常', statusCode: statusCode);
+        return ApiException(statusMessage(statusCode), statusCode: statusCode);
       case DioExceptionType.cancel:
         return ApiException('请求已取消', statusCode: statusCode);
       case DioExceptionType.badCertificate:

@@ -22,7 +22,10 @@ export type AigcIssueCode =
   | 'implicit_missing_aigc_key'
   | 'implicit_label_invalid'
   | 'implicit_field_missing'
-  | 'implicit_field_not_string';
+  | 'implicit_field_not_string'
+  | 'publisher_declaration_missing'
+  | 'label_function_not_used'
+  | 'label_tampering_request';
 
 export interface AigcIssue {
   code: AigcIssueCode;
@@ -37,6 +40,7 @@ export interface AigcCheckResult {
 }
 
 const BASIS_EXPLICIT = '《人工智能生成合成内容标识办法》第四条；GB 45438—2025 第5章';
+const BASIS_PUBLISHER = '《人工智能生成合成内容标识办法》第十条';
 const BASIS_IMPLICIT = '《人工智能生成合成内容标识办法》第五条；GB 45438—2025 第6.1条、附录E';
 
 /** 标识文字须同时含「人工智能要素」和「生成合成要素」（GB 45438—2025 5.1 b）。 */
@@ -147,4 +151,31 @@ export function checkAigcBeforePublish(input: AigcPublishInput): AigcCheckResult
   const implicit = checkImplicitMetadata(input.implicitMetadata, { requirePropagation: input.requirePropagation });
   const issues = [...explicit.issues, ...implicit.issues];
   return { ok: issues.length === 0, issues };
+}
+
+/**
+ * 第十条第一款：用户使用网络信息内容传播服务发布生成合成内容的，应当主动声明并使用服务提供者提供的标识功能进行标识。
+ * 发布前检查「是否主动声明」和「是否用了平台的标识功能」；非 AI 生成内容直接通过。
+ */
+export function checkPublisherDeclaration(input: { aiGenerated: boolean; declaredByPublisher: boolean; usedPlatformLabelFunction: boolean }): AigcCheckResult {
+  if (!input.aiGenerated) return { ok: true, issues: [] };
+  const issues: AigcIssue[] = [];
+  if (!input.declaredByPublisher) issues.push({ code: 'publisher_declaration_missing', message: '发布 AI 生成合成内容时须主动声明。', basis: BASIS_PUBLISHER });
+  if (!input.usedPlatformLabelFunction) issues.push({ code: 'label_function_not_used', message: '发布时须使用平台提供的标识功能进行标识。', basis: BASIS_PUBLISHER });
+  return { ok: issues.length === 0, issues };
+}
+
+/**
+ * 第十条第二款：任何组织和个人不得恶意删除、篡改、伪造、隐匿生成合成内容标识，不得为他人实施上述行为提供工具或服务。
+ * 识别「请求我们帮忙去掉/隐藏/篡改标识」的输入，命中即应拒绝（不是检查内容本身是否 AI 生成）。
+ */
+const TAMPER_VERB = '(去掉|去除|删除|删掉|清除|清掉|抹掉|抹去|隐藏|隐匿|绕过|规避|篡改|伪造|屏蔽)';
+const LABEL_NOUN = '(标识|标注|标签|水印|元数据)';
+const TAMPER_PATTERNS: RegExp[] = [
+  new RegExp(`${TAMPER_VERB}.{0,10}(AIGC|AI|人工智能|生成合成).{0,6}${LABEL_NOUN}`, 'i'),
+  new RegExp(`(AIGC|AI|人工智能|生成合成).{0,8}${LABEL_NOUN}.{0,6}${TAMPER_VERB}`, 'i'),
+  new RegExp(`${TAMPER_VERB}.{0,10}(隐式|显式)${LABEL_NOUN}`),
+];
+export function detectLabelTamperingRequest(text: string): boolean {
+  return TAMPER_PATTERNS.some((re) => re.test(text ?? ''));
 }

@@ -364,11 +364,11 @@ class User {
   String get planText {
     switch (plan) {
       case 'pro':
-        return 'Solo';
+        return '个人版';
       case 'team':
-        return 'Team';
+        return '团队版';
       case 'enterprise':
-        return 'Business';
+        return '商务版';
       default:
         return '免费版';
     }

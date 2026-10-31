@@ -1,6 +1,8 @@
 import {
   assertDomesticProviderConfigured,
   isDomesticMarket,
+  OPENROUTER_CHAT_URL,
+  resolveOpenRouterUrl,
   resolveTextProvider,
 } from './market-routing';
 
@@ -123,5 +125,33 @@ describe('国内栈必须有境内供应商凭据', () => {
         deepseekApiKey: '',
       }),
     ).not.toThrow();
+  });
+});
+
+describe('境外文本供应商地址可配置（测试环境可指向本地假供应商）', () => {
+  it('不配置时就是 OpenRouter 的默认地址', () => {
+    expect(resolveOpenRouterUrl({})).toBe(OPENROUTER_CHAT_URL);
+    expect(resolveOpenRouterUrl({ OPENROUTER_BASE_URL: '  ' })).toBe(OPENROUTER_CHAT_URL);
+  });
+
+  it('测试环境接受本地 http 地址，并补全 /chat/completions', () => {
+    expect(resolveOpenRouterUrl({ OPENROUTER_BASE_URL: 'http://127.0.0.1:9790/v1', NODE_ENV: 'test' })).toBe('http://127.0.0.1:9790/v1/chat/completions');
+    expect(resolveOpenRouterUrl({ OPENROUTER_BASE_URL: 'http://127.0.0.1:9790/v1/', NODE_ENV: 'development' })).toBe('http://127.0.0.1:9790/v1/chat/completions');
+    expect(resolveOpenRouterUrl({ OPENROUTER_BASE_URL: 'http://127.0.0.1:9790/v1/chat/completions' })).toBe('http://127.0.0.1:9790/v1/chat/completions');
+  });
+
+  it('生产环境只接受 https，其它回到默认地址', () => {
+    expect(resolveOpenRouterUrl({ OPENROUTER_BASE_URL: 'http://127.0.0.1:9790/v1', NODE_ENV: 'production' })).toBe(OPENROUTER_CHAT_URL);
+    expect(resolveOpenRouterUrl({ OPENROUTER_BASE_URL: 'https://gateway.example.com/v1', NODE_ENV: 'production' })).toBe('https://gateway.example.com/v1/chat/completions');
+  });
+
+  it('写错的地址和非 http(s) 协议回到默认地址', () => {
+    expect(resolveOpenRouterUrl({ OPENROUTER_BASE_URL: 'not a url' })).toBe(OPENROUTER_CHAT_URL);
+    expect(resolveOpenRouterUrl({ OPENROUTER_BASE_URL: 'file:///etc/passwd' })).toBe(OPENROUTER_CHAT_URL);
+  });
+
+  it('国内市场仍然不走聚合路由，不论地址配成什么', () => {
+    const d = resolveTextProvider({ marketRegion: 'cn', openRouterApiKey: 'k', offshoreDefaultModel: 'x/y' });
+    expect(d.useOpenRouter).toBe(false);
   });
 });

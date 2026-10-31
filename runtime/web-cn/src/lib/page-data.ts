@@ -132,7 +132,7 @@ export function flattenViralAnalysis(analysis: unknown): Array<{ heading: string
     .filter((section) => section.lines.length > 0);
 }
 
-const PLAN_NAMES: Record<string, string> = { free: '免费版', starter: '入门版', pro: 'Solo', team: 'Team', enterprise: 'Business' };
+const PLAN_NAMES: Record<string, string> = { free: '免费版', starter: '入门版', pro: '个人版', team: '团队版', enterprise: '商务版' };
 
 export interface PlanView {
   name: string;
@@ -152,7 +152,7 @@ export function describePlan(tenant: any, subscription?: any): PlanView {
   const renewText = (plan === 'free' || !expires || !expires.isValid()
     ? '免费版长期有效，不会产生账单'
     : `当前套餐有效期至 ${expires.format('YYYY年M月D日')}`)
-    + (quotaUnconfirmed ? '。Business 的 AI 令牌额度与平台账号上限待确认，页面不展示未确认数字。' : '');
+    + (quotaUnconfirmed ? '。商务版的 AI 令牌额度与平台账号上限待确认，页面不展示未确认数字。' : '');
   const limits = tenant?.limits && typeof tenant.limits === 'object' ? tenant.limits : null;
   const used = tenant?.usage_stats && typeof tenant.usage_stats === 'object' ? tenant.usage_stats : null;
   const usage: PlanView['usage'] = [];
@@ -222,7 +222,7 @@ export function describeAiAllowance(subscription: unknown): AiAllowanceView {
   if (t.quotaStatus === 'unconfirmed') {
     const left = Number.isFinite(remaining) ? remaining : limit - used;
     if (Number.isFinite(left) && left <= 0) {
-      return { available: true, unlimited: false, exhausted: true, summary: `本月 AI 额度已用完（已用 ${formatTokens(used)} 令牌）。Business 额度上限待确认，请联系客服核对。`, rule };
+      return { available: true, unlimited: false, exhausted: true, summary: `本月 AI 额度已用完（已用 ${formatTokens(used)} 令牌）。商务版额度上限待确认，请联系客服核对。`, rule };
     }
     return { available: true, unlimited: false, exhausted: false, summary: `本月 AI 额度待确认（已用 ${formatTokens(used)} 令牌）。确认前不展示未确认的额度数字。`, rule };
   }

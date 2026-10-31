@@ -13,6 +13,8 @@ import { chinaDayStart } from '../../common/china-period';
 import {
   assertDomesticProviderConfigured,
   isDomesticMarket,
+  OPENROUTER_CHAT_URL,
+  resolveOpenRouterUrl,
   resolveTextProvider,
 } from './market-routing';
 import { localAiStubEnabled, localStubCompletion } from './local-ai-stub';
@@ -212,6 +214,7 @@ export class AIService {
   private readonly klingSecretKey: string;
   private readonly falApiKey: string;
   private readonly openRouterApiKey: string;
+  private readonly openRouterUrl: string;
   private readonly marketRegion: string;
   private openRouterFailures = 0;
   private openRouterOpenUntil = 0;
@@ -251,6 +254,13 @@ export class AIService {
       : read('OPENROUTER_API_KEY');
     // 国内栈没有任何境内 key 时，在启动阶段就说清楚，
     // 而不是等第一个用户点了生成才报。
+    this.openRouterUrl = resolveOpenRouterUrl({
+      OPENROUTER_BASE_URL: this.configService.get('OPENROUTER_BASE_URL', ''),
+      NODE_ENV: this.configService.get('NODE_ENV', process.env.NODE_ENV ?? ''),
+    });
+    if (!isDomesticMarket(this.marketRegion) && this.openRouterUrl !== OPENROUTER_CHAT_URL) {
+      this.logger.warn(`启动检查：境外文本供应商地址被 OPENROUTER_BASE_URL 覆盖为 ${new URL(this.openRouterUrl).origin}（仅用于测试环境）`);
+    }
     this.localStub = localAiStubEnabled({
       NODE_ENV: this.configService.get('NODE_ENV', process.env.NODE_ENV ?? ''),
       AI_LOCAL_STUB: this.configService.get('AI_LOCAL_STUB', ''),
@@ -298,7 +308,7 @@ export class AIService {
       ];
       let response: Response;
       try {
-        response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+        response = await fetch(this.openRouterUrl, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${this.openRouterApiKey}`, 'HTTP-Referer': this.configService.get('OPENROUTER_SITE_URL', 'https://fenfa.ai'), 'X-Title': openRouterHeaderValue('Fenfa AI') },
           body: JSON.stringify({ models, messages: [{ role: 'user', content: params.prompt }], max_tokens: maxTokens, temperature: params.temperature ?? 0.7, provider: { data_collection: 'deny', zdr: true, require_parameters: true } }),

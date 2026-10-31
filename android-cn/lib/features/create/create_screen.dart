@@ -34,6 +34,8 @@ class _CreateScreenState extends ConsumerState<CreateScreen> {
     super.dispose();
   }
 
+  /// 生成失败时的原因，常驻屏幕（不只是一闪而过的提示条）。
+
   Future<void> _generateContentPack() async {
     if (_topicController.text.trim().isEmpty) {
       ScaffoldMessenger.of(
