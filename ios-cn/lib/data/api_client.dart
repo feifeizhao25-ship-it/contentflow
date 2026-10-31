@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 import '../config/cn_config.dart';
 import 'api_exception.dart';
 import 'models.dart';
+import 'subscription_status.dart';
 import 'token_storage.dart';
 
 class ApiClient {
@@ -83,7 +84,12 @@ class ApiClient {
         '/content-pack/generate',
         data: {'topic': topic},
       ),
-      (payload) => ContentPack.fromJson(_extractMap(payload)),
+      (payload) {
+        // 服务端对结果包了两层（{data: {success, data: {...}}}），这里取最里面那层。
+        final outer = _extractMap(payload);
+        final inner = outer['data'];
+        return ContentPack.fromJson(inner is Map<String, dynamic> ? inner : outer);
+      },
     );
   }
 
@@ -162,6 +168,16 @@ class ApiClient {
     return _handle(
       () => _dio.get('/analytics/dashboard'),
       (_) => <ContentAnalytics>[],
+    );
+  }
+
+  // ============== Subscription ==============
+
+  /// 套餐与本月用量：服务端 GET /billing/subscription 是唯一来源。
+  Future<SubscriptionStatus> getSubscriptionStatus() async {
+    return _handle(
+      () => _dio.get('/billing/subscription'),
+      (payload) => SubscriptionStatus.fromJson(_extractMap(payload)),
     );
   }
 

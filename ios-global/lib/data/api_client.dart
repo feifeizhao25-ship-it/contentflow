@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 import '../config/global_config.dart';
 import 'api_exception.dart';
 import 'models.dart';
+import 'subscription_status.dart';
 import 'token_storage.dart';
 
 class ApiClient {
@@ -75,15 +76,30 @@ class ApiClient {
 
   Future<ContentPack> generateContentPack({
     required String topic,
+    int titleCount = 5,
+    String? targetMarket,
+    String? material,
   }) async {
-    // The backend DTO only accepts topic / platforms / personaId (forbidNonWhitelisted);
-    // sending an extra `count` field used to cause a 400. The server decides the title count.
     return _handle(
       () => _dio.post(
         '/content-pack/generate',
-        data: {'topic': topic},
+        data: {
+          'topic': topic,
+          'count': titleCount,
+          if (targetMarket != null && targetMarket.isNotEmpty)
+            'targetMarket': targetMarket,
+          if (material != null && material.trim().isNotEmpty)
+            'material': material.trim(),
+        },
       ),
-      (payload) => ContentPack.fromJson(_extractMap(payload)),
+      (payload) {
+        // The server wraps the result twice ({data: {success, data: {...}}}); read the inner object.
+        final outer = _extractMap(payload);
+        final inner = outer['data'];
+        return ContentPack.fromJson(
+          inner is Map<String, dynamic> ? inner : outer,
+        );
+      },
     );
   }
 
@@ -152,6 +168,16 @@ class ApiClient {
     return _handle(
       () => _dio.get('/analytics/dashboard'),
       (_) => <ContentAnalytics>[],
+    );
+  }
+
+  // ============== Subscription ==============
+
+  /// 套餐与本月用量：服务端 GET /billing/subscription 是唯一来源。
+  Future<SubscriptionStatus> getSubscriptionStatus() async {
+    return _handle(
+      () => _dio.get('/billing/subscription'),
+      (payload) => SubscriptionStatus.fromJson(_extractMap(payload)),
     );
   }
 
