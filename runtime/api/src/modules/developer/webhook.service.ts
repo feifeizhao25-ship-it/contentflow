@@ -17,13 +17,13 @@ export class WebhookService {
   }
   private db() { return (this.prisma as any).webhookSubscription; }
 
-  /** 定稿（2026-10-18）：Webhook 订阅仅 Business 档（plan=enterprise）开放，其余档关闭；过期按免费档处理。 */
+  /** 定稿（2026-10-18）：Webhook 订阅仅商务版（plan=enterprise）开放，其余档关闭；过期按免费档处理。 */
   private async businessPlan(tenantId: string): Promise<boolean> {
     const tenant = await (this.prisma as any).tenant.findUnique({ where: { id: tenantId } });
     return effectiveEntitlements(tenant ?? { plan: 'free' }).plan === 'enterprise';
   }
   private async assertBusiness(tenantId: string) {
-    if (!(await this.businessPlan(tenantId))) throw new ForbiddenException('Webhook 订阅仅 Business 档开放，请升级后使用');
+    if (!(await this.businessPlan(tenantId))) throw new ForbiddenException('Webhook 订阅仅商务版开放，请升级后使用');
   }
   async create(tenantId: string, body: { url?: string; events?: string[] }) {
     await this.assertBusiness(tenantId);

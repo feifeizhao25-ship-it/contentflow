@@ -7,6 +7,7 @@ import { KnowledgeEntry, retirementScan } from './freshness';
 import { EvalItem, GateResult, Metrics, checkSetSeparation, editBudget, evaluateGates } from './gates';
 import { SourcePolicy, SourceRecord, lintSource, scanInjection } from './sources';
 import { Candidate, CandidateStore, IllegalTransition } from './store';
+import { UtilityLedger } from './utility';
 
 export interface EvalOutcome {
   baseline: Metrics;
@@ -41,9 +42,11 @@ export interface CycleReport {
   blocked: [string, string][];
   warnings: string[];
   problems: string[];
+  /** 可观测：各类拒绝原因计数、账本规模等（不含任何用户数据） */
+  metrics: Record<string, unknown>;
 }
 
-const emptyReport = (at: string): CycleReport => ({ status: 'ok', started_at: at, budget: 0, sources_seen: 0, sources_rejected: [], proposed: [], rejected: [], pending_approval: [], promoted: [], expired: [], blocked: [], warnings: [], problems: [] });
+const emptyReport = (at: string): CycleReport => ({ status: 'ok', started_at: at, budget: 0, sources_seen: 0, sources_rejected: [], proposed: [], rejected: [], pending_approval: [], promoted: [], expired: [], blocked: [], warnings: [], problems: [], metrics: {} });
 
 /**
  * 每周自改进闭环：采集 → 清洗 → 隔离 → 提案 → 评测 → 合规 → 审批 → 晋升 → 回滚。
@@ -51,6 +54,7 @@ const emptyReport = (at: string): CycleReport => ({ status: 'ok', started_at: at
  */
 export class SelfImprovementLoop {
   readonly store: CandidateStore;
+  readonly utility: UtilityLedger;
   private readonly policy: SourcePolicy;
   private readonly approval: ApprovalPolicy;
   private readonly gateway: Gateway;
@@ -64,6 +68,7 @@ export class SelfImprovementLoop {
     this.approval = opts.approval ?? approvalPolicyFromEnv();
     this.gateway = opts.gateway ?? new NullGateway();
     this.store = opts.store ?? new CandidateStore(cfg.dataDir);
+    this.utility = new UtilityLedger(cfg.dataDir);
     this.extraLiterals = opts.extraLiterals ?? [];
   }
   private readonly extraLiterals: string[];
@@ -119,6 +124,7 @@ export class SelfImprovementLoop {
       rep.proposed.push(c.id);
       await this.evaluateOne(c, rep);
     }
+    rep.metrics = this.metricsOf(rep);
     this.writeHistory([...hist, { week: now.toISOString().slice(0, 10), net_gain: rep.promoted.length }]);
     this.writeReport(rep, now, 'weekly');
     return rep;
@@ -129,6 +135,45 @@ export class SelfImprovementLoop {
     writeFileSync(this.histPath, JSON.stringify(h.slice(-26)), 'utf8');
   }
 
+  private selfCited(c: Candidate): boolean {
+    const own = this.cfg.dataDir.replace(/\\/g, '/').replace(/\/+$/, '');
+    return (c.evidence ?? []).some((ev: any) => {
+      const url = String(ev?.url ?? '');
+      return url.startsWith('file://') || (own !== '' && url.includes(own)) || url.includes('var/self_improve');
+    });
+  }
+
+  /** 把名字放进退役名单（调用方应已完成审批）。写入哈希链日志。 */
+  retire(name: string, reason: string, today?: Date): void {
+    const day = today ? today.toISOString().slice(0, 10) : undefined;
+    this.utility.bury(name, reason, day);
+    this.store.ledger.append({ t: day ?? '', retired: name, reason });
+  }
+
+  /** 名单内的名字只有审批人名单内的人才能移出；名单为空时无人可移出。 */
+  unretire(name: string, reviewer: string): boolean {
+    const ok = this.utility.unbury(name, reviewer, (r) => canApprove(this.approval, r));
+    if (ok) this.store.ledger.append({ t: '', unretired: name, reviewer });
+    return ok;
+  }
+
+  private metricsOf(rep: CycleReport): Record<string, unknown> {
+    const byReason: Record<string, number> = {};
+    for (const [, reasons] of rep.rejected) for (const r of reasons) byReason[String(r).split(':')[0]] = (byReason[String(r).split(':')[0]] ?? 0) + 1;
+    return {
+      sources_seen: rep.sources_seen,
+      sources_rejected: rep.sources_rejected.length,
+      proposed: rep.proposed.length,
+      rejected: rep.rejected.length,
+      rejected_by_reason: byReason,
+      pending_approval: rep.pending_approval.length,
+      promoted: rep.promoted.length,
+      expired: rep.expired.length,
+      blocked: rep.blocked.length,
+      graveyard_size: Object.keys(this.utility.graveyard()).length,
+    };
+  }
+
   private async evaluateOne(c: Candidate, rep: CycleReport): Promise<void> {
     const reasons: string[] = [];
     if (c.origin === 'generated') reasons.push('origin_generated_forbidden');
@@ -136,6 +181,8 @@ export class SelfImprovementLoop {
     const res = checkCompliance(text, this.cfg.families, this.extraLiterals);
     if (!res.ok) reasons.push(...res.families.map((f) => `compliance:${f}`));
     if (scanInjection(text).length) reasons.push('injection_suspected');
+    if (this.utility.isBuried(c.target)) reasons.push('graveyard'); // 名字级退役名单：不得同名复活，需有权限的审批人手动移出
+    if (this.selfCited(c)) reasons.push('self_citation'); // 证据不能来自本系统自己的输出（防自我投毒）
     if (reasons.length) {
       this.store.transition(c.id, 'rejected', { reasons });
       rep.rejected.push([c.id, reasons]);
@@ -210,9 +257,13 @@ export class SelfImprovementLoop {
     if (c.state !== 'promoted') return false;
     const res = evaluateGates(baseline, live, this.cfg.thresholds, { standardErrors: se, noSkill: live, primary: 'redteam_pass_rate' });
     const regress = res.reasons.filter((r) => /^(regression:|redteam|citation|faithfulness)/.test(r));
-    if (!regress.length) return false;
+    if (!regress.length) {
+      this.utility.record(c.target, 1); // 7 天观察期内线上指标没有退步 → 记一次有用
+      return false;
+    }
     await this.hooks.rollback(c);
     this.store.transition(id, 'rolled_back', { reasons: regress });
+    this.utility.record(c.target, 0);
     return true;
   }
 

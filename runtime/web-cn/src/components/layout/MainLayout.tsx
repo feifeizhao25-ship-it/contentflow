@@ -102,6 +102,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
         { key: '/analytics', icon: <BarChartOutlined />, label: <Link href="/analytics">数据分析</Link>, desc: '查看发布效果' },
         { key: '/materials', icon: <FolderOutlined />, label: <Link href="/materials">素材库</Link>, desc: '管理图片素材' },
         { key: '/hot', icon: <FireOutlined />, label: <Link href="/hot">热点追踪</Link>, desc: '发现热门话题' },
+        { key: '/rules', icon: <FileTextOutlined />, label: <Link href="/rules">规则库</Link>, desc: '平台与法规规则' },
     ];
 
     // 设置与其他

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
+import '../../data/api_exception.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/providers.dart';
-import '../../data/api_exception.dart';
 import '../../data/models.dart';
 import 'platform_options.dart';
 import 'market_options.dart';
@@ -30,6 +30,9 @@ class _CreateScreenState extends ConsumerState<CreateScreen> {
     super.dispose();
   }
 
+  /// Why the last generation failed. Stays on screen (a snackbar alone disappears).
+  String? _errorMessage;
+
   Future<void> _generateContentPack() async {
     if (_topicController.text.trim().isEmpty) {
       ScaffoldMessenger.of(
@@ -40,6 +43,7 @@ class _CreateScreenState extends ConsumerState<CreateScreen> {
 
     setState(() {
       _isGenerating = true;
+      _errorMessage = null;
     });
 
     try {
@@ -55,10 +59,14 @@ class _CreateScreenState extends ConsumerState<CreateScreen> {
         _saved = false;
       });
     } catch (e) {
+      final message = e is ApiException
+          ? e.message
+          : 'Generation failed. Please try again.';
       if (mounted) {
+        setState(() => _errorMessage = message);
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(SnackBar(content: Text('Generation failed: $e')));
+        ).showSnackBar(SnackBar(content: Text(message)));
       }
     } finally {
       if (mounted) {
@@ -212,6 +220,43 @@ class _CreateScreenState extends ConsumerState<CreateScreen> {
                 ..addAll(v);
             }),
           ),
+          if (_errorMessage != null) ...[
+            const SizedBox(height: 16),
+            Container(
+              key: const Key('create_error_banner'),
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.red.shade50,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.red.shade200),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(Icons.error_outline, color: Colors.red.shade700, size: 20),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('Generation failed',
+                            style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                color: Colors.red.shade900)),
+                        const SizedBox(height: 2),
+                        Text(_errorMessage!,
+                            style: TextStyle(color: Colors.red.shade900)),
+                      ],
+                    ),
+                  ),
+                  TextButton(
+                    onPressed: _isGenerating ? null : _generateContentPack,
+                    child: const Text('Try again'),
+                  ),
+                ],
+              ),
+            ),
+          ],
           const SizedBox(height: 20),
           SizedBox(
             width: double.infinity,

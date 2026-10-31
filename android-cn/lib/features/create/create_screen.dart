@@ -27,6 +27,9 @@ class _CreateScreenState extends ConsumerState<CreateScreen> {
     super.dispose();
   }
 
+  /// 生成失败时的原因，常驻屏幕（不只是一闪而过的提示条）。
+  String? _errorMessage;
+
   Future<void> _generateContentPack() async {
     if (_topicController.text.trim().isEmpty) {
       ScaffoldMessenger.of(
@@ -37,6 +40,7 @@ class _CreateScreenState extends ConsumerState<CreateScreen> {
 
     setState(() {
       _isGenerating = true;
+      _errorMessage = null;
     });
 
     try {
@@ -50,10 +54,12 @@ class _CreateScreenState extends ConsumerState<CreateScreen> {
         _saved = false;
       });
     } catch (e) {
+      final message = friendlyError(e, fallback: '生成失败，请稍后重试');
       if (mounted) {
+        setState(() => _errorMessage = message);
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(SnackBar(content: Text(friendlyError(e, fallback: '生成失败，请稍后重试'))));
+        ).showSnackBar(SnackBar(content: Text(message)));
       }
     } finally {
       if (mounted) {
@@ -196,6 +202,43 @@ class _CreateScreenState extends ConsumerState<CreateScreen> {
                 ..addAll(v);
             }),
           ),
+          if (_errorMessage != null) ...[
+            const SizedBox(height: 16),
+            Container(
+              key: const Key('create_error_banner'),
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.red.shade50,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.red.shade200),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(Icons.error_outline, color: Colors.red.shade700, size: 20),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('生成失败',
+                            style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                color: Colors.red.shade900)),
+                        const SizedBox(height: 2),
+                        Text(_errorMessage!,
+                            style: TextStyle(color: Colors.red.shade900)),
+                      ],
+                    ),
+                  ),
+                  TextButton(
+                    onPressed: _isGenerating ? null : _generateContentPack,
+                    child: const Text('重试'),
+                  ),
+                ],
+              ),
+            ),
+          ],
           const SizedBox(height: 20),
           SizedBox(
             width: double.infinity,

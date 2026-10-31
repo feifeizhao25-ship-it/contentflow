@@ -30,7 +30,7 @@ export default function SkillsPage() {
         <Tag color="blue">即将上线：团队审核流</Tag>
         <Tag>即将上线：品牌语气训练</Tag>
       </div>
-      <p className="mt-3 text-sm text-zinc-500">这两项还没有执行点。Team 邀请在邮件与接受流程接通前也不能添加成员。</p>
+      <p className="mt-3 text-sm text-zinc-500">这两项还没有执行点。团队邀请在邮件与接受流程接通前也不能添加成员。</p>
     </div>
   </main>;
 }

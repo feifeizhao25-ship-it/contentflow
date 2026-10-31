@@ -34,7 +34,7 @@ function payload(url: string) {
   if (path.startsWith('/team/members')) return ok([{ id: 'u1', name: '林晓', email: 'linxiao@example.com', role: 'owner', status: 'active', created_at: '2026-08-01T00:00:00.000Z' }]);
   if (path.startsWith('/team/activity')) return ok([{ id: 'l1', action: 'team.member_removed', resource_type: 'user', user_id: 'actor', created_at: '2026-10-27T02:15:00.000Z' }]);
   if (path.startsWith('/ai/compliance-sources/status')) return ok({ needsReview: false });
-  if (path.startsWith('/developer/webhooks')) return { status: 403, contentType: 'application/json', body: JSON.stringify({ success: false, error: { message: '对外通知仅 Business 套餐可用' } }) };
+  if (path.startsWith('/developer/webhooks')) return { status: 403, contentType: 'application/json', body: JSON.stringify({ success: false, error: { message: '对外通知仅商务版套餐可用' } }) };
   return ok({});
 }
 
