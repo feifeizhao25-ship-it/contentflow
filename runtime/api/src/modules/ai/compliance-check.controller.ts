@@ -3,6 +3,7 @@ import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { ComplianceService } from './compliance.service';
 import { RagPolicyService } from './rag-policy.service';
+import { disclosureHint, resolveTargetMarket } from '../../common/target-market';
 
 /**
  * 发布前检查的只读预览。明确违规与风险提示都返回给界面，不在这里放行发布。
@@ -19,7 +20,7 @@ export class ComplianceCheckController {
 
   @Post('check')
   @ApiOperation({ summary: '检查正文的合规级别（不发布）' })
-  async check(@Body() body: { text?: string }) {
+  async check(@Body() body: { text?: string; targetMarket?: string }) {
     const text = String(body?.text ?? '').trim().slice(0, 20000);
     const isGlobal = this.compliance.isGlobal();
     if (!text) throw new BadRequestException(isGlobal ? 'Please enter the text to check' : '请输入要检查的正文');
@@ -33,6 +34,12 @@ export class ComplianceCheckController {
     // 规则命中数与未检查项一并返回：「clear」只代表这批规则没发现，不代表可以发布。
     const rulesChecked = 'rulesChecked' in result ? result.rulesChecked : undefined;
     const notChecked = 'notChecked' in result ? result.notChecked : undefined;
+    const hitCounts = 'hitCounts' in result ? result.hitCounts : undefined;
+    // 目标市场只在国际版有意义；不在支持列表里的值不会被默默当成某个市场。
+    const market = isGlobal ? resolveTargetMarket(body?.targetMarket) : null;
+    if (isGlobal && body?.targetMarket && !market) {
+      throw new BadRequestException('Unsupported target market. Choose one of: US, UK, IN, SG');
+    }
     return {
       passed: result.passed,
       level: result.level,
@@ -41,6 +48,8 @@ export class ComplianceCheckController {
       ruleSetVersion: result.ruleSetVersion,
       ...(rulesChecked !== undefined ? { rulesChecked } : {}),
       ...(notChecked !== undefined ? { notChecked } : {}),
+      ...(hitCounts !== undefined ? { hitCounts } : {}),
+      ...(market ? { targetMarket: market, disclosureHint: disclosureHint(market) } : {}),
       hits: result.hits.map((hit) => ({
         ruleId: hit.ruleId,
         severity: hit.severity,

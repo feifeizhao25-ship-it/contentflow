@@ -41,6 +41,9 @@ describe('domestic content six-gate compliance', () => {
       mode: 'normal',
       ruleSetVersion: DOMESTIC_RULESET_VERSION,
       hits: [],
+      hitCounts: { block: 0, review: 0, total: 0 },
+      rulesChecked: expect.any(Number),
+      notChecked: expect.any(Array),
     });
   });
 
