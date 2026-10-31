@@ -150,13 +150,16 @@ export class BillingController {
   }
 
   // 公开端点:定价页与落地页直接消费,不要求登录
-  getPlans(): { market: 'global'; plans: typeof PLANS };
+  getPlans(market: 'global'): { market: 'global'; plans: typeof PLANS };
   getPlans(market: 'cn'): { market: 'cn'; plans: ReturnType<typeof presentChinaPlan>[] };
   getPlans(market?: string): { market: 'cn' | 'global'; plans: ReturnType<typeof presentChinaPlan>[] | typeof PLANS };
   @Get('plans')
   @ApiOperation({ summary: '获取订阅套餐列表(公开)' })
   getPlans(@Query('market') market?: string) {
-    return market === 'cn'
+    // 没带 market 时按本次部署的版本（MARKET_REGION）决定，不再一律回美元套餐：
+    // 国内部署不传参数也得到人民币套餐，国际部署得到美元套餐；显式 ?market=cn|global 仍优先。
+    const edition = market === 'cn' || market === 'global' ? market : (process.env.MARKET_REGION === 'global' ? 'global' : 'cn');
+    return edition === 'cn'
       ? { market: 'cn' as const, plans: CN_PLANS.map(presentChinaPlan) }
       : { market: 'global' as const, plans: PLANS };
   }

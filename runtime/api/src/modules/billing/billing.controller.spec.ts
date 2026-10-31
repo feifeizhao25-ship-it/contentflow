@@ -13,7 +13,7 @@ describe('BillingController', () => {
     // getPlans is deliberately public and does not touch persistence. Inject a
     // minimal typed test double so the constructor contract remains covered.
     const controller = new BillingController({} as any, {} as any);
-    const { plans } = controller.getPlans();
+    const { plans } = controller.getPlans('global');
 
     expect(plans).toBe(PLANS);
     expect(plans.map((p) => p.id)).toEqual(['free', 'starter', 'pro', 'team', 'enterprise']);
@@ -154,5 +154,36 @@ describe('BillingController', () => {
     body.sign = signer.sign(keys.privateKey, 'base64'); body.sign_type = 'RSA2';
     await expect(new BillingController({} as any, { markPaid: jest.fn() } as any)
       .alipayCallback(body, {} as any)).rejects.toThrow('商户不匹配');
+  });
+
+  describe('getPlans default market follows the deployment edition', () => {
+    const original = process.env.MARKET_REGION;
+    afterEach(() => {
+      if (original === undefined) delete process.env.MARKET_REGION;
+      else process.env.MARKET_REGION = original;
+    });
+    const controller = () => new BillingController({} as any, {} as any);
+
+    it('domestic deployment: no parameter returns the RMB plans, not USD', () => {
+      delete process.env.MARKET_REGION;
+      const r = controller().getPlans(undefined);
+      expect(r.market).toBe('cn');
+      expect(JSON.stringify(r.plans)).not.toMatch(/priceMonthlyUsd/);
+    });
+
+    it('international deployment: no parameter returns the USD plans', () => {
+      process.env.MARKET_REGION = 'global';
+      const r = controller().getPlans(undefined);
+      expect(r.market).toBe('global');
+      expect(r.plans).toBe(PLANS);
+    });
+
+    it('an explicit market always wins; junk falls back to the edition default', () => {
+      process.env.MARKET_REGION = 'global';
+      expect(controller().getPlans('cn').market).toBe('cn');
+      delete process.env.MARKET_REGION;
+      expect(controller().getPlans('global').market).toBe('global');
+      expect(controller().getPlans('mars').market).toBe('cn');
+    });
   });
 });

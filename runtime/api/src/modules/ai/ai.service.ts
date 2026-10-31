@@ -1,3 +1,5 @@
+import { splitArticleAndVisualPrompts } from './visual-prompts';
+import { CLAIMS_NOTICE_EN, CLAIMS_NOTICE_ZH, findUnverifiedClaims } from './unverified-claims';
 import { isGlobalMarket, hasCjk } from '../../common/i18n/market-text';
 import { BadGatewayException, BadRequestException, HttpException, HttpStatus, Injectable, Logger, ServiceUnavailableException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -539,7 +541,7 @@ export class AIService {
     style: string;
     platform: string;
     keywords?: string[];
-  }): Promise<{ content: string; visualPrompts?: string[]; model: string; provider: string; latency_ms: number; cost_amount: number | null; usage: AIResponse['usage'] }> {
+  }): Promise<{ content: string; visualPrompts?: string[]; unverifiedClaims?: string[]; claimsNotice?: string | null; model: string; provider: string; latency_ms: number; cost_amount: number | null; usage: AIResponse['usage'] }> {
     // 根据平台构建不同的提示词
     const platformPrompts: Record<string, string> = {
       xhs: `请为小红书创作一篇爆款笔记，主题：${params.topic}，风格：${params.style}`,
@@ -561,6 +563,8 @@ Requirements:
 2. Give the reader real value
 3. Close with a clear call to action
 
+Do not state specific figures, percentages, prices, ingredients, brand or product names, or medical/performance claims unless they appear in the topic or keywords above; describe benefits in general terms instead.
+
 Write in English only. At the very end, output 3 English prompts for AI image generation (Visual Prompts), one per line, after a line containing ---`
         : `${basePrompt}
 关键词：${params.keywords?.join('、') || params.topic}
@@ -569,6 +573,7 @@ Write in English only. At the very end, output 3 English prompts for AI image ge
 1. 开头要有吸引力
 2. 内容要有价值
 3. 结尾要有引导
+4. 不要写出题目和关键词里没有出现过的具体数字、百分比、价格、成分、品牌或产品名，也不要写功效承诺；没有依据时用概括性的说法
 
 请在回答最后输出3个用于AI生图的英文提示词（Visual Prompts），每个占一行，用---分隔`,
       maxTokens: 3000,
@@ -576,24 +581,16 @@ Write in English only. At the very end, output 3 English prompts for AI image ge
       userText: [params.topic, params.style, ...(params.keywords ?? [])].join(' '),
     });
 
-    // 解析视觉提示词
-    const visualPrompts: string[] = [];
-    const lines = result.content.split('\n');
-    let capturing = false;
-    
-    for (const line of lines) {
-      if (line.includes('VISUAL_PROMPTS') || line.includes('---')) {
-        capturing = true;
-        continue;
-      }
-      if (capturing && line.trim() && !line.includes('http')) {
-        visualPrompts.push(line.trim());
-      }
-    }
+    // 解析视觉提示词（见 visual-prompts.ts）：正文与提示词块分离，保留 3 条完整提示词
+    const split = splitArticleAndVisualPrompts(result.content);
+
+    const unverifiedClaims = findUnverifiedClaims(split.content, [params.topic, params.style, ...(params.keywords ?? [])].join(' '));
 
     return {
-      content: result.content.split(/---?\s*VISUAL_PROMPTS/)[0].trim(),
-      visualPrompts: visualPrompts.slice(0, 3),
+      content: split.content,
+      visualPrompts: split.visualPrompts,
+      unverifiedClaims,
+      claimsNotice: unverifiedClaims.length ? (isGlobalMarket() ? CLAIMS_NOTICE_EN : CLAIMS_NOTICE_ZH) : null,
       model: result.model,
       provider: result.provider,
       latency_ms: result.latency_ms,
