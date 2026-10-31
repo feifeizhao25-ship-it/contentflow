@@ -198,7 +198,7 @@ function PricingContent() {
         const plan = displayedPlans.find((item) => item.id === id);
         if (!plan || plan.disabled) return;
         if (plan.custom) {
-            message.info('Business 按团队规模报价，请联系商务顾问');
+            message.info('商务版按团队规模报价，请联系商务顾问');
             return;
         }
         setLoadingPlan(id);
@@ -323,7 +323,7 @@ function PricingContent() {
 
                 {/* 内部安全上限是 4000 万令牌/月、100 个平台账号，仍待负责人确认。页面不展示这些数字。 */}
                 <div className="max-w-4xl mx-auto mb-8 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900" role="note">
-                    关于 Business：AI 令牌额度与平台账号上限尚未确认，页面不展示未确认的数字，也不构成承诺。确认前请以商务书面约定为准。其余套餐额度以付款时展示为准。
+                    关于商务版：AI 令牌额度与平台账号上限尚未确认，页面不展示未确认的数字，也不构成承诺。确认前请以商务书面约定为准。其余套餐额度以付款时展示为准。
                 </div>
 
                 {/* Plans Grid */}
