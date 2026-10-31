@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../core/illustrated_gl.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../core/providers.dart';
@@ -49,7 +50,7 @@ class AssetsScreen extends ConsumerWidget {
       padding: const EdgeInsets.all(20),
       child: Row(
         children: [
-          const Text('📁', style: TextStyle(fontSize: 28)),
+          const GlIconBadge(icon: Icons.folder_copy_outlined),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
@@ -164,22 +165,13 @@ class AssetsScreen extends ConsumerWidget {
 
   Widget _buildAssetsGrid(BuildContext context, List<Asset> assets) {
     if (assets.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.folder_open, size: 64, color: Colors.grey.shade400),
-            const SizedBox(height: 16),
-            Text(
-              'No assets yet',
-              style: TextStyle(fontSize: 16, color: Colors.grey.shade600),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Tap + to upload',
-              style: TextStyle(fontSize: 14, color: Colors.grey.shade400),
-            ),
-          ],
+      return const Center(
+        child: SingleChildScrollView(
+          child: GlEmptyState(
+            asset: 'assets/images/cfg_empty_assets.webp',
+            title: 'No assets yet',
+            message: 'Tap + to upload images, videos or scripts you want to reuse.',
+          ),
         ),
       );
     }

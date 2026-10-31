@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../core/illustrated_gl.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import '../../core/providers.dart';
@@ -73,7 +74,7 @@ class TodayScreen extends ConsumerWidget {
       padding: const EdgeInsets.all(20),
       child: Row(
         children: [
-          const Text('📅', style: TextStyle(fontSize: 28)),
+          const GlIconBadge(icon: Icons.event_available),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
@@ -187,16 +188,15 @@ class TodayScreen extends ConsumerWidget {
       return SliverToBoxAdapter(
         child: Container(
           margin: const EdgeInsets.symmetric(horizontal: 20),
-          padding: const EdgeInsets.all(32),
+          padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
             color: Colors.white,
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(20),
           ),
-          child: const Center(
-            child: Text(
-              'No tasks scheduled today',
-              style: TextStyle(color: Colors.grey),
-            ),
+          child: const GlEmptyState(
+            asset: 'assets/images/cfg_empty_today.webp',
+            title: 'No tasks scheduled today',
+            message: 'Plan a post in Create and it will show up here with its publish time.',
           ),
         ),
       );

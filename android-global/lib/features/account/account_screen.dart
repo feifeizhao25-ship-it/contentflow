@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../core/illustrated_gl.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/providers.dart';
 import '../../data/models.dart';
@@ -78,7 +79,7 @@ class AccountScreen extends ConsumerWidget {
       padding: const EdgeInsets.all(20),
       child: Column(
         children: [
-          const Text('👤', style: TextStyle(fontSize: 28)),
+          const GlIconBadge(icon: Icons.person_outline),
           const SizedBox(height: 16),
           // Avatar
           CircleAvatar(
