@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../core/illustrated_gl.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
@@ -39,23 +40,11 @@ class DraftsView extends ConsumerWidget {
               key: const ValueKey('drafts-empty'),
               physics: const AlwaysScrollableScrollPhysics(),
               children: [
-                const SizedBox(height: 90),
-                Icon(Icons.edit_note, size: 64, color: Colors.grey.shade400),
-                const SizedBox(height: 16),
-                Center(
-                  child: Text(
-                    'No saved drafts yet',
-                    style: TextStyle(fontSize: 16, color: Colors.grey.shade600),
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 40),
-                  child: Text(
-                    'Generate a content pack in Create and tap "Save to content pack". It will show up here.',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(fontSize: 14, color: Colors.grey.shade500),
-                  ),
+                const SizedBox(height: 40),
+                const GlEmptyState(
+                  asset: 'assets/images/cfg_empty_drafts.webp',
+                  title: 'No saved drafts yet',
+                  message: 'Generate a content pack in Create and tap "Save to content pack". It will show up here.',
                 ),
               ],
             ),

@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import '../../core/illustrated_gl.dart';
 import '../../data/api_exception.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/providers.dart';
@@ -154,33 +155,10 @@ class _CreateScreenState extends ConsumerState<CreateScreen> {
   }
 
   Widget _buildHeader(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      child: Row(
-        children: [
-          const Text('✨', style: TextStyle(fontSize: 28)),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Quick create',
-                  style: TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                    color: Theme.of(context).primaryColor,
-                  ),
-                ),
-                const Text(
-                  'AI helps you create content',
-                  style: TextStyle(fontSize: 14, color: Colors.grey),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
+    return const GlHeroBanner(
+      asset: 'assets/images/cfg_create_hero.webp',
+      title: 'Quick create',
+      subtitle: 'Turn one topic into titles, hooks, a script and hashtags.',
     );
   }
 
@@ -288,10 +266,26 @@ class _CreateScreenState extends ConsumerState<CreateScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          Row(children: [
+            Image.asset('assets/images/cfg_result.webp', width: 72, height: 72, errorBuilder: (_, __, ___) => const SizedBox(width: 72, height: 72)),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                const Text('Content pack ready', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
+                const SizedBox(height: 6),
+                Wrap(spacing: 6, runSpacing: 6, children: [
+                  _chip(context, '${pack.titles.length} titles'),
+                  if (pack.hooks.isNotEmpty) _chip(context, '${pack.hooks.length} hooks'),
+                  if (pack.hashtags.isNotEmpty) _chip(context, '${pack.hashtags.length} hashtags'),
+                ]),
+              ]),
+            ),
+          ]),
+          const SizedBox(height: 16),
           // Titles
           _buildContentCard(
             context,
-            '📝 Generated titles',
+            'Generated titles',
             Column(
               children: pack.titles.asMap().entries.map((entry) {
                 return Padding(
@@ -334,7 +328,7 @@ class _CreateScreenState extends ConsumerState<CreateScreen> {
             // Hooks
             _buildContentCard(
               context,
-              '🎣 Hooks',
+              'Hooks',
               Column(
                 children: pack.hooks.map((hook) {
                   return Padding(
@@ -357,8 +351,14 @@ class _CreateScreenState extends ConsumerState<CreateScreen> {
           // Script
           _buildContentCard(
             context,
-            '📜 Script',
-            Text(pack.script, style: const TextStyle(height: 1.6)),
+            'Script',
+            Container(
+              padding: const EdgeInsets.fromLTRB(14, 4, 4, 4),
+              decoration: BoxDecoration(
+                border: Border(left: BorderSide(color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.5), width: 3)),
+              ),
+              child: Text(pack.script, style: const TextStyle(fontSize: 15, height: 1.7)),
+            ),
           ),
 
           if (pack.hashtags.isNotEmpty) ...[
@@ -367,7 +367,7 @@ class _CreateScreenState extends ConsumerState<CreateScreen> {
             // Hashtags
             _buildContentCard(
               context,
-              '#️⃣ Hashtags',
+              'Hashtags',
               Wrap(
                 spacing: 8,
                 runSpacing: 8,
@@ -438,6 +438,25 @@ class _CreateScreenState extends ConsumerState<CreateScreen> {
     );
   }
 
+  Widget _chip(BuildContext context, String text) {
+    final c = Theme.of(context).colorScheme.primary;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(color: c.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(14)),
+      child: Text(text, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: c)),
+    );
+  }
+
+  IconData _cardIcon(String title) {
+    switch (title) {
+      case 'Generated titles': return Icons.title;
+      case 'Hooks': return Icons.bolt;
+      case 'Script': return Icons.movie_creation_outlined;
+      case 'Hashtags': return Icons.tag;
+      default: return Icons.info_outline;
+    }
+  }
+
   Widget _buildContentCard(BuildContext context, String title, Widget content) {
     return Container(
       padding: const EdgeInsets.all(16),
@@ -448,10 +467,14 @@ class _CreateScreenState extends ConsumerState<CreateScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            title,
-            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-          ),
+          Row(children: [
+            Icon(_cardIcon(title), size: 20, color: Theme.of(context).colorScheme.primary),
+            const SizedBox(width: 8),
+            Text(
+              title,
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            ),
+          ]),
           const SizedBox(height: 12),
           content,
         ],

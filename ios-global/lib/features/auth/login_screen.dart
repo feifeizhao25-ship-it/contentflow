@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../core/illustrated_gl.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/providers.dart';
 
@@ -79,6 +80,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
+                const GlHeroBanner(
+                  asset: 'assets/images/cfg_login_hero.webp',
+                  title: 'ContentFlow',
+                  subtitle: 'One topic in, a ready-to-post content pack out.',
+                ),
+                const SizedBox(height: 20),
                 const Text(
                   'Welcome back',
                   textAlign: TextAlign.center,
