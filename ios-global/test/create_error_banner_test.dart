@@ -14,7 +14,13 @@ class _FailingApi extends ApiClient {
   int calls = 0;
 
   @override
-  Future<ContentPack> generateContentPack({required String topic}) async {
+  Future<ContentPack> generateContentPack({
+    required String topic,
+    int titleCount = 5,
+    String? targetMarket,
+    String? material,
+    List<String>? platforms,
+  }) async {
     calls++;
     throw ApiException(ApiException.statusMessage(400), statusCode: 400);
   }
@@ -27,6 +33,9 @@ void main() {
   });
 
   testWidgets('a failed generation leaves a visible error and a retry button on screen', (tester) async {
+    tester.view.physicalSize = const Size(800, 3000);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
     final api = _FailingApi();
     await tester.pumpWidget(ProviderScope(
       overrides: [apiClientProvider.overrideWithValue(api)],
@@ -37,8 +46,8 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 300));
 
-    expect(find.byKey(const Key('create_error_banner')), findsOneWidget);
-    expect(find.text('Generation failed'), findsOneWidget);
+    expect(find.byKey(const ValueKey('generate-error')), findsOneWidget);
+    expect(find.text('Generation did not finish'), findsOneWidget);
     expect(find.textContaining('The request was not accepted'), findsWidgets);
     expect(api.calls, 1);
 
