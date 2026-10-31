@@ -1,6 +1,7 @@
 import { screenClaim } from '../../ai/compliance/claims';
 import { aiTextLabel } from '../../../common/ai-content-label';
 import { detectLabelTamperingRequest } from '../../ai/compliance/rules/aigc-label';
+import { detectFalsePersonaRequest } from '../../ai/compliance/rules/false-persona';
 import { checkCompliance } from '../self-improve/compliance';
 import { scanInjection } from '../self-improve/sources';
 import { SHARED_REDTEAM, SkillGolden, SkillRedteam, goldenFor, skillById } from './catalog';
@@ -35,6 +36,9 @@ function refuseReason(text: string): string | null {
   if (/(无需|不用|不必|绕过|规避|跳过).{0,6}(备案|发行许可|许可证|节目编号|内容审核)/.test(text)) return '微短剧须按分类备案、取得发行许可或节目编号后播出，不能绕过。';
   if (/(批量|群发).{0,6}(私信|加好友|骚扰)/.test(text)) return '不能提供批量私信、骚扰引流的做法。';
   if (/未成年人.{0,10}(酒|医疗|药品|保健|美容).{0,4}广告/.test(text)) return '不得向未成年人投放此类广告。';
+  // 2026-10-31（依据：中央网信办“清朗·整治短视频虚假人设乱象”专项行动，2026-09-30）
+  const persona = detectFalsePersonaRequest(text);
+  if (persona) return persona;
   // 2026-10-31（依据：《人工智能生成合成内容标识办法》第十条；视频号《关于创作者规范使用深度合成技术生成内容的建议》）
   if (detectLabelTamperingRequest(text)) return '不能协助删除、篡改或隐匿 AI 生成合成内容标识（《人工智能生成合成内容标识办法》第十条）。';
   if (/(不|无需|不用|不必|别|免).{0,3}(标注|标识|标明).{0,6}(AIGC|AI|人工智能)|(AIGC|AI|人工智能).{0,30}(不用|不必|无需|不要|别).{0,2}(标注|标识|标明)/i.test(text)) return 'AI 生成合成内容发布时须主动声明并标识，不能提供不标识的做法。';

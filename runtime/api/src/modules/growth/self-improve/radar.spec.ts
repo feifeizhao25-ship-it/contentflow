@@ -32,7 +32,7 @@ describe('研究雷达', () => {
     const calls: string[] = [];
     const res = await runRadar('contentflow', dir, { http: fake(calls), now: NOW });
     expect(res.path.endsWith('digest_20261104.md')).toBe(true);
-    expect(walk(dir)).toEqual(['radar/digest_20261104.md', 'radar/seen.json']);
+    expect(walk(dir)).toEqual(['radar/digest_20261104.md', 'radar/items_20261104.json', 'radar/seen.json']);
     expect(calls.every((u) => ['export.arxiv.org', 'api.github.com', 'huggingface.co'].includes(new URL(u).hostname))).toBe(true);
     const text = readFileSync(res.path, 'utf8');
     expect(text).toContain('线索（未核）');
