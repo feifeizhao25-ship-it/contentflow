@@ -46,6 +46,8 @@ export interface IntlComplianceResult {
   hits: IntlComplianceHit[];
   /** How many rules ran. A clear result is only as strong as this list. */
   rulesChecked: number;
+  /** Hits by severity: block stops generation, review asks a person to look. */
+  hitCounts: { block: number; review: number; total: number };
   /** Things this screen cannot judge. Shown to the user so "clear" is not read as "approved". */
   notChecked: string[];
 }
@@ -214,6 +216,11 @@ export function evaluateInternationalContent(
     mode: options?.conservative ? 'conservative' : 'normal',
     ruleSetVersion: INTERNATIONAL_RULESET_VERSION,
     hits,
+    hitCounts: {
+      block: hits.filter((h) => h.severity === 'block').length,
+      review: hits.filter((h) => h.severity === 'review').length,
+      total: hits.length,
+    },
     rulesChecked: RULES.length + 1,
     notChecked: [...INTERNATIONAL_NOT_CHECKED],
   };

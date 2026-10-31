@@ -85,6 +85,12 @@ export interface DomesticComplianceResult {
   mode: 'normal' | 'conservative';
   ruleSetVersion: string;
   hits: DomesticComplianceHit[];
+  /** 命中数（block 拦截 / review 提示）。 */
+  hitCounts: { block: number; review: number; total: number };
+  /** 本次一共跑了多少条规则。「clear」只和这个数一样可靠。 */
+  rulesChecked: number;
+  /** 这套筛查判断不了的事。展示给用户，避免把「未发现」读成「已审核通过」。 */
+  notChecked: string[];
 }
 
 interface GateRule {
@@ -290,6 +296,23 @@ function checkReviewOnly(content: string): DomesticComplianceHit[] {
   return hits.filter((hit): hit is DomesticComplianceHit => !!hit);
 }
 
+/** 词表规则之外还有 3 个专项检查（广告标注、疾病功效、投资保证）和 4 个提示类检查（站外导流、绝对化比较、借灾难、保证涨粉）。 */
+export const DOMESTIC_EXTRA_CHECKS = 7;
+
+export const DOMESTIC_NOT_CHECKED: readonly string[] = [
+  '各平台（抖音、小红书、快手、视频号等）现行社区规范原文——尚未逐条人工复核',
+  '图片、视频、音频、字幕里的内容（这里只检查文字）',
+  '医疗、金融、教育等行业需要的资质与专项审批',
+  '著作权、商标、肖像权',
+  '你写的数据和功效有没有证据支持',
+];
+
+export function countHits(hits: ReadonlyArray<{ severity: 'block' | 'review' }>) {
+  const block = hits.filter((h) => h.severity === 'block').length;
+  const review = hits.filter((h) => h.severity === 'review').length;
+  return { block, review, total: hits.length };
+}
+
 export function evaluateDomesticContent(content: string, options?: { conservative?: boolean }): DomesticComplianceResult {
   const normalized = String(content || '').normalize('NFKC').toLowerCase();
   const hits: DomesticComplianceHit[] = RULES.flatMap((rule) => {
@@ -326,6 +349,9 @@ export function evaluateDomesticContent(content: string, options?: { conservativ
     mode: options?.conservative ? 'conservative' : 'normal',
     ruleSetVersion: DOMESTIC_RULESET_VERSION,
     hits,
+    hitCounts: countHits(hits),
+    rulesChecked: RULES.length + DOMESTIC_EXTRA_CHECKS,
+    notChecked: [...DOMESTIC_NOT_CHECKED],
   };
 }
 

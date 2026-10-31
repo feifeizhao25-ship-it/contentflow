@@ -194,3 +194,79 @@ describe('合规资料过期时如实提示', () => {
     expect(result.data.sources_note).toContain('合规规则资料需要人工复核');
   });
 });
+
+describe('ContentPackService personalisation, target market and grounding', () => {
+  const ai = { generateTitlesWithUsage: jest.fn(), generateTextForMarket: jest.fn(), assertTenantDailyBudget: jest.fn(), recordGeneration: jest.fn() };
+  const usage = { withAiHold: jest.fn() };
+  const compliance = { scrubOutput: jest.fn(), checkContent: jest.fn() };
+  const rag = { select: jest.fn(), buildContext: jest.fn() };
+  const prisma = { persona: { findFirst: jest.fn() }, content: { findMany: jest.fn() } };
+  const prevRegion = process.env.MARKET_REGION;
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    process.env.MARKET_REGION = 'global';
+    usage.withAiHold.mockImplementation(async (_i: unknown, run: () => Promise<{ response: unknown }>) => (await run()).response);
+    ai.generateTitlesWithUsage.mockResolvedValue({ titles: ['Desk setup'], usage: { total_tokens: 10 } });
+    ai.generateTextForMarket.mockResolvedValue({ content: 'The AQUAPURE lamp is 24% brighter.', usage: { total_tokens: 20 } });
+    compliance.scrubOutput.mockImplementation(async (v: string) => v);
+    compliance.checkContent.mockResolvedValue({ level: 'clear', disclaimer: 'd', mode: 'normal', hits: [], hitCounts: { block: 0, review: 0, total: 0 }, rulesChecked: 12, notChecked: ['x'] });
+    rag.select.mockResolvedValue([]);
+    rag.buildContext.mockReturnValue('');
+    prisma.persona.findFirst.mockResolvedValue({ name: 'Desk nerd', description: 'Minimalist desks', config: { tone: 'dry' } });
+    prisma.content.findMany.mockResolvedValue([{ title: 'My best title', viral_score: 90 }]);
+  });
+  afterEach(() => { process.env.MARKET_REGION = prevRegion; });
+
+  const make = () => new ContentPackService(ai as any, usage as any, compliance as any, rag as any, prisma as any);
+
+  it('puts persona + own top titles in the prompts (own tenant only) and reports positioning_used', async () => {
+    const out: any = await make().generatePack('t1', { topic: 'desk lamp', personaId: 'p1' }, 'u1');
+    expect(prisma.content.findMany.mock.calls[0][0].where.tenant_id).toBe('t1');
+    expect(prisma.persona.findFirst.mock.calls[0][0].where.OR).toEqual([{ tenant_id: 't1' }, { is_system: true }]);
+    expect(ai.generateTitlesWithUsage.mock.calls[0][3]).toContain('My best title');
+    expect(ai.generateTextForMarket.mock.calls[0][0].prompt).toContain('Desk nerd');
+    expect(out.data.positioning_used).toEqual({ persona: true, persona_name: 'Desk nerd', top_titles: 1, reference_only: true });
+  });
+
+  it('with no persona text and no scored titles the prompts are unchanged and the response says nothing was used', async () => {
+    prisma.persona.findFirst.mockResolvedValue(null);
+    prisma.content.findMany.mockResolvedValue([]);
+    const out: any = await make().generatePack('t1', { topic: 'desk lamp' }, 'u1');
+    expect(ai.generateTitlesWithUsage.mock.calls[0]).toHaveLength(3);
+    expect(out.data.positioning_used).toEqual({ persona: false, persona_name: null, top_titles: 0, reference_only: true });
+  });
+
+  it('a failing positioning lookup does not fail generation', async () => {
+    prisma.content.findMany.mockRejectedValue(new Error('db down'));
+    const out: any = await make().generatePack('t1', { topic: 'desk lamp' }, 'u1');
+    expect(out.success).toBe(true);
+    expect(out.data.positioning_used.top_titles).toBe(0);
+  });
+
+  it('international: target market adds the disclosure hint and a prompt line; unsupported value is ignored', async () => {
+    const out: any = await make().generatePack('t1', { topic: 'desk lamp', targetMarket: 'IN' }, 'u1');
+    expect(out.data.target_market).toBe('IN');
+    expect(out.data.disclosure_hint.sources[0].url).toMatch(/ascionline/);
+    expect(ai.generateTextForMarket.mock.calls[0][0].prompt).toContain('India');
+    const none: any = await make().generatePack('t1', { topic: 'desk lamp', targetMarket: 'FR' }, 'u1');
+    expect(none.data.target_market).toBeUndefined();
+  });
+
+  it('grounds figures/names to the supplied material and flags the rest', async () => {
+    const out: any = await make().generatePack('t1', { topic: 'desk lamp', material: 'AQUAPURE datasheet: 24% brighter than v1' }, 'u1');
+    expect(ai.generateTextForMarket.mock.calls[0][0].prompt).toContain('AQUAPURE datasheet');
+    expect(out.data.grounding.material_supplied).toBe(true);
+    expect(out.data.grounding.supported_by_material).toEqual(['24%', 'AQUAPURE']);
+    expect(out.data.grounding.unverified).toEqual([]);
+    const without: any = await make().generatePack('t1', { topic: 'desk lamp' }, 'u1');
+    expect(without.data.grounding.unverified).toEqual(['24%', 'AQUAPURE']);
+  });
+
+  it('compliance block carries counts, rules run and not-checked items', async () => {
+    const out: any = await make().generatePack('t1', { topic: 'desk lamp' }, 'u1');
+    expect(out.data.compliance.hit_counts).toEqual({ block: 0, review: 0, total: 0 });
+    expect(out.data.compliance.rules_checked).toBe(12);
+    expect(out.data.compliance.not_checked).toEqual(['x']);
+  });
+});

@@ -1,3 +1,4 @@
+import { MATERIAL_MAX_CHARS } from './grounding';
 import { BadRequestException, Controller, Post, Get, Body, UseGuards, UseInterceptors, Request, Headers } from '@nestjs/common';
 import { AiConcurrencyInterceptor } from './ai-concurrency.interceptor';
 import { aiTextLabel, labelAiGeneratedText } from '../../common/ai-content-label';
@@ -31,6 +32,7 @@ export class AIController {
   @ApiOperation({ summary: 'AI文章生成' })
   async generateArticle(@Request() req: any, @Body() body: any, @Headers('idempotency-key') idempotencyKey?: string) {
     const { topic, style, platform, keywords } = body;
+    const material = typeof body?.material === 'string' ? body.material.slice(0, MATERIAL_MAX_CHARS) : undefined;
     return this.allowance.withReservation({
       tenantId: req.user.tenantId,
       kind: 'article',
@@ -42,6 +44,7 @@ export class AIController {
           style: style || 'professional',
           platform: platform || 'xhs',
           keywords,
+          material,
         });
         // 显式标识（《人工智能生成合成内容标识办法》）：正文本身带「AI 生成」，
         // 复制、保存、分发时不会丢；留存的生成记录里也是带标识的版本。

@@ -2,6 +2,7 @@ import { Controller, Get, Inject, Optional, ServiceUnavailableException } from '
 import { ApiTags, ApiOperation } from '@nestjs/swagger';
 import { SkipThrottle } from '@nestjs/throttler';
 import { PrismaService } from '../../database/prisma.service';
+import { languageGuardSnapshot } from '../../common/language-guard';
 
 type Check = 'up' | 'down' | 'skipped';
 
@@ -23,6 +24,16 @@ export class SystemController {
             timestamp: new Date().toISOString(),
             service: 'fenfa-ai-api',
             version: '1.0.0',
+        };
+    }
+
+    /** 国际版英文约定的计数：只有路径与次数，没有响应内容。 */
+    @Get('language')
+    @ApiOperation({ summary: '国际版响应含中文的次数（路径与计数）' })
+    language() {
+        return {
+            region: String(process.env.MARKET_REGION ?? '').trim().toLowerCase() === 'global' ? 'global' : 'domestic',
+            ...languageGuardSnapshot(),
         };
     }
 

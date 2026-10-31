@@ -8,6 +8,11 @@ import { labelAiGeneratedText, buildAiMediaMetadata } from '../../common/ai-cont
 import { RagPolicyService } from './rag-policy.service';
 import { adaptForPlatforms } from './platform-adaptation';
 import { isGlobalMarket, mt } from '../../common/i18n/market-text';
+import { Optional } from '@nestjs/common';
+import { PrismaService } from '../../database/prisma.service';
+import { disclosureHint, resolveTargetMarket, targetMarketPromptLine } from '../../common/target-market';
+import { buildPositioning } from './positioning';
+import { GROUNDING_NOTICE_EN, GROUNDING_NOTICE_ZH, groundClaims, materialPromptBlock } from './grounding';
 
 @Injectable()
 export class ContentPackService {
@@ -18,7 +23,33 @@ export class ContentPackService {
         private readonly usageService: UsageService,
         private readonly complianceService: ComplianceService,
         private readonly ragPolicyService: RagPolicyService,
+        @Optional() private readonly prisma?: PrismaService,
     ) { }
+
+    /** 账号定位：所选人设的配置文字 + 本租户自己得分最高的历史标题。读失败不影响生成，只是不个性化。 */
+    private async loadPositioning(tenantId: string, personaId?: string) {
+        let persona: { name: string; description: string | null; config: unknown } | null = null;
+        let topTitles: Array<{ title: string | null; viral_score: number | null }> = [];
+        try {
+            if (this.prisma && personaId) {
+                persona = await this.prisma.persona.findFirst({
+                    where: { id: personaId, OR: [{ tenant_id: tenantId }, { is_system: true }] },
+                    select: { name: true, description: true, config: true },
+                });
+            }
+            if (this.prisma) {
+                topTitles = await this.prisma.content.findMany({
+                    where: { tenant_id: tenantId, viral_score: { not: null }, title: { not: null } },
+                    orderBy: { viral_score: 'desc' },
+                    take: 5,
+                    select: { title: true, viral_score: true },
+                });
+            }
+        } catch (error) {
+            this.logger.warn(`positioning lookup failed: ${(error as Error).message}`);
+        }
+        return buildPositioning({ persona, topTitles }, isGlobalMarket());
+    }
 
     async generatePack(tenantId: string, dto: GenerateContentPackDto, userId?: string, idempotencyKey?: string) {
         // 额度闸：先查每日成本预算，再在数据库里占住本月令牌。占住之后才调用模型。
@@ -35,7 +66,12 @@ export class ContentPackService {
             // 2. Multi-step AI Pipeline
             // Step A: Headlines x 10
             const platformsStr = dto.platforms?.join(',') || mt('全渠道', 'all channels');
-            const titleResult = await this.aiService.generateTitlesWithUsage(dto.topic, platformsStr, 10);
+            const positioning = await this.loadPositioning(tenantId, dto.personaId);
+            const titleResult = positioning.promptBlock
+                ? await this.aiService.generateTitlesWithUsage(dto.topic, platformsStr, 10, positioning.promptBlock)
+                : await this.aiService.generateTitlesWithUsage(dto.topic, platformsStr, 10);
+            const targetMarket = isGlobalMarket() ? resolveTargetMarket(dto.targetMarket) : null;
+            const materialBlock = materialPromptBlock(dto.material, isGlobalMarket());
             const titles = titleResult?.titles;
             if (!Array.isArray(titles) || titles.length === 0 ||
                 titles.some(title => typeof title !== 'string' || !title.trim())) {
@@ -51,8 +87,8 @@ export class ContentPackService {
             // 资料过期时如实告诉用户「合规规则资料需要人工复核」，而不是笼统的「未引用」。
             const freshness = policySources.length ? null : await this.ragPolicyService.freshnessReport?.().catch(() => null);
             const scriptPrompt = isGlobalMarket()
-                ? `Write an in-depth script on the topic "${dto.topic}" with the headline "${titles[0]}". Be logical and use plain language. If the sources below contain compliance requirements, add a pre-publication checklist at the end. Write in English only.${this.ragPolicyService.buildContext(policySources)}`
-                : `请根据主题 "${dto.topic}" 和标题 "${titles[0]}" 创作一篇深度脚本。要求：逻辑清晰、使用普通人能理解的表达；如资料包含合规要求，在结尾增加发布前核对清单。${this.ragPolicyService.buildContext(policySources)}`;
+                ? `Write an in-depth script on the topic "${dto.topic}" with the headline "${titles[0]}". Be logical and use plain language. If the sources below contain compliance requirements, add a pre-publication checklist at the end. Write in English only.${targetMarket ? ` ${targetMarketPromptLine(targetMarket)}` : ''}${this.ragPolicyService.buildContext(policySources)}${positioning.promptBlock}${materialBlock}`
+                : `请根据主题 "${dto.topic}" 和标题 "${titles[0]}" 创作一篇深度脚本。要求：逻辑清晰、使用普通人能理解的表达；如资料包含合规要求，在结尾增加发布前核对清单。${this.ragPolicyService.buildContext(policySources)}${positioning.promptBlock}${materialBlock}`;
             const scriptData = await this.aiService.generateTextForMarket({ prompt: scriptPrompt, route: 'bulk', userText: `${dto.topic} ${titles[0]}` });
             let script = scriptData?.content;
             if (typeof script !== 'string' || !script.trim()) {
@@ -70,6 +106,7 @@ export class ContentPackService {
                 throw new Error('Compliance processing returned empty body content');
             }
             const compliance = await this.complianceService.checkContent?.(script, { conservative });
+            const grounding = groundClaims(script, `${dto.topic} ${titles.join(' ')}`, dto.material);
 
             // 4. AI 生成内容显式标识（导出文本必须可辨识为 AI 生成）
             script = labelAiGeneratedText(script);
@@ -101,7 +138,18 @@ export class ContentPackService {
                         disclaimer: compliance.disclaimer,
                         mode: compliance.mode,
                         hits: compliance.hits,
+                        hit_counts: (compliance as any).hitCounts,
+                        rules_checked: (compliance as any).rulesChecked,
+                        not_checked: (compliance as any).notChecked,
                     } : undefined,
+                    positioning_used: { persona: positioning.used.persona, persona_name: positioning.used.personaName, top_titles: positioning.used.topTitles, reference_only: true },
+                    grounding: {
+                        material_supplied: grounding.materialSupplied,
+                        supported_by_material: grounding.supportedByMaterial,
+                        unverified: grounding.unverified,
+                        notice: isGlobalMarket() ? GROUNDING_NOTICE_EN : GROUNDING_NOTICE_ZH,
+                    },
+                    ...(targetMarket ? { target_market: targetMarket, disclosure_hint: disclosureHint(targetMarket) } : {}),
                     metadata: {
                         usage: { tokens: totalTokens },
                         platforms: dto.platforms,

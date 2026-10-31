@@ -1,5 +1,6 @@
 import { splitArticleAndVisualPrompts } from './visual-prompts';
 import { CLAIMS_NOTICE_EN, CLAIMS_NOTICE_ZH, findUnverifiedClaims } from './unverified-claims';
+import { GROUNDING_NOTICE_EN, GROUNDING_NOTICE_ZH, Grounding, groundClaims, materialPromptBlock } from './grounding';
 import { isGlobalMarket, hasCjk } from '../../common/i18n/market-text';
 import { BadGatewayException, BadRequestException, HttpException, HttpStatus, Injectable, Logger, ServiceUnavailableException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -541,7 +542,9 @@ export class AIService {
     style: string;
     platform: string;
     keywords?: string[];
-  }): Promise<{ content: string; visualPrompts?: string[]; unverifiedClaims?: string[]; claimsNotice?: string | null; model: string; provider: string; latency_ms: number; cost_amount: number | null; usage: AIResponse['usage'] }> {
+    /** 用户提供的品牌/产品资料；具体数据和品牌名只能来自这里。 */
+    material?: string;
+  }): Promise<{ content: string; visualPrompts?: string[]; unverifiedClaims?: string[]; claimsNotice?: string | null; grounding?: Grounding & { notice: string }; model: string; provider: string; latency_ms: number; cost_amount: number | null; usage: AIResponse['usage'] }> {
     // 根据平台构建不同的提示词
     const platformPrompts: Record<string, string> = {
       xhs: `请为小红书创作一篇爆款笔记，主题：${params.topic}，风格：${params.style}`,
@@ -565,7 +568,7 @@ Requirements:
 
 Do not state specific figures, percentages, prices, ingredients, brand or product names, or medical/performance claims unless they appear in the topic or keywords above; describe benefits in general terms instead.
 
-Write in English only. At the very end, output 3 English prompts for AI image generation (Visual Prompts), one per line, after a line containing ---`
+Write in English only. At the very end, output 3 English prompts for AI image generation (Visual Prompts), one per line, after a line containing ---${materialPromptBlock(params.material, true)}`
         : `${basePrompt}
 关键词：${params.keywords?.join('、') || params.topic}
 
@@ -575,7 +578,7 @@ Write in English only. At the very end, output 3 English prompts for AI image ge
 3. 结尾要有引导
 4. 不要写出题目和关键词里没有出现过的具体数字、百分比、价格、成分、品牌或产品名，也不要写功效承诺；没有依据时用概括性的说法
 
-请在回答最后输出3个用于AI生图的英文提示词（Visual Prompts），每个占一行，用---分隔`,
+请在回答最后输出3个用于AI生图的英文提示词（Visual Prompts），每个占一行，用---分隔${materialPromptBlock(params.material, false)}`,
       maxTokens: 3000,
       route: 'bulk',
       userText: [params.topic, params.style, ...(params.keywords ?? [])].join(' '),
@@ -584,13 +587,16 @@ Write in English only. At the very end, output 3 English prompts for AI image ge
     // 解析视觉提示词（见 visual-prompts.ts）：正文与提示词块分离，保留 3 条完整提示词
     const split = splitArticleAndVisualPrompts(result.content);
 
-    const unverifiedClaims = findUnverifiedClaims(split.content, [params.topic, params.style, ...(params.keywords ?? [])].join(' '));
+    const userText = [params.topic, params.style, ...(params.keywords ?? [])].join(' ');
+    const grounding = groundClaims(split.content, userText, params.material);
+    const unverifiedClaims = grounding.unverified;
 
     return {
       content: split.content,
       visualPrompts: split.visualPrompts,
       unverifiedClaims,
       claimsNotice: unverifiedClaims.length ? (isGlobalMarket() ? CLAIMS_NOTICE_EN : CLAIMS_NOTICE_ZH) : null,
+      grounding: { ...grounding, notice: isGlobalMarket() ? GROUNDING_NOTICE_EN : GROUNDING_NOTICE_ZH },
       model: result.model,
       provider: result.provider,
       latency_ms: result.latency_ms,
@@ -686,11 +692,12 @@ ${content}
     topic: string,
     platform: string,
     count: number = 5,
+    extraContext?: string,
   ): Promise<TitlesResponse> {
     const result = await this.generateTextForMarket({
       prompt: isGlobalMarket()
-        ? `Write ${count} catchy headlines for "${topic}" for ${platform}. Each headline must be under 80 characters. English only. One per line, no numbering or commentary.`
-        : `请为"${topic}"在${platform}平台生成${count}个吸引人的标题，每个标题20字以内，用换行分隔`,
+        ? `Write ${count} catchy headlines for "${topic}" for ${platform}. Each headline must be under 80 characters. English only. One per line, no numbering or commentary.${extraContext ?? ''}`
+        : `请为"${topic}"在${platform}平台生成${count}个吸引人的标题，每个标题20字以内，用换行分隔${extraContext ?? ''}`,
       maxTokens: 500,
       route: 'title',
       userText: `${topic} ${platform}`,

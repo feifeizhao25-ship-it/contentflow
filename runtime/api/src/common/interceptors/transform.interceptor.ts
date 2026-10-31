@@ -8,6 +8,7 @@ import {
 import { Observable, of, throwError } from 'rxjs';
 import { map, mergeMap } from 'rxjs/operators';
 import { Request } from 'express';
+import { recordCjkLeak, recordLanguageCheck, recordRecovered, recordRefused } from '../language-guard';
 
 export interface Response<T> {
   success: boolean;
@@ -58,12 +59,25 @@ export class TransformInterceptor<T>
     // endpoints get their retry (once, in English) inside AIService.generateTextForMarket.
     const canRetry = ['GET', 'HEAD'].includes(String(request.method || '').toUpperCase());
 
+    const isGlobal = () => process.env.MARKET_REGION === 'global';
     return next.handle().pipe(
       mergeMap((data) => {
+        if (isGlobal()) recordLanguageCheck();
         if (!leaks(data)) return of(wrap(data));
-        if (!canRetry) return throwError(() => languageContractError());
+        recordCjkLeak(request.url);
+        if (!canRetry) {
+          recordRefused();
+          return throwError(() => languageContractError());
+        }
         return next.handle().pipe(
-          mergeMap((again) => (leaks(again) ? throwError(() => languageContractError()) : of(wrap(again)))),
+          mergeMap((again) => {
+            if (leaks(again)) {
+              recordRefused();
+              return throwError(() => languageContractError());
+            }
+            recordRecovered();
+            return of(wrap(again));
+          }),
         );
       }),
     );

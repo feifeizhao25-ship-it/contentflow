@@ -1,5 +1,7 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsString, IsNotEmpty, IsOptional, IsArray } from 'class-validator';
+import { IsString, IsNotEmpty, IsOptional, IsArray, IsIn, MaxLength } from 'class-validator';
+import { TARGET_MARKETS } from '../../../common/target-market';
+import { MATERIAL_MAX_CHARS } from '../grounding';
 
 export class GenerateContentPackDto {
     @ApiProperty({ description: '创作主题或指令', example: '1000元极简桌搭推荐' })
@@ -16,4 +18,15 @@ export class GenerateContentPackDto {
     @IsString()
     @IsOptional()
     personaId?: string;
+
+    @ApiProperty({ required: false, enum: TARGET_MARKETS, description: 'International edition only: where the audience is (US, UK, IN, SG). Chooses the ad-disclosure wording hint.' })
+    @IsOptional()
+    @IsIn(TARGET_MARKETS as unknown as string[])
+    targetMarket?: string;
+
+    @ApiProperty({ required: false, description: '用户提供的品牌/产品资料；具体数据和品牌名只能来自这里（最多 4000 字）' })
+    @IsOptional()
+    @IsString()
+    @MaxLength(MATERIAL_MAX_CHARS)
+    material?: string;
 }
