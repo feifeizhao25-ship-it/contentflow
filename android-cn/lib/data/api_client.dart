@@ -75,12 +75,13 @@ class ApiClient {
 
   Future<ContentPack> generateContentPack({
     required String topic,
-    int titleCount = 5,
   }) async {
+    // 后端 DTO 只接受 topic / platforms / personaId（forbidNonWhitelisted），
+    // 多发 count 会直接 400。标题数量由服务端决定。
     return _handle(
       () => _dio.post(
         '/content-pack/generate',
-        data: {'topic': topic, 'count': titleCount},
+        data: {'topic': topic},
       ),
       (payload) => ContentPack.fromJson(_extractMap(payload)),
     );
