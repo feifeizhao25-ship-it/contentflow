@@ -42,7 +42,7 @@ class AccountScreen extends ConsumerWidget {
         // Menu Items
         SliverToBoxAdapter(child: _buildSectionTitle('功能')),
         SliverToBoxAdapter(
-          child: _buildMenuItem(context, Icons.people, '团队管理', '管理团队成员'),
+          child: _buildMenuItem(context, Icons.people, '团队管理', '团队成员请在网页端管理'),
         ),
         SliverToBoxAdapter(
           child: _buildMenuItem(context, Icons.key, '连接设置', '平台授权在网页端完成'),
@@ -50,13 +50,17 @@ class AccountScreen extends ConsumerWidget {
 
         SliverToBoxAdapter(child: _buildSectionTitle('设置')),
         SliverToBoxAdapter(
-          child: _buildMenuItem(context, Icons.settings, '应用设置', ''),
-        ),
-        SliverToBoxAdapter(
-          child: _buildMenuItem(context, Icons.help_outline, '帮助文档', ''),
-        ),
-        SliverToBoxAdapter(
-          child: _buildMenuItem(context, Icons.info_outline, '关于我们', ''),
+          child: _buildMenuItem(
+            context,
+            Icons.info_outline,
+            '关于分发侠',
+            '',
+            onTap: () => showAboutDialog(
+              context: context,
+              applicationName: '分发侠',
+              applicationLegalese: '内容分发与数据洞察工具。AI 生成内容需人工审核后发布。',
+            ),
+          ),
         ),
 
         // 隐私与账号：原来 App 里没有隐私政策链接，也没有注销入口
@@ -157,7 +161,7 @@ class AccountScreen extends ConsumerWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text(
-                  '升级到专业版',
+                  '当前为免费版',
                   style: TextStyle(
                     color: Colors.white,
                     fontWeight: FontWeight.bold,
@@ -165,21 +169,11 @@ class AccountScreen extends ConsumerWidget {
                   ),
                 ),
                 Text(
-                  '解锁更多功能',
+                  '套餐与升级请在网页端管理',
                   style: TextStyle(color: Colors.white.withValues(alpha: 0.8)),
                 ),
               ],
             ),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              // TODO: Navigate to upgrade
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.white,
-              foregroundColor: Colors.orange,
-            ),
-            child: const Text('立即升级'),
           ),
         ],
       ),
@@ -204,8 +198,9 @@ class AccountScreen extends ConsumerWidget {
     BuildContext context,
     IconData icon,
     String title,
-    String subtitle,
-  ) {
+    String subtitle, {
+    VoidCallback? onTap,
+  }) {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
       decoration: BoxDecoration(
@@ -223,10 +218,10 @@ class AccountScreen extends ConsumerWidget {
         ),
         title: Text(title),
         subtitle: subtitle.isNotEmpty ? Text(subtitle) : null,
-        trailing: const Icon(Icons.chevron_right, color: Colors.grey),
-        onTap: () {
-          // TODO: Navigate
-        },
+        trailing: onTap == null
+            ? null
+            : const Icon(Icons.chevron_right, color: Colors.grey),
+        onTap: onTap,
       ),
     );
   }

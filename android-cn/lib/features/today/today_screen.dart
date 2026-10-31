@@ -47,12 +47,21 @@ class TodayScreen extends ConsumerWidget {
               SliverToBoxAdapter(child: _buildSectionTitle('近期表现')),
 
               analyticsAsync.when(
-                data: (summary) => _buildAnalyticsSummary(context, summary),
+                data: (summary) => SliverToBoxAdapter(
+                  child: _buildAnalyticsSummary(context, summary),
+                ),
                 loading: () => const SliverToBoxAdapter(
                   child: Center(child: CircularProgressIndicator()),
                 ),
-                error: (e, _) =>
-                    const SliverToBoxAdapter(child: SizedBox.shrink()),
+                error: (e, _) => const SliverToBoxAdapter(
+                  child: Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                    child: Text(
+                      '近期表现暂时没能加载，下拉页面可以重试。',
+                      style: TextStyle(fontSize: 13, color: Colors.grey),
+                    ),
+                  ),
+                ),
               ),
 
               const SliverToBoxAdapter(child: SizedBox(height: 100)),
@@ -303,10 +312,13 @@ class TodayScreen extends ConsumerWidget {
                   children: [
                     if (isPending)
                       Expanded(
-                        child: OutlinedButton.icon(
-                          onPressed: null,
-                          icon: const Icon(Icons.schedule_send),
-                          label: const Text('等待回执', overflow: TextOverflow.ellipsis),
+                        child: Tooltip(
+                          message: '已提交发布，正在等平台回执。通常几分钟内出结果，无需操作。',
+                          child: OutlinedButton.icon(
+                            onPressed: null,
+                            icon: const Icon(Icons.schedule_send),
+                            label: const Text('等待回执', overflow: TextOverflow.ellipsis),
+                          ),
                         ),
                       ),
                     if (isFailed)

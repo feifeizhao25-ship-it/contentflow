@@ -215,36 +215,6 @@ class InsightsScreen extends ConsumerWidget {
             '这条内容的互动高于 5%。具体原因需要对照原文，这里不替你下结论。',
             style: TextStyle(color: Colors.white.withValues(alpha: 0.9)),
           ),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: () {
-                    // TODO: View details
-                  },
-                  icon: const Icon(Icons.visibility, size: 18),
-                  label: const Text('查看详情'),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: Colors.white,
-                    side: const BorderSide(color: Colors.white),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: ElevatedButton.icon(
-                  onPressed: null,
-                  icon: const Icon(Icons.copy, size: 18),
-                  label: const Text('尚未接通'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.white,
-                    foregroundColor: Colors.orange,
-                  ),
-                ),
-              ),
-            ],
-          ),
         ],
       ),
     );
@@ -273,11 +243,23 @@ class InsightsScreen extends ConsumerWidget {
                 const SizedBox(height: 8),
                 Row(
                   children: [
-                    _buildMetric(Icons.play_arrow, _formatNumber(content.views), Colors.blue),
+                    _buildMetric(
+                      Icons.play_arrow,
+                      _formatNumber(content.views),
+                      Colors.blue,
+                    ),
                     const SizedBox(width: 16),
-                    _buildMetric(Icons.thumb_up, _formatNumber(content.likes), Colors.orange),
+                    _buildMetric(
+                      Icons.thumb_up,
+                      _formatNumber(content.likes),
+                      Colors.orange,
+                    ),
                     const SizedBox(width: 16),
-                    _buildMetric(Icons.share, _formatNumber(content.shares), Colors.green),
+                    _buildMetric(
+                      Icons.share,
+                      _formatNumber(content.shares),
+                      Colors.green,
+                    ),
                   ],
                 ),
               ],
