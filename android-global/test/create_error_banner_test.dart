@@ -9,7 +9,7 @@ import 'package:contentflow_global/data/token_storage.dart';
 import 'package:contentflow_global/features/create/create_screen.dart';
 
 class _FailingApi extends ApiClient {
-  _FailingApi() : super(TokenStorage());
+  _FailingApi() : super(TokenStorage(), baseUrl: 'https://test.invalid/api/v1');
 
   int calls = 0;
 
