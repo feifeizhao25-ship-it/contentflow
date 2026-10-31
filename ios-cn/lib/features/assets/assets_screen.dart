@@ -100,6 +100,18 @@ class AssetsScreen extends ConsumerWidget {
           children: [
             _buildFilterChip(context, ref, null, '全部', selectedType),
             const SizedBox(width: 8),
+            FilterChip(
+              key: const ValueKey('drafts-chip'),
+              label: const Text('草稿'),
+              selected: ref.watch(showDraftsProvider),
+              onSelected: (_) {
+                ref.read(showDraftsProvider.notifier).state = true;
+                ref.invalidate(contentDraftsProvider);
+              },
+              selectedColor: Theme.of(context).primaryColor.withValues(alpha: 0.2),
+              checkmarkColor: Theme.of(context).primaryColor,
+            ),
+            const SizedBox(width: 8),
             _buildFilterChip(context, ref, AssetType.image, '图片', selectedType),
             const SizedBox(width: 8),
             _buildFilterChip(context, ref, AssetType.video, '视频', selectedType),
@@ -110,27 +122,6 @@ class AssetsScreen extends ConsumerWidget {
               AssetType.script,
               '脚本',
               selectedType,
-            ),
-            const SizedBox(width: 8),
-            Builder(
-              builder: (chipContext) => FilterChip(
-              key: const ValueKey('drafts-chip'),
-              label: const Text('草稿'),
-              selected: ref.watch(showDraftsProvider),
-              onSelected: (_) {
-                ref.read(showDraftsProvider.notifier).state = true;
-                ref.invalidate(contentDraftsProvider);
-                // The chip sits at the end of a scrolling row: bring it fully into view.
-                // (after the selection checkmark has animated in, so the final width is known)
-                Future<void>.delayed(const Duration(milliseconds: 350), () {
-                  if (chipContext.mounted) {
-                    Scrollable.ensureVisible(chipContext, duration: const Duration(milliseconds: 200));
-                  }
-                });
-              },
-              selectedColor: Theme.of(context).primaryColor.withValues(alpha: 0.2),
-              checkmarkColor: Theme.of(context).primaryColor,
-            ),
             ),
           ],
         ),

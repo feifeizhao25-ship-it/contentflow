@@ -99,6 +99,18 @@ class AssetsScreen extends ConsumerWidget {
           children: [
             _buildFilterChip(context, ref, null, 'All', selectedType),
             const SizedBox(width: 8),
+            FilterChip(
+              key: const ValueKey('drafts-chip'),
+              label: const Text('Drafts'),
+              selected: ref.watch(showDraftsProvider),
+              onSelected: (_) {
+                ref.read(showDraftsProvider.notifier).state = true;
+                ref.invalidate(contentDraftsProvider);
+              },
+              selectedColor: Theme.of(context).primaryColor.withValues(alpha: 0.2),
+              checkmarkColor: Theme.of(context).primaryColor,
+            ),
+            const SizedBox(width: 8),
             _buildFilterChip(
               context,
               ref,
@@ -121,27 +133,6 @@ class AssetsScreen extends ConsumerWidget {
               AssetType.script,
               'Scripts',
               selectedType,
-            ),
-            const SizedBox(width: 8),
-            Builder(
-              builder: (chipContext) => FilterChip(
-              key: const ValueKey('drafts-chip'),
-              label: const Text('Drafts'),
-              selected: ref.watch(showDraftsProvider),
-              onSelected: (_) {
-                ref.read(showDraftsProvider.notifier).state = true;
-                ref.invalidate(contentDraftsProvider);
-                // The chip sits at the end of a scrolling row: bring it fully into view.
-                // (after the selection checkmark has animated in, so the final width is known)
-                Future<void>.delayed(const Duration(milliseconds: 350), () {
-                  if (chipContext.mounted) {
-                    Scrollable.ensureVisible(chipContext, duration: const Duration(milliseconds: 200));
-                  }
-                });
-              },
-              selectedColor: Theme.of(context).primaryColor.withValues(alpha: 0.2),
-              checkmarkColor: Theme.of(context).primaryColor,
-            ),
             ),
           ],
         ),
