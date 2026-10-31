@@ -57,6 +57,7 @@ import { MaterialsModule } from './modules/materials/materials.module';
 // Growth Module (Phase 4)
 import { GrowthModule } from './modules/growth/growth.module';
 import { SelfImproveModule } from './modules/growth/self-improve/self-improve.module';
+import { LibraryModule } from './modules/library/library.module';
 
 // Points Module (V1)
 import { PointsModule } from './modules/points/points.module';
@@ -124,7 +125,7 @@ export function validateProductionConfig(config: Record<string, unknown>) {
 }
 
 const DOMESTIC_ONLY_MODULES = [
-  HotModule, CompetitorModule, GrowthModule, SelfImproveModule, PointsModule,
+  HotModule, CompetitorModule, GrowthModule, SelfImproveModule, LibraryModule, PointsModule,
   RewardsModule, QuestModule, AchievementModule,
 ];
 
