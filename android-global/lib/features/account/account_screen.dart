@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/providers.dart';
 import '../../data/models.dart';
+import 'plan_usage_screen.dart';
 
 class AccountScreen extends ConsumerWidget {
   const AccountScreen({super.key});
@@ -33,7 +34,7 @@ class AccountScreen extends ConsumerWidget {
           SliverToBoxAdapter(child: _buildUpgradeBanner(context)),
 
         // Usage
-        SliverToBoxAdapter(child: _buildUsageSection(context, user)),
+        const SliverToBoxAdapter(child: PlanUsageCard()),
 
         // Menu Items
         SliverToBoxAdapter(child: _buildSectionTitle('Features')),
@@ -182,94 +183,6 @@ class AccountScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildUsageSection(BuildContext context, User user) {
-    return Container(
-      margin: const EdgeInsets.all(20),
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            '📊 Usage',
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 16),
-          // API Usage
-          Row(
-            children: [
-              const Icon(Icons.api, color: Colors.blue, size: 20),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text('API calls', style: TextStyle(fontSize: 14)),
-                    const SizedBox(height: 8),
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(4),
-                      child: LinearProgressIndicator(
-                        value: user.apiUsage / user.apiLimit,
-                        backgroundColor: Colors.grey.shade200,
-                        valueColor: AlwaysStoppedAnimation(
-                          user.apiUsage / user.apiLimit > 0.8
-                              ? Colors.red
-                              : Colors.blue,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 12),
-              Text(
-                '${_formatNumber(user.apiUsage)}/${_formatNumber(user.apiLimit)}',
-                style: const TextStyle(fontSize: 12),
-              ),
-            ],
-          ),
-          const SizedBox(height: 20),
-          // Storage Usage
-          Row(
-            children: [
-              const Icon(Icons.storage, color: Colors.green, size: 20),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text('Storage', style: TextStyle(fontSize: 14)),
-                    const SizedBox(height: 8),
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(4),
-                      child: LinearProgressIndicator(
-                        value: user.storageUsage / user.storageLimit,
-                        backgroundColor: Colors.grey.shade200,
-                        valueColor: AlwaysStoppedAnimation(
-                          user.storageUsage / user.storageLimit > 0.8
-                              ? Colors.red
-                              : Colors.green,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 12),
-              Text(
-                '${user.storageUsage}MB/${user.storageLimit}MB',
-                style: const TextStyle(fontSize: 12),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _buildSectionTitle(String title) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 8, 20, 8),
@@ -363,12 +276,4 @@ class AccountScreen extends ConsumerWidget {
     );
   }
 
-  String _formatNumber(int number) {
-    if (number >= 10000) {
-      return '${(number / 10000).toStringAsFixed(1)}w';
-    } else if (number >= 1000) {
-      return '${(number / 1000).toStringAsFixed(1)}k';
-    }
-    return number.toString();
-  }
 }

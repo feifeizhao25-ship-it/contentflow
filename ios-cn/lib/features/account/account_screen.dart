@@ -3,10 +3,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/providers.dart';
 import '../../data/models.dart';
+import 'plan_usage_screen.dart';
 import '../../core/error_text.dart';
 import 'package:flutter/services.dart';
 import '../../config/cn_config.dart';
-import '../../core/cn_format.dart';
 
 class AccountScreen extends ConsumerWidget {
   const AccountScreen({super.key});
@@ -37,7 +37,7 @@ class AccountScreen extends ConsumerWidget {
           SliverToBoxAdapter(child: _buildUpgradeBanner(context)),
 
         // Usage
-        SliverToBoxAdapter(child: _buildUsageSection(context, user)),
+        const SliverToBoxAdapter(child: PlanUsageCard()),
 
         // Menu Items
         SliverToBoxAdapter(child: _buildSectionTitle('功能')),
@@ -174,94 +174,6 @@ class AccountScreen extends ConsumerWidget {
                 ),
               ],
             ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildUsageSection(BuildContext context, User user) {
-    return Container(
-      margin: const EdgeInsets.all(20),
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: AppColors.card(context),
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            '📊 使用量',
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 16),
-          // API Usage
-          Row(
-            children: [
-              const Icon(Icons.api, color: Colors.blue, size: 20),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text('接口调用', style: TextStyle(fontSize: 14)),
-                    const SizedBox(height: 8),
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(4),
-                      child: LinearProgressIndicator(
-                        value: user.apiUsage / user.apiLimit,
-                        backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
-                        valueColor: AlwaysStoppedAnimation(
-                          user.apiUsage / user.apiLimit > 0.8
-                              ? Colors.red
-                              : Colors.blue,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 12),
-              Text(
-                '${_formatNumber(user.apiUsage)}/${_formatNumber(user.apiLimit)}',
-                style: const TextStyle(fontSize: 12),
-              ),
-            ],
-          ),
-          const SizedBox(height: 20),
-          // Storage Usage
-          Row(
-            children: [
-              const Icon(Icons.storage, color: Colors.green, size: 20),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text('存储空间', style: TextStyle(fontSize: 14)),
-                    const SizedBox(height: 8),
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(4),
-                      child: LinearProgressIndicator(
-                        value: user.storageUsage / user.storageLimit,
-                        backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
-                        valueColor: AlwaysStoppedAnimation(
-                          user.storageUsage / user.storageLimit > 0.8
-                              ? Colors.red
-                              : Colors.green,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 12),
-              Text(
-                '${user.storageUsage}MB/${user.storageLimit}MB',
-                style: const TextStyle(fontSize: 12),
-              ),
-            ],
           ),
         ],
       ),
@@ -469,5 +381,4 @@ class AccountScreen extends ConsumerWidget {
     );
   }
 
-  String _formatNumber(int number) => formatCount(number);
 }

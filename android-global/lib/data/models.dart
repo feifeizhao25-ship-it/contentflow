@@ -11,6 +11,10 @@ class ContentPack {
   final Map<String, PlatformPayload>? platformPayloads;
   final DateTime createdAt;
 
+  /// What the server reported about this generation (disclosure hint, grounding, compliance counts,
+  /// personalisation). Shown as returned; nothing is computed on the device.
+  final Map<String, dynamic> serverNotes;
+
   ContentPack({
     required this.id,
     required this.topic,
@@ -20,6 +24,7 @@ class ContentPack {
     required this.hashtags,
     this.platformPayloads,
     required this.createdAt,
+    this.serverNotes = const {},
   });
 
   factory ContentPack.fromJson(Map<String, dynamic> json) {
@@ -38,6 +43,16 @@ class ContentPack {
             )
           : null,
       createdAt: DateTime.tryParse(json['created_at'] ?? '') ?? DateTime.now(),
+      serverNotes: {
+        for (final key in const [
+          'target_market',
+          'disclosure_hint',
+          'grounding',
+          'compliance',
+          'positioning_used',
+        ])
+          if (json[key] != null) key: json[key],
+      },
     );
   }
 

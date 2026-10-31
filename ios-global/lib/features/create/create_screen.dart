@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/providers.dart';
 import '../../data/models.dart';
+import 'market_options.dart';
 
 class CreateScreen extends ConsumerStatefulWidget {
   const CreateScreen({super.key});
@@ -12,12 +13,15 @@ class CreateScreen extends ConsumerStatefulWidget {
 
 class _CreateScreenState extends ConsumerState<CreateScreen> {
   final _topicController = TextEditingController();
+  final _materialController = TextEditingController();
+  String _targetMarket = '';
   bool _isGenerating = false;
   ContentPack? _generatedPack;
 
   @override
   void dispose() {
     _topicController.dispose();
+    _materialController.dispose();
     super.dispose();
   }
 
@@ -37,6 +41,8 @@ class _CreateScreenState extends ConsumerState<CreateScreen> {
       final api = ref.read(apiClientProvider);
       final pack = await api.generateContentPack(
         topic: _topicController.text.trim(),
+        targetMarket: _targetMarket,
+        material: _materialController.text,
       );
       setState(() {
         _generatedPack = pack;
@@ -147,6 +153,13 @@ class _CreateScreenState extends ConsumerState<CreateScreen> {
               ),
             ),
           ),
+          const SizedBox(height: 16),
+          TargetMarketField(
+            value: _targetMarket,
+            onChanged: (v) => setState(() => _targetMarket = v),
+          ),
+          const SizedBox(height: 16),
+          MaterialField(controller: _materialController),
           const SizedBox(height: 20),
           SizedBox(
             width: double.infinity,
@@ -231,27 +244,29 @@ class _CreateScreenState extends ConsumerState<CreateScreen> {
             ),
           ),
 
-          const SizedBox(height: 16),
+          if (pack.hooks.isNotEmpty) ...[
+            const SizedBox(height: 16),
 
-          // Hooks
-          _buildContentCard(
-            context,
-            '🎣 Hooks',
-            Column(
-              children: pack.hooks.map((hook) {
-                return Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 4),
-                  child: Row(
-                    children: [
-                      const Icon(Icons.bolt, color: Colors.orange, size: 18),
-                      const SizedBox(width: 8),
-                      Expanded(child: Text(hook)),
-                    ],
-                  ),
-                );
-              }).toList(),
+            // Hooks
+            _buildContentCard(
+              context,
+              '🎣 Hooks',
+              Column(
+                children: pack.hooks.map((hook) {
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 4),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.bolt, color: Colors.orange, size: 18),
+                        const SizedBox(width: 8),
+                        Expanded(child: Text(hook)),
+                      ],
+                    ),
+                  );
+                }).toList(),
+              ),
             ),
-          ),
+          ],
 
           const SizedBox(height: 16),
 
@@ -262,35 +277,46 @@ class _CreateScreenState extends ConsumerState<CreateScreen> {
             Text(pack.script, style: const TextStyle(height: 1.6)),
           ),
 
-          const SizedBox(height: 16),
+          if (pack.hashtags.isNotEmpty) ...[
+            const SizedBox(height: 16),
 
-          // Hashtags
-          _buildContentCard(
-            context,
-            '#️⃣ Hashtags',
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: pack.hashtags.map((tag) {
-                return Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 6,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Theme.of(
-                      context,
-                    ).primaryColor.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  child: Text(
-                    tag,
-                    style: TextStyle(color: Theme.of(context).primaryColor),
-                  ),
-                );
-              }).toList(),
+            // Hashtags
+            _buildContentCard(
+              context,
+              '#️⃣ Hashtags',
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: pack.hashtags.map((tag) {
+                  return Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 6,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Theme.of(
+                        context,
+                      ).primaryColor.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: Text(
+                      tag,
+                      style: TextStyle(color: Theme.of(context).primaryColor),
+                    ),
+                  );
+                }).toList(),
+              ),
             ),
-          ),
+          ],
+
+          if (pack.serverNotes.isNotEmpty) ...[
+            const SizedBox(height: 16),
+            _buildContentCard(
+              context,
+              'Before you publish',
+              GenerationNotes(notes: pack.serverNotes),
+            ),
+          ],
 
           const SizedBox(height: 24),
 
