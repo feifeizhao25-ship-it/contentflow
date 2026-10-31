@@ -25,6 +25,7 @@ const PROTECTED_SEGMENTS = new Set([
     'persona',
     'points',
     'publish',
+    'rules',
     'schedule',
     'settings',
     'studio',
