@@ -107,5 +107,8 @@
       "uuid": "^11.1.1"
     },
     "urllib": "4.9.1"
+  },
+  "optionalDependencies": {
+    "@contentauth/c2pa-node": "^0.9.11"
   }
 }

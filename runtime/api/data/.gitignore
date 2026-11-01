@@ -1,0 +1,2 @@
+# Signed media (C2PA) produced at runtime — never commit generated files.
+generated-media/

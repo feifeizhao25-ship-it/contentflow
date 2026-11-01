@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { ProvenanceModule } from '../../common/provenance/provenance.module';
 import { AIService } from './ai.service';
 import { AIController } from './ai.controller';
 import { QueueModule } from '../../queue/queue.module';
@@ -12,7 +13,7 @@ import { ComplianceSourcesController } from './compliance-sources.controller';
 import { ComplianceCheckController } from './compliance-check.controller';
 
 @Module({
-  imports: [QueueModule, SystemModule],
+  imports: [QueueModule, SystemModule, ProvenanceModule],
   providers: [AIService, AiAllowanceService, ContentPackService, ComplianceService, RagPolicyService],
   controllers: [AIController, ContentPackController, ComplianceSourcesController, ComplianceCheckController],
   exports: [AIService, AiAllowanceService, ContentPackService, RagPolicyService],

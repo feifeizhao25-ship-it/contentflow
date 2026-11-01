@@ -42,7 +42,8 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          # 22 = the API image's Node (@contentauth/c2pa-node needs >= 22.12; Node 20 is end-of-life)
+          node-version: "22"
           cache: "npm"
           cache-dependency-path: runtime/api/package-lock.json
 
