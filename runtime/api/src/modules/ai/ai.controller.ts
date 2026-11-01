@@ -1,5 +1,5 @@
 import { MATERIAL_MAX_CHARS } from './grounding';
-import { BadRequestException, Controller, Post, Get, Body, UseGuards, UseInterceptors, Request, Headers } from '@nestjs/common';
+import { BadRequestException, Controller, Optional, Post, Get, Body, UseGuards, UseInterceptors, Request, Headers } from '@nestjs/common';
 import { AiConcurrencyInterceptor } from './ai-concurrency.interceptor';
 import { aiTextLabel, labelAiGeneratedText } from '../../common/ai-content-label';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
@@ -9,6 +9,7 @@ import { AiAllowanceService } from './ai-allowance.service';
 import { AI_HOLD_TOKENS } from './ai-holds';
 import { normalizeIdempotencyKey } from '../system/usage.service';
 import { ComplianceService } from './compliance.service';
+import { ProvenanceService } from '../../common/provenance/provenance.service';
 
 @ApiTags('ai')
 @UseInterceptors(AiConcurrencyInterceptor)
@@ -18,6 +19,8 @@ export class AIController {
     private readonly aiService: AIService,
     private readonly allowance: AiAllowanceService,
     private readonly compliance: ComplianceService,
+    // Optional so modules that build the controller without provenance (older tests) keep working: no signing then.
+    @Optional() private readonly provenance?: ProvenanceService,
   ) {}
 
   @Get('usage')
@@ -197,7 +200,12 @@ export class AIController {
       holdTokens: AI_HOLD_TOKENS.image,
       idempotencyKey: normalizeIdempotencyKey(idempotencyKey),
       run: async () => {
-        const result = await this.aiService.generateImage({ prompt, size, style, seed });
+        const generated = await this.aiService.generateImage({ prompt, size, style, seed });
+        // EU AI Act Art. 50(2): machine-readable marking. Signs a C2PA manifest into the file and serves that copy
+        // (no-op unless C2PA is enabled — on by default for the global edition). Never throws.
+        const result = this.provenance
+          ? await this.provenance.attachToGeneratedMedia(generated, { mediaType: 'image', model: generated.model, provider: generated.provider })
+          : generated;
         return {
           tokens: AI_HOLD_TOKENS.image,
           images: 1,
