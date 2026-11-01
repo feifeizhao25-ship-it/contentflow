@@ -11,6 +11,7 @@ import { isGlobalMarket, mt } from '../../common/i18n/market-text';
 import { Optional } from '@nestjs/common';
 import { PrismaService } from '../../database/prisma.service';
 import { disclosureHint, resolveTargetMarket, targetMarketPromptLine } from '../../common/target-market';
+import { currentDatePromptLine, dropStaleYearTitles } from './current-date';
 import { buildPositioning } from './positioning';
 import { GROUNDING_NOTICE_EN, GROUNDING_NOTICE_ZH, groundClaims, materialPromptBlock } from './grounding';
 
@@ -72,11 +73,14 @@ export class ContentPackService {
                 : await this.aiService.generateTitlesWithUsage(dto.topic, platformsStr, dto.count ?? 10);
             const targetMarket = isGlobalMarket() ? resolveTargetMarket(dto.targetMarket) : null;
             const materialBlock = materialPromptBlock(dto.material, isGlobalMarket());
-            const titles = titleResult?.titles;
-            if (!Array.isArray(titles) || titles.length === 0 ||
-                titles.some(title => typeof title !== 'string' || !title.trim())) {
+            const rawTitles = titleResult?.titles;
+            if (!Array.isArray(rawTitles) || rawTitles.length === 0 ||
+                rawTitles.some(title => typeof title !== 'string' || !title.trim())) {
                 throw new Error('AI provider did not return usable titles');
             }
+            // B22：把「of 2023」这类过期年份标记的标题剔除（今天的日期已经写进提示词，这里是第二道防线）。
+            const stale = dropStaleYearTitles(rawTitles);
+            const titles = stale.titles;
             const titleTokens = titleResult?.usage?.total_tokens;
             if (!Number.isSafeInteger(titleTokens) || titleTokens <= 0) {
                 throw new Error('AI provider did not return valid title token usage');
@@ -87,8 +91,8 @@ export class ContentPackService {
             // 资料过期时如实告诉用户「合规规则资料需要人工复核」，而不是笼统的「未引用」。
             const freshness = policySources.length ? null : await this.ragPolicyService.freshnessReport?.().catch(() => null);
             const scriptPrompt = isGlobalMarket()
-                ? `Write an in-depth script on the topic "${dto.topic}" with the headline "${titles[0]}". Be logical and use plain language. If the sources below contain compliance requirements, add a pre-publication checklist at the end. Write in English only.${targetMarket ? ` ${targetMarketPromptLine(targetMarket)}` : ''}${this.ragPolicyService.buildContext(policySources)}${positioning.promptBlock}${materialBlock}`
-                : `请根据主题 "${dto.topic}" 和标题 "${titles[0]}" 创作一篇深度脚本。要求：逻辑清晰、使用普通人能理解的表达；如资料包含合规要求，在结尾增加发布前核对清单。${this.ragPolicyService.buildContext(policySources)}${positioning.promptBlock}${materialBlock}`;
+                ? `Write an in-depth script on the topic "${dto.topic}" with the headline "${titles[0]}". Be logical and use plain language. If the sources below contain compliance requirements, add a pre-publication checklist at the end. Write in English only.${currentDatePromptLine(true)}${targetMarket ? ` ${targetMarketPromptLine(targetMarket)}` : ''}${this.ragPolicyService.buildContext(policySources)}${positioning.promptBlock}${materialBlock}`
+                : `请根据主题 "${dto.topic}" 和标题 "${titles[0]}" 创作一篇深度脚本。要求：逻辑清晰、使用普通人能理解的表达；如资料包含合规要求，在结尾增加发布前核对清单。${currentDatePromptLine(false)}${this.ragPolicyService.buildContext(policySources)}${positioning.promptBlock}${materialBlock}`;
             const scriptData = await this.aiService.generateTextForMarket({ prompt: scriptPrompt, route: 'bulk', userText: `${dto.topic} ${titles[0]}` });
             let script = scriptData?.content;
             if (typeof script !== 'string' || !script.trim()) {
@@ -142,6 +146,7 @@ export class ContentPackService {
                         rules_checked: (compliance as any).rulesChecked,
                         not_checked: (compliance as any).notChecked,
                     } : undefined,
+                    ...(stale.removed.length ? { stale_year_titles_removed: stale.removed } : {}),
                     positioning_used: { persona: positioning.used.persona, persona_name: positioning.used.personaName, top_titles: positioning.used.topTitles, reference_only: true },
                     grounding: {
                         material_supplied: grounding.materialSupplied,

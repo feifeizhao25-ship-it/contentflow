@@ -93,6 +93,21 @@ describe('ContentPackService token accounting', () => {
     expect(result.data.metadata.usage.tokens).toBe(320);
   });
 
+  it('B22: drops a title that uses a past year as its badge, writes today\'s date into the prompts, and says so in the response', async () => {
+    ai.generateTitlesWithUsage.mockResolvedValue({
+      titles: ['Top 5 Home Espresso Machines of 2023!', 'Pull a better shot at home'],
+      usage: { total_tokens: 10 },
+    });
+    ai.generateTextForMarket.mockResolvedValue({ content: 'A script', usage: { total_tokens: 20 } });
+
+    const result = await service.generatePack('tenant-1', { topic: 'Espresso', platforms: ['xhs'] });
+
+    expect(result.data.titles).toEqual(['Pull a better shot at home']);
+    expect((result.data as any).stale_year_titles_removed).toEqual([{ title: 'Top 5 Home Espresso Machines of 2023!', years: [2023] }]);
+    const prompt = ai.generateTextForMarket.mock.calls[0][0].prompt as string;
+    expect(prompt).toContain(new Date().toISOString().slice(0, 10));
+  });
+
   it('labels the script as AI-generated and attaches media metadata', async () => {
     ai.generateTitlesWithUsage.mockResolvedValue({
       titles: ['A title'],
