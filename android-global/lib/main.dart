@@ -183,14 +183,17 @@ class MainScreen extends ConsumerWidget {
     final isSelected = currentTab == index;
     final color = isSelected ? Theme.of(context).colorScheme.primary : AppColors.muted(context);
 
-    return GestureDetector(
+    // Expanded + capped text scale: five tabs ('Insights', 'Account') overflowed the bar at 200% text on 375 dp
+    return Expanded(child: MediaQuery(
+      data: MediaQuery.of(context).copyWith(textScaler: MediaQuery.textScalerOf(context).clamp(maxScaleFactor: 1.3)),
+      child: GestureDetector(
       onTap: () {
         ref.read(currentTabProvider.notifier).state = index;
       },
       behavior: HitTestBehavior.opaque,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
         decoration: BoxDecoration(
           color: isSelected
               ? Theme.of(context).primaryColor.withValues(alpha: 0.1)
@@ -202,17 +205,21 @@ class MainScreen extends ConsumerWidget {
           children: [
             Icon(icon, color: color, size: 24),
             const SizedBox(height: 4),
-            Text(
-              label,
-              style: TextStyle(
-                color: color,
-                fontSize: 12,
-                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(
+                label,
+                maxLines: 1,
+                style: TextStyle(
+                  color: color,
+                  fontSize: 12,
+                  fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                ),
               ),
             ),
           ],
         ),
       ),
-    );
+    )));
   }
 }

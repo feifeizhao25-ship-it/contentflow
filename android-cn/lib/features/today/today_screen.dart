@@ -126,7 +126,11 @@ class TodayScreen extends ConsumerWidget {
         ),
         borderRadius: BorderRadius.circular(16),
       ),
-      child: Row(
+      // Wrap, not Row: at 200% text the week chip drops under the date instead of overflowing the card.
+      child: Wrap(
+        alignment: WrapAlignment.spaceBetween,
+        crossAxisAlignment: WrapCrossAlignment.center,
+        runSpacing: 12,
         children: [
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -145,7 +149,6 @@ class TodayScreen extends ConsumerWidget {
               ),
             ],
           ),
-          const Spacer(),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             decoration: BoxDecoration(

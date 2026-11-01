@@ -99,7 +99,11 @@ class GlHeroBanner extends StatelessWidget {
           ),
         ),
         clipBehavior: Clip.antiAlias,
-        child: Row(children: [
+        child: LayoutBuilder(builder: (context, box) {
+          // Narrow column or large text: the illustration yields to the copy (no mid-word wraps at 200% text).
+          final scale = MediaQuery.textScalerOf(context).scale(14) / 14;
+          final showImage = box.maxWidth >= 240 && scale <= 1.4;
+          return Row(children: [
           Expanded(
             child: Padding(
               padding: const EdgeInsets.fromLTRB(20, 14, 4, 14),
@@ -107,16 +111,22 @@ class GlHeroBanner extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.center,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(title, style: TextStyle(fontSize: 22, height: 1.25, fontWeight: FontWeight.w800, color: c)),
+                  FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.centerLeft,
+                    child: Text(title, maxLines: 1, style: TextStyle(fontSize: 22, height: 1.25, fontWeight: FontWeight.w800, color: c)),
+                  ),
                   const SizedBox(height: 4),
                   Text(subtitle, style: TextStyle(fontSize: 14, height: 1.45, color: Theme.of(context).colorScheme.onSurfaceVariant)),
                 ],
               ),
             ),
           ),
-          Image.asset(asset, width: height, height: height, fit: BoxFit.cover,
-              errorBuilder: (_, __, ___) => SizedBox(width: height, height: height)),
-        ]),
+          if (showImage)
+            Image.asset(asset, width: height, height: height, fit: BoxFit.cover,
+                errorBuilder: (_, __, ___) => SizedBox(width: height, height: height)),
+        ]);
+        }),
       ),
     );
   }
