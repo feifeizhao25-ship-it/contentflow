@@ -1,7 +1,7 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
 import { IsString, IsNotEmpty, IsOptional, IsArray, IsIn, IsInt, Max, MaxLength, Min } from 'class-validator';
-import { ACCEPTED_TARGET_MARKETS } from '../../../common/target-market';
+import { ACCEPTED_TARGET_MARKETS, COMMERCIAL_RELATIONSHIPS } from '../../../common/target-market';
 import { MATERIAL_MAX_CHARS } from '../grounding';
 import { ArrayMaxSize } from 'class-validator';
 
@@ -27,6 +27,12 @@ export class GenerateContentPackDto {
     @Transform(({ value }) => (typeof value === 'string' ? (value.trim().toUpperCase() || undefined) : value))
     @IsIn(ACCEPTED_TARGET_MARKETS as unknown as string[])
     targetMarket?: string;
+
+    @ApiProperty({ required: false, enum: COMMERCIAL_RELATIONSHIPS, description: 'International edition only: is this post paid, gifted, affiliate or promoting your own brand? If so the correct ad label for the target market is put on the first line of the post and of every platform variant. Default: none.' })
+    @IsOptional()
+    @Transform(({ value }) => (typeof value === 'string' ? (value.trim().toLowerCase() || undefined) : value))
+    @IsIn(COMMERCIAL_RELATIONSHIPS as unknown as string[])
+    commercialRelationship?: string;
 
     @ApiProperty({ required: false, description: '用户提供的品牌/产品资料；具体数据和品牌名只能来自这里（最多 4000 字）' })
     @IsOptional()

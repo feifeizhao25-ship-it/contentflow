@@ -8,6 +8,7 @@ import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { AiAllowanceService } from './ai-allowance.service';
 import { AI_HOLD_TOKENS } from './ai-holds';
 import { normalizeIdempotencyKey } from '../system/usage.service';
+import { ComplianceService } from './compliance.service';
 
 @ApiTags('ai')
 @UseInterceptors(AiConcurrencyInterceptor)
@@ -16,6 +17,7 @@ export class AIController {
   constructor(
     private readonly aiService: AIService,
     private readonly allowance: AiAllowanceService,
+    private readonly compliance: ComplianceService,
   ) {}
 
   @Get('usage')
@@ -33,6 +35,8 @@ export class AIController {
   async generateArticle(@Request() req: any, @Body() body: any, @Headers('idempotency-key') idempotencyKey?: string) {
     const { topic, style, platform, keywords } = body;
     const material = typeof body?.material === 'string' ? body.material.slice(0, MATERIAL_MAX_CHARS) : undefined;
+    // International edition: refuse fake-review / fake-follower / hidden-AI-label / synthetic-endorsement requests before any quota hold.
+    this.compliance.guardRequest(topic, style, material, ...(Array.isArray(keywords) ? keywords.map(String) : [typeof keywords === 'string' ? keywords : undefined]));
     return this.allowance.withReservation({
       tenantId: req.user.tenantId,
       kind: 'article',
@@ -51,6 +55,7 @@ export class AIController {
         const labelled = labelAiGeneratedText(result.content);
         return {
           tokens: result.usage.total_tokens,
+          attachContentId: 'text' as const,
           response: { ...result, content: labelled, aiGenerated: true, aiLabel: aiTextLabel() },
           generation: {
             userId: req.user.sub,
@@ -77,6 +82,7 @@ export class AIController {
   async generateScript(@Request() req: any, @Body() body: any, @Headers('idempotency-key') idempotencyKey?: string) {
     const topic = String(body?.topic ?? '').trim().slice(0, 200);
     if (!topic) throw new BadRequestException('请输入创作主题');
+    this.compliance.guardRequest(topic, String(body?.type ?? ''));
     const type = String(body?.type ?? '爆款解说').slice(0, 50);
     const platform = String(body?.platform ?? '抖音').slice(0, 20);
     return this.allowance.withReservation({
@@ -88,7 +94,8 @@ export class AIController {
         const result = await this.aiService.generateScript({ topic, type, platform });
         return {
           tokens: result.usage.total_tokens,
-          response: { title: result.title, scenes: result.scenes, aiLabel: aiTextLabel() },
+          attachContentId: 'text' as const,
+          response: { title: result.title, scenes: result.scenes, aiGenerated: true, aiLabel: aiTextLabel() },
           generation: {
             userId: req.user.sub,
             generationType: 'script',
@@ -113,6 +120,7 @@ export class AIController {
   @ApiOperation({ summary: 'AI标题生成' })
   async generateTitles(@Request() req: any, @Body() body: any, @Headers('idempotency-key') idempotencyKey?: string) {
     const { topic, platform, count } = body;
+    this.compliance.guardRequest(typeof topic === 'string' ? topic : undefined);
     return this.allowance.withReservation({
       tenantId: req.user.tenantId,
       kind: 'titles',
@@ -122,7 +130,8 @@ export class AIController {
         const result = await this.aiService.generateTitlesWithUsage(topic, platform || 'xhs', count || 5);
         return {
           tokens: result.usage.total_tokens,
-          response: { titles: result.titles },
+          attachContentId: 'text' as const,
+          response: { titles: result.titles, aiGenerated: true },
           generation: {
             userId: req.user.sub,
             generationType: 'titles',
@@ -181,6 +190,7 @@ export class AIController {
   @ApiOperation({ summary: 'AI图片生成' })
   async generateImage(@Request() req: any, @Body() body: any, @Headers('idempotency-key') idempotencyKey?: string) {
     const { prompt, size, style, seed } = body;
+    this.compliance.guardRequest(typeof prompt === 'string' ? prompt : undefined, typeof style === 'string' ? style : undefined);
     return this.allowance.withReservation({
       tenantId: req.user.tenantId,
       kind: 'image',

@@ -121,6 +121,9 @@ export function finalizeReservedResponse(settlement: { response: unknown; attach
   });
   if (settlement.attachContentId === 'image') return { ...(response as object), aiMetadata: meta };
   const body = response as { data?: { metadata?: Record<string, unknown> } };
+  // Flat text responses (article, script, titles) have no data.metadata: put the machine-readable marker at the top level,
+  // the same place images carry theirs (EU AI Act Art. 50(2) machine-readable marking; GB 45438 implicit label).
+  if (!('data' in body)) return { ...(response as object), aiMetadata: meta };
   if (!body.data?.metadata) return response;
   return { ...body, data: { ...body.data, metadata: { ...body.data.metadata, ai_content: meta } } };
 }

@@ -1,5 +1,6 @@
 import { AIService, AI_NOT_CONFIGURED_MESSAGE, AI_UNAVAILABLE_MESSAGE, AI_IMAGE_UNAVAILABLE_MESSAGE, DOMESTIC_CHAT_ENDPOINTS, DOMESTIC_IMAGE_REQUEST_TIMEOUT_MS, DASHSCOPE_IMAGE_SYNTHESIS, MAX_SCRIPT_SCENES } from './ai.service';
 import { AIController } from './ai.controller';
+import { ComplianceService } from './compliance.service';
 import { AI_TEXT_LABEL } from '../../common/ai-content-label';
 
 /**
@@ -211,9 +212,9 @@ describe('storyboard script', () => {
         return produced.response;
       },
     };
-    const controller = new AIController(fake as never, allowance as never);
+    const controller = new AIController(fake as never, allowance as never, new ComplianceService());
     const body = await controller.generateScript({ user: { tenantId: 't-1', sub: 'u-1' } }, { topic: '咖啡' });
-    expect(body).toEqual({ title: 't', scenes: [{ visual: 'v', subtitle: 's', time: 5 }], aiLabel: AI_TEXT_LABEL });
+    expect(body).toEqual({ title: 't', scenes: [{ visual: 'v', subtitle: 's', time: 5 }], aiGenerated: true, aiLabel: AI_TEXT_LABEL });
     expect(recorded).toHaveLength(1);
     await expect(controller.generateScript({ user: { tenantId: 't-1', sub: 'u-1' } }, { topic: ' ' })).rejects.toThrow('创作主题');
   });

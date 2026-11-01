@@ -26,7 +26,7 @@ export class ComplianceSourcesController {
         needsReview: true,
         mode: 'conservative',
         generationAvailable: true,
-        notice: `International rule set ${INTERNATIONAL_RULESET_VERSION} (US FTC/FDA and UK CAP Code) is built in. It is a keyword screen, not legal advice; review content yourself before publishing.`,
+        notice: `International rule set ${INTERNATIONAL_RULESET_VERSION} (US FTC and FDA, UK CAP Code and ASA, EU AI Act Article 50 transparency) is built in. It is a keyword screen, not legal advice; review content yourself before publishing. AI-generated text carries a visible label and a machine-readable marker; no invisible watermark is applied yet.`,
         userNotice: 'Checks are a screen only. Review your content before you publish. This is not legal advice.',
         maxAgeDays: 90,
         sources: [
@@ -34,6 +34,9 @@ export class ComplianceSourcesController {
           { name: 'FTC Endorsement Guides (16 CFR Part 255)', lastCheckedAt: '2026-10-31T00:00:00.000Z', checkedBy: 'engineering', state: 'fresh' },
           { name: 'FDA 21 CFR 101.93 (supplement claims)', lastCheckedAt: '2026-10-31T00:00:00.000Z', checkedBy: 'engineering', state: 'fresh' },
           { name: 'UK CAP Code', lastCheckedAt: '2026-10-31T00:00:00.000Z', checkedBy: 'engineering', state: 'fresh' },
+          { name: 'FTC Rule on Consumer Reviews and Testimonials (16 CFR Part 465)', lastCheckedAt: '2026-11-01T00:00:00.000Z', checkedBy: 'engineering', state: 'fresh' },
+          { name: 'UK ASA: recognising ads on social media and influencer marketing', lastCheckedAt: '2026-11-01T00:00:00.000Z', checkedBy: 'engineering', state: 'fresh' },
+          { name: 'EU AI Act (Regulation 2024/1689) Article 50', lastCheckedAt: '2026-11-01T00:00:00.000Z', checkedBy: 'engineering', state: 'fresh' },
         ],
       };
     }

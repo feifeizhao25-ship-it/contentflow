@@ -28,12 +28,17 @@ export function platformRule(platform: string) {
   return RULES[platform] ?? { name: platform, maxChars: 2000, tags: 3, style: '通用图文' };
 }
 
-export function adaptBodyForPlatform(rawBody: string, platform: string, topic = ''): PlatformVariant {
+/**
+ * adLabel: the advertising-disclosure label for a declared commercial post. It always goes on the first line of every
+ * variant, before the AI label, and is never trimmed or compressed away (ASA: prominent and upfront; FTC: unavoidable).
+ */
+export function adaptBodyForPlatform(rawBody: string, platform: string, topic = '', adLabel = ''): PlatformVariant {
   const rule = platformRule(platform);
   const lines = String(rawBody ?? '').split('\n');
   const labelIdx = lines.findIndex((l) => AI_LABEL_RE.test(l));
   const label = labelIdx >= 0 ? lines[labelIdx].trim() : '';
-  const bodyLines = lines.filter((_, i) => i !== labelIdx).map((l) => l.trim()).filter(Boolean);
+  const adIdx = adLabel ? lines.findIndex((l) => l.trim() === adLabel) : -1;
+  const bodyLines = lines.filter((_, i) => i !== labelIdx && i !== adIdx).map((l) => l.trim()).filter(Boolean);
   let body = bodyLines.join('\n');
   const notes: string[] = [rule.style];
   if (platform === 'douyin' || platform === 'weixin') {
@@ -48,10 +53,10 @@ export function adaptBodyForPlatform(rawBody: string, platform: string, topic = 
   if (body.length > rule.maxChars) { body = body.slice(0, rule.maxChars); notes.push(global() ? `Trimmed to the ${rule.name} limit of ${rule.maxChars} characters; please read the cut point.` : `已按${rule.name}长度上限截断到 ${rule.maxChars} 字，截断处请人工顺一遍。`); }
   const aiTag = global() ? '#AIGenerated' : '#AI生成内容';
   const tags = topic && rule.tags ? [`#${topic.replace(/\s+/g, '')}`, aiTag].slice(0, rule.tags) : (rule.tags ? [aiTag] : []);
-  const outBody = [label, body, tags.length ? tags.join(' ') : ''].filter(Boolean).join('\n');
+  const outBody = [adLabel, label, body, tags.length ? tags.join(' ') : ''].filter(Boolean).join('\n');
   return { platform, title: '', body: outBody, hashtags: tags, char_count: outBody.length, notes };
 }
-export function adaptForPlatforms(body: string, platforms: string[] = [], topic = ''): PlatformVariant[] {
+export function adaptForPlatforms(body: string, platforms: string[] = [], topic = '', adLabel = ''): PlatformVariant[] {
   const list = platforms.length ? platforms : ['xhs'];
-  return [...new Set(list)].map((p) => adaptBodyForPlatform(body, p, topic));
+  return [...new Set(list)].map((p) => adaptBodyForPlatform(body, p, topic, adLabel));
 }

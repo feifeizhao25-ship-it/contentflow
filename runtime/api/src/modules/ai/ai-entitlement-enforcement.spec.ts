@@ -11,6 +11,7 @@ const request = require('supertest');
 import { configureApp } from '../../bootstrap';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { AIController } from './ai.controller';
+import { ComplianceService } from './compliance.service';
 import { AIService } from './ai.service';
 import { AiAllowanceService } from './ai-allowance.service';
 import { AiQuotaExceededError, finalizeReservedResponse, UsageService } from '../system/usage.service';
@@ -131,7 +132,7 @@ describe('AI 生成接口统一执行套餐 AI 额度', () => {
     ai.generateImage.mockResolvedValue({ url: 'https://example.cn/a.png', provider: 'dashscope', model: 'wanx2.1-t2i-turbo', cost_amount: 0.04 });
     const moduleRef = await Test.createTestingModule({
       controllers: [AIController],
-      providers: [{ provide: AIService, useValue: ai }, { provide: UsageService, useValue: usage }, AiAllowanceService],
+      providers: [{ provide: AIService, useValue: ai }, { provide: UsageService, useValue: usage }, AiAllowanceService, ComplianceService],
     })
       .overrideGuard(JwtAuthGuard)
       .useValue({
