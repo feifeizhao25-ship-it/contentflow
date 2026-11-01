@@ -1,3 +1,4 @@
+import { currentDatePromptLine } from './current-date';
 import { openRouterHeaderValue } from '../../common/http-header';
 import { splitArticleAndVisualPrompts } from './visual-prompts';
 import { CLAIMS_NOTICE_EN, CLAIMS_NOTICE_ZH, findUnverifiedClaims } from './unverified-claims';
@@ -707,8 +708,8 @@ ${content}
   ): Promise<TitlesResponse> {
     const result = await this.generateTextForMarket({
       prompt: isGlobalMarket()
-        ? `Write ${count} catchy headlines for "${topic}" for ${platform}. Each headline must be under 80 characters. English only. One per line, no numbering or commentary.${extraContext ?? ''}`
-        : `请为"${topic}"在${platform}平台生成${count}个吸引人的标题，每个标题20字以内，用换行分隔${extraContext ?? ''}`,
+        ? `Write ${count} catchy headlines for "${topic}" for ${platform}. Each headline must be under 80 characters. English only. One per line, no numbering or commentary.${currentDatePromptLine(true)}${extraContext ?? ''}`
+        : `请为"${topic}"在${platform}平台生成${count}个吸引人的标题，每个标题20字以内，用换行分隔${currentDatePromptLine(false)}${extraContext ?? ''}`,
       maxTokens: 500,
       route: 'title',
       userText: `${topic} ${platform}`,
