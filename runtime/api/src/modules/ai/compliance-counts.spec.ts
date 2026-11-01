@@ -53,5 +53,18 @@ describe('compliance rule counts and unchecked items', () => {
     it('international response refuses an unsupported market instead of guessing', async () => {
       await expect(make('global').check({ text: 'hello', targetMarket: 'FR' })).rejects.toThrow(/Unsupported target market/);
     });
+    it('international check uses the chosen market for the label rules and a declared relationship', async () => {
+      const uk: any = await make('global').check({ text: 'Sponsored: try this desk lamp, use my code LAMP10.', targetMarket: 'UK' });
+      expect(uk.hits.map((h: any) => h.ruleId)).toContain('INTL-DISCLOSURE-LABEL');
+      const ok: any = await make('global').check({ text: 'Ad: try this desk lamp, use my code LAMP10.', targetMarket: 'UK' });
+      expect(ok.hits.map((h: any) => h.ruleId).filter((id: string) => id.startsWith('INTL-DISCLOSURE'))).toEqual([]);
+      const declared: any = await make('global').check({ text: 'A plain review of this desk lamp.', targetMarket: 'UK', commercialRelationship: 'paid' });
+      expect(declared.hits.map((h: any) => h.ruleId)).toContain('INTL-DISCLOSURE');
+      expect(declared.ruleSetVersion).toBe('intl-content-2026.11.01');
+    });
+
+    it('international check refuses an unknown relationship', async () => {
+      await expect(make('global').check({ text: 'hello', commercialRelationship: 'boss' })).rejects.toThrow(/Unsupported commercial relationship/);
+    });
   });
 });

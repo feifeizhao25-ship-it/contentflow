@@ -103,11 +103,44 @@ export function disclosureHint(market: TargetMarket): DisclosureHint {
   return HINTS[market];
 }
 
+export const COMMERCIAL_RELATIONSHIPS = ['none', 'paid', 'gifted', 'affiliate', 'own_brand'] as const;
+export type CommercialRelationship = (typeof COMMERCIAL_RELATIONSHIPS)[number];
+
+export function resolveCommercialRelationship(input: unknown): CommercialRelationship | null {
+  const v = String(input ?? '').trim().toLowerCase();
+  return (COMMERCIAL_RELATIONSHIPS as readonly string[]).includes(v) ? (v as CommercialRelationship) : null;
+}
+
+/** True when the creator says money, goods or an affiliate link are involved. */
+export function isCommercialRelationship(r: CommercialRelationship | null | undefined): boolean {
+  return !!r && r !== 'none';
+}
+
+const DISCLOSURE_LABELS: Record<TargetMarket, Record<Exclude<CommercialRelationship, 'none'>, string>> = {
+  US: { paid: 'Ad', gifted: 'Ad: product received free from the brand', affiliate: 'Ad: affiliate links, I earn a commission', own_brand: 'Ad' },
+  UK: { paid: 'Ad', gifted: 'Ad: product gifted by the brand', affiliate: 'Ad: affiliate links', own_brand: 'Ad' },
+  IN: { paid: '#Ad', gifted: '#Free gift', affiliate: '#Affiliate', own_brand: '#Ad' },
+  SG: { paid: '#adv', gifted: 'This post was sponsored by the brand (free product)', affiliate: 'This post includes affiliate links', own_brand: '#adv' },
+  OTHER: { paid: 'Ad: paid partnership', gifted: 'Ad: product received free from the brand', affiliate: 'Ad: affiliate links, I earn a commission', own_brand: 'Ad: my own product' },
+};
+
+/**
+ * The disclosure label put on the FIRST line of a post when the creator declares a commercial relationship.
+ * Uses wording each market's source names (see HINTS). Returns '' when there is no relationship.
+ */
+export function disclosureLabelFor(market: TargetMarket | null | undefined, relationship: CommercialRelationship | null | undefined): string {
+  if (!isCommercialRelationship(relationship)) return '';
+  return DISCLOSURE_LABELS[market ?? GENERIC_MARKET][relationship as Exclude<CommercialRelationship, 'none'>];
+}
+
 /** One line for the model prompt so the closing disclosure line uses wording that market accepts. */
-export function targetMarketPromptLine(market: TargetMarket): string {
+export function targetMarketPromptLine(market: TargetMarket, relationship?: CommercialRelationship | null): string {
   const h = HINTS[market];
+  const upfront = isCommercialRelationship(relationship)
+    ? ` The creator has declared this post is commercial (${relationship}). The disclosure label is added automatically as the first line: do not write your own, and never put a disclosure only among hashtags.`
+    : ' Any disclosure goes at the very start of the post, never only at the end or among hashtags.';
   if (market === GENERIC_MARKET) {
-    return 'The audience is in a country with no built-in disclosure rule set. If the post needs an advertising disclosure, state any material connection (payment, free product, affiliate link) clearly and upfront in plain words. Do not invent a brand relationship.';
+    return 'The audience is in a country with no built-in disclosure rule set. If the post needs an advertising disclosure, state any material connection (payment, free product, affiliate link) clearly and upfront in plain words. Do not invent a brand relationship.' + upfront;
   }
-  return `The audience is in ${h.marketName}. If the post needs an advertising disclosure, use wording such as ${h.labelExamples.slice(0, 3).map((l) => `"${l}"`).join(', ')}${h.avoid.length ? `; avoid ${h.avoid.slice(0, 2).join(' and ')}` : ''}. Do not invent a brand relationship.`;
+  return `The audience is in ${h.marketName}. If the post needs an advertising disclosure, use wording such as ${h.labelExamples.slice(0, 3).map((l) => `"${l}"`).join(', ')}${h.avoid.length ? `; avoid ${h.avoid.slice(0, 2).join(' and ')}` : ''}. Do not invent a brand relationship.${upfront}`;
 }

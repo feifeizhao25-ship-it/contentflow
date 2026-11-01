@@ -10,7 +10,7 @@ import { adaptForPlatforms } from './platform-adaptation';
 import { isGlobalMarket, mt } from '../../common/i18n/market-text';
 import { Optional } from '@nestjs/common';
 import { PrismaService } from '../../database/prisma.service';
-import { disclosureHint, resolveTargetMarket, targetMarketPromptLine } from '../../common/target-market';
+import { disclosureHint, disclosureLabelFor, isCommercialRelationship, resolveCommercialRelationship, resolveTargetMarket, targetMarketPromptLine } from '../../common/target-market';
 import { currentDatePromptLine, dropStaleYearTitles } from './current-date';
 import { avoidTermsPromptBlock, sanitizeAvoidTerms } from './avoid-terms';
 import { buildPositioning } from './positioning';
@@ -54,6 +54,9 @@ export class ContentPackService {
     }
 
     async generatePack(tenantId: string, dto: GenerateContentPackDto, userId?: string, idempotencyKey?: string) {
+        // International edition: refuse requests for fake reviews, fake followers, hidden AI labels or synthetic endorsements
+        // before any budget check or token hold.
+        this.complianceService.guardRequest?.(dto.topic, dto.material);
         // 额度闸：先查每日成本预算，再在数据库里占住本月令牌。占住之后才调用模型。
         await this.aiService.assertTenantDailyBudget(tenantId);
         this.logger.log(`Generating content pack for topic: ${dto.topic}`);
@@ -75,6 +78,10 @@ export class ContentPackService {
                 ? await this.aiService.generateTitlesWithUsage(dto.topic, platformsStr, dto.count ?? 10, positioning.promptBlock)
                 : await this.aiService.generateTitlesWithUsage(dto.topic, platformsStr, dto.count ?? 10);
             const targetMarket = isGlobalMarket() ? resolveTargetMarket(dto.targetMarket) : null;
+            const relationship = isGlobalMarket() ? resolveCommercialRelationship(dto.commercialRelationship) : null;
+            const commercial = isCommercialRelationship(relationship);
+            // The ad label for the first line of the post and of every variant. No market chosen: the generic "OTHER" wording.
+            const adLabel = commercial ? disclosureLabelFor(targetMarket, relationship) : '';
             const materialBlock = materialPromptBlock(dto.material, isGlobalMarket());
             const rawTitles = titleResult?.titles;
             if (!Array.isArray(rawTitles) || rawTitles.length === 0 ||
@@ -94,7 +101,7 @@ export class ContentPackService {
             // 资料过期时如实告诉用户「合规规则资料需要人工复核」，而不是笼统的「未引用」。
             const freshness = policySources.length ? null : await this.ragPolicyService.freshnessReport?.().catch(() => null);
             const scriptPrompt = isGlobalMarket()
-                ? `Write an in-depth script on the topic "${dto.topic}" with the headline "${titles[0]}". Be logical and use plain language. If the sources below contain compliance requirements, add a pre-publication checklist at the end. Write in English only.${currentDatePromptLine(true)}${targetMarket ? ` ${targetMarketPromptLine(targetMarket)}` : ''}${this.ragPolicyService.buildContext(policySources)}${positioning.promptBlock}${materialBlock}`
+                ? `Write an in-depth script on the topic "${dto.topic}" with the headline "${titles[0]}". Be logical and use plain language. If the sources below contain compliance requirements, add a pre-publication checklist at the end. Write in English only.${currentDatePromptLine(true)}${targetMarket ? ` ${targetMarketPromptLine(targetMarket, relationship)}` : ''}${this.ragPolicyService.buildContext(policySources)}${positioning.promptBlock}${materialBlock}`
                 : `请根据主题 "${dto.topic}" 和标题 "${titles[0]}" 创作一篇深度脚本。要求：逻辑清晰、使用普通人能理解的表达；如资料包含合规要求，在结尾增加发布前核对清单。${currentDatePromptLine(false)}${this.ragPolicyService.buildContext(policySources)}${positioning.promptBlock}${materialBlock}`;
             const scriptData = await this.aiService.generateTextForMarket({ prompt: scriptPrompt, route: 'bulk', userText: `${dto.topic} ${titles[0]}` });
             let script = scriptData?.content;
@@ -112,11 +119,14 @@ export class ContentPackService {
             if (typeof script !== 'string' || !script.trim()) {
                 throw new Error('Compliance processing returned empty body content');
             }
-            const compliance = await this.complianceService.checkContent?.(script, { conservative });
+            // Check the text as it will be published: with the ad label on the first line, in the chosen market's wording rules.
+            const compliance = await this.complianceService.checkContent?.(adLabel ? `${adLabel}\n${script}` : script, { conservative, targetMarket, commercial });
             const grounding = groundClaims(script, `${dto.topic} ${titles.join(' ')}`, dto.material);
 
             // 4. AI 生成内容显式标识（导出文本必须可辨识为 AI 生成）
             script = labelAiGeneratedText(script);
+            const variants = adaptForPlatforms(script, dto.platforms || [], dto.topic, adLabel);
+            if (adLabel) script = `${adLabel}\n${script}`;
 
             const totalTokens = titleTokens + scriptTokens;
             if (!Number.isSafeInteger(totalTokens) || totalTokens <= 0) {
@@ -128,7 +138,7 @@ export class ContentPackService {
                 data: {
                     titles,
                     script,
-                    platform_variants: adaptForPlatforms(script, dto.platforms || [], dto.topic),
+                    platform_variants: variants,
                     sources: policySources.map(source => ({ id: source.id, source_url: source.source_url, source_name: source.source_name, published_at: source.published_at, retrieved_at: source.retrieved_at, jurisdiction: source.jurisdiction, source_tier: source.source_tier })),
                     sources_status: policySources.length ? 'verified' : freshness?.needsReview ? 'review_required' : 'none',
                     sources_note: isGlobalMarket()
@@ -158,6 +168,7 @@ export class ContentPackService {
                         notice: isGlobalMarket() ? GROUNDING_NOTICE_EN : GROUNDING_NOTICE_ZH,
                     },
                     ...(targetMarket ? { target_market: targetMarket, disclosure_hint: disclosureHint(targetMarket) } : {}),
+                    ...(commercial ? { commercial_relationship: relationship, disclosure_label: adLabel } : {}),
                     metadata: {
                         usage: { tokens: totalTokens },
                         platforms: dto.platforms,
