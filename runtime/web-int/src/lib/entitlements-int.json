@@ -8,7 +8,12 @@
       "custom": false,
       "platformLimit": 3,
       "monthlyPostQuota": 10,
-      "features": ["3 platform accounts", "10 posts per month", "50K AI tokens per month"]
+      "aiTokenQuota": 50000,
+      "features": [
+        "3 platform accounts",
+        "10 posts per month",
+        "50K AI tokens per month"
+      ]
     },
     "starter": {
       "name": "Starter",
@@ -16,7 +21,12 @@
       "custom": false,
       "platformLimit": 5,
       "monthlyPostQuota": 100,
-      "features": ["5 platform accounts", "100 posts per month", "500K AI tokens per month"]
+      "aiTokenQuota": 500000,
+      "features": [
+        "5 platform accounts",
+        "100 posts per month",
+        "500K AI tokens per month"
+      ]
     },
     "pro": {
       "name": "Pro",
@@ -24,7 +34,12 @@
       "custom": false,
       "platformLimit": 15,
       "monthlyPostQuota": 500,
-      "features": ["15 platform accounts", "500 posts per month", "2.5M AI tokens per month"]
+      "aiTokenQuota": 2500000,
+      "features": [
+        "15 platform accounts",
+        "500 posts per month",
+        "2.5M AI tokens per month"
+      ]
     },
     "team": {
       "name": "Team",
@@ -32,7 +47,12 @@
       "custom": false,
       "platformLimit": 30,
       "monthlyPostQuota": 2000,
-      "features": ["30 platform accounts", "2000 posts per month", "10M AI tokens per month"]
+      "aiTokenQuota": 10000000,
+      "features": [
+        "30 platform accounts",
+        "2000 posts per month",
+        "10M AI tokens per month"
+      ]
     },
     "enterprise": {
       "name": "Enterprise",
@@ -40,7 +60,12 @@
       "custom": true,
       "platformLimit": -1,
       "monthlyPostQuota": -1,
-      "features": ["Custom platform and volume limits", "API access", "Dedicated support"]
+      "aiTokenQuota": -1,
+      "features": [
+        "Custom platform and volume limits",
+        "API access",
+        "Dedicated support"
+      ]
     }
   }
 }
