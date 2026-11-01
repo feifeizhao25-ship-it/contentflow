@@ -108,6 +108,25 @@ describe('ContentPackService token accounting', () => {
     expect(prompt).toContain(new Date().toISOString().slice(0, 10));
   });
 
+  it('B28: avoidTerms from a previous compliance block are written into both the title and the script prompts', async () => {
+    ai.generateTitlesWithUsage.mockResolvedValue({ titles: ['一个标题'], usage: { total_tokens: 10 } });
+    ai.generateTextForMarket.mockResolvedValue({ content: '正文', usage: { total_tokens: 20 } });
+
+    await service.generatePack('tenant-1', { topic: '护肤', avoidTerms: ['最佳', '国家级'] } as any);
+
+    expect(ai.generateTitlesWithUsage.mock.calls[0][3]).toContain('「最佳」、「国家级」');
+    expect(ai.generateTextForMarket.mock.calls[0][0].prompt).toContain('「最佳」、「国家级」');
+    // the retry still goes through the same compliance scrub — avoidTerms never skips it
+    expect(compliance.scrubOutput).toHaveBeenCalled();
+  });
+
+  it('B28: without avoidTerms the prompts carry no avoid line', async () => {
+    ai.generateTitlesWithUsage.mockResolvedValue({ titles: ['一个标题'], usage: { total_tokens: 10 } });
+    ai.generateTextForMarket.mockResolvedValue({ content: '正文', usage: { total_tokens: 20 } });
+    await service.generatePack('tenant-1', { topic: '护肤' });
+    expect(ai.generateTextForMarket.mock.calls[0][0].prompt).not.toContain('不得出现这些词');
+  });
+
   it('labels the script as AI-generated and attaches media metadata', async () => {
     ai.generateTitlesWithUsage.mockResolvedValue({
       titles: ['A title'],
