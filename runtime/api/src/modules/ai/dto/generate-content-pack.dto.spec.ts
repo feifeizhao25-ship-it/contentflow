@@ -28,6 +28,11 @@ describe('GenerateContentPackDto', () => {
     it('treats an empty value as "no market chosen" (generic wording), not an error', async () => {
       expect(await errorsFor({ topic: 'x', targetMarket: '' })).toHaveLength(0);
     });
+    it.each(['other', 'OTHER', ' Other '])('B15: accepts %j for creators in any other country (general guidance)', async (m) => {
+      const dto = plainToInstance(GenerateContentPackDto, { topic: 'x', targetMarket: m });
+      expect(await validate(dto, { whitelist: true, forbidNonWhitelisted: true })).toHaveLength(0);
+      expect(dto.targetMarket).toBe('OTHER');
+    });
     it('still rejects markets that have no sourced hint', async () => {
       expect(await errorsFor({ topic: 'x', targetMarket: 'sea' })).toHaveLength(1);
       expect(await errorsFor({ topic: 'x', targetMarket: 'CN' })).toHaveLength(1);

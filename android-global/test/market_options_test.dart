@@ -155,4 +155,42 @@ void main() {
     expect(api.market ?? '', isEmpty);
     expect(api.material ?? '', isEmpty);
   });
+
+  // Retest B15: creators outside US/UK/IN/SG had no option.
+  testWidgets('offers "Other country" and its notes show general principles without invented labels', (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(body: SingleChildScrollView(child: Column(children: [
+          TargetMarketField(value: '', onChanged: (_) {}),
+        ]))),
+      ),
+    );
+    await tester.tap(find.byKey(const ValueKey('target-market')));
+    await tester.pumpAndSettle();
+    expect(find.text('Other country (general guidance)'), findsWidgets);
+    expect(kTargetMarkets.map((e) => e.key), contains('OTHER'));
+
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: Scaffold(
+          body: GenerationNotes(notes: {
+            'disclosure_hint': {
+              'marketName': 'Other country (general guidance)',
+              'labelExamples': <String>[],
+              'avoid': <String>[],
+              'placement': 'Say clearly and prominently whether the content has been paid for.',
+              'note': 'No country-specific wording or labels are built in for this option.',
+              'sources': [
+                {'name': 'ICPEN, Guidelines for Digital Influencers'},
+              ],
+            },
+          }),
+        ),
+      ),
+    );
+    expect(find.text('Ad disclosure for Other country (general guidance)'), findsOneWidget);
+    expect(find.textContaining('Acceptable wording'), findsNothing);
+    expect(find.textContaining('No country-specific wording'), findsOneWidget);
+    expect(find.textContaining('ICPEN'), findsOneWidget);
+  });
 }

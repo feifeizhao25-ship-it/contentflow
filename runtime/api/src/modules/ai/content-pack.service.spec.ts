@@ -268,6 +268,15 @@ describe('ContentPackService personalisation, target market and grounding', () =
     expect(none.data.target_market).toBeUndefined();
   });
 
+  it('B15: target market OTHER gives general guidance — no invented country labels, ICPEN source named', async () => {
+    const out: any = await make().generatePack('t1', { topic: 'desk lamp', targetMarket: 'OTHER' }, 'u1');
+    expect(out.data.target_market).toBe('OTHER');
+    const hint = out.data.disclosure_hint;
+    expect(hint.labelExamples).toEqual([]);
+    expect(hint.sources.map((x: any) => x.name).join(' ')).toMatch(/ICPEN/);
+    expect(ai.generateTextForMarket.mock.calls[0][0].prompt).toMatch(/no built-in disclosure rule set/);
+  });
+
   it('grounds figures/names to the supplied material and flags the rest', async () => {
     const out: any = await make().generatePack('t1', { topic: 'desk lamp', material: 'AQUAPURE datasheet: 24% brighter than v1' }, 'u1');
     expect(ai.generateTextForMarket.mock.calls[0][0].prompt).toContain('AQUAPURE datasheet');

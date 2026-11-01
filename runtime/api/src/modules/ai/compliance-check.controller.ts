@@ -38,7 +38,7 @@ export class ComplianceCheckController {
     // 目标市场只在国际版有意义；不在支持列表里的值不会被默默当成某个市场。
     const market = isGlobal ? resolveTargetMarket(body?.targetMarket) : null;
     if (isGlobal && body?.targetMarket && !market) {
-      throw new BadRequestException('Unsupported target market. Choose one of: US, UK, IN, SG');
+      throw new BadRequestException('Unsupported target market. Choose one of: US, UK, IN, SG, OTHER');
     }
     return {
       passed: result.passed,

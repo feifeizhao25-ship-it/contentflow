@@ -8,6 +8,8 @@ const List<MapEntry<String, String>> kTargetMarkets = [
   MapEntry('UK', 'United Kingdom'),
   MapEntry('IN', 'India'),
   MapEntry('SG', 'Singapore'),
+  // Any other country: general principles only (ICPEN), no invented local rules.
+  MapEntry('OTHER', 'Other country (general guidance)'),
 ];
 
 class TargetMarketField extends StatelessWidget {
@@ -44,7 +46,7 @@ class TargetMarketField extends StatelessWidget {
         ),
         const SizedBox(height: 4),
         const Text(
-          'Shows the ad-disclosure wording that market accepts. Other regions are not covered yet.',
+          'Shows the ad-disclosure wording that market accepts. For any other country choose "Other country": you get general principles only, not local rules.',
           style: TextStyle(fontSize: 12, color: Colors.black54),
         ),
       ],
@@ -111,9 +113,10 @@ class GenerationNotes extends StatelessWidget {
           : <String>[];
       children
         ..add(_title('Ad disclosure for ${hint['marketName']}'))
-        ..add(Text('Acceptable wording: ${labels.join(', ')}'))
+        ..add(if_(labels.isNotEmpty, Text('Acceptable wording: ${labels.join(', ')}')))
         ..add(if_(avoid.isNotEmpty, Text('Avoid: ${avoid.join('; ')}')))
         ..add(Text('${hint['placement']}'))
+        ..add(if_('${hint['note'] ?? ''}'.isNotEmpty, Text('${hint['note'] ?? ''}')))
         ..add(
           Text(
             'Sources: ${sources.join('; ')}. Guidance only, not legal advice.',
