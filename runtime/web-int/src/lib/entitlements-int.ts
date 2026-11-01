@@ -20,6 +20,8 @@ export interface TierEntitlement {
   custom: boolean;
   platformLimit: number;
   monthlyPostQuota: number;
+  /** AI tokens per month; -1 = unlimited (Enterprise). Mirrors plans.constant.ts PLANS[].aiTokenQuota. */
+  aiTokenQuota: number;
   features: string[];
 }
 
@@ -53,6 +55,7 @@ export function validateEntitlements(input: unknown): string[] {
     if (typeof tier.custom !== 'boolean') errors.push(`${id}: missing custom`);
     if (typeof tier.platformLimit !== 'number') errors.push(`${id}: missing platformLimit`);
     if (typeof tier.monthlyPostQuota !== 'number') errors.push(`${id}: missing monthlyPostQuota`);
+    if (typeof tier.aiTokenQuota !== 'number') errors.push(`${id}: missing aiTokenQuota`);
     if (!Array.isArray(tier.features) || tier.features.length === 0) {
       errors.push(`${id}: features must be a non-empty array`);
     }
