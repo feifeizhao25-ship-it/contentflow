@@ -112,7 +112,7 @@ class MainScreen extends ConsumerWidget {
       AccountScreen(),
     ];
     // Wide screens: side navigation + a centred content column instead of a full-width phone layout.
-    final wide = MediaQuery.sizeOf(context).width >= 900;
+    final wide = MediaQuery.sizeOf(context).width >= 600;
     if (wide) {
       return Scaffold(
         backgroundColor: AppColors.page(context),
