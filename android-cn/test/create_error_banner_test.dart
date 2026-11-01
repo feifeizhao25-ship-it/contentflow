@@ -18,6 +18,7 @@ class _FailingApi extends ApiClient {
     required String topic,
     int titleCount = 5,
     List<String>? platforms,
+    List<String>? avoidTerms,
   }) async {
     calls++;
     throw ApiException(ApiException.statusMessage(400), statusCode: 400);
