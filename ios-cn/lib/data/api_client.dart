@@ -83,6 +83,7 @@ class ApiClient {
     required String topic,
     int titleCount = 5,
     List<String>? platforms,
+    List<String>? avoidTerms,
   }) async {
     return _handle(
       () => _dio.post(
@@ -92,6 +93,8 @@ class ApiClient {
           'topic': topic,
           'count': titleCount,
           if (platforms != null && platforms.isNotEmpty) 'platforms': platforms,
+          // 「按建议改写重试」：把上一版被拦下的用语告诉服务端，让它避开。
+          if (avoidTerms != null && avoidTerms.isNotEmpty) 'avoidTerms': avoidTerms,
         },
       ),
       (payload) {

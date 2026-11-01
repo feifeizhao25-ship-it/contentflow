@@ -40,7 +40,7 @@ class _BlockedApi extends ApiClient {
   _BlockedApi() : super(TokenStorage(), baseUrl: 'https://test.invalid/api/v1');
 
   @override
-  Future<ContentPack> generateContentPack({required String topic, int titleCount = 5, List<String>? platforms}) async {
+  Future<ContentPack> generateContentPack({required String topic, int titleCount = 5, List<String>? platforms, List<String>? avoidTerms}) async {
     throw ApiException.fromDio(_dioError());
   }
 }

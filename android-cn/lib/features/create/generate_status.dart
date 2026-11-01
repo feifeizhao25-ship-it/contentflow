@@ -12,6 +12,9 @@ class GenerateStatusCard extends StatelessWidget {
   final List<ComplianceHit> hits;
   final VoidCallback onRetry;
 
+  /// 一键「按建议改写重试」：带着被拦下的用语重新生成（只在有被拦用语时出现）。
+  final ValueChanged<List<String>>? onRewrite;
+
   const GenerateStatusCard({
     super.key,
     required this.generating,
@@ -19,7 +22,20 @@ class GenerateStatusCard extends StatelessWidget {
     required this.error,
     this.hits = const [],
     required this.onRetry,
+    this.onRewrite,
   });
+
+  /// 被拦下的用语（去重，保持命中顺序）。
+  List<String> get blockedTerms {
+    final seen = <String>[];
+    for (final hit in hits) {
+      for (final t in hit.matchedTerms) {
+        final term = t.trim();
+        if (term.isNotEmpty && !seen.contains(term)) seen.add(term);
+      }
+    }
+    return seen.take(12).toList();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -119,13 +135,26 @@ class GenerateStatusCard extends StatelessWidget {
                   ])),
                 ),
               const SizedBox(height: 4),
-              Text('请按提示修改主题或要点后重新生成。这不是法律意见。', style: TextStyle(fontSize: 12, color: Colors.grey.shade600)),
+              Text('可以点「按建议改写重试」让系统避开这些用语重写，也可以自己修改主题或要点后重新生成。改写后的内容仍会再过一遍合规检查，这不是法律意见。', style: TextStyle(fontSize: 12, color: Colors.grey.shade600)),
             ],
             const SizedBox(height: 12),
-            OutlinedButton.icon(
-              onPressed: onRetry,
-              icon: const Icon(Icons.refresh, size: 18),
-              label: const Text('重新生成'),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                if (onRewrite != null && blockedTerms.isNotEmpty)
+                  FilledButton.icon(
+                    key: const ValueKey('rewrite-retry'),
+                    onPressed: () => onRewrite!(blockedTerms),
+                    icon: const Icon(Icons.auto_fix_high, size: 18),
+                    label: const Text('按建议改写重试'),
+                  ),
+                OutlinedButton.icon(
+                  onPressed: onRetry,
+                  icon: const Icon(Icons.refresh, size: 18),
+                  label: const Text('重新生成'),
+                ),
+              ],
             ),
           ],
         ),

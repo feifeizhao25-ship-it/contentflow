@@ -21,6 +21,7 @@ class _FakeApi implements ApiClient {
     required String topic,
     int titleCount = 5,
     List<String>? platforms,
+    List<String>? avoidTerms,
   }) async {
     this.platforms = platforms;
     return ContentPack.fromJson({

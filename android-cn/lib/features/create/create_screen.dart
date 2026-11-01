@@ -38,7 +38,8 @@ class _CreateScreenState extends ConsumerState<CreateScreen> {
 
   /// 生成失败时的原因，常驻屏幕（不只是一闪而过的提示条）。
 
-  Future<void> _generateContentPack() async {
+  /// [avoidTerms]：「按建议改写重试」时带上上一版被合规检查拦下的用语。
+  Future<void> _generateContentPack({List<String>? avoidTerms}) async {
     if (_topicController.text.trim().isEmpty) {
       ScaffoldMessenger.of(
         context,
@@ -63,6 +64,7 @@ class _CreateScreenState extends ConsumerState<CreateScreen> {
       final pack = await api.generateContentPack(
         topic: _topicController.text.trim(),
         platforms: _platforms.toList(),
+        avoidTerms: avoidTerms,
       );
       if (mounted) {
         setState(() {
@@ -243,6 +245,7 @@ class _CreateScreenState extends ConsumerState<CreateScreen> {
               error: _generateError,
               hits: _generateHits,
               onRetry: _generateContentPack,
+              onRewrite: (terms) => _generateContentPack(avoidTerms: terms),
             ),
           ],
         ],
