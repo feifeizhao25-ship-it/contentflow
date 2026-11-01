@@ -24,11 +24,11 @@ String _planName(String plan) {
     case 'free':
       return '免费版';
     case 'pro':
-      return 'Solo';
+      return '个人版';
     case 'team':
-      return 'Team';
+      return '团队版';
     case 'enterprise':
-      return 'Business';
+      return '商务版';
     default:
       return plan;
   }
@@ -90,9 +90,9 @@ class _AiBar extends StatelessWidget {
     if (status.quotaUnconfirmed) {
       summary = '额度待确认';
     } else if (t.unlimited) {
-      summary = '本月已用 {used} 令牌（不限量）'.replaceAll('{used}', _num(t.used));
+      summary = '本月已用 {used} 令牌（不限量）'.replaceAll('{used}', _num(t.used)); // zh-gate:allow Dart 插值变量名，非显示文本
     } else {
-      summary = '本月已用 {used} / {limit} 令牌'.replaceAll('{used}', _num(t.used)).replaceAll('{limit}', _num(t.limit));
+      summary = '本月已用 {used} / {limit} 令牌'.replaceAll('{used}', _num(t.used)).replaceAll('{limit}', _num(t.limit)); // zh-gate:allow Dart 插值变量名，非显示文本
     }
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -177,7 +177,7 @@ class _Body extends StatelessWidget {
               ],
               if (status.renewalDate != null && !status.expired) ...[
                 const SizedBox(height: 8),
-                Text('套餐有效期至 {date}'.replaceAll('{date}', _date(status.renewalDate!))),
+                Text('套餐有效期至 {date}'.replaceAll('{date}', _date(status.renewalDate!))), // zh-gate:allow Dart 插值变量名，非显示文本
               ],
               if (status.renewalNotice != null) ...[
                 const SizedBox(height: 8),
@@ -203,7 +203,7 @@ class _Body extends StatelessWidget {
                   child: Text('生成 1 张图片计 {n} 令牌。'.replaceAll('{n}', _num(t.imageTokenEquivalent!)), style: const TextStyle(fontSize: 12, color: Colors.black54)),
                 ),
               const SizedBox(height: 4),
-              Text('统计月份 {period}（北京时间自然月）。'.replaceAll('{period}', status.period), style: const TextStyle(fontSize: 12, color: Colors.black54)),
+              Text('统计月份 {period}（北京时间自然月）。'.replaceAll('{period}', status.period), style: const TextStyle(fontSize: 12, color: Colors.black54)), // zh-gate:allow Dart 插值变量名，非显示文本
             ]),
           ),
         ),
