@@ -19,14 +19,18 @@ import { SILConfig } from './config';
 import { licenseClass, RadarItem } from './radar';
 import { scanInjection } from './sources';
 import { CandidateStore, Ledger } from './store';
+import { LibraryStore, loadStagedRules, sources as librarySources } from '../../library/store';
+import { evaluateAll, renderMd as renderGateMd } from '../../library/promote-gate';
+import { domainOk } from './sources';
 
 export const CONTINUOUS_CRON = {
   stale_scan: '30 2 * * *', // 每天 02:30
   golden_eval: '30 3 * * 0',
   radar_stage: '0 6 * * 3',
+  promote_gate: '0 7 * * 3', // 每周三 07:00（雷达暂存 06:00 之后）：对暂存候选跑“变好才上线”闸门，只出报告
   monthly_report: '0 5 1 * *',
 } as const;
-export const CONTINUOUS_SLOTS = { stale_scan: 'daily@02:30', golden_eval: 'weekly:SUN@03:30', radar_stage: 'weekly:WED@06:00', monthly_report: 'monthly:1@05:00' } as const;
+export const CONTINUOUS_SLOTS = { stale_scan: 'daily@02:30', golden_eval: 'weekly:SUN@03:30', radar_stage: 'weekly:WED@06:00', promote_gate: 'weekly:WED@07:00', monthly_report: 'monthly:1@05:00' } as const;
 
 export type GoldenChannel = 'skill' | 'rule' | 'library';
 export interface GoldenSource {
@@ -387,7 +391,7 @@ export function renderMonthlyMd(m: MonthlyInputs): string {
 export const GOLDEN_FILE = join(__dirname, '../../../../data/eval/golden_contentflow_zh.jsonl');
 export const STAGED_FILE = join(__dirname, '../../../../data/library/staged_entries_20261031b.json');
 
-export type ContinuousJob = 'golden_eval' | 'stale_scan' | 'radar_stage' | 'monthly_report';
+export type ContinuousJob = 'golden_eval' | 'stale_scan' | 'radar_stage' | 'promote_gate' | 'monthly_report';
 
 export function runContinuous(job: ContinuousJob, cfg: SILConfig, now = new Date(), paths: { golden?: string; staged?: string } = {}) {
   const cases = loadGolden(paths.golden ?? GOLDEN_FILE);
@@ -412,6 +416,19 @@ export function runContinuous(job: ContinuousJob, cfg: SILConfig, now = new Date
     return items;
   }
   if (job === 'radar_stage') return stageRadar(cfg.dataDir, now);
+  if (job === 'promote_gate') {
+    // 对暂存候选逐条评估：keep = 可交人工审核；reject = 写明原因。从不 promote / approve（那两步只有 library cli + 审核人姓名）。
+    const lib = new LibraryStore();
+    const rep = evaluateAll(loadStagedRules(lib.dir), lib.loadDoc().entries, { today: now, domainOk: (h) => domainOk(h, { allowedDomains: librarySources().allowed_domains }) });
+    const prevPath = join(out, 'promote_gate_prev.json');
+    const prev: string[] = existsSync(prevPath) ? JSON.parse(readFileSync(prevPath, 'utf8')) : [];
+    const newKeep = rep.keep.filter((i) => !prev.includes(i));
+    writeFileSync(join(out, 'promote_gate_report.json'), JSON.stringify(rep, null, 1), 'utf8');
+    writeFileSync(join(out, 'promote_gate_report.md'), renderGateMd(rep), 'utf8');
+    writeFileSync(prevPath, JSON.stringify(rep.keep), 'utf8');
+    for (const i of newKeep) ledger.append({ t: stamp(now), id: `promote-ready-${i}`, to: 'awaiting_human_review', target: '候选已通过闸门，等人工审核（library cli promote → approve）' });
+    return { ...rep, new_keep: newKeep };
+  }
   // monthly_report
   const month = stamp(now).slice(0, 7);
   const lastGolden = readLast();
