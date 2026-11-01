@@ -25,6 +25,7 @@ class _CreateScreenState extends ConsumerState<CreateScreen> {
   bool _saving = false;
   bool _saved = false;
   String? _generateError;
+  List<ComplianceHit> _generateHits = const [];
   int _elapsedSeconds = 0;
   Timer? _ticker;
 
@@ -54,6 +55,7 @@ class _CreateScreenState extends ConsumerState<CreateScreen> {
     setState(() {
       _isGenerating = true;
       _generateError = null;
+      _generateHits = const [];
     });
 
     try {
@@ -69,7 +71,12 @@ class _CreateScreenState extends ConsumerState<CreateScreen> {
         });
       }
     } catch (e) {
-      if (mounted) setState(() => _generateError = _describeGenerateError(e));
+      if (mounted) {
+        setState(() {
+          _generateError = _describeGenerateError(e);
+          _generateHits = e is ApiException ? e.hits : const [];
+        });
+      }
     } finally {
       _ticker?.cancel();
       if (mounted) {
@@ -234,6 +241,7 @@ class _CreateScreenState extends ConsumerState<CreateScreen> {
               generating: _isGenerating,
               elapsedSeconds: _elapsedSeconds,
               error: _generateError,
+              hits: _generateHits,
               onRetry: _generateContentPack,
             ),
           ],
