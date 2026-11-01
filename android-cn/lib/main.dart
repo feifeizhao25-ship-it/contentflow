@@ -103,7 +103,7 @@ class MainScreen extends ConsumerWidget {
       InsightsScreen(),
       AccountScreen(),
     ];
-    final wide = MediaQuery.sizeOf(context).width >= 900;
+    final wide = MediaQuery.sizeOf(context).width >= 600;
     if (wide) {
       return Scaffold(
         backgroundColor: AppColors.page(context),
