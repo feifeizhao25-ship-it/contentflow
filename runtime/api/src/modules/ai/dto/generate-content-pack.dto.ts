@@ -2,6 +2,7 @@ import { ApiProperty } from '@nestjs/swagger';
 import { IsString, IsNotEmpty, IsOptional, IsArray, IsIn, IsInt, Max, MaxLength, Min } from 'class-validator';
 import { TARGET_MARKETS } from '../../../common/target-market';
 import { MATERIAL_MAX_CHARS } from '../grounding';
+import { ArrayMaxSize } from 'class-validator';
 
 export class GenerateContentPackDto {
     @ApiProperty({ description: '创作主题或指令', example: '1000元极简桌搭推荐' })
@@ -36,4 +37,12 @@ export class GenerateContentPackDto {
     @Max(10)
     @IsOptional()
     count?: number;
+
+    @ApiProperty({ required: false, type: [String], description: '上一版被合规检查拦下的用语（最多 12 个，每个最多 20 字）；本次生成的提示词要求避开它们。结果仍要通过同一道合规检查。' })
+    @IsOptional()
+    @IsArray()
+    @ArrayMaxSize(12)
+    @IsString({ each: true })
+    @MaxLength(20, { each: true })
+    avoidTerms?: string[];
 }

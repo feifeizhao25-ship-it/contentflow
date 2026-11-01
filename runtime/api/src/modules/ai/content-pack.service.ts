@@ -12,6 +12,7 @@ import { Optional } from '@nestjs/common';
 import { PrismaService } from '../../database/prisma.service';
 import { disclosureHint, resolveTargetMarket, targetMarketPromptLine } from '../../common/target-market';
 import { currentDatePromptLine, dropStaleYearTitles } from './current-date';
+import { avoidTermsPromptBlock, sanitizeAvoidTerms } from './avoid-terms';
 import { buildPositioning } from './positioning';
 import { GROUNDING_NOTICE_EN, GROUNDING_NOTICE_ZH, groundClaims, materialPromptBlock } from './grounding';
 
@@ -68,6 +69,8 @@ export class ContentPackService {
             // Step A: Headlines x 10
             const platformsStr = dto.platforms?.join(',') || mt('全渠道', 'all channels');
             const positioning = await this.loadPositioning(tenantId, dto.personaId);
+            // B28：「按建议改写重试」——把上一版被拦下的用语写进提示词，让标题和正文都避开（结果仍要过同一道合规检查）。
+            positioning.promptBlock += avoidTermsPromptBlock(sanitizeAvoidTerms(dto.avoidTerms), isGlobalMarket());
             const titleResult = positioning.promptBlock
                 ? await this.aiService.generateTitlesWithUsage(dto.topic, platformsStr, dto.count ?? 10, positioning.promptBlock)
                 : await this.aiService.generateTitlesWithUsage(dto.topic, platformsStr, dto.count ?? 10);
