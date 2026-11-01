@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import '../../core/providers.dart';
 import '../../data/models.dart';
+import 'daily_focus.dart';
 import '../../core/error_text.dart';
 import '../../core/cn_format.dart';
 
@@ -22,6 +23,8 @@ class TodayScreen extends ConsumerWidget {
           onRefresh: () async {
             ref.invalidate(todaySchedulesProvider);
             ref.invalidate(analyticsSummaryProvider);
+            ref.invalidate(contentDraftsProvider);
+            ref.invalidate(analyticsOverviewProvider);
           },
           child: CustomScrollView(
             slivers: [
@@ -30,6 +33,9 @@ class TodayScreen extends ConsumerWidget {
 
               // Today's Date
               SliverToBoxAdapter(child: _buildDateHeader(context)),
+
+              // 今日重点 / Today's focus: from the user's own drafts and publishing record, rotates daily
+              const SliverToBoxAdapter(child: DailyFocusCard()),
 
               // Schedule Tasks
               SliverToBoxAdapter(child: _buildSectionTitle('今日发布任务')),
