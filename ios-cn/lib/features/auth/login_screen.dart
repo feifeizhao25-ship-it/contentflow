@@ -17,6 +17,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _passwordController = TextEditingController();
   final _tenantController = TextEditingController();
   bool _loading = false;
+  bool _showTeamCode = false;
   String? _error;
 
   @override
@@ -150,14 +151,30 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           border: OutlineInputBorder(),
                         ),
                       ),
-                      const SizedBox(height: 16),
-                      TextField(
-                        controller: _tenantController,
-                        decoration: const InputDecoration(
-                          labelText: '工作室标识（可选）',
-                          border: OutlineInputBorder(),
+                      const SizedBox(height: 8),
+                      // 复测 B14：「工作室标识」普通创作者看不懂。默认收起，只有加入了团队的人才需要展开。
+                      if (!_showTeamCode)
+                        Align(
+                          alignment: Alignment.centerLeft,
+                          child: TextButton(
+                            key: const ValueKey('show-team-code'),
+                            onPressed: () => setState(() => _showTeamCode = true),
+                            child: const Text('我加入了团队，有团队代码'),
+                          ),
+                        )
+                      else ...[
+                        const SizedBox(height: 8),
+                        TextField(
+                          key: const ValueKey('team-code-field'),
+                          controller: _tenantController,
+                          decoration: const InputDecoration(
+                            labelText: '团队代码',
+                            helperText: '团队管理员发给你的代码。个人使用不需要填写。',
+                            helperMaxLines: 2,
+                            border: OutlineInputBorder(),
+                          ),
                         ),
-                      ),
+                      ],
                       if (_error != null) ...[
                         const SizedBox(height: 12),
                         Text(
