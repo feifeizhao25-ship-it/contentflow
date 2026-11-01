@@ -1,7 +1,7 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
 import { IsString, IsNotEmpty, IsOptional, IsArray, IsIn, IsInt, Max, MaxLength, Min } from 'class-validator';
-import { TARGET_MARKETS } from '../../../common/target-market';
+import { ACCEPTED_TARGET_MARKETS } from '../../../common/target-market';
 import { MATERIAL_MAX_CHARS } from '../grounding';
 
 export class GenerateContentPackDto {
@@ -20,11 +20,11 @@ export class GenerateContentPackDto {
     @IsOptional()
     personaId?: string;
 
-    @ApiProperty({ required: false, enum: TARGET_MARKETS, description: 'International edition only: where the audience is (US, UK, IN, SG). Chooses the ad-disclosure wording hint.' })
+    @ApiProperty({ required: false, enum: ACCEPTED_TARGET_MARKETS, description: 'International edition only: where the audience is (US, UK, IN, SG, or OTHER for any other country: general guidance only). Chooses the ad-disclosure wording hint.' })
     @IsOptional()
     // 大小写/空白不敏感：'uk'、' us ' 与 'UK'、'US' 等价（复测 B15：小写曾被 400 拒绝）。空串视为未选。
     @Transform(({ value }) => (typeof value === 'string' ? (value.trim().toUpperCase() || undefined) : value))
-    @IsIn(TARGET_MARKETS as unknown as string[])
+    @IsIn(ACCEPTED_TARGET_MARKETS as unknown as string[])
     targetMarket?: string;
 
     @ApiProperty({ required: false, description: '用户提供的品牌/产品资料；具体数据和品牌名只能来自这里（最多 4000 字）' })
