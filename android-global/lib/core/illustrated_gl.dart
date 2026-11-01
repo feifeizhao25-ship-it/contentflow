@@ -41,7 +41,7 @@ class GlEmptyState extends StatelessWidget {
               style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700, height: 1.35)),
           const SizedBox(height: 6),
           Text(message, textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 14.5, height: 1.55, color: Color(0xFF52525B))),
+              style: TextStyle(fontSize: 14.5, height: 1.55, color: Theme.of(context).colorScheme.onSurfaceVariant)),
           if (action != null) ...[const SizedBox(height: 14), action!],
         ],
       ),
@@ -88,13 +88,14 @@ class GlHeroBanner extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 16, 20, 4),
       child: Container(
-        height: height,
+        // minHeight, not a fixed height: a narrow column (wide-screen frame) or large text must grow the card, not overflow it.
+        constraints: BoxConstraints(minHeight: height),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(26),
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [c.withValues(alpha: 0.16), const Color(0xFFFFF1E8)],
+            colors: [c.withValues(alpha: 0.16), Theme.of(context).brightness == Brightness.dark ? Theme.of(context).colorScheme.surfaceContainerHigh : const Color(0xFFFFF1E8)],
           ),
         ),
         clipBehavior: Clip.antiAlias,
@@ -108,7 +109,7 @@ class GlHeroBanner extends StatelessWidget {
                 children: [
                   Text(title, style: TextStyle(fontSize: 22, height: 1.25, fontWeight: FontWeight.w800, color: c)),
                   const SizedBox(height: 4),
-                  Text(subtitle, style: const TextStyle(fontSize: 14, height: 1.45, color: Color(0xFF3F3F46))),
+                  Text(subtitle, style: TextStyle(fontSize: 14, height: 1.45, color: Theme.of(context).colorScheme.onSurfaceVariant)),
                 ],
               ),
             ),
@@ -174,7 +175,7 @@ class GlStatTile extends StatelessWidget {
           const SizedBox(height: 6),
           Text(value, style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: color)),
           const SizedBox(height: 2),
-          FittedBox(fit: BoxFit.scaleDown, child: Text(label, maxLines: 1, style: const TextStyle(fontSize: 14, color: Color(0xFF3F3F46)))),
+          FittedBox(fit: BoxFit.scaleDown, child: Text(label, maxLines: 1, style: TextStyle(fontSize: 14, color: Theme.of(context).colorScheme.onSurfaceVariant))),
         ]),
       ),
     );

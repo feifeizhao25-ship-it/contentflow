@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../core/app_theme.dart';
 import '../../core/illustrated_gl.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
@@ -15,7 +16,7 @@ class TodayScreen extends ConsumerWidget {
     final analyticsAsync = ref.watch(analyticsSummaryProvider);
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF8F9FA),
+      backgroundColor: AppColors.page(context),
       body: SafeArea(
         child: RefreshIndicator(
           onRefresh: () async {
@@ -196,7 +197,7 @@ class TodayScreen extends ConsumerWidget {
           margin: const EdgeInsets.symmetric(horizontal: 20),
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: AppColors.card(context),
             borderRadius: BorderRadius.circular(20),
           ),
           child: const GlEmptyState(
@@ -231,7 +232,7 @@ class TodayScreen extends ConsumerWidget {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.card(context),
         borderRadius: BorderRadius.circular(12),
         border: isFailed
             ? Border.all(color: Colors.red.shade300, width: 2)
@@ -493,7 +494,7 @@ class TodayScreen extends ConsumerWidget {
       margin: const EdgeInsets.symmetric(horizontal: 20),
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.card(context),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Row(

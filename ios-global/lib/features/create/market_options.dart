@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../core/app_theme.dart';
 
 /// International edition only. Where the audience is decides which ad-disclosure wording applies.
 /// Only markets the server has a sourced hint for are offered (Singapore, not "Southeast Asia").
@@ -45,9 +46,9 @@ class TargetMarketField extends StatelessWidget {
           onChanged: (v) => onChanged(v ?? ''),
         ),
         const SizedBox(height: 4),
-        const Text(
+        Text(
           'Shows the ad-disclosure wording that market accepts. For any other country choose "Other country": you get general principles only, not local rules.',
-          style: TextStyle(fontSize: 12, color: Colors.black54),
+          style: TextStyle(fontSize: 12, color: AppColors.muted(context)),
         ),
       ],
     );
@@ -120,7 +121,7 @@ class GenerationNotes extends StatelessWidget {
         ..add(
           Text(
             'Sources: ${sources.join('; ')}. Guidance only, not legal advice.',
-            style: const TextStyle(fontSize: 12, color: Colors.black54),
+            style: TextStyle(fontSize: 12, color: AppColors.muted(context)),
           ),
         );
     }
@@ -154,7 +155,7 @@ class GenerationNotes extends StatelessWidget {
         children.add(
           Text(
             '${grounding['notice'] ?? ''}',
-            style: const TextStyle(fontSize: 12, color: Colors.black54),
+            style: TextStyle(fontSize: 12, color: AppColors.muted(context)),
           ),
         );
       }
@@ -175,13 +176,13 @@ class GenerationNotes extends StatelessWidget {
         ..add(
           Text(
             'Not checked: ${_strings(compliance['not_checked']).join('; ')}',
-            style: const TextStyle(fontSize: 12, color: Colors.black54),
+            style: TextStyle(fontSize: 12, color: AppColors.muted(context)),
           ),
         )
         ..add(
           Text(
             '${compliance['disclaimer'] ?? ''}',
-            style: const TextStyle(fontSize: 12, color: Colors.black54),
+            style: TextStyle(fontSize: 12, color: AppColors.muted(context)),
           ),
         );
     }

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../core/app_theme.dart';
 import 'package:flutter/services.dart';
 import '../../data/models.dart';
 
@@ -55,9 +56,9 @@ class PlatformPicker extends StatelessWidget {
           ],
         ),
         const SizedBox(height: 4),
-        const Text(
+        Text(
           'The server rewrites the draft once per platform: length, structure and hashtags. It does not change the facts.',
-          style: TextStyle(fontSize: 12, color: Colors.black54),
+          style: TextStyle(fontSize: 12, color: AppColors.muted(context)),
         ),
       ],
     );
@@ -84,9 +85,9 @@ class PlatformAdapterSheet extends StatelessWidget {
                 children: [
                   const Text('Platform versions', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
                   const SizedBox(height: 4),
-                  const Text(
+                  Text(
                     'Read each one before you publish. The AI-generated label stays on the first line.',
-                    style: TextStyle(fontSize: 12, color: Colors.black54),
+                    style: TextStyle(fontSize: 12, color: AppColors.muted(context)),
                   ),
                   const SizedBox(height: 12),
                   for (final entry in payloads.entries)
@@ -106,7 +107,7 @@ class PlatformAdapterSheet extends StatelessWidget {
                                   ),
                                 ),
                                 if (entry.value.charCount != null)
-                                  Text('${entry.value.charCount} characters', style: const TextStyle(fontSize: 12, color: Colors.black54)),
+                                  Text('${entry.value.charCount} characters', style: TextStyle(fontSize: 12, color: AppColors.muted(context))),
                                 IconButton(
                                   key: ValueKey('copy-${entry.key}'),
                                   tooltip: 'Copy',
@@ -127,7 +128,7 @@ class PlatformAdapterSheet extends StatelessWidget {
                             for (final n in entry.value.notes)
                               Padding(
                                 padding: const EdgeInsets.only(top: 6),
-                                child: Text('• $n', style: const TextStyle(fontSize: 12, color: Colors.black54)),
+                                child: Text('• $n', style: TextStyle(fontSize: 12, color: AppColors.muted(context))),
                               ),
                           ],
                         ),

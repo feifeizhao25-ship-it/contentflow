@@ -1,4 +1,5 @@
 import '../../core/illustrated_gl.dart';
+import '../../core/app_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/providers.dart';
@@ -48,7 +49,7 @@ class _OverviewSectionState extends ConsumerState<OverviewSection> {
         width: double.infinity,
         margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
         padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16)),
+        decoration: BoxDecoration(color: AppColors.card(context), borderRadius: BorderRadius.circular(16)),
         child: child,
       );
 

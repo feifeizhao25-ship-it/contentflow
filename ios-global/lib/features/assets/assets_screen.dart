@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../core/app_theme.dart';
 import '../../core/illustrated_gl.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
@@ -16,7 +17,7 @@ class AssetsScreen extends ConsumerWidget {
     final showDrafts = ref.watch(showDraftsProvider);
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF8F9FA),
+      backgroundColor: AppColors.page(context),
       body: SafeArea(
         child: Column(
           children: [
@@ -194,7 +195,7 @@ class AssetsScreen extends ConsumerWidget {
       child: Container(
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(12),
-          color: Colors.white,
+          color: AppColors.card(context),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withValues(alpha: 0.05),

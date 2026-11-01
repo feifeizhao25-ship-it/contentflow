@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../core/app_theme.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/providers.dart';
@@ -86,13 +87,13 @@ class DailyFocusCard extends ConsumerWidget {
         now: (clock ?? DateTime.now)(),
       );
       if (focus == null) {
-        body = const Column(
+        body = Column(
           key: ValueKey('daily-focus-empty'),
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text('No activity of yours yet', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
             SizedBox(height: 4),
-            Text('Generate a content pack in Create and save it. After that this card shows one focus a day, based on your drafts and publishing record.', style: TextStyle(fontSize: 13, color: Colors.black54)),
+            Text('Generate a content pack in Create and save it. After that this card shows one focus a day, based on your drafts and publishing record.', style: TextStyle(fontSize: 13, color: AppColors.muted(context))),
           ],
         );
       } else {
@@ -102,7 +103,7 @@ class DailyFocusCard extends ConsumerWidget {
           children: [
             Text(focus.headline, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
             const SizedBox(height: 4),
-            Text(focus.detail, style: const TextStyle(fontSize: 13, color: Colors.black87)),
+            Text(focus.detail, style: TextStyle(fontSize: 13, color: Theme.of(context).colorScheme.onSurface)),
           ],
         );
       }

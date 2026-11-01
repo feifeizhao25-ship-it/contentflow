@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../core/app_theme.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/providers.dart';
@@ -49,7 +50,7 @@ class PlanUsageCard extends ConsumerWidget {
     final status = ref.watch(subscriptionStatusProvider);
     return Container(
       margin: const EdgeInsets.all(20),
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16)),
+      decoration: BoxDecoration(color: AppColors.card(context), borderRadius: BorderRadius.circular(16)),
       child: Semantics(
         button: true,
         label: 'Plan & usage',
@@ -112,7 +113,7 @@ class _AiBar extends StatelessWidget {
             ),
           ),
         const SizedBox(height: 6),
-        Text(summary, style: const TextStyle(fontSize: 12, color: Colors.black54)),
+        Text(summary, style: TextStyle(fontSize: 12, color: AppColors.muted(context))),
       ],
     );
   }
@@ -183,7 +184,7 @@ class _Body extends StatelessWidget {
               ],
               if (status.renewalNotice != null) ...[
                 const SizedBox(height: 8),
-                Text(status.renewalNotice!, style: const TextStyle(color: Colors.black54)),
+                Text(status.renewalNotice!, style: TextStyle(color: AppColors.muted(context))),
               ],
             ]),
           ),
@@ -202,10 +203,10 @@ class _Body extends StatelessWidget {
               if (t.imageTokenEquivalent != null)
                 Padding(
                   padding: const EdgeInsets.only(top: 4),
-                  child: Text('One generated image counts as {n} tokens.'.replaceAll('{n}', _num(t.imageTokenEquivalent!)), style: const TextStyle(fontSize: 12, color: Colors.black54)),
+                  child: Text('One generated image counts as {n} tokens.'.replaceAll('{n}', _num(t.imageTokenEquivalent!)), style: TextStyle(fontSize: 12, color: AppColors.muted(context))),
                 ),
               const SizedBox(height: 4),
-              Text('Usage month {period} follows China Standard Time (UTC+8).'.replaceAll('{period}', status.period), style: const TextStyle(fontSize: 12, color: Colors.black54)),
+              Text('Usage month {period} follows China Standard Time (UTC+8).'.replaceAll('{period}', status.period), style: TextStyle(fontSize: 12, color: AppColors.muted(context))),
             ]),
           ),
         ),
@@ -221,7 +222,7 @@ class _Body extends StatelessWidget {
               _row('Team members', l.containsKey('max_members') ? _limit(l['max_members']!) : '—'),
               _row('Storage', l.containsKey('max_storage_gb') ? (l['max_storage_gb'] == -1 ? 'Unlimited' : '${l['max_storage_gb']} GB') : '—'),
               const SizedBox(height: 4),
-              Text('Only the plan limits are shown here; posts published so far are not shown on this page yet.', style: const TextStyle(fontSize: 12, color: Colors.black54)),
+              Text('Only the plan limits are shown here; posts published so far are not shown on this page yet.', style: TextStyle(fontSize: 12, color: AppColors.muted(context))),
             ]),
           ),
         ),
