@@ -98,6 +98,11 @@ export class SelfImproveService {
     this.safeContinuous('radar_stage');
   }
 
+  @Cron(CONTINUOUS_CRON.promote_gate, { name: 'continuous-promote-gate', timeZone: SIL_TIMEZONE })
+  promoteGateJob(): void {
+    this.safeContinuous('promote_gate');
+  }
+
   @Cron(CONTINUOUS_CRON.monthly_report, { name: 'continuous-monthly-report', timeZone: SIL_TIMEZONE })
   monthlyReportJob(): void {
     this.safeContinuous('monthly_report');
