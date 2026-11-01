@@ -40,7 +40,11 @@ function compliancePayload(resp: Record<string, any>) {
         if (!reason) return [];
         const severity = hit.severity === 'block' || hit.severity === 'review' ? hit.severity : 'review';
         const ruleId = typeof hit.ruleId === 'string' && /^[A-Z0-9-]{3,40}$/.test(hit.ruleId) ? hit.ruleId : '';
-        return [{ ruleId, severity, reason }];
+        // 命中的原文片段（让用户知道改哪里）；只取短字符串，最多 5 个。
+        const matchedTerms = Array.isArray(hit.matchedTerms)
+          ? hit.matchedTerms.filter((t: unknown): t is string => typeof t === 'string' && t.length > 0 && t.length <= 30).slice(0, 5)
+          : [];
+        return [{ ruleId, severity, reason, ...(matchedTerms.length ? { matchedTerms } : {}) }];
       })
     : [];
   if (!disclaimer && !level && !hits.length) return undefined;

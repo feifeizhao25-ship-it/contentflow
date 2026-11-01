@@ -145,6 +145,22 @@ describe('国内版：校验消息去重', () => {
     expect(JSON.stringify(error)).not.toContain('secret');
   });
 
+  it('B28：合规拒绝带上命中的原文片段，界面才能告诉用户改哪里（只留短字符串，最多 5 个）', () => {
+    process.env.MARKET_REGION = 'cn';
+    const json = jest.fn();
+    new HttpExceptionFilter().catch(new BadRequestException({
+      code: 'CONTENT_COMPLIANCE_BLOCKED',
+      message: '内容未通过发布前合规检查，请根据命中规则修改后重试。这不是法律意见。',
+      level: 'violation',
+      hits: [{
+        ruleId: 'CN-AD-ART9-3', severity: 'block', reason: '包含绝对化用语',
+        matchedTerms: ['最好', '第一', '最佳', '顶级', '唯一', '国家级', 'x'.repeat(31), 42],
+      }],
+    }), hostFor(json, jest.fn()));
+    const hit = json.mock.calls[0][0].error.compliance.hits[0];
+    expect(hit.matchedTerms).toEqual(['最好', '第一', '最佳', '顶级', '唯一']);
+  });
+
   it('国际接口不返回中文合规字段', () => {
     process.env.MARKET_REGION = 'global';
     const json = jest.fn();

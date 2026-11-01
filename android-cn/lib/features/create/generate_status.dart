@@ -1,10 +1,15 @@
 import 'package:flutter/material.dart';
 
+import '../../data/api_exception.dart';
+
 /// Progress and error/retry feedback for the (slow, multi-step) content-pack generation call.
 class GenerateStatusCard extends StatelessWidget {
   final bool generating;
   final int elapsedSeconds;
   final String? error;
+
+  /// 被发布前合规检查拦下时命中的规则（为空则只显示 error）。
+  final List<ComplianceHit> hits;
   final VoidCallback onRetry;
 
   const GenerateStatusCard({
@@ -12,6 +17,7 @@ class GenerateStatusCard extends StatelessWidget {
     required this.generating,
     required this.elapsedSeconds,
     required this.error,
+    this.hits = const [],
     required this.onRetry,
   });
 
@@ -95,6 +101,26 @@ class GenerateStatusCard extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             Text(message, style: const TextStyle(fontSize: 13)),
+            if (hits.isNotEmpty) ...[
+              const SizedBox(height: 10),
+              const Text('命中的规则', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+              for (final hit in hits)
+                Padding(
+                  key: ValueKey('compliance-hit-${hit.ruleId}'),
+                  padding: const EdgeInsets.only(top: 6),
+                  child: Text.rich(TextSpan(style: const TextStyle(fontSize: 13), children: [
+                    TextSpan(
+                      text: hit.blocking ? '【必须修改】' : '【建议核对】',
+                      style: TextStyle(fontWeight: FontWeight.w600, color: hit.blocking ? theme.colorScheme.error : Colors.orange.shade800),
+                    ),
+                    TextSpan(text: hit.reason),
+                    if (hit.matchedTerms.isNotEmpty) TextSpan(text: '（涉及：${hit.matchedTerms.map((t) => '「$t」').join('、')}）'),
+                    if (hit.ruleId.isNotEmpty) TextSpan(text: '  规则编号 ${hit.ruleId}', style: TextStyle(fontSize: 11, color: Colors.grey.shade600)),
+                  ])),
+                ),
+              const SizedBox(height: 4),
+              Text('请按提示修改主题或要点后重新生成。这不是法律意见。', style: TextStyle(fontSize: 12, color: Colors.grey.shade600)),
+            ],
             const SizedBox(height: 12),
             OutlinedButton.icon(
               onPressed: onRetry,

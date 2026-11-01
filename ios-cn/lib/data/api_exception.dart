@@ -1,13 +1,44 @@
 import 'package:dio/dio.dart';
 
+/// 合规检查命中的一条规则（发布前检查拦截时由后端放在 error.compliance.hits 里）。
+class ComplianceHit {
+  final String ruleId;
+  final bool blocking;
+  final String reason;
+  final List<String> matchedTerms;
+
+  const ComplianceHit({required this.ruleId, required this.blocking, required this.reason, this.matchedTerms = const []});
+
+  static List<ComplianceHit> parseList(Object? raw) {
+    if (raw is! List) return const [];
+    final out = <ComplianceHit>[];
+    for (final item in raw) {
+      if (item is! Map) continue;
+      final reason = item['reason'];
+      if (reason is! String || reason.isEmpty) continue;
+      final terms = item['matchedTerms'];
+      out.add(ComplianceHit(
+        ruleId: item['ruleId'] is String ? item['ruleId'] as String : '',
+        blocking: item['severity'] == 'block',
+        reason: reason,
+        matchedTerms: terms is List ? terms.whereType<String>().toList() : const [],
+      ));
+    }
+    return out;
+  }
+}
+
 class ApiException implements Exception {
   final String message;
   final int? statusCode;
 
+  /// 被合规检查拦下时命中的规则；其他错误为空。
+  final List<ComplianceHit> hits;
+
   /// True when the connection or the response timed out (the apps offer a retry for these).
   final bool timedOut;
 
-  ApiException(this.message, {this.statusCode, this.timedOut = false});
+  ApiException(this.message, {this.statusCode, this.timedOut = false, this.hits = const []});
 
   /// 按状态码给出中文说明（后端没有给出可展示的中文原因时使用）。
   static String statusMessage(int? statusCode) {
@@ -45,7 +76,12 @@ class ApiException implements Exception {
       final raw = err is Map ? err['message'] : (data['message'] ?? err);
       final msg = raw is List ? raw.whereType<String>().join('；') : raw;
       if (msg is String && RegExp(r'[\u4e00-\u9fff]').hasMatch(msg)) {
-        return ApiException(msg, statusCode: statusCode);
+        final compliance = err is Map ? err['compliance'] : null;
+        return ApiException(
+          msg,
+          statusCode: statusCode,
+          hits: compliance is Map ? ComplianceHit.parseList(compliance['hits']) : const [],
+        );
       }
     }
 
