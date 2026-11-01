@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../core/app_theme.dart';
 import '../../core/illustrated_gl.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -84,7 +85,7 @@ class _DraftCard extends StatelessWidget {
     final title = draft.title.trim().isEmpty ? '(Untitled)' : draft.title.trim();
     final snippet = _plain(draft.body);
     return Material(
-      color: Colors.white,
+      color: AppColors.card(context),
       borderRadius: BorderRadius.circular(12),
       elevation: 1,
       child: InkWell(

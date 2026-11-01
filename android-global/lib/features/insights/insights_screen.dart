@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../core/app_theme.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/illustrated_gl.dart';
 import '../../core/providers.dart';
@@ -13,7 +14,7 @@ class InsightsScreen extends ConsumerWidget {
     final contentAsync = ref.watch(contentAnalyticsProvider);
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF8F9FA),
+      backgroundColor: AppColors.page(context),
       body: SafeArea(
         child: RefreshIndicator(
           onRefresh: () async {
@@ -63,7 +64,7 @@ class InsightsScreen extends ConsumerWidget {
                       Container(
                         margin: const EdgeInsets.symmetric(horizontal: 20),
                         padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20)),
+                        decoration: BoxDecoration(color: AppColors.card(context), borderRadius: BorderRadius.circular(20)),
                         child: GlBarChart(rows: [
                           for (final c in sorted) (c.title, c.engagementRate, '${(c.engagementRate * 100).toStringAsFixed(1)}%'),
                         ]),
@@ -182,7 +183,7 @@ class InsightsScreen extends ConsumerWidget {
       margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.card(context),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Row(

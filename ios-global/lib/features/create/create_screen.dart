@@ -1,4 +1,5 @@
 import 'dart:async';
+import '../../core/app_theme.dart';
 import 'package:flutter/material.dart';
 import '../../core/illustrated_gl.dart';
 import '../../data/api_exception.dart';
@@ -132,7 +133,7 @@ class _CreateScreenState extends ConsumerState<CreateScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF8F9FA),
+      backgroundColor: AppColors.page(context),
       body: SafeArea(
         child: CustomScrollView(
           slivers: [
@@ -167,7 +168,7 @@ class _CreateScreenState extends ConsumerState<CreateScreen> {
       margin: const EdgeInsets.symmetric(horizontal: 20),
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.card(context),
         borderRadius: BorderRadius.circular(16),
       ),
       child: Column(
@@ -461,7 +462,7 @@ class _CreateScreenState extends ConsumerState<CreateScreen> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.card(context),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Column(

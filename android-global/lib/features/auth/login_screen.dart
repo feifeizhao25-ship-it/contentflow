@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../core/app_theme.dart';
 import '../../core/illustrated_gl.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/providers.dart';
@@ -15,6 +16,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _passwordController = TextEditingController();
   final _tenantController = TextEditingController();
   bool _loading = false;
+  bool _showTeamCode = false;
   String? _error;
 
   @override
@@ -72,10 +74,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF8F9FA),
+      backgroundColor: AppColors.page(context),
       body: SafeArea(
         child: Center(
-          child: SingleChildScrollView(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 440),
+            child: SingleChildScrollView(
             padding: const EdgeInsets.all(24),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -116,13 +120,28 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   ),
                 ),
                 const SizedBox(height: 16),
-                TextField(
-                  controller: _tenantController,
-                  decoration: const InputDecoration(
-                    labelText: 'Workspace slug (optional)',
-                    border: OutlineInputBorder(),
+                // Retest N08: a "Workspace slug" box means nothing to an individual creator. Collapsed by default;
+                // only people who joined a team need to open it.
+                if (!_showTeamCode)
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: TextButton(
+                      key: const ValueKey('show-team-code'),
+                      onPressed: () => setState(() => _showTeamCode = true),
+                      child: const Text('I joined a team and have a team code'),
+                    ),
+                  )
+                else
+                  TextField(
+                    key: const ValueKey('team-code-field'),
+                    controller: _tenantController,
+                    decoration: const InputDecoration(
+                      labelText: 'Team code',
+                      helperText: 'The code your team admin sent you. Not needed for personal use.',
+                      helperMaxLines: 2,
+                      border: OutlineInputBorder(),
+                    ),
                   ),
-                ),
                 if (_error != null) ...[
                   const SizedBox(height: 12),
                   Text(
@@ -150,6 +169,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 ),
               ],
             ),
+          ),
           ),
         ),
       ),

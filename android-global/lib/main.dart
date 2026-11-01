@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'core/app_theme.dart';
 import 'core/providers.dart';
 import 'features/today/today_screen.dart';
 import 'features/create/create_screen.dart';
@@ -37,14 +38,9 @@ class ContentFlowApp extends StatelessWidget {
     return MaterialApp(
       title: 'ContentFlow Mobile',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        useMaterial3: true,
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFF6366F1), // Indigo
-          brightness: Brightness.light,
-        ),
-        fontFamily: 'SF Pro Text',
-      ),
+      theme: AppTheme.light(),
+      darkTheme: AppTheme.dark(), // follows the system setting
+      themeMode: ThemeMode.system,
       home: const AuthGate(),
     );
   }
@@ -70,21 +66,50 @@ class AuthGate extends ConsumerWidget {
 class MainScreen extends ConsumerWidget {
   const MainScreen({super.key});
 
+  static const _tabs = [
+    (Icons.today_outlined, Icons.today, 'Today'),
+    (Icons.add_circle_outline, Icons.add_circle, 'Create'),
+    (Icons.folder_outlined, Icons.folder, 'Assets'),
+    (Icons.insights_outlined, Icons.insights, 'Insights'),
+    (Icons.person_outline, Icons.person, 'Account'),
+  ];
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final currentTab = ref.watch(currentTabProvider);
 
+    final pages = const [
+      TodayScreen(),
+      CreateScreen(),
+      AssetsScreen(),
+      InsightsScreen(),
+      AccountScreen(),
+    ];
+    // Wide screens: side navigation + a centred content column instead of a full-width phone layout.
+    final wide = MediaQuery.sizeOf(context).width >= 900;
+    if (wide) {
+      return Scaffold(
+        backgroundColor: AppColors.page(context),
+        body: Row(
+          children: [
+            NavigationRail(
+              selectedIndex: currentTab,
+              onDestinationSelected: (index) => ref.read(currentTabProvider.notifier).state = index,
+              labelType: NavigationRailLabelType.all,
+              backgroundColor: AppColors.card(context),
+              destinations: [
+                for (final t in _tabs)
+                  NavigationRailDestination(icon: Icon(t.$1), selectedIcon: Icon(t.$2), label: Text(t.$3)),
+              ],
+            ),
+            const VerticalDivider(width: 1),
+            Expanded(child: PageFrame(maxWidth: 960, child: pages[currentTab])),
+          ],
+        ),
+      );
+    }
     return Scaffold(
-      body: IndexedStack(
-        index: currentTab,
-        children: const [
-          TodayScreen(),
-          CreateScreen(),
-          AssetsScreen(),
-          InsightsScreen(),
-          AccountScreen(),
-        ],
-      ),
+      body: PageFrame(child: IndexedStack(index: currentTab, children: pages)),
       bottomNavigationBar: _buildBottomNav(context, ref, currentTab),
     );
   }
@@ -92,7 +117,7 @@ class MainScreen extends ConsumerWidget {
   Widget _buildBottomNav(BuildContext context, WidgetRef ref, int currentTab) {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.card(context),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.05),
@@ -156,7 +181,7 @@ class MainScreen extends ConsumerWidget {
     int currentTab,
   ) {
     final isSelected = currentTab == index;
-    final color = isSelected ? Theme.of(context).primaryColor : Colors.grey;
+    final color = isSelected ? Theme.of(context).colorScheme.primary : AppColors.muted(context);
 
     return GestureDetector(
       onTap: () {
