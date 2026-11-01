@@ -138,6 +138,41 @@ class AccountScreen extends ConsumerWidget {
   }
 
   Widget _buildUpgradeBanner(BuildContext context) {
+    // at large text the button moves under the copy instead of squeezing 'Upgrade to Pro' to one word per line
+    final big = MediaQuery.textScalerOf(context).scale(14) / 14 > 1.4;
+    final copy = <Widget>[
+      const Icon(Icons.rocket_launch, color: Colors.white, size: 32),
+      const SizedBox(width: 12),
+      Expanded(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Upgrade to Pro',
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+                fontSize: 16,
+              ),
+            ),
+            Text(
+              'Unlock more features',
+              style: TextStyle(color: Colors.white.withValues(alpha: 0.8)),
+            ),
+          ],
+        ),
+      ),
+    ];
+    final button = ElevatedButton(
+      onPressed: () {
+        // TODO: Navigate to upgrade
+      },
+      style: ElevatedButton.styleFrom(
+        backgroundColor: Colors.white,
+        foregroundColor: Colors.orange,
+      ),
+      child: const Text('Upgrade now'),
+    );
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
       padding: const EdgeInsets.all(16),
@@ -147,41 +182,16 @@ class AccountScreen extends ConsumerWidget {
         ),
         borderRadius: BorderRadius.circular(16),
       ),
-      child: Row(
-        children: [
-          const Icon(Icons.rocket_launch, color: Colors.white, size: 32),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+      child: big
+          ? Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                const Text(
-                  'Upgrade to Pro',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16,
-                  ),
-                ),
-                Text(
-                  'Unlock more features',
-                  style: TextStyle(color: Colors.white.withValues(alpha: 0.8)),
-                ),
+                Row(children: copy),
+                const SizedBox(height: 12),
+                Align(alignment: Alignment.centerRight, child: button),
               ],
-            ),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              // TODO: Navigate to upgrade
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.white,
-              foregroundColor: Colors.orange,
-            ),
-            child: const Text('Upgrade now'),
-          ),
-        ],
-      ),
+            )
+          : Row(children: [...copy, button]),
     );
   }
 

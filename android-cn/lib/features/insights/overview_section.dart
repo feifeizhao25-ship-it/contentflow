@@ -26,9 +26,9 @@ class _OverviewSectionState extends ConsumerState<OverviewSection> {
         CfSectionTitle(icon: Icons.insights, title: '发布与生成'),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 20),
-          child: Row(children: [
+          // Wrap, not Row: at 200% text the second chip drops to the next line instead of overflowing
+          child: Wrap(spacing: 8, runSpacing: 4, children: [
             ChoiceChip(label: const Text('本周'), selected: !_month, onSelected: (_) => setState(() => _month = false)),
-            const SizedBox(width: 8),
             ChoiceChip(label: const Text('本月'), selected: _month, onSelected: (_) => setState(() => _month = true)),
           ]),
         ),

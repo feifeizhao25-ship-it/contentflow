@@ -78,28 +78,30 @@ class CfHeroBanner extends StatelessWidget {
       child: ClipRRect(
         borderRadius: BorderRadius.circular(20),
         child: SizedBox(
-          height: height,
           width: double.infinity,
-          child: Stack(fit: StackFit.expand, children: [
-            DecoratedBox(decoration: BoxDecoration(color: primary.withValues(alpha: 0.12))),
-            Image.asset(asset, fit: BoxFit.cover, alignment: Alignment.centerRight,
-                errorBuilder: (_, __, ___) => const SizedBox.shrink()),
-            Positioned(
-              left: 18,
-              top: 0,
-              bottom: 0,
-              right: 120,
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(title, style: TextStyle(fontSize: 24, height: 1.3, fontWeight: FontWeight.w800, color: primary)),
-                  const SizedBox(height: 4),
-                  Text(subtitle, style: const TextStyle(fontSize: 14, height: 1.5, color: Color(0xFF3F3F46))),
-                ],
+          // minHeight, not a fixed height: 200% text grows the banner instead of clipping the copy.
+          child: ConstrainedBox(
+            constraints: BoxConstraints(minHeight: height),
+            child: Stack(alignment: Alignment.centerLeft, children: [
+              Positioned.fill(child: DecoratedBox(decoration: BoxDecoration(color: primary.withValues(alpha: 0.12)))),
+              Positioned.fill(
+                child: Image.asset(asset, fit: BoxFit.cover, alignment: Alignment.centerRight,
+                    errorBuilder: (_, __, ___) => const SizedBox.shrink()),
               ),
-            ),
-          ]),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(18, 14, 120, 14),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(title, style: TextStyle(fontSize: 24, height: 1.3, fontWeight: FontWeight.w800, color: primary)),
+                    const SizedBox(height: 4),
+                    Text(subtitle, style: const TextStyle(fontSize: 14, height: 1.5, color: Color(0xFF3F3F46))),
+                  ],
+                ),
+              ),
+            ]),
+          ),
         ),
       ),
     );
