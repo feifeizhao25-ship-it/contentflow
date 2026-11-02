@@ -36,7 +36,7 @@ class AppColors {
   static Color page(BuildContext context) => Theme.of(context).scaffoldBackgroundColor;
 }
 
-/// 大屏把内容收成一列，避免 iPad 上文字漂在空白中间。
+/// Wide screens collapse content into a single column so text does not drift into empty space on iPad.
 class PageFrame extends StatelessWidget {
   const PageFrame({super.key, required this.child, this.maxWidth = 880});
 

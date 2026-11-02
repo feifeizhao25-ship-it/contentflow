@@ -81,7 +81,7 @@ String _detail(Object error) {
     // -34018：未签名进程没有钥匙串 entitlement，SecItemCopyMatching 直接失败。
     return 'PlatformException code=$code message=$message'; // zh-gate:allow 诊断文字，不显示给用户
   }
-  return error.runtimeType.toString();
+  return '读取本地数据失败，请稍后重试'; // 兜底中文提示，不上屏原始异常
 }
 
 void _log(String message, StackTrace stack) {

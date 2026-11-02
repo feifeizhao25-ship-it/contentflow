@@ -1,4 +1,4 @@
-/// 当前租户的订阅与用量，来自 GET /billing/subscription（服务端是唯一来源；这里不做任何推算）。
+/// Current tenant subscription & usage from GET /billing/subscription (server is the single source; nothing derived here).
 class AiTokenUsage {
   final int limit;
   final int used;

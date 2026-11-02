@@ -5,7 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/providers.dart';
 import '../../data/subscription_status.dart';
 
-/// 套餐与用量：全部来自服务端 GET /billing/subscription，没有本地推算或占位数字。
+/// Plan & usage: all values come from the server's GET /billing/subscription; no local math or placeholder numbers.
 final subscriptionStatusProvider = FutureProvider.autoDispose<SubscriptionStatus>((ref) {
   return ref.read(apiClientProvider).getSubscriptionStatus();
 });
@@ -41,7 +41,7 @@ String _date(DateTime d) => '${d.year}-${d.month.toString().padLeft(2, '0')}-${d
 
 String _limit(int v) => v == -1 ? 'Unlimited' : _num(v);
 
-/// 账号页里的紧凑卡片：显示本月 AI 额度，点开进入完整页面。
+/// Compact card for the account page: shows this month's AI quota; tapping opens the full page.
 class PlanUsageCard extends ConsumerWidget {
   const PlanUsageCard({super.key});
 

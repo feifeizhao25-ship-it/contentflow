@@ -50,6 +50,7 @@ export function licenseClass(lic?: string | null): string {
   return 'unknown_do_not_introduce';
 }
 
+// eslint-disable-next-line no-control-regex -- stripping control characters is the point
 const clean = (v: unknown, limit: number) => String(v ?? '').replace(/[\x00-\x1f\x7f]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, limit);
 
 function safeItem(it: RadarItem): RadarItem | null {
@@ -68,7 +69,7 @@ export function parseArxiv(xml: string): RadarItem[] {
   if (xml.includes('<!DOCTYPE') || xml.includes('<!ENTITY')) throw new Error('xml_entities_refused');
   const out: RadarItem[] = [];
   for (const m of xml.matchAll(/<entry>([\s\S]*?)<\/entry>/g)) {
-    const tag = (n: string) => (m[1].match(new RegExp(`<${n}>([\\s\\S]*?)</${n}>`)) ?? [, ''])[1];
+    const tag = (n: string) => (m[1].match(new RegExp(`<${n}>([\\s\\S]*?)</${n}>`)) ?? ['', ''])[1];
     const link = tag('id').trim().replace('http://', 'https://');
     const it = safeItem({ source: 'arxiv', id: link.split('/abs/').pop() ?? '', title: tag('title'), summary: tag('summary'), date: tag('published').slice(0, 10), url: link, license: null });
     if (it) out.push(it);
