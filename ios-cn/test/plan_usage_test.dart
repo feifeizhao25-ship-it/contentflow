@@ -59,7 +59,7 @@ void main() {
     expect(find.text('本月已用 250 / 1,000 令牌'), findsWidgets);
     expect(find.byType(LinearProgressIndicator), findsOneWidget);
     expect(tester.widget<LinearProgressIndicator>(find.byType(LinearProgressIndicator)).value, 0.25);
-    expect(find.text('Solo'), findsOneWidget);
+    expect(find.text('个人版'), findsOneWidget);
     expect(_hasCjk(tester), isTrue);
   });
 

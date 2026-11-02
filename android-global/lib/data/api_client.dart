@@ -221,7 +221,7 @@ class ApiClient {
 
   // ============== Subscription ==============
 
-  /// 套餐与本月用量：服务端 GET /billing/subscription 是唯一来源。
+  /// Plan & monthly usage: the server's GET /billing/subscription is the single source.
   Future<SubscriptionStatus> getSubscriptionStatus() async {
     return _handle(
       () => _dio.get('/billing/subscription'),

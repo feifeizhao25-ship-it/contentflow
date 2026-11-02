@@ -33,7 +33,7 @@ class TodayScreen extends ConsumerWidget {
               // Today's Date
               SliverToBoxAdapter(child: _buildDateHeader(context)),
 
-              // 今日重点 / Today's focus: from the user's own drafts and publishing record, rotates daily
+              // Today's focus: from the user's own drafts and publishing record, rotates daily
               const SliverToBoxAdapter(child: DailyFocusCard()),
 
               // Schedule Tasks
