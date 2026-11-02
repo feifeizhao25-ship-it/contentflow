@@ -302,9 +302,16 @@ describe('技能评测扩充', () => {
 describe('contentflow hooks / service', () => {
   it('仓库里的 rag_cache 都已超过 30 天未复核 → 被列为过期', () => {
     const dir = join(__dirname, '..', '..', '..', '..', 'data', 'rag_cache');
-    const stale = staleCacheSources(dir, new Date('2026-10-30T12:00:00+08:00'));
+    // reference dates derive from the data itself: every source is stale 31+ days
+    // after the freshest retrieval, and none are stale at the oldest retrieval.
+    const times = readdirSync(dir)
+      .filter((f) => f.endsWith('.json'))
+      .map((f) => new Date(JSON.parse(readFileSync(join(dir, f), 'utf8')).retrieved_at).getTime());
+    const allStaleAt = new Date(Math.max(...times) + 31 * 86400_000);
+    const noneStaleAt = new Date(Math.min(...times));
+    const stale = staleCacheSources(dir, allStaleAt);
     expect(stale.map((x) => x.id).length).toBe(readdirSync(dir).filter((f) => f.endsWith('.json')).length);
-    expect(staleCacheSources(dir, new Date('2026-08-24T00:00:00+08:00'))).toEqual([]);
+    expect(staleCacheSources(dir, noneStaleAt)).toEqual([]);
   });
   it('没有 SIL_ENABLED 时服务不做任何事；打开后为过期来源提「待审批」候选，晋升前不动 rag_cache', async () => {
     const svc = new SelfImproveService();
