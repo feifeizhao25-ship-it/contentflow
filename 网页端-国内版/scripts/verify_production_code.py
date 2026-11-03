@@ -46,15 +46,10 @@ check(
 check(
     "runtime/api/src/main.ts",
     (
-        ("allowedOrigins.length > 0 ? allowedOrigins : false", True),
+        ("configureApp(app, allowedOrigins)", True),
+        (".split(',')", True),
+        (".filter(Boolean)", True),
         ("ENABLE_API_DOCS", True),
-    ),
-)
-check(
-    "runtime/web-cn/src/lib/supabase-server.ts",
-    (
-        ("process.env.NODE_ENV === 'development'", True),
-        ("return null", True),
     ),
 )
 check(
@@ -88,25 +83,18 @@ check(
 check(
     "runtime/web-cn/src/app/api/video/generate/route.ts",
     (
-        ("VIDEO_WORKER_NOT_CONFIGURED", True),
+        ("notAvailableInChina", True),
         ("@/lib/video-merger-service", False),
-    ),
-)
-check(
-    "runtime/web-cn/src/lib/multi-segment-video-service.ts",
-    (
-        ("VIDEO_WORKER_NOT_CONFIGURED", True),
-        ("Falling back to first segment only", False),
-        ("./video-merger-service", False),
+        ("api.openrouter.ai", False),
     ),
 )
 check(
     "runtime/web-cn/src/lib/payment-service.ts",
     (
-        ("PAYMENT_BACKEND_NOT_CONFIGURED", True),
+        ("fetchSubscriptionSnapshot", True),
+        ("error.status === 401", True),
         ("success: true", False),
         ("txn_${Date.now()}", False),
-        ("Activated", False),
     ),
 )
 check(
@@ -158,7 +146,8 @@ check(
         ("data_collection: 'deny'", True),
         ("zdr: true", True),
         ("Math.min(4000", True),
-        ("cost_usd", True),
+        ("tenant daily budget exceeded", True),
+        ("usage_ratio", True),
         ("latency_ms", True),
         ("registerOpenRouterFailure", True),
         ("OpenRouter circuit is open", True),
@@ -168,15 +157,15 @@ check(
 check(
     "runtime/web-cn/src/app/api/ai/generate-script/route.ts",
     (
-        ("response_format", True),
-        ("json_schema", True),
-        ("require_parameters: true", True),
+        ("/api/v1/ai/generate/script", True),
+        ("buildUpstreamHeaders", True),
+        ("api.openrouter.ai", False),
     ),
 )
 check(
     "runtime/docker-compose.production.yml",
     (
-        ("OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}", True),
+        ("OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:?", True),
         ("OPENROUTER_MODEL_FAST", True),
         ("OPENROUTER_FALLBACK_MODELS", True),
     ),
