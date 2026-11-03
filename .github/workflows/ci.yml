@@ -163,6 +163,12 @@ jobs:
         working-directory: ${{ matrix.edition }}
     steps:
       - uses: actions/checkout@v4
+      # Pin JDK 17: runner image default JDK drifts (Ubuntu 26 migration bumped it
+      # past what Gradle 8.14 supports, surfacing as a bare "25.0.5" build error).
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
       - uses: subosito/flutter-action@v2
         with:
           flutter-version: '3.38.5'
