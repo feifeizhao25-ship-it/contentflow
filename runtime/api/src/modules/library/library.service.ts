@@ -158,6 +158,16 @@ export class LibraryService {
   async homeCard(userId: string, now = new Date()) {
     return homeCard((await this.feed(userId, now, { record: false })) as unknown as Feed);
   }
+
+  /** 卡片为空时说明为什么空（I-10：之前只有 null，看起来像坏了）。闸门不动：没有人工审核过的条目就是没有。 */
+  async homeCardWithReason(userId: string, now = new Date()) {
+    const feed = (await this.feed(userId, now, { record: false })) as unknown as Feed;
+    const card = homeCard(feed);
+    if (card) return { card, empty_reason: null as string | null };
+    if (!feed.enabled) return { card: null, empty_reason: 'disabled' };
+    const reviewed = this.entries(now).filter((e) => e.display.feed_eligible).length;
+    return { card: null, empty_reason: reviewed === 0 ? 'no_reviewed_entries' : feed.items.length === 0 ? 'filtered_by_your_preferences' : 'nothing_new' };
+  }
 }
 
 /** 人设里账号自己写的定位文字（说明 + 配置里的定位类字段）；不含其它租户的内容。 */

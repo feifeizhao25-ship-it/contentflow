@@ -125,8 +125,12 @@ export class RagPolicyService implements OnApplicationBootstrap, OnModuleDestroy
     const now = Date.now();
     const normalizedPlatforms = new Set(platforms.map(value => value.toLowerCase()));
     const selected: RagPolicySource[] = [];
+    const global = process.env.MARKET_REGION === 'global';
     for (const { name, record } of await this.readAll()) {
       if (!record) { this.logger.warn(`Ignored unreadable RAG source: ${name}`); continue; }
+      // 国际版：现有资料全部是中国大陆（CN）法规的中文摘要，既不适用于海外受众，放进英文提示词还会让模型引用中文原文，
+      // 触发 502 AI_LANGUAGE_MISMATCH（I-03）。国际版只引用非 CN 管辖区的英文来源；目前没有，则如实报「无已核验来源」。
+      if (global && (record.jurisdiction === 'CN' || /[\u3400-\u9fff]/.test(String(record.content ?? '')))) continue;
       const checked = lastCheckedAt(record, now);
       const valid = !!checked && this.isWellFormed(record) && now - checked.at <= maxAgeDays * DAY;
       if (!valid) { this.logger.warn(`Ignored stale or invalid RAG source: ${name}`); continue; }

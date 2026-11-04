@@ -4,7 +4,7 @@ import { UsageService, AiQuotaExceededError, AiRequestInProgressError } from '..
 import { AI_HOLD_TOKENS } from './ai-holds';
 import { ComplianceService } from './compliance.service';
 import { GenerateContentPackDto } from './dto/generate-content-pack.dto';
-import { labelAiGeneratedText, buildAiMediaMetadata } from '../../common/ai-content-label';
+import { labelAiGeneratedText, buildAiMediaMetadata, aiTextLabel } from '../../common/ai-content-label';
 import { RagPolicyService } from './rag-policy.service';
 import { adaptForPlatforms } from './platform-adaptation';
 import { isGlobalMarket, mt } from '../../common/i18n/market-text';
@@ -137,6 +137,8 @@ export class ContentPackService {
                 success: true,
                 data: {
                     titles,
+                    aiGenerated: true,
+                    aiLabel: aiTextLabel(),
                     script,
                     platform_variants: variants,
                     sources: policySources.map(source => ({ id: source.id, source_url: source.source_url, source_name: source.source_name, published_at: source.published_at, retrieved_at: source.retrieved_at, jurisdiction: source.jurisdiction, source_tier: source.source_tier })),

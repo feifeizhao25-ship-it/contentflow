@@ -3,6 +3,7 @@ import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { GrowthService } from './growth.service';
 import { GrowthTrafficService } from './growth-traffic.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
+import { HomeService } from '../home/home.service';
 import { skillById } from './skills/catalog';
 
 @ApiTags('growth')
@@ -13,13 +14,17 @@ export class GrowthController {
   constructor(
     private readonly growthService: GrowthService,
     private readonly traffic: GrowthTrafficService,
+    private readonly home: HomeService,
   ) {}
 
   @Get('plan')
   @ApiOperation({ summary: '获取增长计划' })
   async getPlan(@Request() req: any) {
     // GrowthGoal 上的字段是 user_id 不是 tenant_id
-    return this.growthService.getGrowthPlan(req.user.id);
+    const plan = await this.growthService.getGrowthPlan(req.user.id);
+    // I-10：计划只有在用户设了目标时才变；把账号近 7 天的真实活动一并给出，计划页才随用户的操作变化。没有活动就是 0，不编。
+    const signals = await this.home.signalsForUser(req.user.id);
+    return { ...plan, activity_7d: { content_created: signals.content_7d, published: signals.published_7d, failed: signals.failed_7d, scheduled_upcoming: signals.scheduled_upcoming, connected_platforms: signals.platforms, materials: signals.materials } };
   }
 
   @Put('plan')

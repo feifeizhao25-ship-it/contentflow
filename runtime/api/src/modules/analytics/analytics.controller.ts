@@ -15,7 +15,9 @@ export class AnalyticsController {
   @ApiOperation({ summary: '数据分析页：本周 / 本月的发布任务、失败原因、AI 生成与采纳（只含自有数据）' })
   async getOverview(@Request() req: any, @Query('lang') lang?: string) {
     // lang=en：国际版客户端，失败原因 / AI 类型名 / 互动数据说明改为英文；默认中文
-    return this.analyticsService.getOverview(req.user.tenantId, Date.now(), normalizeLang(lang));
+    // 国际版（MARKET_REGION=global）没带 lang 时也按英文返回：中文的类型名会被「必须英文」闸门拦成 502（I-02）
+    const effective = lang ?? (process.env.MARKET_REGION === 'global' ? 'en' : undefined);
+    return this.analyticsService.getOverview(req.user.tenantId, Date.now(), normalizeLang(effective));
   }
 
   @Get('dashboard')

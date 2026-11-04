@@ -15,6 +15,7 @@ import { trackEvent } from '@/lib/analytics';
 import { safeErrorText } from '@/lib/api-error';
 import { isAiGeneratedText } from '@/lib/ai-content-label';
 import { LibraryHomeCard } from '@/components/library/LibraryHomeCard';
+import { TodayCard } from '@/components/home/TodayCard';
 import { ComplianceReviewNotice } from '@/components/compliance/ComplianceReviewNotice';
 import { ComplianceResultView } from '@/components/compliance/ComplianceResultView';
 import { parseCompliance, type ComplianceView } from '@/lib/compliance-view';
@@ -373,6 +374,8 @@ function StudioContent() {
       </div>
 
       <ComplianceReviewNotice />
+
+      <TodayCard />
 
       <LibraryHomeCard />
 

@@ -13,18 +13,19 @@ export class ApiKeyService {
         const rawKey = `sk_ff_${this.generateRandomString(32)}`;
         const hashedKey = this.hashKey(rawKey);
 
-        const apiKey = await (this.prisma as any).api_keys.create({
+        const apiKey = await (this.prisma as any).apiKey.create({
             data: {
                 tenant_id: tenantId,
                 name,
+                key_prefix: rawKey.slice(0, 10),
                 key_hash: hashedKey,
                 scopes,
-                last_used_at: null,
             },
         });
 
+        const { key_hash: _omit, ...safe } = apiKey;
         return {
-            ...apiKey,
+            ...safe,
             secret: rawKey // 只有创建时返回明文
         };
     }
@@ -38,7 +39,7 @@ export class ApiKeyService {
         }
 
         const hashedKey = this.hashKey(rawKey);
-        const keyRecord = await (this.prisma as any).api_keys.findFirst({
+        const keyRecord = await (this.prisma as any).apiKey.findFirst({
             where: { key_hash: hashedKey },
         });
 
@@ -47,7 +48,7 @@ export class ApiKeyService {
         }
 
         // 更新最后使用时间 (异步执行，不阻塞请求)
-        (this.prisma as any).api_keys.update({
+        (this.prisma as any).apiKey.update({
             where: { id: keyRecord.id },
             data: { last_used_at: new Date() }
         }).catch(() => { });
@@ -56,10 +57,12 @@ export class ApiKeyService {
     }
 
     async listKeys(tenantId: string) {
-        return (this.prisma as any).api_keys.findMany({
+        // 模型是 ApiKey（prisma 客户端属性 apiKey）；原先写成 api_keys，列表恒 500（I-05）。永不返回 key_hash。
+        const rows = await (this.prisma as any).apiKey.findMany({
             where: { tenant_id: tenantId },
             orderBy: { created_at: 'desc' },
         });
+        return rows.map(({ key_hash: _omit, ...safe }: any) => safe);
     }
 
     private hashKey(key: string): string {

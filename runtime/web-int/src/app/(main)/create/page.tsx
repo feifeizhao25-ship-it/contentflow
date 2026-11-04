@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
+import { TodayCard } from '@/components/home/TodayCard';
 
 type Draft = { content: string; prompts: string[]; topic: string; market: string };
 const failures: Record<number, string> = {
@@ -49,6 +50,7 @@ export default function CreatePage() {
     }
   }
   return <main className="shell"><div className="eyebrow">Draft workspace</div><h1>Create for a market, not just a language.</h1>
+    <TodayCard />
     <div className="grid two" style={{alignItems:'start'}}><section className="card stack" style={{alignContent:'start'}}>
       <label>Topic or campaign brief<textarea value={topic} onChange={e=>setTopic(e.target.value)} placeholder="Explain the offer, audience, proof points, and desired action." /></label>
       <label>Primary market<select value={market} onChange={e=>setMarket(e.target.value)}><option>United States</option><option>United Kingdom</option><option>Australia</option><option>Singapore</option></select></label>

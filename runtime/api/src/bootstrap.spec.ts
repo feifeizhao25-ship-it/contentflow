@@ -86,19 +86,19 @@ describe('rate limiting', () => {
     expect(Number(ttl![1].replace(/_/g, ''))).toBe(60_000);
   });
 
-  it('login is limited to 10 attempts per minute per client address', async () => {
+  it('login is limited to 30 attempts per minute per client address (shared office / campus egress, I-15)', async () => {
     app = await makeApp();
     const server = app.getHttpServer();
     const codes: number[] = [];
-    for (let i = 0; i < 12; i += 1) {
+    for (let i = 0; i < 32; i += 1) {
       const res = await request(server)
         .post('/api/v1/auth/login')
         .set('X-Forwarded-For', '203.0.113.7')
         .send({ email: 'a@b.cn', password: 'wrongpass' });
       codes.push(res.status);
     }
-    expect(codes.slice(0, 10).every((c) => c === 401)).toBe(true);
-    expect(codes.slice(10)).toEqual([429, 429]);
+    expect(codes.slice(0, 30).every((c) => c === 401)).toBe(true);
+    expect(codes.slice(30)).toEqual([429, 429]);
     // 另一个客户端地址不受影响（经 web-cn 转发时也能区分）
     const other = await request(server)
       .post('/api/v1/auth/login')

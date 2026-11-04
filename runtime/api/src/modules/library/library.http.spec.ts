@@ -93,6 +93,14 @@ describe('资料库接口 /api/v1/library', () => {
     expect(f.body.data).toMatchObject({ enabled: false, items: [] });
     const c = await api().get('/api/v1/library/home-card').expect(200);
     expect(c.body.data.card).toBeNull();
+    expect(c.body.data.empty_reason).toBe('disabled'); // 空的时候说明为什么空（I-10）
+  });
+
+  it('没有任何人工审核过的条目时，首页卡片为空并说明原因（闸门不放开）', async () => {
+    const empty = tmpStore(); // 全新的库：全部待审核
+    const svc = new LibraryService(fakePrisma(mkUsers()), empty);
+    const r = await svc.homeCardWithReason('u1');
+    expect(r).toEqual({ card: null, empty_reason: 'no_reviewed_entries' });
   });
 
   it('来访与已读：开着才记，下次条目带「新」标记', async () => {

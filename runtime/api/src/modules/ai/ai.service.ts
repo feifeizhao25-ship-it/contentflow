@@ -187,9 +187,28 @@ export function parseScriptJson(raw: string): any {
   } catch {
     const start = cleaned.indexOf('{');
     const end = cleaned.lastIndexOf('}');
-    if (start !== -1 && end > start) return JSON.parse(cleaned.slice(start, end + 1));
-    throw new Error('模型未返回可解析的 JSON');
+    if (start !== -1 && end > start) {
+      try { return JSON.parse(cleaned.slice(start, end + 1)); } catch { /* fall through to salvage */ }
+    }
+    return salvageScriptJson(cleaned);
   }
+}
+
+/**
+ * 模型输出被截断 / 夹带多余字符时（I-06：偶发 500），把已经完整的分镜对象捡回来，而不是整条丢弃。
+ * 一个完整分镜都捡不到时抛出普通错误，由调用方重试一次后以 502 AI_BAD_OUTPUT 返回。
+ */
+export function salvageScriptJson(text: string): { title?: string; scenes: any[] } {
+  const scenes: any[] = [];
+  const re = /\{[^{}]*?"visual"\s*:\s*"(?:[^"\\]|\\.)*"[^{}]*?\}/g;
+  for (const m of text.matchAll(re)) {
+    try { scenes.push(JSON.parse(m[0])); } catch { /* skip this fragment */ }
+  }
+  if (!scenes.length) throw new Error('模型未返回可解析的 JSON');
+  const t = /"title"\s*:\s*"((?:[^"\\]|\\.)*)"/.exec(text);
+  let title: string | undefined;
+  if (t) { try { title = JSON.parse(`"${t[1]}"`); } catch { title = t[1]; } }
+  return { title, scenes };
 }
 
 const EN_PLATFORM_NAMES: Record<string, string> = {
@@ -529,7 +548,8 @@ export class AIService {
     const { userText = '', ...request } = params;
     const first = await this.generateText(request);
     if (!isGlobalMarket() || hasCjk(userText) || !hasCjk(first.content)) return first;
-    this.logger.warn('International generation came back with Chinese text; retrying once in English');
+    const at = first.content.search(/[\u3400-\u9fff]/);
+    this.logger.warn(`International generation came back with Chinese text (${(first.content.match(/[\u3400-\u9fff]/g) || []).length} chars, near: ${JSON.stringify(first.content.slice(Math.max(0, at - 40), at + 40))}); retrying once in English`);
     const second = await this.generateText({
       ...request,
       prompt: `${request.prompt}\n\nIMPORTANT: Your previous answer contained Chinese. Answer again in English only, with no Chinese characters at all.`,
@@ -590,7 +610,7 @@ Write in English only. At the very end, output 3 English prompts for AI image ge
 3. 结尾要有引导
 4. 不要写出题目和关键词里没有出现过的具体数字、百分比、价格、成分、品牌或产品名，也不要写功效承诺；没有依据时用概括性的说法
 
-请在回答最后输出3个用于AI生图的英文提示词（Visual Prompts），每个占一行，用---分隔${materialPromptBlock(params.material, false)}`,
+请在回答最后输出3个用于AI生图的中文提示词（生图提示词），每个占一行，先单独一行写“生图提示词”，用---分隔；提示词全部用中文描述画面（场景、主体、构图、光线），不要出现英文${materialPromptBlock(params.material, false)}`,
       maxTokens: 3000,
       route: 'bulk',
       userText: [params.topic, params.style, ...(params.keywords ?? [])].join(' '),
@@ -1040,23 +1060,40 @@ ${content}
     title: string;
     scenes: Array<{ visual: string; subtitle: string; time: number }>;
   } & Omit<AIResponse, 'content'>> {
-    const result = await this.generateTextForMarket({
-      userText: `${input.topic} ${input.type ?? ''} ${input.platform ?? ''}`,
-      prompt: buildScriptPrompt(input.topic, input.type || (isGlobalMarket() ? 'viral explainer' : '爆款解说'), input.platform || (isGlobalMarket() ? 'TikTok' : '抖音')),
-      maxTokens: 2000,
-      temperature: 0.8,
-      route: 'bulk',
-    });
-    const parsed = parseScriptJson(result.content);
-    const scenes = (Array.isArray(parsed?.scenes) ? parsed.scenes : [])
-      .slice(0, MAX_SCRIPT_SCENES)
-      .map((scene: any) => ({
-        visual: String(scene?.visual ?? '').trim(),
-        subtitle: String(scene?.subtitle ?? '').trim(),
-        time: Math.min(30, Math.max(1, Math.round(Number(scene?.time) || 6))),
-      }))
-      .filter((scene: { visual: string; subtitle: string }) => scene.visual || scene.subtitle);
-    if (!scenes.length) throw new Error('模型未生成任何分镜');
+    const prompt = buildScriptPrompt(input.topic, input.type || (isGlobalMarket() ? 'viral explainer' : '爆款解说'), input.platform || (isGlobalMarket() ? 'TikTok' : '抖音'));
+    const attempt = async (extra: string, maxTokens: number) => {
+      const generated = await this.generateTextForMarket({
+        userText: `${input.topic} ${input.type ?? ''} ${input.platform ?? ''}`,
+        prompt: prompt + extra,
+        maxTokens,
+        temperature: 0.8,
+        route: 'bulk',
+      });
+      try {
+        const parsed = parseScriptJson(generated.content);
+        const scenes = (Array.isArray(parsed?.scenes) ? parsed.scenes : [])
+          .slice(0, MAX_SCRIPT_SCENES)
+          .map((scene: any) => ({
+            visual: String(scene?.visual ?? '').trim(),
+            subtitle: String(scene?.subtitle ?? '').trim(),
+            time: Math.min(30, Math.max(1, Math.round(Number(scene?.time) || 6))),
+          }))
+          .filter((scene: { visual: string; subtitle: string }) => scene.visual || scene.subtitle);
+        return scenes.length ? { generated, parsed, scenes } : null;
+      } catch {
+        return null;
+      }
+    };
+    // 解析失败（常见原因：输出被截断）：再试一次，要求更短、只输出 JSON，并放宽长度上限。
+    const ok = (await attempt('', 2000)) ?? (await attempt(isGlobalMarket()
+      ? '\n\nKeep it to 5 short scenes. Output the JSON object only.'
+      : '\n\n请控制在 5 个简短分镜以内，只输出 JSON 对象。', 3000));
+    if (!ok) {
+      throw new BadGatewayException(isGlobalMarket()
+        ? { message: 'The AI returned a script in an unreadable format. Please try again.', error: 'AI_BAD_OUTPUT' }
+        : { message: 'AI 返回的分镜格式无法读取，请重试', error: 'AI_BAD_OUTPUT' });
+    }
+    const { generated: result, parsed, scenes } = ok;
     const { content: _content, ...meta } = result;
     return { title: String(parsed?.title || input.topic), scenes, ...meta };
   }

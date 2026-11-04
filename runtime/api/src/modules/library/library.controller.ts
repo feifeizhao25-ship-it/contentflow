@@ -45,7 +45,7 @@ export class LibraryController {
   @Get('home-card')
   @ApiOperation({ summary: '工作台首页卡片：只在有新增/更新或匹配度很高时才有' })
   async homeCard(@Request() req: any) {
-    return { card: await this.service.homeCard(req.user.id) };
+    return this.service.homeCardWithReason(req.user.id);
   }
 
   @Get('preferences')

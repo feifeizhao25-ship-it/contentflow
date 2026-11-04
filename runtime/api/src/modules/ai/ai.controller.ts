@@ -134,7 +134,7 @@ export class AIController {
         return {
           tokens: result.usage.total_tokens,
           attachContentId: 'text' as const,
-          response: { titles: result.titles, aiGenerated: true },
+          response: { titles: result.titles, aiGenerated: true, aiLabel: aiTextLabel() },
           generation: {
             userId: req.user.sub,
             generationType: 'titles',
@@ -168,7 +168,7 @@ export class AIController {
         const result = await this.aiService.analyzeViralContentWithUsage(content);
         return {
           tokens: result.usage.total_tokens,
-          response: { analysis: result.analysis },
+          response: { analysis: result.analysis, aiGenerated: true, aiLabel: aiTextLabel() },
           generation: {
             userId: req.user.sub,
             generationType: 'viral_analysis',

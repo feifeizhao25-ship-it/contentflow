@@ -26,6 +26,14 @@ describe('domestic evidence selection', () => {
     expect(await service().select(['douyin'], '生活')).toEqual([]);
     expect(await service().select(['douyin'], '广告文案')).toHaveLength(1);
   });
+  it('international edition never feeds CN/Chinese-language sources into English prompts (I-03)', async () => {
+    await write();
+    const prev = process.env.MARKET_REGION;
+    process.env.MARKET_REGION = 'global';
+    try { expect(await service().select(['douyin'])).toEqual([]); expect(service().buildContext([])).toContain('No compliance source has passed'); }
+    finally { if (prev === undefined) delete process.env.MARKET_REGION; else process.env.MARKET_REGION = prev; }
+    expect(await service().select(['douyin'])).toHaveLength(1);
+  });
   it('marks missing evidence as an unreviewed draft constraint', () => { expect(service().buildContext([])).toContain('不要编造平台规则'); });
   it.each([0, -1, 366, 1.5, 'NaN'])('rejects invalid maximum age %s', async age => { await expect(service(age).select()).rejects.toThrow('RAG_MAX_AGE_DAYS'); });
 });

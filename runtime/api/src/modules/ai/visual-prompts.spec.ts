@@ -46,4 +46,12 @@ describe('splitArticleAndVisualPrompts', () => {
     expect(splitArticleAndVisualPrompts(article)).toEqual({ content: article, visualPrompts: [] });
     expect(splitArticleAndVisualPrompts('')).toEqual({ content: '', visualPrompts: [] });
   });
+
+  it('国内版：中文生图提示词也能被拆出来（I-13）', () => {
+    const raw = '正文第一段。\n\n---\n\n生图提示词\n\n1. 明亮的化妆台，桌上摆着日程表和美妆产品，柔和侧光\n2. 探店博主在咖啡馆门口自拍，暖色调，浅景深\n3. 俯拍：笔记本、口红、记事本整齐排列在木桌上';
+    const out = splitArticleAndVisualPrompts(raw);
+    expect(out.content).toBe('正文第一段。');
+    expect(out.visualPrompts).toHaveLength(3);
+    expect(out.visualPrompts.every((p) => /[\u4e00-\u9fff]/.test(p) && !/[A-Za-z]{4,}/.test(p))).toBe(true);
+  });
 });

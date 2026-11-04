@@ -1,5 +1,6 @@
 import {render, screen, fireEvent, waitFor} from '@testing-library/react';
 import CreatePage from './page';
+jest.mock('@/components/home/TodayCard', () => ({ TodayCard: () => null })); // has its own test; keeps the fetch counts below about generation
 const fetchMock = jest.fn();
 beforeEach(()=>{global.fetch=fetchMock;fetchMock.mockReset()});
 function submit(){fireEvent.change(screen.getByLabelText('Topic or campaign brief'),{target:{value:'A launch announcement'}});fireEvent.click(screen.getByRole('button',{name:'Generate review draft'}));}
