@@ -1,4 +1,5 @@
 import { screenClaim } from '../../ai/compliance/claims';
+import { growthFlagsFromEnv, scanClaims } from '../kit';
 
 export interface TemplatePage {
   slug: string;
@@ -9,12 +10,21 @@ export interface TemplatePage {
   status: 'draft' | 'live';
 }
 
-/** 未人工批准、话术不过闸、或缺少出处的页面保持草稿。 */
-export function prepareTemplatePage(input: Omit<TemplatePage, 'status'>): TemplatePage {
-  const screened = screenClaim(`${input.title}\n${input.body}`);
+/**
+ * 未人工批准、话术不过闸、或缺少出处的页面保持草稿。
+ * 增长工具包（SEO_PAGES_ENABLED，默认关闭）：打开后，医疗功效、命运预测、收益承诺、绝对化用语也让页面保持草稿。
+ * 只会多拦，不会放行原来拦住的页面。
+ */
+export function prepareTemplatePage(
+  input: Omit<TemplatePage, 'status'>,
+  env: Record<string, string | undefined> = process.env,
+): TemplatePage {
+  const text = `${input.title}\n${input.body}`;
+  const screened = screenClaim(text);
+  const kitHit = growthFlagsFromEnv(env).seoPages && scanClaims(text).length > 0;
   const missingFact = input.facts.length === 0 || input.facts.some((fact) => !fact.source_id || !fact.claim);
-  if (!screened.ok || missingFact || !input.humanApproved) {
-    return { ...input, humanApproved: input.humanApproved && screened.ok && !missingFact, status: 'draft' };
+  if (!screened.ok || kitHit || missingFact || !input.humanApproved) {
+    return { ...input, humanApproved: input.humanApproved && screened.ok && !kitHit && !missingFact, status: 'draft' };
   }
   return { ...input, status: 'live' };
 }
