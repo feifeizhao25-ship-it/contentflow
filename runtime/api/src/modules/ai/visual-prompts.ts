@@ -10,7 +10,7 @@ export interface SplitArticle {
   visualPrompts: string[];
 }
 
-const HEADING = /^\s*[#>*_\s]*(?:visual[\s_-]*prompts?|image[\s_-]*prompts?|生图提示词|图片提示词)\b[\s*_:：-]*$/i;
+const HEADING = /^\s*[#>*_\s]*(?:visual[\s_-]*prompts?|image[\s_-]*prompts?|生图提示词|图片提示词)(?:\b|(?<=[\u3400-\u9fff]))[\s*_:：-]*$/i;
 const DIVIDER = /^\s*(?:-{3,}|\*{3,}|_{3,})\s*$/;
 const LABEL = /^(?:visual\s*)?(?:prompt|提示词)\s*\d*\s*[:：.)-]\**\s*/i;
 
@@ -28,6 +28,8 @@ function cleanLine(line: string): string {
 function isPrompt(line: string): boolean {
   if (!line || /https?:\/\//i.test(line)) return false;
   if (HEADING.test(line) || /[:：]$/.test(line)) return false;
+  // 国内版要求中文生图提示词（I-13）；国际版仍是英文提示词。
+  if (/[\u3400-\u9fff]{6,}/.test(line)) return line.length >= 8;
   return /[A-Za-z]{3,}.*\s.*[A-Za-z]{3,}/.test(line) && line.length >= 12;
 }
 

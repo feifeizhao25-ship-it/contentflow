@@ -53,6 +53,7 @@ import { TeamModule } from './modules/team/team.module';
 
 // Materials Module
 import { MaterialsModule } from './modules/materials/materials.module';
+import { HomeModule } from './modules/home/home.module';
 
 // Growth Module (Phase 4)
 import { GrowthModule } from './modules/growth/growth.module';
@@ -173,6 +174,7 @@ export function marketModulesFor(region: string | undefined) {
     AnalyticsModule,
     TeamModule,
     MaterialsModule,
+    HomeModule, // 两个版本都有：只读账号自己的活动，中文/英文各自一套文案
     ...marketModulesFor(process.env.MARKET_REGION),
     SystemModule,
   ],

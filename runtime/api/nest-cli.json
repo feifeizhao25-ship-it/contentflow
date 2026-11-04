@@ -12,6 +12,12 @@
           "introspectComments": true
         }
       }
+    ],
+    "assets": [
+      {
+        "include": "modules/**/*.{json,jsonl,md,yaml,yml}",
+        "outDir": "dist"
+      }
     ]
   }
 }

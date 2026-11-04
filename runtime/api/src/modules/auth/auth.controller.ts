@@ -9,13 +9,23 @@ import { maskPhone } from '../../common/pii';
 import { publicEmail } from './phone-account';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 
+/**
+ * 登录/注册限流（I-15）：原来每个地址每分钟 10 次。公司 / 学校 / 校园网的出口地址是共享的，十几个人同时登录就会互相拦住
+ *（实测约 20 次/分钟就全部 429「操作太频繁」）。调到 30 次/分钟：正常的共享出口够用，撞库速度仍被压在每地址每天约 4.3 万次以内；
+ * 只放宽邮箱+密码的登录/注册；手机验证码登录/注册（猜 6 位码）保持 10 次/分钟，短信发送（会产生费用）和要输密码的敏感操作保持更严的 5 次/分钟。可用 AUTH_THROTTLE_PER_MIN 覆盖（1–300）。
+ */
+export const AUTH_LIMIT_PER_MIN = (() => {
+  const n = Number(process.env.AUTH_THROTTLE_PER_MIN);
+  return Number.isInteger(n) && n >= 1 && n <= 300 ? n : 30;
+})();
+
 @ApiTags('auth')
 @Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
   @Post('register')
-  @Throttle({ default: { ttl: 60_000, limit: 10 } }) // 登录/注册：每个地址每分钟 10 次
+  @Throttle({ default: { ttl: 60_000, limit: AUTH_LIMIT_PER_MIN } }) // 登录/注册：每个地址每分钟 AUTH_LIMIT_PER_MIN 次（见上方说明）
   @ApiOperation({ summary: '用户注册' })
   @ApiResponse({ status: 201, description: '注册成功' })
   @ApiResponse({ status: 409, description: '邮箱已被注册' })
@@ -24,7 +34,7 @@ export class AuthController {
   }
 
   @Post('login')
-  @Throttle({ default: { ttl: 60_000, limit: 10 } }) // 登录/注册：每个地址每分钟 10 次
+  @Throttle({ default: { ttl: 60_000, limit: AUTH_LIMIT_PER_MIN } }) // 登录/注册：每个地址每分钟 AUTH_LIMIT_PER_MIN 次（见上方说明）
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: '用户登录' })
   @ApiResponse({ status: 200, description: '登录成功' })
@@ -46,7 +56,7 @@ export class AuthController {
   }
 
   @Post('register/phone')
-  @Throttle({ default: { ttl: 60_000, limit: 10 } })
+  @Throttle({ default: { ttl: 60_000, limit: 10 } }) // 验证码类接口保持 10：猜验证码不能放宽
   @ApiOperation({ summary: '手机号 + 短信验证码注册' })
   @ApiResponse({ status: 201, description: '注册成功' })
   @ApiResponse({ status: 409, description: '手机号已注册' })
@@ -55,7 +65,7 @@ export class AuthController {
   }
 
   @Post('login/sms')
-  @Throttle({ default: { ttl: 60_000, limit: 10 } })
+  @Throttle({ default: { ttl: 60_000, limit: 10 } }) // 验证码类接口保持 10：猜验证码不能放宽
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: '手机号 + 短信验证码登录' })
   @ApiResponse({ status: 200, description: '登录成功' })
