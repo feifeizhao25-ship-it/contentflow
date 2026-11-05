@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../core/app_theme.dart';
+import '../voice/voice.dart';
 
 /// International edition only. Where the audience is decides which ad-disclosure wording applies.
 /// Only markets the server has a sourced hint for are offered (Singapore, not "Southeast Asia").
@@ -69,16 +70,28 @@ class MaterialField extends StatelessWidget {
           style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
         ),
         const SizedBox(height: 8),
-        TextField(
-          key: const ValueKey('brand-material'),
-          controller: controller,
-          maxLines: 4,
-          maxLength: 4000,
-          decoration: InputDecoration(
-            hintText:
-                'Paste specs, claims or facts you can stand behind. Figures and brand names are only taken from here.',
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-          ),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            Expanded(
+              child: TextField(
+                key: const ValueKey('brand-material'),
+                controller: controller,
+                maxLines: 4,
+                maxLength: 4000,
+                decoration: InputDecoration(
+                  hintText:
+                      'Paste specs, claims or facts you can stand behind. Figures and brand names are only taken from here.',
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Padding(
+              padding: const EdgeInsets.only(bottom: 24),
+              child: VoiceMicButton(controller: controller, copy: voiceCopyEn, controlKey: 'voice-mic-material'),
+            ),
+          ],
         ),
       ],
     );

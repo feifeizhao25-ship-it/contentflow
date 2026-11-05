@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { TodayCard } from '@/components/home/TodayCard';
 import { readableDraft } from '@/lib/readable-draft';
+import { SpeakButton, VoiceMicButton, appendVoice } from '@/components/voice/VoiceControls';
 
 type Draft = { content: string; prompts: string[]; topic: string; market: string };
 const failures: Record<number, string> = {
@@ -53,7 +54,10 @@ export default function CreatePage() {
   return <main className="shell"><div className="eyebrow">Draft workspace</div><h1>Create for a market, not just a language.</h1>
     <TodayCard />
     <div className="grid two" style={{alignItems:'start'}}><section className="card stack" style={{alignContent:'start'}}>
-      <label>Topic or campaign brief<textarea value={topic} onChange={e=>setTopic(e.target.value)} placeholder="Explain the offer, audience, proof points, and desired action." /></label>
+      <div className="voice-field">
+        <label>Topic or campaign brief<textarea value={topic} onChange={e=>setTopic(e.target.value)} placeholder="Explain the offer, audience, proof points, and desired action." /></label>
+        <VoiceMicButton onFinal={(spoken) => setTopic((current) => appendVoice(current, spoken))} />
+      </div>
       <label>Primary market<select value={market} onChange={e=>setMarket(e.target.value)}><option>United States</option><option>United Kingdom</option><option>Australia</option><option>Singapore</option></select></label>
       <button className="button" disabled={loading || !topic.trim()} onClick={generate}>{loading ? 'Generating…' : 'Generate review draft'}</button>
       {loading && <p role="status">Waiting for the generation service. Please keep this page open.</p>}
@@ -64,8 +68,11 @@ export default function CreatePage() {
         <p>Generated for {draft.market}. This draft is not saved or published by this page.</p>
         <p style={{overflowWrap:'anywhere'}}>Brief: {draft.topic}</p>
         {error && <p>The previous successful draft is kept below. The latest attempt did not replace it.</p>}
-        <div data-testid="draft-content" style={{whiteSpace:'pre-wrap',overflowWrap:'anywhere',lineHeight:1.8}}>{readableDraft(draft.content)}</div>
-        {draft.prompts.length > 0 && <section aria-label="Visual prompts"><h3>Image prompts to review</h3><ol>{draft.prompts.map((prompt,index)=><li key={index} style={{whiteSpace:'pre-wrap',overflowWrap:'anywhere',marginBottom:16}}>{readableDraft(prompt)}</li>)}</ol></section>}
+        <div className="voice-block">
+          <div data-testid="draft-content" style={{whiteSpace:'pre-wrap',overflowWrap:'anywhere',lineHeight:1.8}}>{readableDraft(draft.content)}</div>
+          <SpeakButton text={draft.content} />
+        </div>
+        {draft.prompts.length > 0 && <section aria-label="Visual prompts"><h3>Image prompts to review</h3><ol className="voice-stack">{draft.prompts.map((prompt,index)=><li key={index} className="voice-block"><span style={{whiteSpace:'pre-wrap',overflowWrap:'anywhere'}}>{readableDraft(prompt)}</span><SpeakButton text={prompt} /></li>)}</ol></section>}
       </> : <p>Your complete draft will appear here. Review its facts and market context before using it.</p>}
     </section></div>
   </main>;

@@ -14,6 +14,9 @@ void main() {
     expect(plist, contains('<string>zh-Hans</string>'));
     expect(plist, contains('NSPhotoLibraryUsageDescription'));
     expect(plist, contains('NSCameraUsageDescription'));
+    expect(plist, contains('NSMicrophoneUsageDescription'));
+    expect(plist, contains('NSSpeechRecognitionUsageDescription'));
+    expect(plist, contains('只在你点击麦克风时使用'));
     expect(plist, isNot(contains('Contentflow Cn')));
   });
 

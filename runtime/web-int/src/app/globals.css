@@ -72,6 +72,24 @@ footer { border-top:1px solid var(--line); color:#78908a; padding:30px clamp(20p
 .week-outcomes span { color:var(--muted); font-size:12px; }
 .week-outcomes strong { margin-top:8px; font-size:17px; }
 
+.voice-field { display:flex; flex-direction:column; align-items:stretch; gap:8px; }
+.voice-field > label { flex:1; min-width:0; }
+.voice-control { display:flex; flex-direction:column; align-items:flex-end; gap:4px; }
+.voice-mic, .voice-speak { display:inline-flex; align-items:center; justify-content:center; border:1px solid var(--line); background:#0c2420; color:var(--ink); cursor:pointer; padding:0; }
+.voice-mic { align-self:flex-end; width:56px; height:56px; border-radius:999px; }
+.voice-speak { width:48px; height:48px; border-radius:999px; }
+.voice-mic[aria-pressed="true"], .voice-speak[aria-pressed="true"] { background:var(--mint); color:#062019; border-color:var(--mint); }
+.voice-mic:disabled, .voice-speak:disabled { opacity:.4; cursor:default; }
+.voice-glyph { width:18px; height:18px; }
+.voice-note { max-width:16rem; color:#f0b4b4; font-size:12px; text-align:right; }
+.voice-block { display:flex; flex-direction:column; gap:10px; border:1px solid var(--line); border-radius:18px; padding:14px; }
+.voice-stack { display:flex; flex-direction:column; gap:12px; margin:0; padding:0; list-style:none; }
+@media (min-width: 801px) {
+  .voice-field { flex-direction:row; align-items:flex-end; }
+  .voice-mic { width:40px; height:40px; }
+  .voice-speak { width:32px; height:32px; }
+  .voice-block { flex-direction:row; align-items:flex-start; gap:8px; border:0; border-radius:0; padding:0; }
+}
 @media(max-width:800px){header.topbar>nav{display:none}.mobile-nav{display:block}.hero,.grid,.grid.two{grid-template-columns:1fr}.shell{padding-top:40px}.topbar{gap:12px}}
 @media(max-width:900px){.persona-strip{grid-template-columns:repeat(2,minmax(0,1fr))}.experience-grid,.week-outcomes{grid-template-columns:1fr}}
 @media(max-width:520px){.persona-strip{grid-template-columns:1fr}.week-title{font-size:clamp(42px,14vw,62px)}.focus-card,.evidence-card{padding:24px}.week-lead{font-size:15px}}

@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import '../../core/providers.dart';
 import '../../data/models.dart';
 import '../../core/error_text.dart';
+import '../voice/voice.dart';
 
 /// Saved content-pack drafts (what "Save to content pack" creates), shown on the Assets tab.
 class DraftsView extends ConsumerWidget {
@@ -87,53 +88,61 @@ class _DraftCard extends StatelessWidget {
       color: Colors.white,
       borderRadius: BorderRadius.circular(12),
       elevation: 1,
-      child: InkWell(
-        borderRadius: BorderRadius.circular(12),
-        onTap: () => _openDetail(context, draft),
-        child: Padding(
-          padding: const EdgeInsets.all(14),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                title,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
-              ),
-              if (snippet.isNotEmpty) ...[
-                const SizedBox(height: 6),
-                Text(
-                  snippet,
-                  maxLines: 3,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(fontSize: 13, color: Colors.grey.shade700),
-                ),
-              ],
-              const SizedBox(height: 10),
-              Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          InkWell(
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
+            onTap: () => _openDetail(context, draft),
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(14, 14, 14, 8),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: theme.primaryColor.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: Text(
-                      draft.source == 'ai' ? 'AI 生成' : '手动创建',
-                      style: TextStyle(fontSize: 11, color: theme.primaryColor),
-                    ),
-                  ),
-                  const Spacer(),
                   Text(
-                    _when(draft.createdAt),
-                    style: TextStyle(fontSize: 11, color: Colors.grey.shade500),
+                    title,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
                   ),
+                  if (snippet.isNotEmpty) ...[
+                    const SizedBox(height: 6),
+                    Text(
+                      snippet,
+                      maxLines: 3,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(fontSize: 13, color: Colors.grey.shade700),
+                    ),
+                  ],
                 ],
               ),
-            ],
+            ),
           ),
-        ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(14, 0, 4, 4),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: theme.primaryColor.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Text(
+                    draft.source == 'ai' ? 'AI 生成' : '手动创建',
+                    style: TextStyle(fontSize: 11, color: theme.primaryColor),
+                  ),
+                ),
+                const Spacer(),
+                Text(
+                  _when(draft.createdAt),
+                  style: TextStyle(fontSize: 11, color: Colors.grey.shade500),
+                ),
+                SpeakButton(text: draft.body, copy: voiceCopyZh, controlKey: 'voice-speak-draft-${draft.id}'),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -152,9 +161,16 @@ void _openDetail(BuildContext context, ContentDraft draft) {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                draft.title.trim().isEmpty ? '（无标题）' : draft.title.trim(),
-                style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      draft.title.trim().isEmpty ? '（无标题）' : draft.title.trim(),
+                      style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                  SpeakButton(text: draft.body, copy: voiceCopyZh, controlKey: 'voice-speak-draft-sheet-${draft.id}'),
+                ],
               ),
               const SizedBox(height: 4),
               Text(

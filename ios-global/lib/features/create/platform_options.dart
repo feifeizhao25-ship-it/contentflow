@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../core/app_theme.dart';
 import 'package:flutter/services.dart';
 import '../../data/models.dart';
+import '../voice/voice.dart';
 
 /// International edition. The platforms the server knows how to rewrite a post for (it has a rule per key).
 const List<MapEntry<String, String>> kPlatforms = [
@@ -108,6 +109,11 @@ class PlatformAdapterSheet extends StatelessWidget {
                                 ),
                                 if (entry.value.charCount != null)
                                   Text('${entry.value.charCount} characters', style: TextStyle(fontSize: 12, color: AppColors.muted(context))),
+                                SpeakButton(
+                                  text: entry.value.adaptedContent ?? '',
+                                  copy: voiceCopyEn,
+                                  controlKey: 'voice-speak-${entry.key}',
+                                ),
                                 IconButton(
                                   key: ValueKey('copy-${entry.key}'),
                                   tooltip: 'Copy',
