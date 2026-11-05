@@ -73,103 +73,128 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final wide = MediaQuery.sizeOf(context).shortestSide >= 600;
     return Scaffold(
       backgroundColor: AppColors.page(context),
       body: SafeArea(
         child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 440),
-            child: SingleChildScrollView(
+          child: SingleChildScrollView(
             padding: const EdgeInsets.all(24),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                const GlHeroBanner(
-                  asset: 'assets/images/cfg_login_hero.webp',
-                  title: 'ContentFlow',
-                  subtitle: 'One topic in, a ready-to-post content pack out.',
+            child: ConstrainedBox(
+              key: const ValueKey('login-card'),
+              constraints: const BoxConstraints(maxWidth: 440),
+              // iPad / wide screens: the form sits in one centred card instead of stretching across the page.
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  color: wide ? AppColors.card(context) : null,
+                  borderRadius: BorderRadius.circular(16),
+                  border: wide
+                      ? Border.all(
+                          color: Theme.of(context).colorScheme.outlineVariant,
+                        )
+                      : null,
                 ),
-                const SizedBox(height: 20),
-                const Text(
-                  'Welcome back',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 8),
-                const Text(
-                  'Sign in to continue',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(color: Colors.grey),
-                ),
-                const SizedBox(height: 24),
-                TextField(
-                  controller: _emailController,
-                  keyboardType: TextInputType.emailAddress,
-                  decoration: const InputDecoration(
-                    labelText: 'Email',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                TextField(
-                  controller: _passwordController,
-                  obscureText: true,
-                  decoration: const InputDecoration(
-                    labelText: 'Password',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                // Retest N08: a "Workspace slug" box means nothing to an individual creator. Collapsed by default;
-                // only people who joined a team need to open it.
-                if (!_showTeamCode)
-                  Align(
-                    alignment: Alignment.centerLeft,
-                    child: TextButton(
-                      key: const ValueKey('show-team-code'),
-                      onPressed: () => setState(() => _showTeamCode = true),
-                      child: const Text('I joined a team and have a team code'),
-                    ),
-                  )
-                else
-                  TextField(
-                    key: const ValueKey('team-code-field'),
-                    controller: _tenantController,
-                    decoration: const InputDecoration(
-                      labelText: 'Team code',
-                      helperText: 'The code your team admin sent you. Not needed for personal use.',
-                      helperMaxLines: 2,
-                      border: OutlineInputBorder(),
-                    ),
-                  ),
-                if (_error != null) ...[
-                  const SizedBox(height: 12),
-                  Text(
-                    _error!,
-                    style: const TextStyle(color: Colors.red),
-                    textAlign: TextAlign.center,
-                  ),
-                ],
-                const SizedBox(height: 24),
-                SizedBox(
-                  height: 48,
-                  child: ElevatedButton(
-                    onPressed: _loading ? null : _handleLogin,
-                    child: _loading
-                        ? const SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: Colors.white,
+                child: Padding(
+                  padding: EdgeInsets.all(wide ? 32 : 0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      const GlHeroBanner(
+                        asset: 'assets/images/cfg_login_hero.webp',
+                        title: 'ContentFlow',
+                        subtitle:
+                            'One topic in, a ready-to-post content pack out.',
+                      ),
+                      const SizedBox(height: 20),
+                      const Text(
+                        'Welcome back',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      const Text(
+                        'Sign in to continue',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(color: Colors.grey),
+                      ),
+                      const SizedBox(height: 24),
+                      TextField(
+                        controller: _emailController,
+                        keyboardType: TextInputType.emailAddress,
+                        decoration: const InputDecoration(
+                          labelText: 'Email',
+                          border: OutlineInputBorder(),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      TextField(
+                        controller: _passwordController,
+                        obscureText: true,
+                        decoration: const InputDecoration(
+                          labelText: 'Password',
+                          border: OutlineInputBorder(),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      // Retest N08: a "Workspace slug" box means nothing to an individual creator. Collapsed by default;
+                      // only people who joined a team need to open it.
+                      if (!_showTeamCode)
+                        Align(
+                          alignment: Alignment.centerLeft,
+                          child: TextButton(
+                            key: const ValueKey('show-team-code'),
+                            onPressed: () =>
+                                setState(() => _showTeamCode = true),
+                            child: const Text(
+                              'I joined a team and have a team code',
                             ),
-                          )
-                        : const Text('Sign in'),
+                          ),
+                        )
+                      else
+                        TextField(
+                          key: const ValueKey('team-code-field'),
+                          controller: _tenantController,
+                          decoration: const InputDecoration(
+                            labelText: 'Team code',
+                            helperText:
+                                'The code your team admin sent you. Not needed for personal use.',
+                            helperMaxLines: 2,
+                            border: OutlineInputBorder(),
+                          ),
+                        ),
+                      if (_error != null) ...[
+                        const SizedBox(height: 12),
+                        Text(
+                          _error!,
+                          style: const TextStyle(color: Colors.red),
+                          textAlign: TextAlign.center,
+                        ),
+                      ],
+                      const SizedBox(height: 24),
+                      SizedBox(
+                        height: 48,
+                        child: ElevatedButton(
+                          onPressed: _loading ? null : _handleLogin,
+                          child: _loading
+                              ? const SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: Colors.white,
+                                  ),
+                                )
+                              : const Text('Sign in'),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-              ],
+              ),
             ),
-          ),
           ),
         ),
       ),
