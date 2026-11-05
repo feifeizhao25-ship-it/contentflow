@@ -49,4 +49,13 @@ describe('parseGeneratedTitles', () => {
     expect(() => parseGeneratedTitles(raw, 5)).toThrow(/未通过结构化校验/);
     expect(() => parseGeneratedTitles('', 5)).toThrow(/未通过结构化校验/);
   });
+
+  it('strips markdown heading markers and numbering ("### 1. 标题") returned by the model', () => {
+    const raw = ['### 1. 2026年必吃！火锅店独家揭秘', '## 2. 火锅控必看', '#### 3、第三个标题', '**4. 加粗序号标题**', '5. 2026年榜单'].join('\n');
+    expect(parseGeneratedTitles(raw, 10)).toEqual(['2026年必吃！火锅店独家揭秘', '火锅控必看', '第三个标题', '加粗序号标题', '2026年榜单']);
+  });
+
+  it('keeps titles that merely start with digits or a year', () => {
+    expect(parseGeneratedTitles('2026年新品清单\n10个技巧', 5)).toEqual(['2026年新品清单', '10个技巧']);
+  });
 });

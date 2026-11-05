@@ -51,6 +51,18 @@ function stripMarkup(line: string): string {
   return out;
 }
 
+/**
+ * 一行原始输出 -> 干净标题：先剥 markdown 标题记号（"### 1. 标题"）、再剥序号/项目符号、再剥强调与引号，
+ * 序号被加粗包住（"**1. 标题**"）时去掉强调后再剥一次序号。
+ * 真实缺陷（2026-11-05 Next.js web-cn 复测）：模型返回 "### 1. 标题"，旧逻辑不认 "#"，页面「标题推荐」和发布草案标题里带着 "### 1."。
+ */
+function cleanTitleLine(rawLine: string): string {
+  let s = rawLine.replace(/^\s*#{1,6}\s+/, '');
+  // "**4. 标题**"：序号被加粗包住，先把开头的强调记号拿掉，序号才认得出来
+  s = s.replace(/^\s*(?:\*\*|__)(\s*\d{1,2}\s*[.、)）:：])/, '$1');
+  return stripMarkup(stripListMarker(s));
+}
+
 function isMetaLine(line: string): boolean {
   if (line.length === 0) return true;
   if (/[:：]\s*$/.test(line)) return true; // 以冒号结尾的多半是小标题/引导语
@@ -66,7 +78,7 @@ export function parseGeneratedTitles(raw: string, count: number): string[] {
   const titles: string[] = [];
 
   for (const rawLine of (raw || '').split(/\r?\n/)) {
-    const stripped = stripMarkup(stripListMarker(rawLine));
+    const stripped = cleanTitleLine(rawLine);
     if (isMetaLine(stripped)) continue;
     if (stripped.length > (/[\u3400-\u9fff]/.test(stripped) ? MAX_TITLE_LENGTH : MAX_TITLE_LENGTH_LATIN)) continue;
     if (seen.has(stripped)) continue;
