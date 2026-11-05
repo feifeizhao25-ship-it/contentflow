@@ -2,6 +2,7 @@
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { TodayCard } from '@/components/home/TodayCard';
+import { readableDraft } from '@/lib/readable-draft';
 
 type Draft = { content: string; prompts: string[]; topic: string; market: string };
 const failures: Record<number, string> = {
@@ -63,8 +64,8 @@ export default function CreatePage() {
         <p>Generated for {draft.market}. This draft is not saved or published by this page.</p>
         <p style={{overflowWrap:'anywhere'}}>Brief: {draft.topic}</p>
         {error && <p>The previous successful draft is kept below. The latest attempt did not replace it.</p>}
-        <div data-testid="draft-content" style={{whiteSpace:'pre-wrap',overflowWrap:'anywhere',lineHeight:1.8}}>{draft.content}</div>
-        {draft.prompts.length > 0 && <section aria-label="Visual prompts"><h3>Image prompts to review</h3><ol>{draft.prompts.map((prompt,index)=><li key={index} style={{whiteSpace:'pre-wrap',overflowWrap:'anywhere',marginBottom:16}}>{prompt}</li>)}</ol></section>}
+        <div data-testid="draft-content" style={{whiteSpace:'pre-wrap',overflowWrap:'anywhere',lineHeight:1.8}}>{readableDraft(draft.content)}</div>
+        {draft.prompts.length > 0 && <section aria-label="Visual prompts"><h3>Image prompts to review</h3><ol>{draft.prompts.map((prompt,index)=><li key={index} style={{whiteSpace:'pre-wrap',overflowWrap:'anywhere',marginBottom:16}}>{readableDraft(prompt)}</li>)}</ol></section>}
       </> : <p>Your complete draft will appear here. Review its facts and market context before using it.</p>}
     </section></div>
   </main>;
