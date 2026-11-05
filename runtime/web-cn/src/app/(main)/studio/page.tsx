@@ -21,6 +21,7 @@ import { ComplianceResultView } from '@/components/compliance/ComplianceResultVi
 import { parseCompliance, type ComplianceView } from '@/lib/compliance-view';
 import { isManualPlatform, PUBLISH_CHANNEL_NOTICE } from '@/lib/manual-publish';
 import { describeAiAllowance, generatedCoverUrl, parseAccountList, type AiAllowanceView } from '@/lib/page-data';
+import { SpeakButton, VoiceField, VoiceMicButton, VoiceReadout, appendVoice } from '@/components/voice/VoiceControls';
 
 const { TextArea } = Input;
 
@@ -396,12 +397,14 @@ function StudioContent() {
             <Sparkles className="w-4 h-4 text-amber-500" />
             主题输入
           </h3>
-          <Input
-            placeholder="一句话描述你想做的内容"
-            value={topic}
-            onChange={(e) => setTopic(e.target.value)}
-            className="rounded-xl"
-          />
+          <VoiceField mic={<VoiceMicButton onFinal={(spoken) => setTopic((current) => appendVoice(current, spoken))} />}>
+            <Input
+              placeholder="一句话描述你想做的内容"
+              value={topic}
+              onChange={(e) => setTopic(e.target.value)}
+              className="rounded-xl"
+            />
+          </VoiceField>
           <div className="mt-4 space-y-3">
             <div>
               <div className="text-xs text-zinc-500 mb-2">选择平台</div>
@@ -477,34 +480,47 @@ function StudioContent() {
             <div className="space-y-4">
               <div>
                 <div className="text-xs text-zinc-500 mb-2">标题推荐</div>
-                <div className="flex flex-wrap gap-2">
+                <div className="flex flex-col gap-2 md:flex-row md:flex-wrap">
                   {titles.length > 0 ? titles.map((t, idx) => (
-                    <Tag
-                      key={idx}
-                      style={{ whiteSpace: 'normal', overflowWrap: 'anywhere', maxWidth: '100%' }}
-                      className={clsx('cursor-pointer', selectedTitle === t ? 'bg-emerald-50 border-emerald-300 text-emerald-700' : 'bg-zinc-100')}
-                      onClick={() => setSelectedTitle(t)}
-                    >
-                      {t}
-                    </Tag>
+                    <VoiceReadout key={idx} speak={<SpeakButton text={t} />}>
+                      <Tag
+                        style={{ whiteSpace: 'normal', overflowWrap: 'anywhere', maxWidth: '100%' }}
+                        className={clsx('cursor-pointer', selectedTitle === t ? 'bg-emerald-50 border-emerald-300 text-emerald-700' : 'bg-zinc-100')}
+                        onClick={() => setSelectedTitle(t)}
+                      >
+                        {t}
+                      </Tag>
+                    </VoiceReadout>
                   )) : <span className="text-xs text-zinc-400">生成后显示</span>}
                 </div>
               </div>
-              <div>
-                <div className="text-xs text-zinc-500 mb-2">正文脚本</div>
-                <TextArea
-                  autoSize={{ minRows: 10 }}
-                  value={script}
-                  onChange={(e) => setScript(e.target.value)}
-                  placeholder="内容包生成后自动填充，可继续编辑"
-                />
+              <div className="max-md:rounded-2xl max-md:border max-md:border-zinc-200 max-md:bg-zinc-50 max-md:p-3">
+                <div className="mb-2 flex items-center justify-between gap-2">
+                  <div className="text-xs text-zinc-500">正文脚本</div>
+                  <div className="hidden md:block"><SpeakButton text={script} /></div>
+                </div>
+                <VoiceField mic={<VoiceMicButton onFinal={(spoken) => setScript((current) => appendVoice(current, spoken))} />}>
+                  <TextArea
+                    autoSize={{ minRows: 10 }}
+                    value={script}
+                    onChange={(e) => setScript(e.target.value)}
+                    placeholder="内容包生成后自动填充，可继续编辑"
+                  />
+                </VoiceField>
+                <div className="mt-2 flex justify-end md:hidden"><SpeakButton text={script} /></div>
               </div>
               {visualPrompts.length > 0 && (
                 <section aria-label="封面提示词" className="space-y-2">
                   <h4 className="text-sm font-medium text-zinc-700">封面提示词</h4>
                   <p className="text-xs text-zinc-500">以下为本次返回的全部提示词；生成封面默认使用第一条。</p>
-                  <ol className="list-decimal pl-5 space-y-2 text-sm text-zinc-700">
-                    {visualPrompts.map((prompt, index) => <li key={index} style={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>{prompt}</li>)}
+                  <ol className="flex list-none flex-col gap-2 pl-0 text-sm text-zinc-700">
+                    {visualPrompts.map((prompt, index) => (
+                      <li key={index}>
+                        <VoiceReadout speak={<SpeakButton text={prompt} />}>
+                          <span style={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>{index + 1}. {prompt}</span>
+                        </VoiceReadout>
+                      </li>
+                    ))}
                   </ol>
                 </section>
               )}

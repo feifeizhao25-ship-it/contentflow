@@ -11,3 +11,14 @@ it('shows recoverable English network error and keeps brief',async()=>{fetchMock
 it.each([401,403,429,503])('shows English recovery for status %s',async(status)=>{fetchMock.mockResolvedValue(response({message:'\u4e2d\u6587\u9519\u8bef'},status));render(<CreatePage/>);submit();expect(await screen.findByRole('alert')).not.toHaveTextContent('\u4e2d\u6587');if(status===401)expect(screen.getByRole('link',{name:'Sign in'})).toHaveAttribute('href','/login')});
 it('preserves complete multiline text and all visual prompts',async()=>{const content='First paragraph\n\n'+ 'Long evidence line. '.repeat(500)+'\nEND OF DRAFT';fetchMock.mockResolvedValue(response({data:{content,visualPrompts:['first image','second image','third image','fourth image']}}));render(<CreatePage/>);submit();await waitFor(()=>expect(screen.getByTestId('draft-content').textContent).toBe(content));expect(screen.getByText('fourth image')).toBeInTheDocument();expect(screen.getByText(/not saved or published/)).toBeInTheDocument()});
 it('retains previous draft when retry fails',async()=>{fetchMock.mockResolvedValueOnce(response({content:'First complete draft'})).mockResolvedValueOnce(response({},503));render(<CreatePage/>);submit();await screen.findByText('First complete draft');fireEvent.click(screen.getByRole('button',{name:'Generate review draft'}));await screen.findByRole('alert');expect(screen.getByText('First complete draft')).toBeInTheDocument()});
+it('puts a mic on the brief and a speaker beside the draft, not inside the draft text', async () => {
+  render(<CreatePage />);
+  expect(screen.getByRole('button', { name: 'Voice input' })).toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button', { name: 'Voice input' }));
+  expect(await screen.findByRole('status')).toHaveTextContent('not available in this browser');
+  fetchMock.mockResolvedValue(response({ data: { content: 'Complete draft', visualPrompts: ['cover prompt'] } }));
+  submit();
+  await screen.findByText('Complete draft');
+  expect(screen.getByTestId('draft-content').textContent).toBe('Complete draft');
+  expect(screen.getAllByRole('button', { name: 'Read aloud' }).length).toBeGreaterThan(1);
+});

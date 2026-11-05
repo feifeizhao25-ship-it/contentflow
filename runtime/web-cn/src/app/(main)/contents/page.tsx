@@ -23,6 +23,7 @@ import { ComplianceResultView } from '@/components/compliance/ComplianceResultVi
 import { complianceFromError, parseCompliance, type ComplianceView } from '@/lib/compliance-view';
 import { FriendlyApiError } from '@/lib/api-client';
 import { contentReviewState, parseReviewPolicy, reviewNote, validateRejectReason, type ReviewPolicy } from '@/lib/content-review';
+import { SpeakButton, VoiceField, VoiceMicButton, VoiceReadout, appendVoice } from '@/components/voice/VoiceControls';
 
 const { Search } = Input;
 const { Option } = Select;
@@ -402,6 +403,12 @@ function ContentsContent() {
                     </div>
                     <div className="mt-2">{renderStatus(record)}</div>
                     <p className="mt-2 text-xs text-zinc-600">{record.created_at}</p>
+                    {record.body ? (
+                        <div className="mt-3 flex items-end gap-2">
+                            <p className="line-clamp-3 min-w-0 flex-1 text-sm leading-6 text-zinc-600">{record.body}</p>
+                            <SpeakButton text={String(record.body)} />
+                        </div>
+                    ) : null}
                 </div>
             </div>
             <div className="mt-3 flex flex-wrap gap-x-1 border-t border-zinc-100 pt-2">
@@ -511,7 +518,9 @@ function ContentsContent() {
                 <label className="mb-1 block text-sm text-zinc-600" htmlFor="content-editor-title">标题</label>
                 <Input id="content-editor-title" className="mb-4" maxLength={200} value={draftTitle} onChange={(e) => setDraftTitle(e.target.value)} placeholder="内容标题" />
                 <label className="mb-1 block text-sm text-zinc-600" htmlFor="content-editor-body">正文</label>
-                <Input.TextArea id="content-editor-body" rows={10} value={draftBody} onChange={(e) => setDraftBody(e.target.value)} placeholder="正文内容" />
+                <VoiceField mic={<VoiceMicButton onFinal={(spoken) => setDraftBody((current) => appendVoice(current, spoken))} />}>
+                    <Input.TextArea id="content-editor-body" rows={10} value={draftBody} onChange={(e) => setDraftBody(e.target.value)} placeholder="正文内容" />
+                </VoiceField>
                 <p className="mt-2 text-xs text-zinc-600">{editorError && (draftTitle || draftBody) ? editorError : '保存后是草稿，点「提交审核」，审核通过后才能发布。'}</p>
             </Modal>
 
@@ -606,9 +615,11 @@ function ContentsContent() {
                             {previewFor.source === 'ai' && <div className="absolute left-2 top-2 rounded bg-black/60 px-2 py-0.5 text-[11px] text-white">AI 生成</div>}
                         </div>
                     )}
-                    <div className="max-h-[50vh] overflow-y-auto whitespace-pre-wrap break-words rounded-lg bg-zinc-50 p-3 text-sm leading-7 text-zinc-700">
-                        {previewFor?.body || '这条内容还没有正文'}
-                    </div>
+                    <VoiceReadout speak={previewFor?.body ? <SpeakButton text={String(previewFor.body)} /> : <span />}>
+                        <div className="max-h-[50vh] overflow-y-auto whitespace-pre-wrap break-words text-sm leading-7 text-zinc-700">
+                            {previewFor?.body || '这条内容还没有正文'}
+                        </div>
+                    </VoiceReadout>
                 </div>
             </Modal>
         </div>

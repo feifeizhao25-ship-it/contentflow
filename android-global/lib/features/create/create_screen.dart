@@ -9,6 +9,7 @@ import '../../data/models.dart';
 import 'platform_options.dart';
 import 'generate_status.dart';
 import 'market_options.dart';
+import '../voice/voice.dart';
 
 class CreateScreen extends ConsumerStatefulWidget {
   const CreateScreen({super.key});
@@ -179,24 +180,33 @@ class _CreateScreenState extends ConsumerState<CreateScreen> {
             style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 12),
-          TextField(
-            controller: _topicController,
-            maxLines: 3,
-            decoration: InputDecoration(
-              hintText: 'e.g. Python basics tutorial',
-              hintStyle: const TextStyle(color: Colors.grey),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide(color: Colors.grey.shade300),
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide(
-                  color: Theme.of(context).primaryColor,
-                  width: 2,
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: _topicController,
+                  maxLines: 3,
+                  decoration: InputDecoration(
+                    hintText: 'e.g. Python basics tutorial',
+                    hintStyle: const TextStyle(color: Colors.grey),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(color: Colors.grey.shade300),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(
+                        color: Theme.of(context).primaryColor,
+                        width: 2,
+                      ),
+                    ),
+                  ),
                 ),
               ),
-            ),
+              const SizedBox(width: 10),
+              VoiceMicButton(controller: _topicController, copy: voiceCopyEn, controlKey: 'voice-mic-topic'),
+            ],
           ),
           const SizedBox(height: 16),
           TargetMarketField(
@@ -321,6 +331,7 @@ class _CreateScreenState extends ConsumerState<CreateScreen> {
                 );
               }).toList(),
             ),
+            speak: pack.titles.join('\n'),
           ),
 
           if (pack.hooks.isNotEmpty) ...[
@@ -344,6 +355,7 @@ class _CreateScreenState extends ConsumerState<CreateScreen> {
                   );
                 }).toList(),
               ),
+              speak: pack.hooks.join('\n'),
             ),
           ],
 
@@ -360,6 +372,7 @@ class _CreateScreenState extends ConsumerState<CreateScreen> {
               ),
               child: Text(pack.script, style: const TextStyle(fontSize: 15, height: 1.7)),
             ),
+            speak: pack.script,
           ),
 
           if (pack.hashtags.isNotEmpty) ...[
@@ -458,7 +471,7 @@ class _CreateScreenState extends ConsumerState<CreateScreen> {
     }
   }
 
-  Widget _buildContentCard(BuildContext context, String title, Widget content) {
+  Widget _buildContentCard(BuildContext context, String title, Widget content, {String? speak}) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -471,10 +484,13 @@ class _CreateScreenState extends ConsumerState<CreateScreen> {
           Row(children: [
             Icon(_cardIcon(title), size: 20, color: Theme.of(context).colorScheme.primary),
             const SizedBox(width: 8),
-            Text(
-              title,
-              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            Expanded(
+              child: Text(
+                title,
+                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              ),
             ),
+            if (speak != null) SpeakButton(text: speak, copy: voiceCopyEn, controlKey: 'voice-speak-$title'),
           ]),
           const SizedBox(height: 12),
           content,

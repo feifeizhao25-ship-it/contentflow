@@ -8,6 +8,9 @@ void main() {
     expect(manifest, contains('android:label="分发侠"'));
     expect(manifest, isNot(contains('contentflow_mobile')));
     expect(manifest, contains('adjustResize'));
+    expect(manifest, contains('android.permission.RECORD_AUDIO'));
+    expect(manifest, contains('android.speech.RecognitionService'));
+    expect(manifest, contains('android.intent.action.TTS_SERVICE'));
   });
 
   test('数字和平台名不使用英文缩写', () {

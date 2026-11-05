@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../data/models.dart';
+import '../voice/voice.dart';
 
 /// 国内版：服务端有改写规则的平台（每个平台一条规则）。
 const List<MapEntry<String, String>> kPlatforms = [
@@ -108,6 +109,11 @@ class PlatformAdapterSheet extends StatelessWidget {
                                 ),
                                 if (entry.value.charCount != null)
                                   Text('${entry.value.charCount} 字', style: const TextStyle(fontSize: 12, color: Colors.black54)),
+                                SpeakButton(
+                                  text: entry.value.adaptedContent ?? '',
+                                  copy: voiceCopyZh,
+                                  controlKey: 'voice-speak-${entry.key}',
+                                ),
                                 IconButton(
                                   key: ValueKey('copy-${entry.key}'),
                                   tooltip: '复制',

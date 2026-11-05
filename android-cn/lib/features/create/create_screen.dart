@@ -7,6 +7,7 @@ import '../../core/providers.dart';
 import '../../data/models.dart';
 import 'platform_options.dart';
 import 'generate_status.dart';
+import '../voice/voice.dart';
 import '../../core/error_text.dart';
 import '../../data/api_exception.dart';
 
@@ -178,24 +179,33 @@ class _CreateScreenState extends ConsumerState<CreateScreen> {
             style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 12),
-          TextField(
-            controller: _topicController,
-            maxLines: 3,
-            decoration: InputDecoration(
-              hintText: '例如: Python入门教程',
-              hintStyle: const TextStyle(color: Colors.grey),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide(color: Colors.grey.shade300),
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide(
-                  color: Theme.of(context).primaryColor,
-                  width: 2,
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: _topicController,
+                  maxLines: 3,
+                  decoration: InputDecoration(
+                    hintText: '例如: Python入门教程',
+                    hintStyle: const TextStyle(color: Colors.grey),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(color: Colors.grey.shade300),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(
+                        color: Theme.of(context).primaryColor,
+                        width: 2,
+                      ),
+                    ),
+                  ),
                 ),
               ),
-            ),
+              const SizedBox(width: 10),
+              VoiceMicButton(controller: _topicController, copy: voiceCopyZh, controlKey: 'voice-mic-topic'),
+            ],
           ),
           const SizedBox(height: 16),
           PlatformPicker(
@@ -328,6 +338,7 @@ class _CreateScreenState extends ConsumerState<CreateScreen> {
                 );
               }).toList(),
             ),
+            speak: pack.titles.join('\n'),
           ),
 
           const SizedBox(height: 16),
@@ -350,6 +361,7 @@ class _CreateScreenState extends ConsumerState<CreateScreen> {
                 );
               }).toList(),
             ),
+            speak: pack.hooks.join('\n'),
           ),
 
           const SizedBox(height: 16),
@@ -365,6 +377,7 @@ class _CreateScreenState extends ConsumerState<CreateScreen> {
               ),
               child: Text(pack.script, style: const TextStyle(fontSize: 15, height: 1.75)),
             ),
+            speak: pack.script,
           ),
 
           const SizedBox(height: 16),
@@ -443,7 +456,7 @@ class _CreateScreenState extends ConsumerState<CreateScreen> {
     }
   }
 
-  Widget _buildContentCard(BuildContext context, String title, Widget content) {
+  Widget _buildContentCard(BuildContext context, String title, Widget content, {String? speak}) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -464,10 +477,13 @@ class _CreateScreenState extends ConsumerState<CreateScreen> {
               child: Icon(_iconForTitle(title), size: 18, color: Theme.of(context).colorScheme.primary),
             ),
             const SizedBox(width: 10),
-            Text(
-              title,
-              style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
+            Expanded(
+              child: Text(
+                title,
+                style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
+              ),
             ),
+            if (speak != null) SpeakButton(text: speak, copy: voiceCopyZh, controlKey: 'voice-speak-$title'),
           ]),
           const SizedBox(height: 12),
           content,

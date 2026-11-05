@@ -24,6 +24,10 @@
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>ContentFlow uses the microphone when you tap the mic so your words can be written into a topic or script.</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>ContentFlow uses speech recognition when you tap the mic to turn speech into text for a topic or script.</string>
 	<key>NSCameraUsageDescription</key>
 	<string>ContentFlow uses the camera so you can take a photo and attach it to a scheduled post.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
