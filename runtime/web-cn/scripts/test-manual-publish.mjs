@@ -9,7 +9,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { buildCopyText, copyTextHasAiLabel, MANUAL_PLATFORMS, PUBLISH_CHANNEL_NOTICE, isManualPlatform, officialAutoPublishAllowed, AUTO_PLATFORMS } from '../src/lib/manual-publish.ts';
+import { buildCopyText, copyTextHasAiLabel, coverLabelFontSize, MANUAL_PLATFORMS, PUBLISH_CHANNEL_NOTICE, isManualPlatform, officialAutoPublishAllowed, AUTO_PLATFORMS } from '../src/lib/manual-publish.ts';
 import { AI_TEXT_LABEL } from '../src/lib/ai-content-label.ts';
 import { mapPublishTasks } from '../src/lib/page-data.ts';
 
@@ -26,7 +26,9 @@ check('导航不再写「一键多平台发布」，发布页顶部常驻如实�
   const layout = read('components/layout/MainLayout.tsx');
   assert.doesNotMatch(layout, /一键多平台发布/);
   assert.doesNotMatch(layout, />分发中心</);
-  assert.equal(PUBLISH_CHANNEL_NOTICE, '目前所有平台均为人工确认发布（非自动发布）：小红书、视频号、公众号、抖音、B站、知乎都需你复制文案、下载带 AI 标识的封面后到平台手动发出，再回填作品链接确认。各平台官方自动发布授权完成并通过审核后，才会另行开通并明确标注');
+  assert.equal(PUBLISH_CHANNEL_NOTICE, '目前所有平台均为人工确认发布（非自动发布）：小红书、视频号、公众号、抖音、B站、知乎都需你按平台分别改写文案，复制后到平台手动发出，再回填作品链接确认。不能批量发布同一稿。各平台官方自动发布授权完成并通过审核后，才会另行开通并明确标注');
+  assert.ok(coverLabelFontSize(1080, 1920) >= 1080 * 0.05);
+  assert.ok(coverLabelFontSize(100, 80) >= 4);
   assert.doesNotMatch(PUBLISH_CHANNEL_NOTICE, /自动发布后|一键发布|全自动发布/);
   const page = read('app/(main)/publish/page.tsx');
   assert.match(page, /PUBLISH_CHANNEL_NOTICE/);

@@ -22,16 +22,33 @@ export interface AiImageLabel {
     provider_code: string;
     /** 内容编号（Content.id 或生成记录编号）；未知时为空字符串 */
     content_id: string;
+    /** GB 45438-2025 文件元数据制作要素 */
+    AIGC: {
+        Label: '1';
+        ContentProducer: string;
+        ProduceID: string;
+        ReservedCode1: string;
+        ReservedCode2: string;
+    };
 }
 
 export function buildAiImageLabel(opts: { model?: string; now?: Date; providerCode?: string; contentId?: string | null } = {}): AiImageLabel {
+    const providerCode = String(opts.providerCode ?? '').trim();
+    const contentId = String(opts.contentId ?? '');
     const label: AiImageLabel = {
         ai_generated: true,
         generator: AI_GENERATOR_NAME,
         media_type: 'image',
         generated_at: (opts.now || new Date()).toISOString(),
-        provider_code: String(opts.providerCode ?? '').trim(),
-        content_id: String(opts.contentId ?? ''),
+        provider_code: providerCode,
+        content_id: contentId,
+        AIGC: {
+            Label: '1',
+            ContentProducer: providerCode || AI_GENERATOR_NAME,
+            ProduceID: contentId,
+            ReservedCode1: '',
+            ReservedCode2: '',
+        },
     };
     if (opts.model) label.model = opts.model;
     return label;

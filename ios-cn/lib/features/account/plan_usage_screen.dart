@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/providers.dart';
 import '../../data/subscription_status.dart';
+import 'package:contentflow_cn/core/friendly_error.dart';
 
 /// 套餐与用量：全部来自服务端 GET /billing/subscription，没有本地推算或占位数字。
 final subscriptionStatusProvider = FutureProvider.autoDispose<SubscriptionStatus>((ref) {
@@ -125,7 +126,7 @@ class PlanUsageScreen extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(title: const Text('套餐与用量')),
       body: status.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
+        loading: () => const CfLoading(),
         error: (_, __) => Center(
           child: Padding(
             padding: const EdgeInsets.all(24),

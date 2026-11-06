@@ -54,7 +54,13 @@ export const CONSERVATIVE_USER_NOTICE_EN = "Today's compliance check is more con
 export const CONSERVATIVE_USER_NOTICE = '今天的合规检查会更保守，发布前需要你自行确认。这不是法律意见。';
 
 const DAY = 86_400_000;
-const ALLOWED_ORIGINS = ['https://www.cac.gov.cn', 'https://www.douyin.com', 'https://www.bilibili.com'];
+const ALLOWED_ORIGINS = [
+  'https://www.cac.gov.cn',
+  'https://www.gov.cn',
+  'https://www.samr.gov.cn',
+  'https://openstd.samr.gov.cn',
+  'https://www.bilibili.com',
+];
 
 /**
  * 时效以「最近一次核对」为准：有复核人与复核时间（且不早于抓取、不晚于现在）时用复核时间，

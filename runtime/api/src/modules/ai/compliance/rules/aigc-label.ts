@@ -17,6 +17,9 @@ export type AigcIssueCode =
   | 'explicit_missing'
   | 'explicit_missing_ai_element'
   | 'explicit_missing_generation_element'
+  | 'explicit_label_too_small'
+  | 'video_label_not_at_start'
+  | 'video_label_too_brief'
   | 'implicit_missing'
   | 'implicit_not_json'
   | 'implicit_missing_aigc_key'
@@ -42,6 +45,52 @@ export interface AigcCheckResult {
 const BASIS_EXPLICIT = '《人工智能生成合成内容标识办法》第四条；GB 45438—2025 第5章';
 const BASIS_PUBLISHER = '《人工智能生成合成内容标识办法》第十条';
 const BASIS_IMPLICIT = '《人工智能生成合成内容标识办法》第五条；GB 45438—2025 第6.1条、附录E';
+
+/**
+ * GB 45438—2025：图片、视频的文字标识高度不低于画面最短边的 5%；
+ * 视频标识在起始画面，且持续不少于 2 秒。
+ */
+export const MIN_LABEL_HEIGHT_RATIO = 0.05;
+export const MIN_VIDEO_LABEL_SECONDS = 2;
+
+/** 最短边像素对应的最小文字高度（像素）。边长无效时返回 Infinity，调用方应判为不合格。 */
+export function minLabelTextHeightPx(shortestSidePx: number): number {
+  if (!Number.isFinite(shortestSidePx) || shortestSidePx <= 0) return Number.POSITIVE_INFINITY;
+  return shortestSidePx * MIN_LABEL_HEIGHT_RATIO;
+}
+
+/** 文字高度是否达到最短边的 5%。相等算通过。 */
+export function checkLabelTextHeight(labelTextHeightPx: number, shortestSidePx: number): AigcCheckResult {
+  const minimum = minLabelTextHeightPx(shortestSidePx);
+  if (!Number.isFinite(labelTextHeightPx) || labelTextHeightPx + 1e-6 < minimum) {
+    return {
+      ok: false,
+      issues: [{
+        code: 'explicit_label_too_small',
+        message: '文字标识高度未达到画面最短边的 5%。',
+        basis: BASIS_EXPLICIT,
+      }],
+    };
+  }
+  return { ok: true, issues: [] };
+}
+
+/**
+ * 视频显式标识须从起始画面开始，并至少持续 2 秒。
+ * startsAtSeconds 大于 0.05 视为没有放在起始画面。
+ */
+export function checkVideoLabelWindow(input: { startsAtSeconds: number; visibleSeconds: number } | null | undefined): AigcCheckResult {
+  const issues: AigcIssue[] = [];
+  const start = input?.startsAtSeconds;
+  const visible = input?.visibleSeconds;
+  if (start == null || !Number.isFinite(start) || start > 0.05) {
+    issues.push({ code: 'video_label_not_at_start', message: '视频标识须出现在起始画面。', basis: BASIS_EXPLICIT });
+  }
+  if (visible == null || !Number.isFinite(visible) || visible + 1e-6 < MIN_VIDEO_LABEL_SECONDS) {
+    issues.push({ code: 'video_label_too_brief', message: '视频起始标识的可见时长不足 2 秒。', basis: BASIS_EXPLICIT });
+  }
+  return { ok: issues.length === 0, issues };
+}
 
 /** 标识文字须同时含「人工智能要素」和「生成合成要素」（GB 45438—2025 5.1 b）。 */
 const AI_ELEMENT = /人工智能|AI/i;
@@ -137,6 +186,13 @@ export interface AigcPublishInput {
   /** 文本/PDF 等文件通常能读到元数据；读不到时传 undefined，会被判为缺失。 */
   implicitMetadata?: string | null;
   requirePropagation?: boolean;
+  /** 画面最短边（像素）。与 labelTextHeightPx 同时给出时才检查 5% 规则。 */
+  shortestSidePx?: number;
+  /** 文字标识高度（像素）。 */
+  labelTextHeightPx?: number;
+  /** 视频标识出现时间（秒）。与 visibleSeconds 任一给出即检查起始 2 秒规则。 */
+  videoLabelStartsAtSeconds?: number;
+  videoLabelVisibleSeconds?: number;
 }
 
 /**
@@ -150,6 +206,15 @@ export function checkAigcBeforePublish(input: AigcPublishInput): AigcCheckResult
   const explicit = checkExplicitLabel(input.explicitLabelText, { allowCornerMark: input.kind === 'text' || input.kind === 'image' });
   const implicit = checkImplicitMetadata(input.implicitMetadata, { requirePropagation: input.requirePropagation });
   const issues = [...explicit.issues, ...implicit.issues];
+  if ((input.kind === 'image' || input.kind === 'video') && input.labelTextHeightPx != null && input.shortestSidePx != null) {
+    issues.push(...checkLabelTextHeight(input.labelTextHeightPx, input.shortestSidePx).issues);
+  }
+  if (input.kind === 'video' && (input.videoLabelStartsAtSeconds != null || input.videoLabelVisibleSeconds != null)) {
+    issues.push(...checkVideoLabelWindow({
+      startsAtSeconds: input.videoLabelStartsAtSeconds ?? Number.POSITIVE_INFINITY,
+      visibleSeconds: input.videoLabelVisibleSeconds ?? 0,
+    }).issues);
+  }
   return { ok: issues.length === 0, issues };
 }
 

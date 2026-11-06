@@ -2,7 +2,7 @@
  * 2026-11-01 international compliance audit: FTC Endorsement Guides and Part 465, UK ASA/CAP, EU AI Act Art. 50.
  * Each rule is pinned with a hit and a non-hit so educational text is not blocked.
  */
-import { evaluateInternationalContent, evaluateInternationalRequest, INTERNATIONAL_RULESET_VERSION } from './international-content-compliance';
+import { AI_TRANSPARENCY_NOTE, evaluateInternationalContent, evaluateInternationalRequest, INTERNATIONAL_RULESET_VERSION } from './international-content-compliance';
 import { COMMERCIAL_RELATIONSHIPS, TARGET_MARKETS, GENERIC_MARKET, disclosureLabelFor, isCommercialRelationship, resolveCommercialRelationship, targetMarketPromptLine } from './target-market';
 import { adaptForPlatforms } from '../modules/ai/platform-adaptation';
 import { ComplianceService } from '../modules/ai/compliance.service';
@@ -130,13 +130,27 @@ describe('market-aware disclosure check', () => {
   });
 
   it('the rule set version moved with this change', () => {
-    expect(INTERNATIONAL_RULESET_VERSION).toBe('intl-content-2026.11.01');
+    expect(INTERNATIONAL_RULESET_VERSION).toBe('intl-content-2026.11.06');
   });
 
   it('keeps the honest "not checked" list and names the AI Act deployer duty', () => {
     const r = evaluateInternationalContent(promo);
     expect(r.notChecked.join(' ')).toMatch(/Article 50\(4\)/);
     expect(r.notChecked.join(' ')).toMatch(/real person/);
+  });
+
+  it('cites 16 CFR 255, the FTC PDF, and the ASA influencers guide, and does not claim the EU code was signed', () => {
+    const us = evaluateInternationalContent('#sp use my code SAVE10', { targetMarket: 'US' });
+    expect(us.hits[0].sourceUrl).toBe('https://www.ftc.gov/system/files/ftc_gov/pdf/1001A_Influencer%20Guide_508.pdf');
+    expect(us.hits[0].source).toMatch(/16 CFR 255/);
+    expect(us.hits[0].sourceUrl).not.toMatch(/business-guidance\/resources\/disclosures-101/);
+    const uk = evaluateInternationalContent('#gifted use my code SAVE10', { targetMarket: 'UK' });
+    expect(uk.hits[0].sourceUrl).toBe('https://www.asa.org.uk/resource/influencers-guide.html');
+    expect(AI_TRANSPARENCY_NOTE).toMatch(/2026-08-02/);
+    expect(AI_TRANSPARENCY_NOTE).toMatch(/2026-06-10/);
+    expect(AI_TRANSPARENCY_NOTE).toMatch(/2026-07-20/);
+    expect(AI_TRANSPARENCY_NOTE).toMatch(/has not confirmed/);
+    expect(AI_TRANSPARENCY_NOTE).not.toMatch(/ContentFlow has signed/);
   });
 });
 

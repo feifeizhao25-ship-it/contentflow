@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import MobileNav from '@/components/layout/MobileNav';
+import { ErrorBoundary } from '@/components/error/ErrorBoundary';
 import './globals.css';
 
 export const metadata: Metadata = {
@@ -27,7 +28,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
           <MobileNav links={links} />
           <Link href="/login" className="button secondary header-account">Account</Link>
         </header>
-        {children}
+        <ErrorBoundary>{children}</ErrorBoundary>
         <footer>ContentFlow Global · Human-reviewed AI operations · <Link href="/legal/privacy">Privacy</Link> · <Link href="/legal/terms">Terms</Link></footer>
       </body>
     </html>

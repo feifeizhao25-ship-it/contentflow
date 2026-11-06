@@ -7,6 +7,7 @@ import '../../core/providers.dart';
 import '../../data/models.dart';
 import '../../core/error_text.dart';
 import '../voice/voice.dart';
+import 'package:contentflow_cn/core/friendly_error.dart';
 
 /// Saved content-pack drafts (what "Save to content pack" creates), shown on the Assets tab.
 class DraftsView extends ConsumerWidget {
@@ -16,7 +17,7 @@ class DraftsView extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final drafts = ref.watch(contentDraftsProvider);
     return drafts.when(
-      loading: () => const Center(child: CircularProgressIndicator()),
+      loading: () => const CfLoading(),
       error: (e, _) => Center(
         key: const ValueKey('drafts-error'),
         child: Column(

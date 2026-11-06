@@ -26,7 +26,8 @@ export default function Page() {
         </section>
         <section className="card">
           <h2>AI output</h2>
-          <p>AI drafts can be inaccurate or incomplete. You are responsible for reviewing every draft before it is published, including advertising disclosures (such as #ad) required in your market.</p>
+          <p>AI drafts can be inaccurate or incomplete. You are responsible for reviewing every draft before it is published. Advertising disclosures follow 16 CFR Part 255 and the FTC Disclosures 101 PDF (https://www.ftc.gov/system/files/ftc_gov/pdf/1001A_Influencer%20Guide_508.pdf). In the UK, follow the ASA influencers&apos; guide (https://www.asa.org.uk/resource/influencers-guide.html). Use a clear label such as #ad where those instruments require it.</p>
+          <p>AI transparency references are EU AI Act Article 50 (https://eur-lex.europa.eu/eli/reg/2024/1689/oj), the Commission Code of Practice published on 2026-06-10, and the Commission guidelines of 2026-07-20. Those obligations apply from 2026-08-02. ContentFlow has not confirmed that it has signed the Code of Practice; the instruments are references only. Generated text carries a visible AI label. Generated images and videos are signed on the server. We do not add invisible text watermarks. Publishing to more than one platform requires a separate rewrite and your confirmation. The product does not auto-post.</p>
         </section>
         <section className="card">
           <h2>Plans and billing</h2>

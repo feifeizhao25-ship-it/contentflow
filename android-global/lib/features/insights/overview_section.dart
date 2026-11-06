@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/providers.dart';
 import '../../data/models.dart';
+import 'package:contentflow_global/core/friendly_error.dart';
 
 /// Own-data overview from GET /analytics/overview: publishing tasks by real status, AI generations and adoption,
 /// failure reasons, and an honest note while platform engagement data is not connected.
@@ -34,7 +35,7 @@ class _OverviewSectionState extends ConsumerState<OverviewSection> {
         ),
         const SizedBox(height: 12),
         async.when(
-          loading: () => const Padding(padding: EdgeInsets.all(24), child: Center(child: CircularProgressIndicator())),
+          loading: () => const Padding(padding: EdgeInsets.all(24), child: const CfLoading()),
           error: (_, __) => const Padding(
             padding: EdgeInsets.symmetric(horizontal: 20, vertical: 12),
             child: Text('We could not load this just now. Pull down to try again.', style: TextStyle(fontSize: 14, height: 1.5)),

@@ -44,6 +44,11 @@ describe('C2PA config', () => {
     expect(loadProvenanceConfig({ NODE_ENV: 'production' } as any).allowEphemeral).toBe(false);
     expect(loadProvenanceConfig({ NODE_ENV: 'production', C2PA_ALLOW_EPHEMERAL: '1' } as any).allowEphemeral).toBe(true);
   });
+  it('reads the signing key only from server config, not from a client-bundled name', () => {
+    const cfg = loadProvenanceConfig({ NEXT_PUBLIC_C2PA_SIGNING_KEY: 'client-secret', C2PA_SIGNING_KEY: 'server-key' } as any);
+    expect(cfg.keyPem).toBe('server-key');
+    expect(JSON.stringify(cfg)).not.toContain('client-secret');
+  });
   it('accepts PEMs with escaped newlines, falls back to es256 for an unknown algorithm', () => {
     const cfg = loadProvenanceConfig({ C2PA_SIGNING_CERT: 'A\\nB', C2PA_SIGNING_KEY: 'K\\nL', C2PA_SIGNING_ALG: 'nope' } as any);
     expect(cfg.certPem).toBe('A\nB');

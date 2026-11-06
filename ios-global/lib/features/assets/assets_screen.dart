@@ -6,6 +6,7 @@ import 'package:image_picker/image_picker.dart';
 import '../../core/providers.dart';
 import '../../data/models.dart';
 import 'drafts_view.dart';
+import 'package:contentflow_global/core/friendly_error.dart';
 
 class AssetsScreen extends ConsumerWidget {
   const AssetsScreen({super.key});
@@ -31,7 +32,7 @@ class AssetsScreen extends ConsumerWidget {
             Expanded(
               child: showDrafts ? const DraftsView() : assetsAsync.when(
                 data: (assets) => _buildAssetsGrid(context, assets),
-                loading: () => const Center(child: CircularProgressIndicator()),
+                loading: () => const CfLoading(),
                 error: (e, _) => Center(child: Text('Failed to load: $e')),
               ),
             ),

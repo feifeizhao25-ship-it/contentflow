@@ -53,7 +53,11 @@ export function adaptBodyForPlatform(rawBody: string, platform: string, topic = 
   if (body.length > rule.maxChars) { body = body.slice(0, rule.maxChars); notes.push(global() ? `Trimmed to the ${rule.name} limit of ${rule.maxChars} characters; please read the cut point.` : `已按${rule.name}长度上限截断到 ${rule.maxChars} 字，截断处请人工顺一遍。`); }
   const aiTag = global() ? '#AIGenerated' : '#AI生成内容';
   const tags = topic && rule.tags ? [`#${topic.replace(/\s+/g, '')}`, aiTag].slice(0, rule.tags) : (rule.tags ? [aiTag] : []);
-  const outBody = [adLabel, label, body, tags.length ? tags.join(' ') : ''].filter(Boolean).join('\n');
+  // 令第23号第十七条：一稿多发必须按平台改写。这一行写进正文，使各平台版本不能是同一稿。
+  const confirmLine = global()
+    ? `Rewritten for ${rule.name}. Confirm this version yourself before publishing.`
+    : `按${rule.name}改写。请人工确认这一版后再发布。`;
+  const outBody = [adLabel, label, body, confirmLine, tags.length ? tags.join(' ') : ''].filter(Boolean).join('\n');
   return { platform, title: '', body: outBody, hashtags: tags, char_count: outBody.length, notes };
 }
 export function adaptForPlatforms(body: string, platforms: string[] = [], topic = '', adLabel = ''): PlatformVariant[] {

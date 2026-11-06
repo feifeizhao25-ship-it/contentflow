@@ -7,6 +7,7 @@ import '../../core/cn_format.dart';
 import '../../data/models.dart';
 import 'overview_section.dart';
 import '../../core/error_text.dart';
+import 'package:contentflow_cn/core/friendly_error.dart';
 
 class InsightsScreen extends ConsumerWidget {
   const InsightsScreen({super.key});
@@ -111,7 +112,7 @@ class InsightsScreen extends ConsumerWidget {
                         ),
                       ),
                 loading: () => const SliverToBoxAdapter(
-                  child: Center(child: CircularProgressIndicator()),
+                  child: const CfLoading(),
                 ),
                 error: (e, _) =>
                     SliverToBoxAdapter(child: Center(child: Text(friendlyError(e)))),

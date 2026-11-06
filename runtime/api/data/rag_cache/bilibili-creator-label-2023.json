@@ -1,0 +1,32 @@
+{
+  "id": "cn-bilibili-creator-label-2023",
+  "file": "bilibili-creator-label-2023.json",
+  "library_id": "CF-06",
+  "source_url": "https://www.bilibili.com/opus/840812291428450327",
+  "source_name": "关于「主动添加内容标识」的公告（B站）",
+  "publisher": "哔哩哔哩社区小管家",
+  "published_at": "2023-09-14T00:00:00+08:00",
+  "effective_at": "2023-09-20T00:00:00+08:00",
+  "retrieved_at": "2026-11-06T08:00:00+08:00",
+  "reviewed_by": null,
+  "reviewed_at": null,
+  "reviewer": "",
+  "review_status": "待审核",
+  "jurisdiction": "CN",
+  "region": "CN",
+  "doi": null,
+  "source_tier": "A",
+  "license": "平台规则，待审核",
+  "content_hash": "09a2766d65645ebdf5e18ee72aefd5b261d322676a75cd1be7190bfe8d56adfb",
+  "platforms": [
+    "bilibili",
+    "B站",
+    "哔哩哔哩"
+  ],
+  "topics": [
+    "内容标识"
+  ],
+  "content": "哔哩哔哩社区小管家2023-09-14公告：2023-09-20上线「创作者声明」。时事内容需标明时间地点，转载需标明来源。这是平台公告摘录，待审核，不是已逐字核对的法规全文。",
+  "excerpt": "哔哩哔哩社区小管家2023-09-14公告：2023-09-20上线「创作者声明」。时事内容需标明时间地点，转载需标明来源。这是平台公告摘录，待审核，不是已逐字核对的法规全文。",
+  "note": "待审核。复核人留空。未经过具名复核，不得作为已核验事实引用。"
+}

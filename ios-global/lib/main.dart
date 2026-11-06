@@ -10,9 +10,11 @@ import 'features/assets/assets_screen.dart';
 import 'features/insights/insights_screen.dart';
 import 'features/account/account_screen.dart';
 import 'features/auth/login_screen.dart';
+import 'package:contentflow_global/core/friendly_error.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  installFriendlyErrorWidget();
 
   // Initialize SharedPreferences
   final prefs = await SharedPreferences.getInstance();
@@ -56,7 +58,7 @@ class AuthGate extends ConsumerWidget {
     return authAsync.when(
       data: (isAuthed) => isAuthed ? const MainScreen() : const LoginScreen(),
       loading: () =>
-          const Scaffold(body: Center(child: CircularProgressIndicator())),
+          const Scaffold(body: const CfLoading()),
       error: (error, _) => Scaffold(
         body: Center(
           child: Padding(

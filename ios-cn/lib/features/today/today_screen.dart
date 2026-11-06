@@ -8,6 +8,7 @@ import '../../data/models.dart';
 import 'daily_focus.dart';
 import '../../core/error_text.dart';
 import '../../core/cn_format.dart';
+import 'package:contentflow_cn/core/friendly_error.dart';
 
 class TodayScreen extends ConsumerWidget {
   const TodayScreen({super.key});
@@ -44,7 +45,7 @@ class TodayScreen extends ConsumerWidget {
                 data: (schedules) =>
                     _buildScheduleList(context, ref, schedules),
                 loading: () => const SliverToBoxAdapter(
-                  child: Center(child: CircularProgressIndicator()),
+                  child: const CfLoading(),
                 ),
                 error: (e, _) =>
                     SliverToBoxAdapter(child: Center(child: Text(friendlyError(e)))),
@@ -58,7 +59,7 @@ class TodayScreen extends ConsumerWidget {
                   child: _buildAnalyticsSummary(context, summary),
                 ),
                 loading: () => const SliverToBoxAdapter(
-                  child: Center(child: CircularProgressIndicator()),
+                  child: const CfLoading(),
                 ),
                 error: (e, _) => const SliverToBoxAdapter(
                   child: Padding(

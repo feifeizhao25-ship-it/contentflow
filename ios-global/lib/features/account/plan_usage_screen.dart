@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/providers.dart';
 import '../../data/subscription_status.dart';
+import 'package:contentflow_global/core/friendly_error.dart';
 
 /// Plan & usage: all values come from the server's GET /billing/subscription; no local math or placeholder numbers.
 final subscriptionStatusProvider = FutureProvider.autoDispose<SubscriptionStatus>((ref) {
@@ -128,7 +129,7 @@ class PlanUsageScreen extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(title: const Text('Plan & usage')),
       body: status.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
+        loading: () => const CfLoading(),
         error: (_, __) => Center(
           child: Padding(
             padding: const EdgeInsets.all(24),

@@ -7,6 +7,7 @@ import '../../core/providers.dart';
 import '../../data/models.dart';
 import 'drafts_view.dart';
 import '../../core/error_text.dart';
+import 'package:contentflow_cn/core/friendly_error.dart';
 
 class AssetsScreen extends ConsumerWidget {
   const AssetsScreen({super.key});
@@ -31,7 +32,7 @@ class AssetsScreen extends ConsumerWidget {
             Expanded(
               child: showDrafts ? const DraftsView() : assetsAsync.when(
                 data: (assets) => _buildAssetsGrid(context, assets),
-                loading: () => const Center(child: CircularProgressIndicator()),
+                loading: () => const CfLoading(),
                 error: (e, _) => Center(child: Text(friendlyError(e))),
               ),
             ),

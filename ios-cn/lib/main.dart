@@ -11,9 +11,11 @@ import 'features/assets/assets_screen.dart';
 import 'features/insights/insights_screen.dart';
 import 'features/account/account_screen.dart';
 import 'features/auth/login_screen.dart';
+import 'package:contentflow_cn/core/friendly_error.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  installFriendlyErrorWidget();
 
   // Initialize SharedPreferences
   final prefs = await SharedPreferences.getInstance();
@@ -76,7 +78,7 @@ class _AuthGateState extends ConsumerState<AuthGate> {
       data: (isAuthed) => isAuthed ? const MainScreen() : const LoginScreen(),
       loading: () => Scaffold(
         backgroundColor: AppColors.page(context),
-        body: const Center(child: CircularProgressIndicator()),
+        body: const CfLoading(),
       ),
       error: (error, _) => AuthFailurePage(
         onRetry: () => ref.invalidate(authStateProvider),
