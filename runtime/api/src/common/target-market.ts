@@ -38,7 +38,7 @@ const HINTS: Record<TargetMarket, DisclosureHint> = {
     placement:
       'Put the disclosure with the endorsement itself, not only in a profile or behind "more". In video, show it in the video (audio and visual is better); repeat it periodically in live streams.',
     sources: [
-      { name: 'FTC, Disclosures 101 for Social Media Influencers', url: 'https://www.ftc.gov/business-guidance/resources/disclosures-101-social-media-influencers', retrievedAt: RETRIEVED },
+      { name: 'FTC, Disclosures 101 for Social Media Influencers (PDF)', url: 'https://www.ftc.gov/system/files/ftc_gov/pdf/1001A_Influencer%20Guide_508.pdf', retrievedAt: '2026-11-06' },
       { name: 'FTC Endorsement Guides, 16 CFR 255.5', url: 'https://www.ecfr.gov/current/title-16/chapter-I/subchapter-B/part-255/section-255.5', retrievedAt: RETRIEVED },
     ],
     note: 'Disclose any material connection: payment, free or discounted products, family or employment ties.',
@@ -50,6 +50,7 @@ const HINTS: Record<TargetMarket, DisclosureHint> = {
     avoid: ['"sponsored" on its own (open to varied interpretation)', 'a brand @mention or discount code alone', 'a label buried in a list of hashtags or under "See more"'],
     placement: 'Prominent and upfront, visible before the viewer engages, on mobile, desktop and in-app; label each item of a carousel that carries promotion.',
     sources: [
+      { name: 'ASA, Influencers\' guide to making clear that ads are ads', url: 'https://www.asa.org.uk/resource/influencers-guide.html', retrievedAt: '2026-11-06' },
       { name: 'ASA, Recognising ads: social media and influencer marketing', url: 'https://www.asa.org.uk/advice-online/recognising-ads-social-media.html', retrievedAt: RETRIEVED },
       { name: 'GOV.UK (CMA), Social media endorsements: guidance for content creators', url: 'https://www.gov.uk/government/publications/social-media-endorsements-guidance-for-content-creators/social-media-endorsements-being-transparent-with-your-followers', retrievedAt: RETRIEVED },
     ],

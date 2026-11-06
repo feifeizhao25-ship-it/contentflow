@@ -11,17 +11,20 @@ describe('target market option', () => {
 
   it.each(TARGET_MARKETS)('%s hint has labels, placement and at least one https source with a retrieval date', (m) => {
     const h = disclosureHint(m);
+    expect(h.sources.every((s) => !s.url.includes('disclosures-101-social-media-influencers'))).toBe(true);
     expect(h.labelExamples.length).toBeGreaterThan(0);
     expect(h.placement.length).toBeGreaterThan(20);
     expect(h.sources.length).toBeGreaterThan(0);
     for (const s of h.sources) {
       expect(s.url).toMatch(/^https:\/\//);
-      expect(s.retrievedAt).toBe('2026-10-31');
+      expect(['2026-10-31', '2026-11-06']).toContain(s.retrievedAt);
     }
     expect(/[\u3400-\u9fff]/.test(JSON.stringify(h))).toBe(false);
   });
 
   it('UK steers away from "sponsored" alone; India lists the ASCI labels; the prompt line names the market', () => {
+    expect(disclosureHint('US').sources[0].url).toContain('1001A_Influencer');
+    expect(disclosureHint('UK').sources.some((s) => s.url.includes('influencers-guide.html'))).toBe(true);
     expect(disclosureHint('UK').avoid.join(' ')).toMatch(/sponsored/);
     expect(disclosureHint('IN').labelExamples).toContain('#Ad');
     expect(targetMarketPromptLine('UK')).toContain('United Kingdom');

@@ -11,6 +11,7 @@ import { labelAiGeneratedText, aiTextLabel, aigcProviderCode } from '../../commo
 import { MANUAL_DONE, MANUAL_PENDING, MANUAL_PLATFORMS, isManualPlatform, normalizeManualPostUrl } from './manual-publish';
 import { PUBLISH_LOG_MAX_ROWS, PublishTaskFilter, channelUnavailableReason, publishTaskWhere, publishTasksToCsv } from './publish-log';
 import { adaptBodyForPlatform } from '../ai/platform-adaptation';
+import { bulkPublishBlockReason } from './bulk-identical';
 import { WebhookService } from '../developer/webhook.service';
 import { RagPolicyService } from '../ai/rag-policy.service';
 
@@ -53,6 +54,7 @@ export class PublishService {
     publishType: 'immediate' | 'scheduled';
     scheduledAt?: Date;
     riskAcknowledged?: boolean;
+    humanConfirmed?: boolean;
   }) {
     if (!['immediate', 'scheduled'].includes(data.publishType)) throw new BadRequestException('发布类型无效');
     const accountIds = [...new Set(data.platformAccountIds || [])];
@@ -105,17 +107,42 @@ export class PublishService {
       }),
     );
 
+    const region = this.config.get<string>('MARKET_REGION', 'cn') === 'global' ? 'global' as const : 'cn' as const;
+    const snapshots = new Map<string, string>();
+    if (accounts.length >= 2) {
+      const items = accounts.map((account) => {
+        const variant = adaptBodyForPlatform(content.body || '', account.platform, content.title || '');
+        const snapshot = content.source === 'ai' ? labelAiGeneratedText(variant.body) : variant.body;
+        snapshots.set(account.id, snapshot);
+        return { key: `${account.platform}:${account.id}`, body: snapshot };
+      });
+      const blocked = bulkPublishBlockReason(items, data.humanConfirmed === true, region);
+      if (blocked) throw new BadRequestException(blocked);
+    }
+
     const tasks = await Promise.all(
       accounts.map(async (account) => {
         const scheduledTime = data.publishType === 'scheduled' && scheduledAt
           ? scheduledAt
           : new Date();
 
+        let platformContentId: string | undefined;
+        const snapshot = snapshots.get(account.id);
+        if (snapshot) {
+          const platformContent = await this.prisma.platformContent.upsert({
+            where: { content_id_platform: { content_id: content.id, platform: account.platform } },
+            create: { content_id: content.id, platform: account.platform, title: content.title, body: snapshot, cover_url: content.cover_url },
+            update: { title: content.title, body: snapshot, cover_url: content.cover_url },
+          });
+          platformContentId = platformContent.id;
+        }
+
         const task = await this.prisma.publishTask.create({
           data: {
             tenant_id: tenantId,
             content_id: data.contentId,
             platform_account_id: account.id,
+            ...(platformContentId ? { platform_content_id: platformContentId } : {}),
             created_by: userId,
             publish_type: data.publishType,
             scheduled_at: scheduledTime,
@@ -242,12 +269,22 @@ export class PublishService {
     }
     const aiGenerated = content.source === 'ai';
     const body = content.body || '';
-    const tasks = [];
-    for (const platform of platforms) {
-      // 按平台留一份文案快照（AI 生成的内容必须带显式标识）
-      // 批2/批3：按平台改写后的正文快照（抖音/B站也是人工确认发布，不是自动发布）
+    const snapshots = platforms.map((platform) => {
       const variant = adaptBodyForPlatform(body, platform, content.title || '');
       const snapshot = aiGenerated ? labelAiGeneratedText(variant.body) : variant.body;
+      return { platform, snapshot };
+    });
+    const region = this.config.get<string>('MARKET_REGION', 'cn') === 'global' ? 'global' as const : 'cn' as const;
+    const blocked = bulkPublishBlockReason(
+      snapshots.map((item) => ({ key: item.platform, body: item.snapshot })),
+      true,
+      region,
+    );
+    if (blocked) throw new BadRequestException(blocked);
+    const tasks = [];
+    for (const { platform, snapshot } of snapshots) {
+      // 按平台留一份文案快照（AI 生成的内容必须带显式标识）
+      // 批2/批3：按平台改写后的正文快照（抖音/B站也是人工确认发布，不是自动发布）
       const platformContent = await this.prisma.platformContent.upsert({
         where: { content_id_platform: { content_id: content.id, platform } },
         create: { content_id: content.id, platform, title: content.title, body: snapshot, cover_url: content.cover_url },

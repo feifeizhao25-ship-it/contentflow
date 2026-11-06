@@ -1,0 +1,32 @@
+{
+  "id": "cn-bilibili-ai-abuse-2025",
+  "file": "bilibili-ai-abuse-2025.json",
+  "library_id": "CF-07",
+  "source_url": "https://www.bilibili.com/opus/1065945930120822784",
+  "source_name": "哔哩哔哩关于整治AI技术滥用的公告",
+  "publisher": "哔哩哔哩治理小分队",
+  "published_at": "2025-05-12T00:00:00+08:00",
+  "effective_at": "2025-05-12T00:00:00+08:00",
+  "retrieved_at": "2026-11-06T08:00:00+08:00",
+  "reviewed_by": null,
+  "reviewed_at": null,
+  "reviewer": "",
+  "review_status": "待审核",
+  "jurisdiction": "CN",
+  "region": "CN",
+  "doi": null,
+  "source_tier": "A",
+  "license": "平台规则，待审核",
+  "content_hash": "eeb62070c70ae5a4c709a5f67e6de89ef6b1e23875fcc360bb2d5f879c3bfeac",
+  "platforms": [
+    "bilibili",
+    "B站",
+    "哔哩哔哩"
+  ],
+  "topics": [
+    "AI标识"
+  ],
+  "content": "哔哩哔哩治理小分队2025-05-12公告：落实「清朗·整治AI技术滥用」，禁止利用AI发布虚假信息、仿冒他人形象或声音、篡改拼接他人原创。这是平台公告摘录，待审核，不是已逐字核对的法规全文。",
+  "excerpt": "哔哩哔哩治理小分队2025-05-12公告：落实「清朗·整治AI技术滥用」，禁止利用AI发布虚假信息、仿冒他人形象或声音、篡改拼接他人原创。这是平台公告摘录，待审核，不是已逐字核对的法规全文。",
+  "note": "待审核。复核人留空。未经过具名复核，不得作为已核验事实引用。"
+}

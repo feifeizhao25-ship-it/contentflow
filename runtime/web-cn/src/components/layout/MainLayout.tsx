@@ -41,7 +41,7 @@ interface MainLayoutProps {
 }
 
 // 简化后的导航结构
-// 核心价值：AI 生成 → 发布（授权平台自动发布，其余人工确认发布）→ 查看效果
+// 核心价值：AI 生成 → 按平台改写 → 人工确认后再发布 → 查看效果
 
 export default function MainLayout({ children }: MainLayoutProps) {
     const router = useRouter();
@@ -92,7 +92,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
 
     // 分发功能
     const publishItems = [
-        { key: '/publish', icon: <SendOutlined />, label: <Link href="/publish">发布中心</Link>, desc: '授权平台自动发，其余人工确认发' },
+        { key: '/publish', icon: <SendOutlined />, label: <Link href="/publish">发布中心</Link>, desc: '按平台改写后人工确认再发，不批量发同一稿' },
         { key: '/accounts', icon: <UserOutlined />, label: <Link href="/accounts">账号管理</Link>, desc: '连接社交账号' },
         { key: '/calendar', icon: <HomeOutlined />, label: <Link href="/calendar">发布日历</Link>, desc: '规划发布时间' },
     ];

@@ -24,4 +24,9 @@ export class CreatePublishTaskDto {
   @IsOptional()
   @IsBoolean({ message: '请明确是否已自行核对风险提示' })
   riskAcknowledged?: boolean;
+
+  /** 一次发到多个账号时必须为 true。单账号任务可以不传。 */
+  @IsOptional()
+  @IsBoolean({ message: '请明确是否已人工确认各平台改写稿' })
+  humanConfirmed?: boolean;
 }

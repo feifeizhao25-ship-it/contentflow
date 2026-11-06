@@ -1,4 +1,4 @@
-import { checkAigcBeforePublish, checkExplicitLabel, checkImplicitMetadata } from './aigc-label';
+import { checkAigcBeforePublish, checkExplicitLabel, checkImplicitMetadata, checkLabelTextHeight, checkVideoLabelWindow, minLabelTextHeightPx } from './aigc-label';
 
 const good = {
   AIGC: { Label: '1', ContentProducer: 'contentflow', ProduceID: 'p-001', ContentPropagator: 'contentflow', PropagateID: 'p-001' },
@@ -54,6 +54,29 @@ describe('AIGC 元数据隐式标识', () => {
   it('字段类型必须是字符串', () => {
     const bad = { AIGC: { Label: '1', ContentProducer: 'a', ProduceID: 7 } };
     expect(checkImplicitMetadata(JSON.stringify(bad)).issues[0].code).toBe('implicit_field_not_string');
+  });
+});
+
+describe('GB 45438 可检查的显式标识尺寸和视频时长', () => {
+  it('文字高度至少是最短边的 5%，相等通过、差一点不通过', () => {
+    expect(minLabelTextHeightPx(1000)).toBe(50);
+    expect(checkLabelTextHeight(50, 1000).ok).toBe(true);
+    expect(checkLabelTextHeight(49.9, 1000).issues[0].code).toBe('explicit_label_too_small');
+    expect(checkLabelTextHeight(18, 1080).ok).toBe(false);
+    expect(checkLabelTextHeight(10, 0).ok).toBe(false);
+  });
+  it('视频标识须在起始画面且不少于 2 秒', () => {
+    expect(checkVideoLabelWindow({ startsAtSeconds: 0, visibleSeconds: 2 }).ok).toBe(true);
+    expect(checkVideoLabelWindow({ startsAtSeconds: 0.5, visibleSeconds: 3 }).issues.map((i) => i.code)).toEqual(['video_label_not_at_start']);
+    expect(checkVideoLabelWindow({ startsAtSeconds: 0, visibleSeconds: 1.9 }).issues.map((i) => i.code)).toEqual(['video_label_too_brief']);
+    expect(checkVideoLabelWindow(null).issues.map((i) => i.code)).toEqual(['video_label_not_at_start', 'video_label_too_brief']);
+  });
+  it('发布检查在调用方给出尺寸或时长时执行这两条，没给则不额外拦截', () => {
+    const base = { kind: 'video' as const, aiGenerated: true, explicitLabelText: '内容由AI生成', implicitMetadata: JSON.stringify(good) };
+    expect(checkAigcBeforePublish(base).ok).toBe(true);
+    expect(checkAigcBeforePublish({ ...base, shortestSidePx: 200, labelTextHeightPx: 9 }).issues.map((i) => i.code)).toContain('explicit_label_too_small');
+    expect(checkAigcBeforePublish({ ...base, shortestSidePx: 200, labelTextHeightPx: 10, videoLabelStartsAtSeconds: 0, videoLabelVisibleSeconds: 2 }).ok).toBe(true);
+    expect(checkAigcBeforePublish({ ...base, videoLabelVisibleSeconds: 1 }).issues.map((i) => i.code)).toEqual(expect.arrayContaining(['video_label_not_at_start', 'video_label_too_brief']));
   });
 });
 

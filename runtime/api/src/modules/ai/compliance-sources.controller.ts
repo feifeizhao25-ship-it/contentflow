@@ -3,7 +3,7 @@ import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RagPolicyService } from './rag-policy.service';
 import { ComplianceService } from './compliance.service';
-import { INTERNATIONAL_RULESET_VERSION } from '../../common/international-content-compliance';
+import { AI_TRANSPARENCY_NOTE, INTERNATIONAL_RULESET_VERSION } from '../../common/international-content-compliance';
 
 /**
  * 合规规则资料的时效状态。资料超过时效（默认 30 天）未经人工复核时，
@@ -26,17 +26,16 @@ export class ComplianceSourcesController {
         needsReview: true,
         mode: 'conservative',
         generationAvailable: true,
-        notice: `International rule set ${INTERNATIONAL_RULESET_VERSION} (US FTC and FDA, UK CAP Code and ASA, EU AI Act Article 50 transparency) is built in. It is a keyword screen, not legal advice; review content yourself before publishing. AI-generated text carries a visible label and a machine-readable marker; no invisible watermark is applied yet.`,
+        notice: `International rule set ${INTERNATIONAL_RULESET_VERSION} (16 CFR Part 255, FTC Disclosures 101 PDF, UK ASA influencers' guide, EU AI Act Article 50). ${AI_TRANSPARENCY_NOTE} It is a keyword screen, not legal advice; review content yourself before publishing. AI-generated text carries a visible label. Generated images and videos are signed with C2PA on the server. No invisible text watermark is applied. No named reviewer has signed these sources off.`,
         userNotice: 'Checks are a screen only. Review your content before you publish. This is not legal advice.',
         maxAgeDays: 90,
         sources: [
-          { name: 'FTC Health Products Compliance Guidance', lastCheckedAt: '2026-10-31T00:00:00.000Z', checkedBy: 'engineering', state: 'fresh' },
-          { name: 'FTC Endorsement Guides (16 CFR Part 255)', lastCheckedAt: '2026-10-31T00:00:00.000Z', checkedBy: 'engineering', state: 'fresh' },
-          { name: 'FDA 21 CFR 101.93 (supplement claims)', lastCheckedAt: '2026-10-31T00:00:00.000Z', checkedBy: 'engineering', state: 'fresh' },
-          { name: 'UK CAP Code', lastCheckedAt: '2026-10-31T00:00:00.000Z', checkedBy: 'engineering', state: 'fresh' },
-          { name: 'FTC Rule on Consumer Reviews and Testimonials (16 CFR Part 465)', lastCheckedAt: '2026-11-01T00:00:00.000Z', checkedBy: 'engineering', state: 'fresh' },
-          { name: 'UK ASA: recognising ads on social media and influencer marketing', lastCheckedAt: '2026-11-01T00:00:00.000Z', checkedBy: 'engineering', state: 'fresh' },
-          { name: 'EU AI Act (Regulation 2024/1689) Article 50', lastCheckedAt: '2026-11-01T00:00:00.000Z', checkedBy: 'engineering', state: 'fresh' },
+          { name: '16 CFR Part 255 (eCFR)', url: 'https://www.ecfr.gov/current/title-16/chapter-I/subchapter-B/part-255', checkedBy: null, state: 'pending_review' },
+          { name: 'FTC Disclosures 101 for Social Media Influencers (PDF)', url: 'https://www.ftc.gov/system/files/ftc_gov/pdf/1001A_Influencer%20Guide_508.pdf', checkedBy: null, state: 'pending_review' },
+          { name: 'ASA Influencers\' guide to making clear that ads are ads', url: 'https://www.asa.org.uk/resource/influencers-guide.html', checkedBy: null, state: 'pending_review' },
+          { name: 'EU AI Act Article 50 (EUR-Lex)', url: 'https://eur-lex.europa.eu/eli/reg/2024/1689/oj', checkedBy: null, state: 'pending_review' },
+          { name: 'Commission Code of Practice on marking and labelling AI-generated content (2026-06-10, reference only)', url: 'https://digital-strategy.ec.europa.eu/en/news/commission-publishes-code-practice-marking-and-labelling-ai-generated-content', checkedBy: null, state: 'pending_review' },
+          { name: 'Commission guidelines on Article 50, C(2026) 5054 final (2026-07-20)', url: 'https://ai-act-service-desk.ec.europa.eu/sites/default/files/2026-07/guidelines_on_the_implementation_of_the_transparency_obligations_for_certain_ai_systems_under_article_50_of_the_ai_act_bzptwqhk0ikg1dtlddap41psfy_131215.pdf', checkedBy: null, state: 'pending_review' },
         ],
       };
     }

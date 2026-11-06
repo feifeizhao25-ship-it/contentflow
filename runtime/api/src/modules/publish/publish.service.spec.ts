@@ -42,12 +42,31 @@ describe('PublishService', () => {
     service = module.get(PublishService);
   });
 
-  it('creates and queues one immediate task per active account', async () => {
-    prisma.content.findFirst.mockResolvedValue({ id: 'content_1', status: 'approved' });
+  it('refuses to queue the same text to two accounts without a per-platform rewrite and a human confirm', async () => {
+    prisma.content.findFirst.mockResolvedValue({ id: 'content_1', status: 'approved', title: '标题', body: '同一段正文' });
     tenant.checkQuota.mockResolvedValue(true);
     adapterRegistry.get.mockReturnValue({ isLive: true });
     prisma.platformAccount.findFirst.mockImplementation(({ where }: any) =>
       Promise.resolve({ id: where.id, status: 'active', platform: 'bilibili' }),
+    );
+
+    await expect(service.createTask('tenant_1', 'user_1', {
+      contentId: 'content_1',
+      platformAccountIds: ['account_1', 'account_2'],
+      publishType: 'immediate',
+      humanConfirmed: true,
+    })).rejects.toBeInstanceOf(BadRequestException);
+    expect(prisma.publishTask.create).not.toHaveBeenCalled();
+    expect(queue.addPublishTask).not.toHaveBeenCalled();
+  });
+
+  it('queues distinct per-platform rewrites only after a human confirms', async () => {
+    prisma.content.findFirst.mockResolvedValue({ id: 'content_1', status: 'approved', title: '标题', body: '一段需要改写的正文。', source: 'manual' });
+    tenant.checkQuota.mockResolvedValue(true);
+    adapterRegistry.get.mockReturnValue({ isLive: true });
+    (prisma as any).platformContent = { upsert: jest.fn().mockImplementation(({ create }: any) => Promise.resolve({ id: `pc-${create.platform}`, ...create })) };
+    prisma.platformAccount.findFirst.mockImplementation(({ where }: any) =>
+      Promise.resolve({ id: where.id, status: 'active', platform: where.id === 'account_1' ? 'xhs' : 'douyin' }),
     );
     prisma.publishTask.create
       .mockResolvedValueOnce({ id: 'task_1' })
@@ -57,11 +76,13 @@ describe('PublishService', () => {
       contentId: 'content_1',
       platformAccountIds: ['account_1', 'account_2'],
       publishType: 'immediate',
+      humanConfirmed: true,
     });
 
     expect(tasks).toHaveLength(2);
     expect(queue.addPublishTask).toHaveBeenCalledTimes(2);
-    expect(tenant.incrementUsage).toHaveBeenCalledWith('tenant_1', 'publish', 2);
+    const bodies = (prisma as any).platformContent.upsert.mock.calls.map((call: any) => call[0].create.body);
+    expect(bodies[0]).not.toBe(bodies[1]);
   });
 
   it('rejects before creating tasks when a platform adapter is not live', async () => {

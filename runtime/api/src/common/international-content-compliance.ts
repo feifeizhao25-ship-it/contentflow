@@ -25,10 +25,17 @@
  *    465.8 fake indicators of social media influence
  *  - UK CAP Code rules 2.1 and 2.3 (marketing communications must be obviously identifiable; commercial intent)
  *    and the ASA advice "Recognising ads: social media and influencer marketing" (labels, placement)
- *  - Regulation (EU) 2024/1689 (AI Act) Article 50(2) and 50(4), and the Commission's Article 50 FAQ
- *    (applies from 2 August 2026; marking grace period to 2 December 2026 for systems already on the market)
+ *  - Regulation (EU) 2024/1689 (AI Act) Article 50(2) and 50(4) (EUR-Lex). Transparency obligations apply from 2 August 2026.
+ *  - Commission Code of Practice on marking and labelling AI-generated content (published 2026-06-10) and
+ *    Commission guidelines C(2026) 5054 final (2026-07-20). These are references only. ContentFlow has not
+ *    confirmed that it has signed the Code of Practice.
+ *  - FTC Disclosures 101 for Social Media Influencers (PDF). The FTC webpage for that guide returns 404; do not cite it.
  */
-export const INTERNATIONAL_RULESET_VERSION = 'intl-content-2026.11.01';
+export const INTERNATIONAL_RULESET_VERSION = 'intl-content-2026.11.06';
+
+/** Reference only. Do not describe ContentFlow as a signatory of the EU Code of Practice. */
+export const AI_TRANSPARENCY_NOTE =
+  'EU AI Act Article 50 transparency obligations apply from 2026-08-02. The Commission Code of Practice on marking and labelling AI-generated content (published 2026-06-10) and the Commission guidelines C(2026) 5054 final (2026-07-20) are references only. ContentFlow has not confirmed that it has signed the Code of Practice.';
 
 import type { TargetMarket } from './target-market';
 
@@ -87,6 +94,10 @@ const FTC_ACT = 'https://www.law.cornell.edu/uscode/text/15/45';
 const CAP_3 = 'https://www.asa.org.uk/type/non_broadcast/code_section/03.html';
 const CAP_2 = 'https://www.asa.org.uk/type/non_broadcast/code_section/02.html';
 const ASA_SOCIAL = 'https://www.asa.org.uk/advice-online/recognising-ads-social-media.html';
+const ASA_INFLUENCERS = 'https://www.asa.org.uk/resource/influencers-guide.html';
+const FTC_DISCLOSURES_PDF = 'https://www.ftc.gov/system/files/ftc_gov/pdf/1001A_Influencer%20Guide_508.pdf';
+const AI_ACT_CODE = 'https://digital-strategy.ec.europa.eu/en/news/commission-publishes-code-practice-marking-and-labelling-ai-generated-content';
+const AI_ACT_GUIDELINES = 'https://ai-act-service-desk.ec.europa.eu/sites/default/files/2026-07/guidelines_on_the_implementation_of_the_transparency_obligations_for_certain_ai_systems_under_article_50_of_the_ai_act_bzptwqhk0ikg1dtlddap41psfy_131215.pdf';
 const FTC_REVIEWS = 'https://www.ecfr.gov/current/title-16/chapter-I/subchapter-B/part-465';
 const FTC_255_0 = 'https://www.ecfr.gov/current/title-16/chapter-I/subchapter-B/part-255/section-255.0';
 const AI_ACT_50 = 'https://eur-lex.europa.eu/eli/reg/2024/1689/oj';
@@ -210,7 +221,7 @@ const RULES: IntlRule[] = [
     severity: 'block',
     appliesTo: ['request'],
     reason: 'Asks to remove, hide or evade the AI-generated label, watermark or metadata, or to pass AI output off as human work. Providers must mark AI outputs in a machine-readable way, and deployers must disclose deepfakes and AI text on matters of public interest.',
-    source: 'Regulation (EU) 2024/1689 (AI Act) Article 50(2) and 50(4); Commission Article 50 FAQ',
+    source: `Regulation (EU) 2024/1689 (AI Act) Article 50(2) and 50(4), obligations apply from 2026-08-02; Commission Code of Practice (2026-06-10, ${AI_ACT_CODE}); Commission guidelines C(2026) 5054 final (2026-07-20, ${AI_ACT_GUIDELINES}). Reference only: ContentFlow has not confirmed signature of the Code of Practice.`,
     sourceUrl: AI_ACT_50,
     patterns: [
       /\b(?:remove|strip|delete|hide|drop|erase|get rid of|take off|bypass|evade|circumvent|defeat)\b[^.\n]{0,40}?\b(?:ai|a\.i\.|machine)[- ]?(?:generated\s+)?(?:label|disclosure|watermark|metadata|tag|marker|notice|detection)/i,
@@ -258,15 +269,15 @@ const MARKET_LABELS: Partial<Record<TargetMarket, MarketLabelRule>> = {
     weak: /(?:#?sponsored\b|#?gifted\b|#?aff(?:iliate)?\b|#sp\b|#spon\b|#collab\b|#?\w*ambassador\b|\bsupported by\b|\bfunded by\b|\bin association with\b|\bthanks to\b|#partner\b)/i,
     upfrontChars: 100,
     acceptedText: '"Ad", "Advert", "Advertising", "Advertisement" or "Ad Feature"',
-    source: 'UK CAP Code rules 2.1 and 2.3; ASA, Recognising ads: social media and influencer marketing',
-    sourceUrl: ASA_SOCIAL,
+    source: `UK CAP Code rules 2.1 and 2.3; ASA Influencers' guide to making clear that ads are ads; ASA recognising-ads note (${ASA_SOCIAL})`,
+    sourceUrl: ASA_INFLUENCERS,
   },
   US: {
     accept: new RegExp(`(?:#ad\\b|${LEAD}ad${TAIL}|\\bads?:|\\badvertisement\\b|#sponsored\\b|\\bsponsored\\b|paid partnership|#paidpartnership|\\bpaid promotion\\b|thanks to [^.\\n]{1,40} for (?:the )?(?:free|gifted))`, 'i'),
     weak: /(?:#sp\b|#spon\b|#collab\b|#thanks\w*\b|#ambassador\b)/i,
     acceptedText: '"ad", "advertisement", "sponsored", "paid partnership" or "Thanks to <brand> for the free product"',
-    source: '16 CFR 255.0(f) and 255.5 (clear and conspicuous; unavoidable on social media); FTC Disclosures 101 for Social Media Influencers (weak-label list kept from the 2026-10-31 reading; the page could not be re-opened on 2026-11-01)',
-    sourceUrl: FTC_255_0,
+    source: `16 CFR 255.0(f) and 255.5 (${FTC_255_0}; clear and conspicuous; unavoidable on social media); FTC Disclosures 101 for Social Media Influencers (PDF, 2019). The FTC webpage for this guide is not cited.`,
+    sourceUrl: FTC_DISCLOSURES_PDF,
   },
   IN: {
     accept: /(?:#(?:ad|advertisement|sponsored|collaboration|partnership|employee|freegift|free gift|affiliate)\b|\badvertisement\b)/i,
@@ -304,7 +315,7 @@ function disclosureHits(text: string, opts: { targetMarket?: TargetMarket | null
       ruleId: 'INTL-DISCLOSURE',
       severity: 'review',
       reason: 'Promotes with a code or affiliate link but does not clearly say it is an ad or that you are paid. Material connections must be disclosed clearly.',
-      source: 'FTC Endorsement Guides, 16 CFR Part 255 (disclosure of material connections); UK CAP Code section 2 (recognisability)',
+      source: 'FTC Endorsement Guides, 16 CFR Part 255 (disclosure of material connections); FTC Disclosures 101 for Social Media Influencers (PDF); UK ASA Influencers\' guide',
       sourceUrl: FTC_ENDORSE,
       sourceRetrievedAt: RETRIEVED,
       matchedTerms: matched,

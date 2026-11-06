@@ -7,6 +7,7 @@ import 'plan_usage_screen.dart';
 import '../../core/error_text.dart';
 import 'package:flutter/services.dart';
 import '../../config/cn_config.dart';
+import 'package:contentflow_cn/core/friendly_error.dart';
 
 class AccountScreen extends ConsumerWidget {
   const AccountScreen({super.key});
@@ -19,7 +20,7 @@ class AccountScreen extends ConsumerWidget {
             body: SafeArea(
         child: userAsync.when(
           data: (user) => _buildContent(context, ref, user),
-          loading: () => const Center(child: CircularProgressIndicator()),
+          loading: () => const CfLoading(),
           error: (e, _) => Center(child: Text(friendlyError(e))),
         ),
       ),

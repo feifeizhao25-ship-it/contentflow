@@ -37,7 +37,7 @@ export class PublishProcessor {
     if (new URL(webhookUrl).protocol !== 'https:') throw new Error(this.text('Publishing dispatcher must use HTTPS', '发布分发通道必须使用 HTTPS'));
     const task = await this.prisma.publishTask.findFirst({
       where: { id: job.data.taskId },
-      include: { content: true, platform_account: { select: { id: true, platform: true, account_name: true, account_nickname: true, platform_account_id: true } } },
+      include: { content: true, platform_content: true, platform_account: { select: { id: true, platform: true, account_name: true, account_nickname: true, platform_account_id: true } } },
     });
     if (!task || !task.platform_account) throw new Error(this.text('Publish task or platform account not found', '发布任务或平台账号不存在'));
 
@@ -70,6 +70,9 @@ export class PublishProcessor {
     }
 
     const isAi = content.source === 'ai';
+    // 多账号任务在创建时已按平台改写并写入 platform_content。发出时用这份，避免把同一稿发给多个目的地。
+    const storedBody = typeof task.platform_content?.body === 'string' && task.platform_content.body.trim() ? task.platform_content.body : '';
+    const sourceBody = storedBody || content.body;
     const payload = JSON.stringify({
       schemaVersion: 1, idempotencyKey: `contentflow:${task.id}`, taskId: task.id,
       tenantId: task.tenant_id, marketRegion: this.config.get<string>('MARKET_REGION'),
@@ -77,7 +80,7 @@ export class PublishProcessor {
       content: {
         id: content.id, title: content.title,
         // AI 生成内容：显式标识随正文一起发出，不能在分发这一步丢掉（幂等，不重复叠加）。
-        body: isAi && content.body ? labelAiGeneratedText(content.body) : content.body,
+        body: isAi && sourceBody ? labelAiGeneratedText(sourceBody) : sourceBody,
         bodyHtml: isAi && content.body_html && !String(content.body_html).includes(aiTextLabel())
           ? `<p>${aiTextLabel()}</p>${content.body_html}` : content.body_html,
         coverUrl: content.cover_url, mediaUrls: content.media_urls, tags: content.tags,

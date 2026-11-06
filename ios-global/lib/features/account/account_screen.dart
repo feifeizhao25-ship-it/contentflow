@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/providers.dart';
 import '../../data/models.dart';
 import 'plan_usage_screen.dart';
+import 'package:contentflow_global/core/friendly_error.dart';
 
 class AccountScreen extends ConsumerWidget {
   const AccountScreen({super.key});
@@ -18,7 +19,7 @@ class AccountScreen extends ConsumerWidget {
       body: SafeArea(
         child: userAsync.when(
           data: (user) => _buildContent(context, ref, user),
-          loading: () => const Center(child: CircularProgressIndicator()),
+          loading: () => const CfLoading(),
           error: (e, _) => Center(child: Text('Failed to load: $e')),
         ),
       ),

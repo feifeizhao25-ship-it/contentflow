@@ -25,7 +25,7 @@ export function officialAutoPublishAllowed(_id: string): boolean {
 }
 
 export const PUBLISH_CHANNEL_NOTICE =
-    '目前所有平台均为人工确认发布（非自动发布）：小红书、视频号、公众号、抖音、B站、知乎都需你复制文案、下载带 AI 标识的封面后到平台手动发出，再回填作品链接确认。各平台官方自动发布授权完成并通过审核后，才会另行开通并明确标注';
+    '目前所有平台均为人工确认发布（非自动发布）：小红书、视频号、公众号、抖音、B站、知乎都需你按平台分别改写文案，复制后到平台手动发出，再回填作品链接确认。不能批量发布同一稿。各平台官方自动发布授权完成并通过审核后，才会另行开通并明确标注';
 
 export function isManualPlatform(id: string): boolean {
     return MANUAL_PLATFORMS.some((p) => p.id === id);
@@ -59,8 +59,15 @@ export function copyTextHasAiLabel(text: string): boolean {
     return text.includes(AI_TEXT_LABEL);
 }
 
-/** 封面上显式标识的文字与位置（左上角，半透明黑底白字，按图片宽度缩放）。 */
+/** 封面上显式标识的文字与位置（左上角，半透明黑底白字）。文字高度不低于最短边的 5%（GB 45438-2025）。 */
 export const COVER_LABEL_TEXT = 'AI 生成';
+export const MIN_LABEL_HEIGHT_RATIO = 0.05;
+
+/** 封面文字标识的字号：至少为画面最短边的 5%，向上取整，避免低于标准。 */
+export function coverLabelFontSize(width: number, height: number): number {
+    const shortest = Math.min(Math.max(width, 1), Math.max(height, 1));
+    return Math.ceil(shortest * MIN_LABEL_HEIGHT_RATIO);
+}
 
 /**
  * 下载带 AI 标识的封面（浏览器内完成）：
@@ -83,7 +90,7 @@ export async function downloadLabelledCover(
     const ctx = canvas.getContext('2d');
     if (!ctx) throw new Error('浏览器不支持导出图片');
     ctx.drawImage(bitmap, 0, 0);
-    const fontSize = Math.max(18, Math.round(canvas.width / 24));
+    const fontSize = coverLabelFontSize(canvas.width, canvas.height);
     ctx.font = `bold ${fontSize}px sans-serif`;
     const padding = Math.round(fontSize * 0.5);
     const textWidth = ctx.measureText(COVER_LABEL_TEXT).width;

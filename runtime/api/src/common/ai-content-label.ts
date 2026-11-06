@@ -52,11 +52,38 @@ export interface AiMediaMetadata {
   provider_code: string;
   /** 内容编号：已保存的内容用 Content.id；尚未保存时用生成记录编号；都没有则为空字符串。 */
   content_id: string;
+  /**
+   * GB 45438—2025 文件元数据隐式标识（制作要素）。
+   * Label "1" 表示属于人工智能生成合成内容。编码或编号未知时留空字符串，不编造。
+   */
+  AIGC: Gb45438ImplicitFields;
+}
+
+/** 文件元数据里的隐式标识要素（GB 45438—2025 第 6.1 条、附录 E 的制作要素）。 */
+export interface Gb45438ImplicitFields {
+  Label: '1';
+  ContentProducer: string;
+  ProduceID: string;
+  ReservedCode1: string;
+  ReservedCode2: string;
 }
 
 /** 隐式标识里的服务提供者编码：只从环境变量读，未配置返回空字符串。 */
 export function aigcProviderCode(env: NodeJS.ProcessEnv = process.env): string {
   return String(env.AIGC_PROVIDER_CODE ?? '').trim();
+}
+
+/** 按标准把制作要素收成可写入文件元数据的对象。服务提供者优先用编码，没有编码时用生成方名称。 */
+export function buildGb45438ImplicitFields(opts: { providerCode?: string; contentId?: string | null; generator?: string }): Gb45438ImplicitFields {
+  const provider = String(opts.providerCode ?? '').trim();
+  const generator = String(opts.generator ?? '').trim();
+  return {
+    Label: '1',
+    ContentProducer: provider || generator,
+    ProduceID: String(opts.contentId ?? ''),
+    ReservedCode1: '',
+    ReservedCode2: '',
+  };
 }
 
 /**
@@ -71,13 +98,17 @@ export function buildAiMediaMetadata(opts: {
   contentId?: string | null;
   providerCode?: string;
 }): AiMediaMetadata {
+  const generator = opts.generator || (process.env.MARKET_REGION === 'global' ? AI_GENERATOR_NAME_EN : AI_GENERATOR_NAME);
+  const providerCode = opts.providerCode ?? aigcProviderCode();
+  const contentId = String(opts.contentId ?? '');
   const meta: AiMediaMetadata = {
     ai_generated: true,
-    generator: opts.generator || (process.env.MARKET_REGION === 'global' ? AI_GENERATOR_NAME_EN : AI_GENERATOR_NAME),
+    generator,
     media_type: opts.mediaType,
     generated_at: (opts.now || new Date()).toISOString(),
-    provider_code: opts.providerCode ?? aigcProviderCode(),
-    content_id: String(opts.contentId ?? ''),
+    provider_code: providerCode,
+    content_id: contentId,
+    AIGC: buildGb45438ImplicitFields({ providerCode, contentId, generator }),
   };
   if (opts.model) meta.model = opts.model;
   return meta;
