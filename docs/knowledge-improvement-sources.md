@@ -29,3 +29,9 @@ Publication requires a named reviewer, evidence and safety scores of at least
 
 Review cadence: platform/API rules weekly; regulations monthly; models,
 libraries and benchmarks monthly; stable research methods quarterly.
+
+The weekly hook (`runtime/api/src/modules/library/weekly-harvest.ts`, cadence
+`weekly:SUN@03:00` Asia/Shanghai) writes sectioned candidates and a diff report
+only. It is a manual command, not a new cloud cron. `publish-candidates`
+refuses an empty reviewer signature and still does not copy candidates into
+the live registry or skills. A signature is not a reviewer name.

@@ -17,7 +17,8 @@ export interface SourcesConfig {
 }
 export const sources = (): SourcesConfig => sourcesConfig as SourcesConfig;
 /** 暂存区：整理好但还没人审核的候选规则（包内 data/staged-rules-*.json，静态 import 以便打进构建产物 + 数据目录 staged_entries.json）。
- * 用户端永远看不到；人工用 cli promote 才进入工作文档（仍是“待审核”）。新增暂存文件时在 STAGED_BUNDLED 里加一行。 */
+ * 用户端永远看不到；人工用 cli promote 才进入工作文档（仍是“待审核”）。新增暂存文件时在 STAGED_BUNDLED 里加一行。
+ * 周知识收获（weekly-harvest.ts）不写入这里，也不加入 STAGED_BUNDLED，所以不会被自动提升到用户能看到的文档。 */
 export const STAGED_BUNDLED: { entries: unknown[] }[] = [staged20261101c as { entries: unknown[] }, staged20261106 as { entries: unknown[] }];
 export function loadStagedRules(dataDir: string = process.env.LIBRARY_DATA_DIR || join(process.cwd(), 'var', 'library')): LibEntry[] {
   const docs = [...STAGED_BUNDLED];

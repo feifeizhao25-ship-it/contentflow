@@ -1,6 +1,9 @@
 /**
  * 命令行（审核人和运维用）：
  *   npx ts-node src/modules/library/cli.ts check|discover                       （需要 LIBRARY_FRESHNESS_ENABLED=1）
+ *   npx ts-node src/modules/library/cli.ts harvest [--out 目录]                 周知识候选：只写候选目录和差异报告，不改生产库
+ *   npx ts-node src/modules/library/cli.ts publish-candidates --signature 签名 [--out 目录]
+ *       签名留空会拒绝。签名不是复核人姓名；即使收下签名，也不把候选复制进线上库。
  *   npx ts-node src/modules/library/cli.ts approve  <id> --reviewer 姓名
  *   npx ts-node src/modules/library/cli.ts update   <id> --reviewer 姓名 --note "变更说明"
  *   npx ts-node src/modules/library/cli.ts confirm  <id> --reviewer 姓名
@@ -12,7 +15,9 @@
  * 每次 promote/approve/update/repeal/rollback 都在 LIBRARY_DATA_DIR/releases/ 留一份完整快照（哈希链）；LIBRARY_PROMOTE_GATE=1 时 approve 必须先通过闸门（默认不强制）。
  * 审核结果写进 LIBRARY_DATA_DIR（reference_entries.json、library_state.json、library_review_log.jsonl）。
  */
+import { join } from 'path';
 import { LibraryJobService } from './library-job.service';
+import { harvestWeekly, publishCandidates } from './weekly-harvest';
 import { evaluate, gateEnforced } from './promote-gate';
 import * as releases from './releases';
 import * as review from './live/review';
@@ -36,8 +41,31 @@ export async function main(argv: string[], store = new LibraryStore(), now = new
     console.log(cmd === 'check' ? `已核对；需要人看的：${(r as any).attention.join(', ') || '无'}` : `新候选 ${(r as any).candidates} 条`);
     return 0;
   }
+  if (cmd === 'harvest' || cmd === 'publish-candidates') {
+    const all = argv.slice(1);
+    const take = (name: string): string => {
+      const i = all.indexOf(`--${name}`);
+      if (i < 0) return '';
+      const v = all[i + 1];
+      return v == null || v.startsWith('--') ? '' : v;
+    };
+    const out = take('out') || join(store.dir, 'candidates');
+    try {
+      if (cmd === 'harvest') {
+        const report = harvestWeekly({ candidatesDir: out, today: now });
+        console.log(`候选新增 ${report.added.length} 条，有变化 ${report.changed.length} 条，未变化 ${report.unchanged.length} 条。未写入生产库。报告：${join(out, 'diff-report.md')}`);
+        return 0;
+      }
+      publishCandidates(take('signature') || take('reviewer-signature'), { candidatesDir: out });
+      console.log('未写入生产库。签名已收下，复核人仍为空，候选保持未发布。');
+      return 0;
+    } catch (e) {
+      console.error(`失败：${(e as Error).message}`);
+      return 2;
+    }
+  }
   if (!['approve', 'update', 'confirm', 'repeal', 'promote', 'gate', 'releases', 'rollback'].includes(cmd ?? '') || !id) {
-    console.error('用法：check | discover | approve|update|confirm|repeal|promote|gate|releases|rollback <id> --reviewer 姓名 [--note ...]');
+    console.error('用法：check | discover | harvest | publish-candidates | approve|update|confirm|repeal|promote|gate|releases|rollback <id> --reviewer 姓名 [--note ...]');
     return 2;
   }
   const domOk = (h: string) => domainOk(h, { allowedDomains: sources().allowed_domains });
