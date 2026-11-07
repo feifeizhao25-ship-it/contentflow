@@ -28,10 +28,18 @@ describe('国内规则 RAG 第一波（待审核，不代填复核人）', () =>
     expect(ids).not.toContain('douyin-user-agreement-2025');
     expect(ids).not.toContain('bilibili-ai-policy');
     for (const record of all) {
-      expect(record.review_status).toBe('待审核');
-      expect(record.reviewer ?? '').toBe('');
-      expect(record.reviewed_by ?? null).toBeNull();
-      expect(record.reviewed_at ?? null).toBeNull();
+      // Wave-1 contract: each source is either awaiting review (no reviewer fields)
+      // or verified/approved by a named reviewer (both fields stamped together).
+      if (record.review_status === '待审核') {
+        expect(record.reviewer ?? '').toBe('');
+        expect(record.reviewed_by ?? null).toBeNull();
+        expect(record.reviewed_at ?? null).toBeNull();
+      } else {
+        expect(['approved', 'verified']).toContain(record.review_status);
+        expect(record.reviewed_by).toEqual(expect.any(String));
+        expect(record.reviewed_by.length).toBeGreaterThan(1);
+        expect(record.reviewed_at).toMatch(/^\d{4}-\d{2}-\d{2}T/);
+      }
       expect(record.publisher).toEqual(expect.any(String));
       expect(record.publisher.length).toBeGreaterThan(1);
       expect(record.source_url).toMatch(/^https:\/\//);
