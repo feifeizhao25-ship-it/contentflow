@@ -24,16 +24,6 @@ class VoiceCopy {
   });
 }
 
-const voiceCopyZh = VoiceCopy(
-  mic: '语音输入',
-  listening: '正在听，再点停止',
-  speak: '朗读',
-  stop: '停止朗读',
-  micDenied: '需要麦克风和语音识别权限，请在系统设置里允许后重试',
-  unavailable: '这台设备暂时不能使用语音',
-  locale: 'zh-CN',
-);
-
 const voiceCopyEn = VoiceCopy(
   mic: 'Voice input',
   listening: 'Listening. Tap to stop',

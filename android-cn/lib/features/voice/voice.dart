@@ -34,16 +34,6 @@ const voiceCopyZh = VoiceCopy(
   locale: 'zh-CN',
 );
 
-const voiceCopyEn = VoiceCopy(
-  mic: 'Voice input',
-  listening: 'Listening. Tap to stop',
-  speak: 'Read aloud',
-  stop: 'Stop reading',
-  micDenied: 'Allow the microphone and speech recognition, then try again.',
-  unavailable: 'Voice is not available on this device.',
-  locale: 'en-US',
-);
-
 class VoiceException implements Exception {
   final String code;
   VoiceException(this.code);
