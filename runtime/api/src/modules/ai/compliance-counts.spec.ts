@@ -1,5 +1,5 @@
 import { evaluateDomesticContent, DOMESTIC_NOT_CHECKED } from '../../common/domestic-content-compliance';
-import { evaluateInternationalContent } from '../../common/international-content-compliance';
+import { evaluateInternationalContent, INTERNATIONAL_RULESET_VERSION } from '../../common/international-content-compliance';
 import { ComplianceCheckController } from './compliance-check.controller';
 import { ComplianceService } from './compliance.service';
 
@@ -60,7 +60,7 @@ describe('compliance rule counts and unchecked items', () => {
       expect(ok.hits.map((h: any) => h.ruleId).filter((id: string) => id.startsWith('INTL-DISCLOSURE'))).toEqual([]);
       const declared: any = await make('global').check({ text: 'A plain review of this desk lamp.', targetMarket: 'UK', commercialRelationship: 'paid' });
       expect(declared.hits.map((h: any) => h.ruleId)).toContain('INTL-DISCLOSURE');
-      expect(declared.ruleSetVersion).toBe('intl-content-2026.11.01');
+      expect(declared.ruleSetVersion).toBe(INTERNATIONAL_RULESET_VERSION);
     });
 
     it('international check refuses an unknown relationship', async () => {

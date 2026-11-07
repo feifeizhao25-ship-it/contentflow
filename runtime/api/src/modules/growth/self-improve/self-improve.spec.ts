@@ -306,7 +306,12 @@ describe('contentflow hooks / service', () => {
     // after the freshest retrieval, and none are stale at the oldest retrieval.
     const times = readdirSync(dir)
       .filter((f) => f.endsWith('.json'))
-      .map((f) => new Date(JSON.parse(readFileSync(join(dir, f), 'utf8')).retrieved_at).getTime());
+      .map((f) => {
+        const rec = JSON.parse(readFileSync(join(dir, f), 'utf8'));
+        // staleness follows the latest review (reviewed_at) when present
+        const candidates = [rec.retrieved_at, rec.reviewed_at].filter(Boolean);
+        return Math.max(...candidates.map((t: string) => new Date(t).getTime()));
+      });
     const allStaleAt = new Date(Math.max(...times) + 31 * 86400_000);
     const noneStaleAt = new Date(Math.min(...times));
     const stale = staleCacheSources(dir, allStaleAt);
