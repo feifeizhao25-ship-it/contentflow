@@ -95,8 +95,12 @@ def validate(max_age_days: int, allow_empty: bool) -> list[str]:
         # 未复核资料留在磁盘上，但不算已核验来源，也不要求被改成 verified。
         if record.get("published") is False or status in UNREVIEWED_STATUSES:
             kept_unreviewed += 1
-            if str(record.get("content") or "").strip() == "":
+            if not str(record.get("content") or "").strip():
                 errors.append(f"{path.name}: 未复核资料的正文被清空了")
+            continue
+        reviewer_name = str(record.get("reviewed_by") or "")
+        if reviewer_name and not human_reviewer(reviewer_name):
+            errors.append(f"{path.name}: reviewed_by「{reviewer_name.strip()}」不是人工签署")
             continue
         approved_source_count += 1
         missing = sorted(field for field in REQUIRED_FIELDS if not record.get(field))

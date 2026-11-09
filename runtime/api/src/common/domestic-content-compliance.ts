@@ -296,8 +296,44 @@ function checkReviewOnly(content: string): DomesticComplianceHit[] {
   return hits.filter((hit): hit is DomesticComplianceHit => !!hit);
 }
 
-/** 词表规则之外还有 3 个专项检查（广告标注、疾病功效、投资保证）和 4 个提示类检查（站外导流、绝对化比较、借灾难、保证涨粉）。 */
-export const DOMESTIC_EXTRA_CHECKS = 7;
+/** 养生页面挂购物链接：办法第八条。只在同时出现知识和购买方式时提示，不是全量广告审查。 */
+function checkHealthPageCommerce(content: string): DomesticComplianceHit | null {
+  const text = String(content || '').normalize('NFKC');
+  if (!/养生|健康知识/.test(text)) return null;
+  if (!/购物链接|购买链接|下单链接|商品链接/.test(text)) return null;
+  return {
+    gate: 'advertising_law',
+    ruleId: 'CN-AD-NET-ART8',
+    source: '《互联网广告管理办法》第八条（禁止以介绍健康、养生知识的形式变相发布医疗、药品、保健食品等广告）',
+    sourceUrl: 'https://www.gov.cn/zhengce/202305/content_6858084.htm',
+    sourceRetrievedAt: '2026-10-31',
+    reason: '养生或健康知识页面同时出现购买链接，发布前请核对是否属于变相广告',
+    matchedTerms: ['养生或健康知识', '购买链接'],
+    severity: 'block',
+    humanOverrideAllowed: true,
+  };
+}
+
+/** 数字人/虚拟形象未写标识：标识办法要求显著标识。这里只做文字筛查，不是已签署的平台细则。 */
+function checkSyntheticLabel(content: string): DomesticComplianceHit | null {
+  const text = String(content || '').normalize('NFKC');
+  if (!/数字人|虚拟形象/.test(text)) return null;
+  if (/标识|已声明|人工智能生成/.test(text)) return null;
+  return {
+    gate: 'misinformation',
+    ruleId: 'CN-AIGC-LABEL',
+    source: '《人工智能生成合成内容标识办法》第四条、第五条（生成合成内容应按情形添加显式或隐式标识）。平台细则尚未逐条人工签署。',
+    sourceUrl: 'https://www.cac.gov.cn/2025-03/14/c_1743654684782215.htm',
+    sourceRetrievedAt: '2026-11-06',
+    reason: '提到数字人或虚拟形象，但正文没有写标识或生成声明',
+    matchedTerms: [/数字人|虚拟形象/.exec(text)?.[0] ?? '数字人'],
+    severity: 'review',
+    humanOverrideAllowed: true,
+  };
+}
+
+/** 词表规则之外的专项与提示检查。条数见 DOMESTIC_EXTRA_CHECKS。 */
+export const DOMESTIC_EXTRA_CHECKS = 9;
 
 export const DOMESTIC_NOT_CHECKED: readonly string[] = [
   '各平台（抖音、小红书、快手、视频号等）现行社区规范原文——尚未逐条人工复核',
@@ -333,7 +369,7 @@ export function evaluateDomesticContent(content: string, options?: { conservativ
       humanOverrideAllowed: rule.humanOverrideAllowed,
     }] : [];
   });
-  const extras = [checkAdDisclosure(content), checkHealthClaim(content), checkInvestmentGuarantee(content), ...checkReviewOnly(content)];
+  const extras = [checkAdDisclosure(content), checkHealthClaim(content), checkHealthPageCommerce(content), checkInvestmentGuarantee(content), checkSyntheticLabel(content), ...checkReviewOnly(content)];
   const order = (gate: DomesticGateId) => DOMESTIC_GATE_ORDER_INTERNAL.indexOf(gate);
   for (const extra of extras) {
     if (!extra) continue;

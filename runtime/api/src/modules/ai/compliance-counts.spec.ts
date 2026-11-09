@@ -10,7 +10,7 @@ describe('compliance rule counts and unchecked items', () => {
     expect(r.hitCounts.block).toBeGreaterThan(0);
     expect(r.hitCounts.review).toBeGreaterThan(0);
     expect(r.hitCounts.block + r.hitCounts.review).toBe(r.hitCounts.total);
-    expect(r.rulesChecked).toBeGreaterThan(10);
+    expect(r.rulesChecked).toBeGreaterThanOrEqual(15);
     expect(r.notChecked).toEqual([...DOMESTIC_NOT_CHECKED]);
   });
 
@@ -38,7 +38,7 @@ describe('compliance rule counts and unchecked items', () => {
     it('domestic response includes hitCounts, rulesChecked and notChecked', async () => {
       const out: any = await make('cn').check({ text: '全国最好的面膜' });
       expect(out.hitCounts.total).toBe(out.hits.length);
-      expect(out.rulesChecked).toBeGreaterThan(10);
+      expect(out.rulesChecked).toBeGreaterThanOrEqual(15);
       expect(out.notChecked.length).toBeGreaterThan(3);
       expect(out.disclosureHint).toBeUndefined();
     });

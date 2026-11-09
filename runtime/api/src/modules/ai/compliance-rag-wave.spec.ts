@@ -32,6 +32,8 @@ describe('国内规则 RAG 第一波（待审核，不代填复核人）', () =>
       expect(String(record.content ?? '').length).toBeGreaterThan(20);
       expect(String(record.reviewed_by ?? '')).not.toMatch(/openclaw|自动复核/i);
       expect(String(record.reviewer ?? '')).not.toMatch(/openclaw|自动复核/i);
+      // Wave-1 contract: each source is either awaiting review (no reviewer fields)
+      // or verified/approved by a named human reviewer (both fields stamped together).
       if (record.review_status === '待审核' || record.published === false) {
         expect(record.review_status).toBe('待审核');
         expect(record.published).toBe(false);
