@@ -182,32 +182,7 @@ export default function DashboardWorkspace() {
           {/* 今日任务 */}
           <Col xs={24} lg={10}>
             <Card title="今日任务" className="h-full">
-              <List
-                dataSource={[
-                  { icon: '📝', title: '生成3个脚本', progress: 1, total: 3, reward: 15 },
-                  { icon: '🎬', title: '生成1个视频', progress: 0, total: 1, reward: 20 },
-                  { icon: '✅', title: '每日签到', progress: todayStatus.checkedIn ? 1 : 0, total: 1, reward: 10 },
-                  { icon: '📢', title: '分享内容', progress: 0, total: 1, reward: 5 },
-                ]}
-                renderItem={(item) => (
-                  <List.Item>
-                    <div className="flex items-center gap-3 w-full">
-                      <span className="text-2xl">{item.icon}</span>
-                      <div className="flex-1">
-                        <div className="font-medium">{item.title}</div>
-                        <Progress 
-                          percent={(item.progress / item.total) * 100} 
-                          size="small"
-                          strokeColor={item.progress >= item.total ? '#52c41a' : '#1890ff'}
-                        />
-                      </div>
-                      <Tag color={item.progress >= item.total ? 'success' : 'default'}>
-                        +{item.reward}积分
-                      </Tag>
-                    </div>
-                  </List.Item>
-                )}
-              />
+              <p className="m-0 text-sm text-zinc-500">没有从已保存的内容里统计今日脚本或视频。这里不显示示例进度，也不把未生成的视频算成任务完成。</p>
             </Card>
           </Col>
         </Row>
