@@ -4,27 +4,21 @@ import React, { useState, useEffect } from 'react';
 import { Layout, Menu, Avatar, Dropdown, ConfigProvider, theme, Button } from 'antd';
 import { motion } from 'framer-motion';
 import {
-    DashboardOutlined,
     EditOutlined,
     FileTextOutlined,
     SendOutlined,
     UserOutlined,
-    FolderOutlined,
     BarChartOutlined,
     SettingOutlined,
     LogoutOutlined,
     CreditCardOutlined,
-    FireOutlined,
     MenuUnfoldOutlined,
     MenuFoldOutlined,
     SearchOutlined,
     SunOutlined,
     MoonOutlined,
-    HomeOutlined,
     PlusOutlined,
     CrownOutlined,
-    TeamOutlined,
-    AppstoreOutlined
 } from '@ant-design/icons';
 import { useAppStore } from '@/store/appStore';
 import { useThemeStore } from '@/store/themeStore';
@@ -33,6 +27,7 @@ import { planBadge } from '@/lib/page-data';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import clsx from 'clsx';
+import { PRIMARY_NAV } from './primary-nav';
 
 const { Content } = Layout;
 
@@ -84,44 +79,20 @@ export default function MainLayout({ children }: MainLayoutProps) {
         return () => window.removeEventListener('scroll', handleScroll);
     }, []);
 
-    // 核心创作功能
-    const creationItems = [
-        { key: '/ai-create', icon: <EditOutlined />, label: <Link href="/ai-create">AI创作</Link>, desc: '快速生成内容' },
-        { key: '/contents', icon: <FileTextOutlined />, label: <Link href="/contents">内容管理</Link>, desc: '管理所有作品' },
-    ];
-
-    // 分发功能
-    const publishItems = [
-        { key: '/publish', icon: <SendOutlined />, label: <Link href="/publish">发布中心</Link>, desc: '按平台改写后人工确认再发，不批量发同一稿' },
-        { key: '/accounts', icon: <UserOutlined />, label: <Link href="/accounts">账号管理</Link>, desc: '连接社交账号' },
-        { key: '/calendar', icon: <HomeOutlined />, label: <Link href="/calendar">发布日历</Link>, desc: '规划发布时间' },
-    ];
-
-    // 数据与素材
-    const dataItems = [
-        { key: '/analytics', icon: <BarChartOutlined />, label: <Link href="/analytics">数据分析</Link>, desc: '查看发布效果' },
-        { key: '/materials', icon: <FolderOutlined />, label: <Link href="/materials">素材库</Link>, desc: '管理图片素材' },
-        { key: '/hot', icon: <FireOutlined />, label: <Link href="/hot">热点追踪</Link>, desc: '发现热门话题' },
-        { key: '/rules', icon: <FileTextOutlined />, label: <Link href="/rules">规则库</Link>, desc: '平台与法规规则' },
-    ];
-
-    // 设置与其他
-    const settingsItems = [
-        { key: '/team', icon: <TeamOutlined />, label: <Link href="/team">团队协作</Link> },
-        { key: '/community', icon: <AppstoreOutlined />, label: <Link href="/community">创作者社区</Link> },
-        { type: 'divider' as const },
-        { key: '/settings', icon: <SettingOutlined />, label: <Link href="/settings">系统设置</Link> },
-        { key: '/settings/developer', icon: <SettingOutlined />, label: <Link href="/settings/developer">对外通知</Link> },
-        { key: '/pricing', icon: <CreditCardOutlined />, label: <Link href="/pricing">升级会员</Link> },
-    ];
-
-    // 简化的菜单结构
-    const menuItems = [
-        { key: 'creation', label: '🎨 创作', children: creationItems },
-        { key: 'publish', label: '📤 分发', children: publishItems },
-        { key: 'data', label: '📊 数据', children: dataItems },
-        { key: 'more', label: '更多', children: settingsItems },
-    ];
+    const navIcon: Record<string, React.ReactNode> = {
+        '/studio': <EditOutlined />,
+        '/contents': <FileTextOutlined />,
+        '/publish': <SendOutlined />,
+        '/analytics': <BarChartOutlined />,
+        '/accounts': <UserOutlined />,
+        '/settings': <SettingOutlined />,
+    };
+    // 只有六项。热点没有授权数据源，社区页只是跳转，都不放进导航，避免空卖点。
+    const menuItems = PRIMARY_NAV.map((item) => ({
+        key: item.key,
+        icon: navIcon[item.href],
+        label: <Link href={item.href}>{item.label}</Link>,
+    }));
 
     const userMenuItems = [
         { key: 'profile', icon: <UserOutlined />, label: '个人资料' },
