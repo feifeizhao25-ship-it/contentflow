@@ -1,4 +1,5 @@
-import { Controller, Get, Query, UseGuards, Request } from '@nestjs/common';
+import { Controller, Get, Query, UseGuards, Request, Res } from '@nestjs/common';
+import type { Response } from 'express';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { AnalyticsService } from './analytics.service';
 import { normalizeLang } from './own-data-overview';
@@ -18,6 +19,18 @@ export class AnalyticsController {
     // 国际版（MARKET_REGION=global）没带 lang 时也按英文返回：中文的类型名会被「必须英文」闸门拦成 502（I-02）
     const effective = lang ?? (process.env.MARKET_REGION === 'global' ? 'en' : undefined);
     return this.analyticsService.getOverview(req.user.tenantId, Date.now(), normalizeLang(effective));
+  }
+
+  @Get('weekly-report.xlsx')
+  @ApiOperation({ summary: '导出本工作区本周报告（xlsx，只含已保存的自有数据）' })
+  async weeklyReport(@Request() req: any, @Res() res: Response, @Query('lang') lang?: string) {
+    const effective = lang ?? (process.env.MARKET_REGION === 'global' ? 'en' : undefined);
+    const report = await this.analyticsService.weeklyWorkbook(req.user.tenantId, Date.now(), normalizeLang(effective));
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', 'attachment; filename="weekly-report.xlsx"');
+    res.setHeader('Cache-Control', 'no-store');
+    res.setHeader('X-Export-Truncated', report.truncated ? '1' : '0');
+    res.status(200).send(report.body);
   }
 
   @Get('dashboard')
