@@ -5,7 +5,8 @@
  * 以及规则库自己的变化（审核通过的「更新」）。不使用其它租户的任何数据，也不猜测没写过的东西。
  * 打分（加法，原因逐条写给用户看）：
  *   关注的主题 +5   条目标明适用的平台正是你发布的平台 +5   你发布的平台有直播功能（直播类）+3
- *   账号定位里提到相关词 +3   所有发布者都要知道的（广告标识）+1   读过同类 +1（上限 +2）
+ *   账号定位里提到相关词 +3   注册时填的行业/岗位/成长阶段/省份命中 +3
+ *   所有发布者都要知道的（广告标识）+1   读过同类 +1（上限 +2）
  *   最近 14 天更新 +2 / 上次来访之后更新 +3（只对相关或看过旧版的人）   上次来访之后新增 +2
  *   读过这一条 −6（14 天内）   最近 3 天推荐过 −1.5、7 天内 −1（只轮换，不压过相关度）   静音主题：不出现
  */
@@ -39,11 +40,23 @@ export const topicOf = (e: { category?: string }): string => CATEGORY_TOPIC.get(
 const pname = (p: string) => PLATFORM_NAMES[p] ?? p;
 export const RECENT_UPDATE_DAYS = 14;
 
+/** 注册三问和省份。空字符串表示没填，不参与排序。 */
+export interface ProfileAnswers {
+  industry: string;
+  jobRole: string;
+  growthStage: string;
+  province: string;
+}
+
+export const EMPTY_PROFILE: ProfileAnswers = { industry: '', jobRole: '', growthStage: '', province: '' };
+
 export interface Signals {
   enabled: boolean;
   today: number; // 上海当天 00:00 UTC 毫秒
   platforms: string[]; // 已绑定账号 / 近期发布 / 默认平台（去重）
   positioning: string; // 人设说明 + 配置里的定位文字（账号自己写的）
+  /** 只使用这个账号自己填写的行业、岗位、成长阶段、省份 */
+  profile: ProfileAnswers;
   followed: string[];
   muted: string[];
   opened: Record<string, string>; // id → 日期
@@ -93,6 +106,7 @@ function reason(parts: Part[]): string {
     platform: (v) => `你在${v}发布，这条写明了适用的平台`,
     live: (v) => `你在${v}发布，这些平台有直播功能`,
     position: (v) => `你的账号定位里提到「${v}」`,
+    profile: (v) => `你填写的「${v}」和这条相关`,
     general: () => '所有发布者都要知道的基础规则',
     read: () => '你读过同类内容',
     updated: () => '规则有更新，可能影响你',
@@ -104,6 +118,18 @@ function reason(parts: Part[]): string {
 function matchKeyword(text: string, topic: Topic): string | null {
   for (const k of topic.keywords) if (k && text.includes(k)) return k;
   return null;
+}
+
+/** 注册答案里的词出现在这条的标题、摘要、分类、标签或主题词里，才算相关。 */
+function matchProfile(entry: { title?: string; summary?: string; category?: string; tags?: string[] }, topic: Topic | undefined, profile: ProfileAnswers): string | null {
+  const answers = [profile.industry, profile.jobRole, profile.growthStage, profile.province].map((v) => (v ?? '').trim()).filter((v) => v.length >= 2);
+  if (!answers.length) return null;
+  const hay = [entry.title ?? '', entry.summary ?? '', entry.category ?? '', ...(entry.tags ?? []), topic?.name ?? '', ...(topic?.keywords ?? [])].join('\n');
+  const direct = answers.find((v) => hay.includes(v));
+  if (direct) return direct;
+  if (!topic) return null;
+  const blob = answers.join(' ');
+  return matchKeyword(blob, topic);
 }
 
 export function rank(items: AnnotatedEntry[], sig: Signals, userKey: string, limit = 6): Feed {
@@ -143,6 +169,12 @@ export function rank(items: AnnotatedEntry[], sig: Signals, userKey: string, lim
       s += 3;
       parts.push(['position', kw]);
       codes.push('position');
+    }
+    const profileHit = matchProfile(e, topic, sig.profile ?? EMPTY_PROFILE);
+    if (profileHit) {
+      s += 3;
+      parts.push(['profile', profileHit]);
+      codes.push('profile');
     }
     if (t === 'ad') {
       s += 1;

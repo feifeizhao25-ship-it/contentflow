@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../database/prisma.service';
-import { AnnotatedEntry, Feed, Signals, TOPICS, TOPIC_BY_ID, homeCard, rank } from './feed';
+import { AnnotatedEntry, EMPTY_PROFILE, Feed, ProfileAnswers, Signals, TOPICS, TOPIC_BY_ID, homeCard, rank } from './feed';
 import { dayStr, parseDay, shanghaiToday } from './live/util';
 import { LibraryStore, annotate, showPending } from './store';
 
@@ -102,7 +102,10 @@ export class LibraryService {
   async signals(userId: string, today: number): Promise<Signals> {
     const prefs = await this.readUser(userId);
     const s = (prefs[KEY] ?? {}) as Stored;
-    const user = await this.prisma.user.findUnique({ where: { id: userId }, select: { tenant_id: true } });
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { tenant_id: true, industry: true, job_role: true, growth_stage: true, province: true },
+    });
     const tenant = user?.tenant_id;
     const platforms = new Set<string>(Array.isArray(prefs.default_platforms) ? prefs.default_platforms : []);
     let positioning = '';
@@ -113,7 +116,26 @@ export class LibraryService {
       positioning = personas.map((p) => personaText(p)).join(' ');
     }
     const toMap = (l?: { id: string; day: string }[]) => Object.fromEntries(this.keep(l, today).map((x) => [x.id, x.day]));
-    return { enabled: s.enabled !== false, today, platforms: [...platforms].sort(), positioning, followed: s.followed ?? [], muted: s.muted ?? [], opened: toMap(s.opened), shown: toMap(s.shown), lastVisit: s.last_visit ?? null };
+    const text = (v: unknown) => (typeof v === 'string' ? v.trim() : '');
+    const filled: ProfileAnswers = {
+      industry: text(user?.industry),
+      jobRole: text(user?.job_role),
+      growthStage: text(user?.growth_stage),
+      province: text(user?.province),
+    };
+    const profile = filled.industry || filled.jobRole || filled.growthStage || filled.province ? filled : EMPTY_PROFILE;
+    return {
+      enabled: s.enabled !== false,
+      today,
+      platforms: [...platforms].sort(),
+      positioning,
+      profile,
+      followed: s.followed ?? [],
+      muted: s.muted ?? [],
+      opened: toMap(s.opened),
+      shown: toMap(s.shown),
+      lastVisit: s.last_visit ?? null,
+    };
   }
 
   async feed(userId: string, now = new Date(), opts: { record?: boolean; limit?: number } = {}) {
@@ -127,7 +149,7 @@ export class LibraryService {
       topics,
       since: sig.lastVisit,
       generated_for: dayStr(today),
-      note: '推荐只用你账号里的信息（绑定的平台、人设里写的账号定位）、你关注的主题和在应用里读过的内容；规则来自官方文件，仅供了解，不是法律意见。可随时关闭。',
+      note: '推荐只用你账号里的信息（绑定的平台、人设里写的账号定位、注册时填的行业、岗位、成长阶段和省份）、你关注的主题和在应用里读过的内容；规则来自官方文件，仅供了解，不是法律意见。可随时关闭。',
     };
     if (opts.record !== false && out.enabled && out.items.length) {
       const prefs = await this.readUser(userId);
