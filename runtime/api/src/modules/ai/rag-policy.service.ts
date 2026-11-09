@@ -54,6 +54,14 @@ export const CONSERVATIVE_USER_NOTICE_EN = "Today's compliance check is more con
 export const CONSERVATIVE_USER_NOTICE = '今天的合规检查会更保守，发布前需要你自行确认。这不是法律意见。';
 
 const DAY = 86_400_000;
+const MACHINE_REVIEWER = /openclaw|自动复核|自动审核/i;
+
+/** 空名和自动复核都不是人工签署。 */
+export function humanReviewerName(value: unknown): string {
+  const name = typeof value === 'string' ? value.trim() : '';
+  if (!name || MACHINE_REVIEWER.test(name)) return '';
+  return name;
+}
 const ALLOWED_ORIGINS = [
   'https://www.cac.gov.cn',
   'https://www.gov.cn',
@@ -69,7 +77,7 @@ const ALLOWED_ORIGINS = [
 export function lastCheckedAt(record: Partial<RagPolicySource>, now: number): { at: number; by: 'review' | 'retrieval' } | null {
   const retrieved = Date.parse(String(record.retrieved_at ?? ''));
   if (!Number.isFinite(retrieved) || retrieved > now) return null;
-  const reviewer = typeof record.reviewed_by === 'string' ? record.reviewed_by.trim() : '';
+  const reviewer = humanReviewerName(record.reviewed_by);
   const reviewed = Date.parse(String(record.reviewed_at ?? ''));
   if (reviewer && Number.isFinite(reviewed) && reviewed >= retrieved && reviewed <= now) return { at: reviewed, by: 'review' };
   return { at: retrieved, by: 'retrieval' };
@@ -109,6 +117,9 @@ export class RagPolicyService implements OnApplicationBootstrap, OnModuleDestroy
       const source = new URL(record.source_url);
       const published = Date.parse(record.published_at);
       const retrieved = Date.parse(record.retrieved_at);
+      const stamped = typeof record.reviewed_by === 'string' ? record.reviewed_by.trim() : '';
+      if (stamped && !humanReviewerName(stamped)) return false;
+      if ((record as { published?: boolean }).published === false) return false;
       return record.review_status === 'verified' && record.jurisdiction === 'CN'
         && ['S', 'A'].includes(record.source_tier)
         && ALLOWED_ORIGINS.includes(source.origin)

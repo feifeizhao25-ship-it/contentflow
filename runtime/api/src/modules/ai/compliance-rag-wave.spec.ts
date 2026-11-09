@@ -28,8 +28,10 @@ describe('国内规则 RAG 第一波（待审核，不代填复核人）', () =>
     expect(ids).not.toContain('douyin-user-agreement-2025');
     expect(ids).not.toContain('bilibili-ai-policy');
     for (const record of all) {
+      expect(String(record.reviewed_by ?? '')).not.toMatch(/openclaw|自动复核/i);
+      expect(String(record.content ?? '').length).toBeGreaterThan(20);
       // Wave-1 contract: each source is either awaiting review (no reviewer fields)
-      // or verified/approved by a named reviewer (both fields stamped together).
+      // or verified/approved by a named human reviewer (both fields stamped together).
       if (record.review_status === '待审核') {
         expect(record.reviewer ?? '').toBe('');
         expect(record.reviewed_by ?? null).toBeNull();
