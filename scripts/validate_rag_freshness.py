@@ -26,8 +26,15 @@ METADATA_FILES = (
 DEFAULT_MAX_AGE_DAYS = 30
 REMIND_DAYS = 5
 warnings: list[str] = []
-MACHINE_REVIEWER = re.compile(r"openclaw|自动复核|自动审核", re.I)
-UNREVIEWED = {"unreviewed", "待审核", "needs_review", "unpublished"}
+MACHINE_REVIEWER = re.compile(r"openclaw|自动复核|自动审核|github-actions|^(?:bot|system|auto|cron|ci)\b", re.I)
+UNREVIEWED_STATUSES = {"unreviewed", "待审核", "needs_review", "unpublished"}
+
+
+def human_reviewer(name: object) -> str:
+    text = str(name or "").strip()
+    if not text or MACHINE_REVIEWER.search(text):
+        return ""
+    return text
 REQUIRED_FIELDS = {"source_url", "source_name", "published_at", "retrieved_at", "jurisdiction", "source_tier"}
 ALLOWED_TIERS = {"S", "A", "B", "C", "D"}
 
@@ -85,13 +92,14 @@ def validate(max_age_days: int, allow_empty: bool) -> list[str]:
             continue
         record = {**(metadata.get(path.name) or {}), **(payload if isinstance(payload, dict) else {})}
         status = str(record.get("review_status") or "")
-        if record.get("published") is False or status in UNREVIEWED:
+        # 未复核资料留在磁盘上，但不算已核验来源，也不要求被改成 verified。
+        if record.get("published") is False or status in UNREVIEWED_STATUSES:
             kept_unreviewed += 1
             if not str(record.get("content") or "").strip():
                 errors.append(f"{path.name}: 未复核资料的正文被清空了")
             continue
         reviewer_name = str(record.get("reviewed_by") or "")
-        if MACHINE_REVIEWER.search(reviewer_name):
+        if reviewer_name and not human_reviewer(reviewer_name):
             errors.append(f"{path.name}: reviewed_by「{reviewer_name.strip()}」不是人工签署")
             continue
         approved_source_count += 1
@@ -105,7 +113,10 @@ def validate(max_age_days: int, allow_empty: bool) -> list[str]:
         if record.get("source_tier") not in ALLOWED_TIERS:
             errors.append(f"{path.name}: source_tier必须为S/A/B/C/D")
         retrieved = parse_time(record.get("retrieved_at") or record.get("timestamp"))
-        reviewer = str(record.get("reviewed_by") or "").strip()
+        reviewer_raw = str(record.get("reviewed_by") or "").strip()
+        reviewer = human_reviewer(reviewer_raw)
+        if reviewer_raw and not reviewer:
+            errors.append(f"{path.name}: reviewed_by「{reviewer_raw}」不是人工签署，不能当作已复核")
         reviewed = parse_time(record.get("reviewed_at"))
         if record.get("reviewed_at") and not reviewer:
             errors.append(f"{path.name}: 填了 reviewed_at 却没有 reviewed_by——复核必须写明复核人，不能只改日期")
