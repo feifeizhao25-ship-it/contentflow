@@ -272,6 +272,7 @@ export class AccountErasureService {
            name = NULL, avatar_url = NULL, oauth_providers = '{}'::jsonb, preferences = '{}'::jsonb,
            permissions = '[]'::jsonb, email_verified = FALSE, phone_verified = FALSE,
            real_name_verified = FALSE, consent_version = NULL, consent_at = NULL,
+           industry = NULL, job_role = NULL, growth_stage = NULL, province = NULL,
            status = 'deleted', updated_at = NOW() WHERE id = $1`,
         userId,
       );
