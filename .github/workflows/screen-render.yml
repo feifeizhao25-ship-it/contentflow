@@ -1,0 +1,72 @@
+name: Screen render
+
+# Scheduled check that public pages of both web apps actually paint.
+# Also runs on pull requests so a blank or error screen fails before merge.
+# The browser is not given an account, and requests off this machine are aborted.
+
+on:
+  schedule:
+    - cron: '30 6 * * *'
+  workflow_dispatch:
+  pull_request:
+    branches: [main, develop]
+
+concurrency:
+  group: screen-render-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  screens:
+    name: Mobile and desktop screens
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: |
+            runtime/web-cn/package-lock.json
+            runtime/web-int/package-lock.json
+
+      - name: Install web dependencies
+        run: |
+          npm ci --prefix runtime/web-cn
+          npm ci --prefix runtime/web-int
+
+      - name: Build both apps
+        env:
+          SILICONFLOW_API_KEY: ci-placeholder
+          NEXT_PUBLIC_SUPABASE_URL: https://contentflow-ci.invalid
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ci-public-anon-key
+        run: |
+          npm run build --prefix runtime/web-cn
+          npm run build --prefix runtime/web-int
+
+      - name: Install Chromium
+        working-directory: runtime/web-int
+        run: npx playwright install --with-deps chromium
+
+      - name: Start both apps
+        run: |
+          npm run start --prefix runtime/web-cn -- -H 127.0.0.1 -p 3101 > /tmp/web-cn.log 2>&1 &
+          npm run start --prefix runtime/web-int -- -H 127.0.0.1 -p 3102 > /tmp/web-int.log 2>&1 &
+          for _ in $(seq 1 60); do
+            if curl -sf -o /dev/null http://127.0.0.1:3101/ && curl -sf -o /dev/null http://127.0.0.1:3102/; then
+              exit 0
+            fi
+            sleep 2
+          done
+          echo 'web-cn log:' && cat /tmp/web-cn.log
+          echo 'web-int log:' && cat /tmp/web-int.log
+          exit 1
+
+      - name: Render key pages
+        working-directory: runtime/web-int
+        env:
+          CN_BASE: http://127.0.0.1:3101
+          INT_BASE: http://127.0.0.1:3102
+          NODE_PATH: ${{ github.workspace }}/runtime/web-int/node_modules
+        run: npx playwright test --config ../../e2e/screen-render/playwright.config.ts
