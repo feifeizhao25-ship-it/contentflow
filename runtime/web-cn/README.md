@@ -6,7 +6,7 @@
 
 ## 🌟 核心特性
 
-- **🚀 AI 智能创作**: 接入 OpenRouter(DeepSeek), SiliconFlow(Qwen), Fal.ai(Flux) 等顶级模型，支持文章、标题、配图的一键生成。
+- **🚀 AI 智能创作**: 国内版文本走境内供应商直连（通义千问或 DeepSeek），不走 OpenRouter。配图走通义万相，不走 Fal.ai。视频生成在创作台标为「暂未开放」。
 - **📱 多平台一键分发**: 支持抖音、小红书、微信视频号、B站、微博等主流自媒体平台。
 - **📅 智能排期发布**: 灵活设置各平台发布时间，支持定时任务与日历视图管理。
 - **📊 全链路数据分析**: 汇总多平台流量数据，通过可视化图表展现内容表现，优化分发策略。
@@ -21,10 +21,11 @@
 - **基础样式**: Vanilla CSS + TailwindCSS
 - **数据可视化**: ECharts
 - **后端服务**: Supabase (Database, Auth, Storage)
-- **AI 引擎**: 
-  - OpenRouter (DeepSeek-V3)
-  - SiliconFlow (Qwen-2.5-7B)
-  - Fal.ai (Flux-Schnell)
+- **AI 引擎（国内版，与 `runtime/api/src/modules/ai/market-routing.ts` 一致）**:
+  - 文本：境内直连。`MARKET_REGION` 为 `cn` / `china` / `zh-cn` 时 `useOpenRouter` 固定为 false，即使环境里有 `OPENROUTER_API_KEY` 也不出境。默认模型是 `qwen-flash`，也可指定境内模型名（如 `deepseek-chat`）。启动时至少要有 `QWEN_API_KEY` 或 `DEEPSEEK_API_KEY` 之一。
+  - 配图：通义万相。配置了 `FAL_API_KEY` 也不会改走 Fal.ai。
+  - 视频：创作台（`studio/page.tsx`）显示「视频生成 / 暂未开放」，国内版还没有接入视频模型。
+  - OpenRouter 与 Fal.ai 只留给境外市场，不是国内版的供应商。
 
 ## 🚀 快速开始
 
@@ -37,13 +38,12 @@
 NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
 
-# AI Services
-OPENROUTER_API_KEY=your_openrouter_key
-SILICONFLOW_API_KEY=your_siliconflow_key
-FAL_API_KEY=your_fal_key
+# 国内版文本：二选一，缺了国内栈启动会拒绝
+QWEN_API_KEY=your_qwen_key
+# DEEPSEEK_API_KEY=your_deepseek_key
 
-# Defaults
-NEXT_PUBLIC_AI_PROVIDER=siliconflow
+# 不要为国内版填写 OPENROUTER_API_KEY 或 FAL_API_KEY。
+# 代码会忽略它们：文本不走 OpenRouter，配图不走 Fal.ai。
 ```
 
 ### 2. 安装依赖
@@ -77,13 +77,13 @@ npm run dev
 - [x] **团队协作**: 成员管理、角色权限。
 
 ### ✅ Phase 3 - 平台集成与 AI 增强
-- [x] **AI 服务全面升级**: 接入 OpenRouter, SiliconFlow 和 Fal.ai。
+- [x] **国内文本与配图**: 文本境内直连，配图走通义万相。早期清单里的 OpenRouter + Fal.ai 不是当前国内路由，见文首说明。
 - [x] **账号授权流**: 实现多平台模拟 OAuth 授权。
 - [x] **分发逻辑实现**: 定时任务与立即发布的业务流跑通。
 - [x] **素材库动态化**: 支持素材上传与实时检索。
 
 ### 🚧 Phase 4 - 高级特性 (进行中)
-- [ ] **AI 视频生成**: 接入 Luma/Runway 视频生成能力。
+- [ ] **AI 视频生成**: 创作台仍是「暂未开放」。`QUICK_START_VIDEO.md`、`VIDEO_*.md`、`MULTI_SEGMENT_VIDEO_GUIDE.md` 是更早的 Fal / Shotstack 设计记录，不能当成已上线功能。
 - [ ] **数据实战**: 接入真实各平台 API 数据分析。
 - [ ] **内容自动审核**: 识别敏感词与平台违禁内容。
 

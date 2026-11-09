@@ -1,3 +1,5 @@
+import { readFileSync } from 'fs';
+import { join } from 'path';
 import {
   assertDomesticProviderConfigured,
   isDomesticMarket,
@@ -17,6 +19,27 @@ import {
  */
 describe('国内市场的模型供应商边界', () => {
   const offshoreDefaultModel = 'qwen/qwen3-30b-a3b-instruct-2507';
+
+  it('国内路由不能打开 OpenRouter：源码把开关写成「非国内且有 key」，行为上有 key 也仍是 false', () => {
+    const src = readFileSync(join(__dirname, 'market-routing.ts'), 'utf8');
+    const fn = src.slice(
+      src.indexOf('export function resolveTextProvider'),
+      src.indexOf('export function assertDomesticProviderConfigured'),
+    );
+    expect(fn).toContain('const useOpenRouter = !domestic && key.length > 0');
+    expect(fn).not.toMatch(/useOpenRouter\s*=\s*true/);
+    expect(fn).not.toMatch(/useOpenRouter:\s*true/);
+    for (const marketRegion of ['cn', 'china', 'zh-cn']) {
+      const decision = resolveTextProvider({
+        marketRegion,
+        openRouterApiKey: 'sk-or-should-stay-unused',
+        offshoreDefaultModel,
+        domesticDefaultModel: 'qwen-flash',
+        requestedModel: 'qwen-flash',
+      });
+      expect(decision.useOpenRouter).toBe(false);
+    }
+  });
 
   it('国内市场即使配了 OPENROUTER_API_KEY 也不走聚合路由', () => {
     const decision = resolveTextProvider({
