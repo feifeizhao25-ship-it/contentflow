@@ -11,9 +11,9 @@ export default function WorkspacePage() {
           <div className="actions"><Link className="button" href="/create">Start a draft</Link><Link className="button secondary" href="/data-network">Review signals</Link></div>
         </div>
         <div className="grid">
-          <article className="card"><span className="status">Illustrative</span><div className="metric">14</div><p>sample market playbooks</p></article>
-          <article className="card"><span className="status">Illustrative</span><div className="metric">28</div><p>sample drafts awaiting approval</p></article>
-          <article className="card"><span className="status">Illustrative</span><div className="metric">96%</div><p>sample policy check rate</p></article>
+          <article className="card"><h3>Market-specific drafts</h3><p>Each market keeps its own claims, tone, and approval state. No sample performance is shown here.</p></article>
+          <article className="card"><h3>Human approval</h3><p>A draft stays unpublished until someone on the workspace approves it.</p></article>
+          <article className="card"><h3>Stored records only</h3><p>Analytics counts what this workspace saved. Missing platform data stays blank.</p></article>
         </div>
       </section>
       <section><div className="eyebrow">Example workflow</div><h2>Your workspace adapts to what needs attention.</h2>
