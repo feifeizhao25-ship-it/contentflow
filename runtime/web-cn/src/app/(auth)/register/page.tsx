@@ -9,6 +9,8 @@ import { useRouter } from 'next/navigation';
 import { isValidChinaMobile, registerWithEmail, registerWithPhone, sendSmsCode } from '@/lib/auth-service';
 import { SmsCodeInput } from '@/components/auth/SmsCodeInput';
 import { safeErrorText } from '@/lib/api-error';
+import { apiClient } from '@/lib/api-client';
+import { signupProfileBody } from '@/lib/signup-profile';
 
 
 
@@ -34,6 +36,7 @@ export default function RegisterPage() {
                 agreedToTerms: values.agreement === true,
                 confirmedAge16: values.ageConfirmed === true,
             });
+            await saveSignupAnswers(values);
             message.success('注册成功');
             router.push('/studio');
         } catch (error) {
@@ -55,6 +58,7 @@ export default function RegisterPage() {
                 agreedToTerms: values.agreement === true,
                 confirmedAge16: values.ageConfirmed === true,
             });
+            await saveSignupAnswers(values);
             message.success('注册成功');
             router.push('/studio');
         } catch (error) {
@@ -63,6 +67,33 @@ export default function RegisterPage() {
             setLoading(false);
         }
     };
+
+    const saveSignupAnswers = async (values: Record<string, unknown>) => {
+        const body = signupProfileBody(values);
+        if (!Object.keys(body).length) return;
+        try {
+            await apiClient.put('/users/me/signup-profile', body);
+        } catch (error) {
+            message.warning(safeErrorText(error, '账号已创建。行业、岗位等信息这次没有保存，可稍后在设置里再填'));
+        }
+    };
+
+    const profileItems = (
+        <>
+            <Form.Item name="industry" label="你的行业（选填）">
+                <Input maxLength={40} placeholder="例如：教育培训" />
+            </Form.Item>
+            <Form.Item name="job_role" label="你的岗位（选填）">
+                <Input maxLength={40} placeholder="例如：内容编辑" />
+            </Form.Item>
+            <Form.Item name="growth_stage" label="账号成长阶段（选填）">
+                <Input maxLength={40} placeholder="例如：刚开始做内容" />
+            </Form.Item>
+            <Form.Item name="province" label="所在省份（选填）">
+                <Input maxLength={20} placeholder="例如：浙江" />
+            </Form.Item>
+        </>
+    );
 
     const agreementItem = (
         <Form.Item
@@ -164,6 +195,7 @@ export default function RegisterPage() {
                                     <Form.Item name="tenantName">
                                         <Input prefix={<TeamOutlined />} placeholder="团队/公司名称（选填）" maxLength={100} />
                                     </Form.Item>
+                                    {profileItems}
                                     {agreementItem}
                                     {ageItem}
                                     <Form.Item>
@@ -247,6 +279,7 @@ export default function RegisterPage() {
                         />
                     </Form.Item>
 
+                    {profileItems}
                     {agreementItem}
                     {ageItem}
 

@@ -39,6 +39,10 @@ export interface FakeUser {
   preferences: Record<string, unknown>;
   platforms: string[];
   personas: { name: string; description?: string; config?: unknown }[];
+  industry?: string | null;
+  job_role?: string | null;
+  growth_stage?: string | null;
+  province?: string | null;
 }
 
 export function fakePrisma(users: FakeUser[]) {
@@ -47,7 +51,7 @@ export function fakePrisma(users: FakeUser[]) {
     user: {
       findUnique: async ({ where }: any) => {
         const u = by.get(where.id);
-        return u ? { preferences: u.preferences, tenant_id: u.tenant_id } : null;
+        return u ? { preferences: u.preferences, tenant_id: u.tenant_id, industry: u.industry ?? null, job_role: u.job_role ?? null, growth_stage: u.growth_stage ?? null, province: u.province ?? null } : null;
       },
       update: async ({ where, data }: any) => {
         by.get(where.id)!.preferences = JSON.parse(JSON.stringify(data.preferences));

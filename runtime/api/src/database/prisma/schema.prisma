@@ -86,6 +86,12 @@ model User {
   // 用户偏好
   preferences Json @default("{\"theme\": \"light\", \"default_platforms\": [], \"ai_style\": \"professional\"}")
 
+  // 注册三问和省份。只属于当前账号，供推荐排序。
+  industry     String?
+  job_role     String?
+  growth_stage String?
+  province     String?
+
   status     String   @default("active")
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt

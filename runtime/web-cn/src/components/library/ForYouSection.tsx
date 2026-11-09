@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Button, Switch, Tag } from 'antd';
+import { reasonChips } from '@/lib/signup-profile';
 import {
     BADGE_TEXT,
     libraryApi,
@@ -196,7 +197,10 @@ function FeedCard({ item }: { item: FeedItem }) {
                 </p>
             )}
             <p className="mt-3 text-xs text-indigo-700 leading-5" data-testid="foryou-reason">
-                为什么推荐：{item.reason}
+                为什么推荐：
+                {reasonChips(item.reason).map((part) => (
+                    <Tag key={part} data-testid="foryou-reason-chip">{part}</Tag>
+                ))}
             </p>
         </Link>
     );

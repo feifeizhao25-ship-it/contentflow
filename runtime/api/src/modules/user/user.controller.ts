@@ -3,7 +3,7 @@ import { Throttle } from '@nestjs/throttler';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { UserService } from './user.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
-import { DeleteAccountDto, UpdateProfileDto } from './dto/update-profile.dto';
+import { DeleteAccountDto, SignupProfileDto, UpdateProfileDto } from './dto/update-profile.dto';
 import { AccountErasureService, RETAINED_TABLES } from './account-erasure.service';
 
 @ApiTags('users')
@@ -28,6 +28,18 @@ export class UserController {
   async updateProfile(@Request() req: any, @Body() data: UpdateProfileDto) {
     const user = await this.userService.update(req.user.sub, data);
     return { user };
+  }
+
+  @Get('me/signup-profile')
+  @ApiOperation({ summary: '读取当前用户的注册三问和省份' })
+  async getSignupProfile(@Request() req: any) {
+    return { profile: await this.userService.getSignupProfile(req.user.sub) };
+  }
+
+  @Put('me/signup-profile')
+  @ApiOperation({ summary: '保存当前用户的注册三问和省份' })
+  async saveSignupProfile(@Request() req: any, @Body() data: SignupProfileDto) {
+    return { profile: await this.userService.saveSignupProfile(req.user.sub, data) };
   }
 
   // ─── 导出个人信息 / 注销账号 ───

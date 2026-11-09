@@ -39,11 +39,22 @@ export const topicOf = (e: { category?: string }): string => CATEGORY_TOPIC.get(
 const pname = (p: string) => PLATFORM_NAMES[p] ?? p;
 export const RECENT_UPDATE_DAYS = 14;
 
+export interface ProfileAnswers {
+  industry: string;
+  jobRole: string;
+  growthStage: string;
+  province: string;
+}
+
+export const EMPTY_PROFILE: ProfileAnswers = { industry: '', jobRole: '', growthStage: '', province: '' };
+
 export interface Signals {
   enabled: boolean;
   today: number; // 上海当天 00:00 UTC 毫秒
   platforms: string[]; // 已绑定账号 / 近期发布 / 默认平台（去重）
   positioning: string; // 人设说明 + 配置里的定位文字（账号自己写的）
+  /** 注册时填的行业、岗位、成长阶段、省份。空字符串不参与排序。 */
+  profile?: ProfileAnswers;
   followed: string[];
   muted: string[];
   opened: Record<string, string>; // id → 日期
@@ -93,6 +104,7 @@ function reason(parts: Part[]): string {
     platform: (v) => `你在${v}发布，这条写明了适用的平台`,
     live: (v) => `你在${v}发布，这些平台有直播功能`,
     position: (v) => `你的账号定位里提到「${v}」`,
+    profile: (v) => `你填写的「${v}」和这条相关`,
     general: () => '所有发布者都要知道的基础规则',
     read: () => '你读过同类内容',
     updated: () => '规则有更新，可能影响你',
@@ -104,6 +116,16 @@ function reason(parts: Part[]): string {
 function matchKeyword(text: string, topic: Topic): string | null {
   for (const k of topic.keywords) if (k && text.includes(k)) return k;
   return null;
+}
+
+function matchProfile(entry: { title?: string; summary?: string; category?: string; tags?: string[] }, topic: Topic | undefined, profile: ProfileAnswers): string | null {
+  const answers = [profile.industry, profile.jobRole, profile.growthStage, profile.province].map((v) => (v ?? '').trim()).filter((v) => v.length >= 2);
+  if (!answers.length) return null;
+  const hay = [entry.title ?? '', entry.summary ?? '', entry.category ?? '', ...(entry.tags ?? []), topic?.name ?? '', ...(topic?.keywords ?? [])].join('\n');
+  const direct = answers.find((v) => hay.includes(v));
+  if (direct) return direct;
+  if (!topic) return null;
+  return matchKeyword(answers.join(' '), topic);
 }
 
 export function rank(items: AnnotatedEntry[], sig: Signals, userKey: string, limit = 6): Feed {
@@ -143,6 +165,12 @@ export function rank(items: AnnotatedEntry[], sig: Signals, userKey: string, lim
       s += 3;
       parts.push(['position', kw]);
       codes.push('position');
+    }
+    const profileHit = matchProfile(e, topic, sig.profile ?? EMPTY_PROFILE);
+    if (profileHit) {
+      s += 3;
+      parts.push(['profile', profileHit]);
+      codes.push('profile');
     }
     if (t === 'ad') {
       s += 1;
