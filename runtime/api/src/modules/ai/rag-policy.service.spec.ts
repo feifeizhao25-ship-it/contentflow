@@ -14,6 +14,7 @@ describe('domestic evidence selection', () => {
   it.each([
     { retrieved_at: '2026-08-23' }, { retrieved_at: '2026-09-29' }, { published_at: '2026-09-29' },
     { retrieved_at: 'invalid' }, { jurisdiction: 'US' }, { review_status: 'unverified' }, { source_tier: 'X' },
+    { published: false }, { reviewed_by: 'OpenClaw 自动复核' },
     { source_url: 'https://evil.example.cn/policy' }, { source_url: 'https://www.cac.gov.cn.evil.example/policy' },
     { source_url: 'http://www.cac.gov.cn/policy' }, { source_url: 'https://user@www.cac.gov.cn/policy' },
     { topics: [] }, { platforms: null }, { content: '' },
@@ -103,5 +104,28 @@ describe('合规资料人工复核流程（reviewed_by / reviewed_at）', () => 
       expect(record).toHaveProperty('reviewed_at');
       if (record.reviewed_at) expect(String(record.reviewed_by || '').trim()).not.toBe('');
     }
+  });
+
+  it('OpenClaw 自动复核即使把状态写成 verified，也不当作已核验来源', async () => {
+    await write({ reviewed_by: 'OpenClaw 自动复核', reviewed_at: '2026-10-01T10:00:00+08:00', review_status: 'verified' });
+    expect(await service().select(['douyin'])).toEqual([]);
+    expect((await service().freshnessReport(now)).sources[0].checkedBy).toBe('retrieval');
+  });
+
+  it('未复核、未发布的仓库资料仍保留正文，但不会被当成已核验来源返回', async () => {
+    const dir = path.join(__dirname, '../../../data/rag_cache');
+    const svc = new RagPolicyService({ get: (key: string) => key === 'RAG_POLICY_DIR' ? dir : 365 } as any);
+    const selected = await svc.select(['douyin', 'bilibili'], 'AI标识广告');
+    const names = (await fs.readdir(dir)).filter((name) => name.endsWith('.json'));
+    expect(names.length).toBeGreaterThan(0);
+    for (const name of names) {
+      const record = JSON.parse(await fs.readFile(path.join(dir, name), 'utf8'));
+      expect(String(record.content ?? '').length).toBeGreaterThan(20);
+      expect(record.review_status).not.toBe('verified');
+      expect(record.review_status).not.toBe('approved');
+      expect(record.published).toBe(false);
+      expect(selected.find((item) => item.id === record.id)).toBeUndefined();
+    }
+    expect(selected).toEqual([]);
   });
 });
