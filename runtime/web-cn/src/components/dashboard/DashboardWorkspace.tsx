@@ -4,7 +4,6 @@ import React, { useState, useEffect } from 'react';
 import {
     Card,
     Button,
-    Statistic,
     Row,
     Col,
     Progress,
@@ -16,15 +15,12 @@ import {
 } from 'antd';
 import { message } from '@/lib/antd-app';
 import { 
-  RocketOutlined,
   FileTextOutlined,
-  VideoCameraOutlined,
   ThunderboltOutlined,
   GiftOutlined,
   FireOutlined,
   UserOutlined,
   CheckCircleOutlined,
-  RiseOutlined,
   BarChartOutlined,
   CalendarOutlined,
   PlusOutlined
@@ -39,26 +35,9 @@ const { Meta } = Card;
 
 // 快捷操作
 const quickActions = [
-  { icon: <FileTextOutlined />, label: '生成脚本', path: '/ai-create', color: '#722ed1' },
-  { icon: <VideoCameraOutlined />, label: '生成视频', path: '/ai-create?tab=video', color: '#13c2c2' },
-  { icon: <ThunderboltOutlined />, label: '热点追踪', path: '/hot', color: '#fa8c16' },
+  { icon: <FileTextOutlined />, label: '去创作', path: '/studio', color: '#722ed1' },
   { icon: <CalendarOutlined />, label: '发布日历', path: '/calendar', color: '#eb2f96' },
-];
-
-// 最近活动
-const recentActivities = [
-  { title: '生成了"夏季穿搭指南"脚本', time: '10分钟前', type: 'script' },
-  { title: '视频"美食探店vlog"生成完成', time: '30分钟前', type: 'video' },
-  { title: '连续签到7天，获得额外奖励', time: '1小时前', type: 'checkin' },
-  { title: '邀请好友获得50积分', time: '2小时前', type: 'invite' },
-];
-
-// 数据概览卡片
-const dataOverviewCards = [
-  { title: '今日脚本', value: 3, total: 10, color: '#722ed1', icon: <FileTextOutlined /> },
-  { title: '今日视频', value: 1, total: 5, color: '#13c2c2', icon: <VideoCameraOutlined /> },
-  { title: '累计创作', value: 156, color: '#fa8c16', icon: <RocketOutlined /> },
-  { title: '爆款率', value: 23, unit: '%', color: '#eb2f96', icon: <RiseOutlined /> },
+  { icon: <BarChartOutlined />, label: '已保存的数据', path: '/analytics', color: '#13c2c2' },
 ];
 
 export default function DashboardWorkspace() {
@@ -166,32 +145,10 @@ export default function DashboardWorkspace() {
         </Card>
       </motion.div>
 
-      {/* 数据概览 */}
       <motion.div variants={itemVariants} className="mb-6">
-        <Row gutter={[16, 16]}>
-          {dataOverviewCards.map((card, index) => (
-            <Col xs={12} sm={6} key={index}>
-              <Card className="h-full">
-                <Statistic
-                  title={card.title}
-                  value={card.value}
-                  suffix={card.unit}
-                  prefix={<span style={{ color: card.color }}>{card.icon}</span>}
-                  valueStyle={{ color: card.color }}
-                />
-                {card.total && (
-                  <Progress 
-                    percent={(card.value / card.total) * 100} 
-                    showInfo={false}
-                    strokeColor={card.color}
-                    size="small"
-                    className="mt-2"
-                  />
-                )}
-              </Card>
-            </Col>
-          ))}
-        </Row>
+        <Card>
+          <p className="m-0 text-sm text-zinc-600">这里不展示示例创作数、爆款率或热度。发布和生成次数以「数据」页里已经保存的记录为准；没有记录就显示为空，不会编造。</p>
+        </Card>
       </motion.div>
 
       {/* 快捷操作 & 今日任务 */}
@@ -261,35 +218,8 @@ export default function DashboardWorkspace() {
         <Row gutter={[16, 16]}>
           {/* 最近活动 */}
           <Col xs={24} lg={14}>
-            <Card title="最近活动" extra={<a href="/history">查看更多</a>}>
-              <List
-                dataSource={recentActivities}
-                renderItem={(item, index) => (
-                  <List.Item>
-                    <List.Item.Meta
-                      avatar={
-                        <Avatar 
-                          style={{ 
-                            backgroundColor: 
-                              item.type === 'script' ? '#722ed1' :
-                              item.type === 'video' ? '#13c2c2' :
-                              item.type === 'checkin' ? '#fa8c16' :
-                              '#eb2f96'
-                          }}
-                          icon={
-                            item.type === 'script' ? <FileTextOutlined /> :
-                            item.type === 'video' ? <VideoCameraOutlined /> :
-                            item.type === 'checkin' ? <CheckCircleOutlined /> :
-                            <GiftOutlined />
-                          }
-                        />
-                      }
-                      title={item.title}
-                      description={item.time}
-                    />
-                  </List.Item>
-                )}
-              />
+            <Card title="最近活动">
+              <p className="m-0 text-sm text-zinc-500">没有从你的账号读取活动记录。这里不会列出示例脚本、示例视频或编造的热度。</p>
             </Card>
           </Col>
 

@@ -21,6 +21,8 @@ describe.each([
       expect(r.errorCode).toBe('ADAPTER_NOT_INTEGRATED');
       expect(r.humanMessage).toMatch(/[一-鿿]/);
       expect(r.humanMessage).toContain('尚未开通');
+      expect(JSON.stringify(r)).not.toMatch(/发布成功|已发布/);
+      expect(r.status).not.toBe('published');
       // 不把用户指向同样做不到的「去账号管理授权」
       expect(r.humanMessage).not.toContain('账号管理');
     }

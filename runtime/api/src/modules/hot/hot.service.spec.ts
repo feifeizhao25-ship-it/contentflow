@@ -8,6 +8,21 @@ describe('HotService', () => {
     expect(result.available).toBe(false);
     expect(result.topics).toEqual([]);
     expect(result.message).toMatch(/尚未接入/);
+    expect(JSON.stringify(result)).not.toMatch(/热度上升|爆款率|\d+%/);
+  });
+
+  it('只配了密钥、没有数据源地址时，仍然不编造榜单', async () => {
+    const previous = process.env.HOT_PROVIDER_KEY;
+    process.env.HOT_PROVIDER_KEY = 'should-not-invent-topics';
+    delete process.env.HOT_PROVIDER_URL;
+    try {
+      const result: any = await new HotService({} as any).getHotList('douyin');
+      expect(result.available).toBe(false);
+      expect(result.topics).toEqual([]);
+    } finally {
+      if (previous === undefined) delete process.env.HOT_PROVIDER_KEY;
+      else process.env.HOT_PROVIDER_KEY = previous;
+    }
   });
 
   it('不论传什么平台、分类，结果都一样如实：没有数据就是没有数据', async () => {
