@@ -1279,3 +1279,22 @@ model AiQuotaReservation {
   @@index([status, expires_at])
   @@map("ai_quota_reservations")
 }
+
+// 合规规则的版本、正例、反例和人工签署人。
+// reviewer 默认为空。只有真人签署才写入；迁移和创建路径都不得代填。
+model ComplianceRule {
+  id              String   @id @default(uuid())
+  rule_id         String
+  market          String
+  version         String
+  reviewer        String?
+  example         String?
+  counter_example String?
+  body            String   @default("")
+  published       Boolean  @default(false)
+  created_at      DateTime @default(now())
+  updated_at      DateTime @updatedAt
+
+  @@unique([market, rule_id])
+  @@map("compliance_rules")
+}
