@@ -107,7 +107,7 @@ describe('合规资料人工复核流程（reviewed_by / reviewed_at）', () => 
     }
   });
 
-  it('OpenClaw 自动复核不能把资料变成已核验', async () => {
+  it('OpenClaw 自动复核即使把状态写成 verified，也不能把资料变成已核验', async () => {
     await write({ reviewed_by: 'OpenClaw 自动复核', reviewed_at: '2026-10-01T10:00:00+08:00', review_status: 'verified' });
     expect(await service().select(['douyin'])).toEqual([]);
     expect((await service().freshnessReport(now)).sources[0].checkedBy).toBe('retrieval');

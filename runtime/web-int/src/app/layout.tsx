@@ -12,8 +12,18 @@ export const metadata: Metadata = {
 const links: ReadonlyArray<readonly [label: string, href: string]> = [
   ['Workspace', '/'],
   ['Create', '/create'],
-  ['Content Packs', '/content-packs'],
-  ['Data Network', '/data-network'],
+  ['Library', '/library'],
+  ['Publishing', '/publishing'],
+  ['Calendar', '/calendar'],
+  ['Analytics', '/analytics'],
+  ['Accounts', '/accounts'],
+  ['Files', '/materials'],
+  ['Voices', '/brand-voice'],
+  ['Team', '/team'],
+  ['Developers', '/developers'],
+  ['Settings', '/settings'],
+  ['Packs', '/content-packs'],
+  ['Signals', '/data-network'],
 ];
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
@@ -26,7 +36,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
             {links.map(([label, href]) => <Link key={href} href={href}>{label}</Link>)}
           </nav>
           <MobileNav links={links} />
-          <Link href="/login" className="button secondary header-account">Account</Link>
+          <Link href="/login" className="button secondary header-account">Sign in</Link>
         </header>
         <ErrorBoundary>{children}</ErrorBoundary>
         <footer>ContentFlow Global · Human-reviewed AI operations · <Link href="/legal/privacy">Privacy</Link> · <Link href="/legal/terms">Terms</Link></footer>

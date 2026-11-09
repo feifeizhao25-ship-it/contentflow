@@ -226,6 +226,10 @@ describe('注销时手机号相关数据（验证码记录、同意记录、实�
     expect(update.sql).toMatch(/real_name_verified = FALSE/);
     expect(update.sql).toMatch(/consent_version = NULL/);
     expect(update.sql).toMatch(/consent_at = NULL/);
+    expect(update.sql).toMatch(/industry = NULL/);
+    expect(update.sql).toMatch(/job_role = NULL/);
+    expect(update.sql).toMatch(/growth_stage = NULL/);
+    expect(update.sql).toMatch(/province = NULL/);
   });
 
   it('没配置短信密钥时没有验证码可删：不报错，也不拿空密钥算哈希', async () => {

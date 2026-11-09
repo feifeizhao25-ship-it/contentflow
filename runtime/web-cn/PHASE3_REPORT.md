@@ -1,5 +1,15 @@
 # 分发侠 (ContentFlow) Phase 3 进度报告
 
+> **历史记录，不是当前国内版说明。** 下文写于更早的一版前端，当时把 OpenRouter、SiliconFlow 和 Fal.ai 当成国内创作引擎。现行代码不是这样：
+>
+> - 国内文本路由在 `runtime/api/src/modules/ai/market-routing.ts`。`cn` / `china` / `zh-cn` 一律 `useOpenRouter: false`，配置了 `OPENROUTER_API_KEY` 也不走 OpenRouter。境内需要 `QWEN_API_KEY` 或 `DEEPSEEK_API_KEY`。
+> - 国内配图不走 Fal.ai。
+> - 视频生成在 `runtime/web-cn/src/app/(main)/studio/page.tsx` 标为「暂未开放」。
+>
+> 正文保留，便于对照当时做了什么。不要按下面的密钥清单或「下一步接入 Luma/Runway」去配置或对外介绍。
+
+
+
 ## 已完成核心功能
 
 ### 1. AI 服务全面接入 (AI Service Layer)

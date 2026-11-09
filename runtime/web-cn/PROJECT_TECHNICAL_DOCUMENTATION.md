@@ -79,7 +79,9 @@
 | 缓存 | Redis | 7.x | 缓存层 |
 | 任务队列 | Bull | - | 异步任务队列 |
 
-### 2.3 AI服务集成
+> **历史架构稿，模型选择一节已过时。** 表中的 OpenRouter（DeepSeek-V3）、SiliconFlow、Fal.ai 图片和 Fal.ai 视频，不是当前国内版路由。现行规则：国内市场 `useOpenRouter` 固定为 false（`runtime/api/src/modules/ai/market-routing.ts`）；配图走通义万相而不是 Fal.ai；创作台「视频生成」为「暂未开放」。后文第 9 章的 OpenRouter / Fal 示例同样只作当时的接口草稿，不要照着接。
+
+### 2.3 AI服务集成（历史选型，见上一节说明）
 
 | 服务商 | 模型 | 用途 |
 |--------|------|------|

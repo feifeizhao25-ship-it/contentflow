@@ -26,6 +26,29 @@ export class UpdateProfileDto {
   preferences?: Record<string, unknown>;
 }
 
+/** 注册时的三问（行业、岗位、成长阶段）和省份。空字符串表示清空。 */
+export class SignupProfileDto {
+  @IsOptional()
+  @IsString()
+  @MaxLength(40)
+  industry?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(40)
+  job_role?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(40)
+  growth_stage?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(20)
+  province?: string;
+}
+
 export class DeleteAccountDto {
   /**
    * 必须是布尔值 true：防止误调用。
