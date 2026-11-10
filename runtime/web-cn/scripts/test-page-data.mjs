@@ -180,6 +180,19 @@ await check('数据分析页：读 /analytics/overview，不再引用写死的�
     assert.ok(!fs.existsSync(path.join(ROOT, 'src/components/analytics', `${gone}.tsx`)), `${gone}.tsx 仍在`);
   }
   assert.match(src('components/analytics/OwnDataOverview.tsx'), /engagement\.message/);
+  assert.match(page, /\/api\/v1\/analytics\/weekly-report\.xlsx/);
+  assert.match(page, /\/api\/v1\/analytics\/weekly-report\.pdf/);
+  assert.match(page, /下载本周表格/);
+  assert.match(page, /下载本周 PDF/);
+  assert.match(page, /apiClient\.download\(path, filename\)/);
+  assert.match(page, /'\/analytics\/weekly-report\.xlsx', 'weekly-report\.xlsx'/);
+  assert.match(page, /'\/analytics\/weekly-report\.pdf', 'weekly-report\.pdf'/);
+  assert.doesNotMatch(page, /lang=en/);
+  const client = src('lib/api-client.ts');
+  assert.match(client, /async download\(path: string, filename: string\)/);
+  assert.match(client, /credentials: 'include'/);
+  assert.match(client, /response\.status === 401/);
+  assert.match(client, /window\.location\.href = '\/login'/);
 });
 
 await check('创作工作室：AI 额度来自 /billing/subscription 的 aiTokens（与接口额度闸同一来源）', () => {

@@ -3,7 +3,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Button, Segmented, Skeleton } from 'antd';
-import { apiClient } from '@/lib/api-client';
+import { apiClient, FriendlyApiError } from '@/lib/api-client';
 import { parseAnalyticsOverview, type AnalyticsOverview } from '@/lib/page-data';
 import { AiUsage, EngagementPlaceholder, FailureReasons, PublishStats } from '@/components/analytics/OwnDataOverview';
 
@@ -15,6 +15,17 @@ export default function AnalyticsPage() {
     const [overview, setOverview] = useState<AnalyticsOverview | null>(null);
     const [state, setState] = useState<'loading' | 'ready' | 'error'>('loading');
     const [range, setRange] = useState<'week' | 'month'>('week');
+    const [downloadError, setDownloadError] = useState('');
+
+    const saveReport = async (event: React.MouseEvent<HTMLAnchorElement>, path: string, filename: string) => {
+        event.preventDefault();
+        setDownloadError('');
+        try {
+            await apiClient.download(path, filename);
+        } catch (error) {
+            setDownloadError(error instanceof FriendlyApiError ? error.message : '下载失败，请稍后重试');
+        }
+    };
 
     const load = useCallback(async () => {
         setState('loading');
@@ -40,11 +51,18 @@ export default function AnalyticsPage() {
                     <h1 className="text-2xl font-black">数据分析</h1>
                     <p className="mt-1 text-sm leading-6 text-zinc-500">只统计分发侠里的自有数据：发布任务、内容与 AI 生成记录。时间按北京时间计算。</p>
                 </div>
-                <Segmented
-                    value={range}
-                    onChange={(value) => setRange(value as 'week' | 'month')}
-                    options={[{ label: '本周', value: 'week' }, { label: '本月', value: 'month' }]}
-                />
+                <div className="flex min-w-0 flex-col gap-2 sm:items-end">
+                    <Segmented
+                        value={range}
+                        onChange={(value) => setRange(value as 'week' | 'month')}
+                        options={[{ label: '本周', value: 'week' }, { label: '本月', value: 'month' }]}
+                    />
+                    <nav aria-label="本周报告下载" className="flex flex-wrap gap-3 text-sm">
+                        <a href="/api/v1/analytics/weekly-report.xlsx" onClick={(event) => void saveReport(event, '/analytics/weekly-report.xlsx', 'weekly-report.xlsx')}>下载本周表格</a>
+                        <a href="/api/v1/analytics/weekly-report.pdf" onClick={(event) => void saveReport(event, '/analytics/weekly-report.pdf', 'weekly-report.pdf')}>下载本周 PDF</a>
+                    </nav>
+                    {downloadError && <p className="text-sm text-amber-700">{downloadError}</p>}
+                </div>
             </header>
 
             {state === 'loading' && <Skeleton active paragraph={{ rows: 6 }} />}
