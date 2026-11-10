@@ -33,6 +33,18 @@ export class AnalyticsController {
     res.status(200).send(report.body);
   }
 
+  @Get('weekly-report.pdf')
+  @ApiOperation({ summary: '导出本工作区本周报告（PDF，字段与 xlsx 相同，只含已保存的自有数据）' })
+  async weeklyReportPdf(@Request() req: any, @Res() res: Response, @Query('lang') lang?: string) {
+    const effective = lang ?? (process.env.MARKET_REGION === 'global' ? 'en' : undefined);
+    const report = await this.analyticsService.weeklyPdf(req.user.tenantId, Date.now(), normalizeLang(effective));
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', 'attachment; filename="weekly-report.pdf"');
+    res.setHeader('Cache-Control', 'no-store');
+    res.setHeader('X-Export-Truncated', report.truncated ? '1' : '0');
+    res.status(200).send(report.body);
+  }
+
   @Get('dashboard')
   @ApiOperation({ summary: '获取数据看板' })
   async getDashboard(@Request() req: any, @Query('start') start?: string, @Query('end') end?: string) {
