@@ -196,6 +196,16 @@ export default function MainLayout({ children }: MainLayoutProps) {
                             style={{ border: 'none', background: 'transparent' }}
                         />
                     </ConfigProvider>
+                    <Link
+                        href="/rules"
+                        className={clsx(
+                            "mx-3 mb-3 rounded-lg px-3 py-2 text-sm font-medium",
+                            sidebarCollapsed && "px-1 text-center",
+                            isDarkMode ? "text-zinc-100 hover:bg-zinc-800" : "text-zinc-800 hover:bg-zinc-100",
+                        )}
+                    >
+                        {sidebarCollapsed ? "规" : "规则库"}
+                    </Link>
                 </div>
 
                 {/* 底部会员信息 */}
