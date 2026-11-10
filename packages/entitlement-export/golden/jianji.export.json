@@ -1,0 +1,51 @@
+{
+  "markets": [
+    {
+      "billing": "unspecified",
+      "currency": "CNY",
+      "id": "cn",
+      "plans": [
+        {
+          "custom": null,
+          "features": null,
+          "id": "daily_chat_20",
+          "name": null,
+          "priceMonthly": null,
+          "priceYearly": null,
+          "quotaStatus": null,
+          "quotas": {
+            "daily_chat": 20
+          }
+        },
+        {
+          "custom": null,
+          "features": null,
+          "id": "daily_chat_3",
+          "name": null,
+          "priceMonthly": null,
+          "priceYearly": null,
+          "quotaStatus": null,
+          "quotas": {
+            "daily_chat": 3
+          }
+        },
+        {
+          "custom": null,
+          "features": null,
+          "id": "daily_chat_60",
+          "name": null,
+          "priceMonthly": null,
+          "priceYearly": null,
+          "quotaStatus": null,
+          "quotas": {
+            "daily_chat": 60
+          }
+        }
+      ],
+      "purchasableSkus": []
+    }
+  ],
+  "product": "jianji",
+  "sourceKind": "fixture",
+  "sourceLabel": "Fixture of the current daily_chat quotas 3/20/60. The jianji repository was not available in this workspace and was not modified. Tier names and prices are omitted rather than reconstructed."
+}

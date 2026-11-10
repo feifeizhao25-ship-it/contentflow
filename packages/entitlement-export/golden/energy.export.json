@@ -1,0 +1,110 @@
+{
+  "markets": [
+    {
+      "billing": "yearly",
+      "currency": "CNY",
+      "id": "cn",
+      "plans": [
+        {
+          "custom": null,
+          "features": null,
+          "id": "enterprise",
+          "name": "企业版",
+          "priceMonthly": null,
+          "priceYearly": 33000,
+          "quotaStatus": null,
+          "quotas": {
+            "ai_queries_per_day": -1,
+            "calculations_per_day": -1,
+            "diagnoses_per_day": -1,
+            "max_projects": -1,
+            "max_stations": -1,
+            "report_exports_per_month": -1,
+            "resource_queries_per_day": -1
+          }
+        },
+        {
+          "custom": null,
+          "features": null,
+          "id": "free",
+          "name": "免费版",
+          "priceMonthly": null,
+          "priceYearly": 0,
+          "quotaStatus": null,
+          "quotas": {
+            "ai_queries_per_day": 5,
+            "calculations_per_day": 3,
+            "max_projects": 1,
+            "report_exports_per_month": 3,
+            "resource_queries_per_day": 3
+          }
+        },
+        {
+          "custom": null,
+          "features": null,
+          "id": "full",
+          "name": "专家版",
+          "priceMonthly": null,
+          "priceYearly": 5800,
+          "quotaStatus": null,
+          "quotas": {
+            "ai_queries_per_day": 300,
+            "calculations_per_day": -1,
+            "diagnoses_per_day": -1,
+            "max_projects": 200,
+            "max_stations": 50,
+            "report_exports_per_month": -1,
+            "resource_queries_per_day": -1
+          }
+        },
+        {
+          "custom": null,
+          "features": null,
+          "id": "pro",
+          "name": "专业版",
+          "priceMonthly": null,
+          "priceYearly": 1980,
+          "quotaStatus": null,
+          "quotas": {
+            "ai_queries_per_day": 100,
+            "calculations_per_day": -1,
+            "diagnoses_per_day": 3,
+            "max_projects": 30,
+            "max_stations": 0,
+            "report_exports_per_month": 30,
+            "resource_queries_per_day": -1
+          }
+        },
+        {
+          "custom": null,
+          "features": null,
+          "id": "team",
+          "name": "团队版",
+          "priceMonthly": null,
+          "priceYearly": 16800,
+          "quotaStatus": null,
+          "quotas": {
+            "ai_queries_per_day": 1500,
+            "calculations_per_day": -1,
+            "diagnoses_per_day": -1,
+            "max_projects": 500,
+            "max_stations": 100,
+            "report_exports_per_month": -1,
+            "resource_queries_per_day": -1
+          }
+        }
+      ],
+      "purchasableSkus": []
+    },
+    {
+      "billing": "yearly",
+      "currency": "USD",
+      "id": "intl",
+      "plans": [],
+      "purchasableSkus": []
+    }
+  ],
+  "product": "energy",
+  "sourceKind": "fixture",
+  "sourceLabel": "Fixture copied from feifeizhao25-ship-it/energy-intelligence runtime/backend/data/entitlements.json. Not a live read, and that repo is unchanged. Domestic prices stay CNY yearly. The international market is USD only; this registry has no USD price list, so no USD amount is invented."
+}
