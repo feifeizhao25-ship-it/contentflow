@@ -2,6 +2,7 @@ import { Controller, Get, Post, Delete, Param, Body, UseGuards, Request } from '
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { TeamService } from './team.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
+import { CreateTeamInviteDto, TeamInviteTokenDto } from './dto/team-invite.dto';
 
 @ApiTags('team')
 @Controller('team')
@@ -29,8 +30,38 @@ export class TeamController {
   }
 
   @Post('members')
-  @ApiOperation({ summary: '添加团队成员' })
-  async addMember(@Request() req: any, @Body() body: any) {
-    return this.teamService.addMember(req.user.tenantId, body);
+  @ApiOperation({ summary: '按邮箱创建团队邀请（不直接加入）' })
+  async addMember(@Request() req: any, @Body() body: CreateTeamInviteDto) {
+    return this.teamService.addMember(req.user.tenantId, req.user.id, body);
+  }
+
+  @Post('invites')
+  @ApiOperation({ summary: '创建邮箱或链接邀请' })
+  async createInvite(@Request() req: any, @Body() body: CreateTeamInviteDto) {
+    return this.teamService.createInvite(req.user.tenantId, req.user.id, body);
+  }
+
+  @Get('invites')
+  @ApiOperation({ summary: '列出本工作区的邀请' })
+  async listInvites(@Request() req: any) {
+    return this.teamService.listInvites(req.user.tenantId, req.user.id);
+  }
+
+  @Post('invites/:id/revoke')
+  @ApiOperation({ summary: '撤销尚未使用的邀请' })
+  async revokeInvite(@Request() req: any, @Param('id') id: string) {
+    return this.teamService.revokeInvite(req.user.tenantId, req.user.id, id);
+  }
+
+  @Post('invites/accept')
+  @ApiOperation({ summary: '接受邀请' })
+  async acceptInvite(@Request() req: any, @Body() body: TeamInviteTokenDto) {
+    return this.teamService.acceptInvite(req.user.id, body.token);
+  }
+
+  @Post('invites/decline')
+  @ApiOperation({ summary: '拒绝邀请' })
+  async declineInvite(@Request() req: any, @Body() body: TeamInviteTokenDto) {
+    return this.teamService.declineInvite(req.user.id, body.token);
   }
 }

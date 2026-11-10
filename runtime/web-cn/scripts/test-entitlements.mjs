@@ -89,7 +89,7 @@ check('门禁：标 enforced 的权益在 runtime/api 源码（非测试文件�
 });
 
 check('门禁：审计点名的 6 项没有执行点的权益都标为 coming_soon', () => {
-    for (const key of ['quotas.videoMinutesMonthly', 'collaboration.seats', 'collaboration.approvalWorkflow', 'export.watermark', 'export.batchExport', 'personalization.personaCount']) {
+    for (const key of ['quotas.videoMinutesMonthly', 'collaboration.approvalWorkflow', 'export.watermark', 'export.batchExport', 'personalization.personaCount']) {
         assert.equal(registry.entitlementStatus[key]?.status, 'coming_soon', key);
     }
 });
@@ -123,15 +123,15 @@ check('定价页与首页把未执行的权益标「即将上线」', () => {
     }
 });
 
-check('团队页：后端邀请未接通时，「邀请成员」按钮不可点并标「即将上线」', () => {
+check('团队页：邀请走接受流程，按钮不再标成未接通', () => {
     const teamService = fs.readFileSync(path.join(apiRoot, 'src/modules/team/team.service.ts'), 'utf8');
     const page = readSrc('src/app/(main)/team/page.tsx');
-    if (teamService.includes('尚未配置')) {
-        assert.match(page, /const TEAM_INVITE_AVAILABLE = false;/, '后端邀请未接通，前端却放开了邀请按钮');
-        assert.match(page, /disabled=\{!TEAM_INVITE_AVAILABLE\}/, '邀请按钮没有按开关置灰');
-        assert.match(page, /即将上线/);
-        assert.equal(registry.entitlementStatus['collaboration.seats'].status, 'coming_soon');
-    }
+    assert.ok(!teamService.includes('尚未配置'));
+    assert.match(page, /\/api\/v1\/team\/invites/);
+    assert.match(page, /撤销/);
+    assert.match(page, /只有所有者可以邀请/);
+    assert.ok(!page.includes('TEAM_INVITE_AVAILABLE = false'));
+    assert.equal(registry.entitlementStatus['collaboration.seats'].status, 'enforced');
 });
 
 check('旧付费弹窗（¥49/划线 ¥59/无限 AI/4K/去水印/7 天无理由、写死 16/20 的额度条）已删除', () => {

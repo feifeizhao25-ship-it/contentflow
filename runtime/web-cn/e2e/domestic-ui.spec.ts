@@ -264,9 +264,8 @@ test('国内版主要流程', async ({ page }, info) => {
 
   await run('team-invite', async () => {
     await gotoApp(page, '/team', '团队协作');
-    await expect(page.getByRole('button', { name: '邀请成员' })).toBeDisabled();
-    await expect(page.getByText('即将上线').first()).toBeVisible();
-    await expect(page.getByText('目前还不能添加成员')).toBeVisible();
+    await expect(page.getByRole('button', { name: '邀请成员' })).toBeEnabled();
+    await expect(page.getByText('只有所有者可以邀请')).toBeVisible();
     await shot(page, info, 'team-invite-disabled');
   });
 

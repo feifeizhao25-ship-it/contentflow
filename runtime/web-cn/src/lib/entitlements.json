@@ -259,8 +259,11 @@
     },
     "collaboration.seats": {
       "label": "成员席位",
-      "status": "coming_soon",
-      "note": "邀请成员尚未开通"
+      "status": "enforced",
+      "enforcedAt": {
+        "file": "src/modules/team/seat-limit.ts",
+        "contains": "memberLimit"
+      }
     },
     "collaboration.approvalWorkflow": {
       "label": "按套餐开通审批流",

@@ -139,23 +139,40 @@ function TeamContent() {
         viewer: ['查看内容', '查看数据'],
     };
 
+    const [pendingInvites, setPendingInvites] = useState<Array<{ id: string; email?: string | null; role: string; status: string; expiresAt: string }>>([]);
+    const [issuedLink, setIssuedLink] = useState('');
+
+    const fetchInvites = async () => {
+        try {
+            const res = await fetch('/api/v1/team/invites');
+            const envelope = await res.json();
+            const rows = envelope?.data ?? envelope;
+            setPendingInvites(Array.isArray(rows) ? rows.filter((row: { status: string }) => row.status === 'pending') : []);
+        } catch {
+            setPendingInvites([]);
+        }
+    };
+
+    useEffect(() => {
+        fetchInvites();
+    }, []);
+
     const handleInvite = async (values: any) => {
         try {
-            // 同上：后端是 POST /api/v1/team/members
-            const res = await fetch('/api/v1/team/members', {
+            const res = await fetch('/api/v1/team/invites', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(values),
+                body: JSON.stringify({ email: values.email, role: values.role }),
             });
             const envelope = await res.json();
-            const data = { success: envelope?.success, error: apiErrorText(envelope) ?? '邀请失败，请稍后重试' };
-            if (data.success) {
-                message.success(`已成功邀请 ${values.email}`);
-                setInviteModalVisible(false);
+            const payload = envelope?.data ?? envelope;
+            if (envelope?.success && payload?.token) {
+                setIssuedLink(`${window.location.origin}/team/invite?token=${payload.token}`);
+                message.success('邀请已创建。对方接受前不会成为成员。链接只能使用一次。');
                 form.resetFields();
-                fetchMembers();
+                fetchInvites();
             } else {
-                message.error(data.error);
+                message.error(apiErrorText(envelope) ?? '邀请没有创建');
             }
         } catch (error) {
             message.error('发送邀请失败');
@@ -253,26 +270,33 @@ function TeamContent() {
             label: '团队成员',
             children: (
                 <div>
-                    {/* 后端邀请接口在签名邀请邮件与接受流程接通前一律返回「尚未配置」（team.service.ts）。
-                        按钮在接通前置灰并如实说明，而不是让用户填完表单再看到失败。 */}
+                    {/* 邀请只创建待接受记录。对方打开链接接受后才成为成员。 */}
                     <div style={{ marginBottom: 16, display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 12 }}>
                         <Button
                             type="primary"
                             icon={<UserAddOutlined />}
-                            disabled={!TEAM_INVITE_AVAILABLE}
                             onClick={() => setInviteModalVisible(true)}
                         >
                             邀请成员
                         </Button>
-                        {!TEAM_INVITE_AVAILABLE && (
-                            <Tag color="gold">即将上线</Tag>
-                        )}
-                        {!TEAM_INVITE_AVAILABLE && (
-                            <span style={{ color: '#64748b', fontSize: 13 }}>
-                                邀请成员功能即将上线：需要先接通邀请邮件与接受流程，目前还不能添加成员。
-                            </span>
-                        )}
+                        <span style={{ color: '#3f3f46', fontSize: 13 }}>
+                            只有所有者可以邀请。邀请只能使用一次，24 小时后失效。席位按当前套餐计算。
+                        </span>
                     </div>
+                    {issuedLink && (
+                        <p style={{ color: '#3f3f46', marginBottom: 12 }}>
+                            请把这个链接交给对方：{issuedLink}
+                        </p>
+                    )}
+                    {pendingInvites.map((invite) => (
+                        <div key={invite.id} style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 8 }}>
+                            <span>{invite.email || '链接邀请'} · {roleLabels[invite.role] || invite.role}</span>
+                            <Button size="small" onClick={async () => {
+                                await fetch(`/api/v1/team/invites/${invite.id}/revoke`, { method: 'POST' });
+                                fetchInvites();
+                            }}>撤销</Button>
+                        </div>
+                    ))}
                     <div className="space-y-3 md:hidden">
                         {members.map((member) => (
                             <div key={member.id} className="rounded-xl border border-zinc-200 p-3">
@@ -397,7 +421,7 @@ function TeamContent() {
                     >
                         <Input
                             prefix={<MailOutlined />}
-                            placeholder="member@example.com"
+                            placeholder="请输入同事的邮箱"
                             size="large"
                         />
                     </Form.Item>
@@ -456,9 +480,6 @@ function TeamContent() {
     );
 }
 
-
-/** 团队邀请是否已接通。接通签名邀请邮件与接受流程后改为 true（同时去掉权益注册表里 collaboration.seats 的 coming_soon）。 */
-const TEAM_INVITE_AVAILABLE = false;
 
 export default function TeamPage() {
     return (
