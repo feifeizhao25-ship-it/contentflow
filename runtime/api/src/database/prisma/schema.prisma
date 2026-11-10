@@ -50,6 +50,7 @@ model Tenant {
   webhook_subscriptions WebhookSubscription[]
   activity_logs     ActivityLog[]
   orders            PaymentOrder[]
+  team_invites      TeamInvite[]
 
   @@index([slug])
   @@index([plan])
@@ -99,6 +100,25 @@ model User {
   // 关系
   @@unique([tenant_id, email])
   @@index([tenant_id])
+}
+
+// 团队邀请。不创建成员；对方接受后才加入。token 只存哈希。
+// 文档没有写过期时长：这里用 24 小时，且只能使用一次。需要产品决定是否改时长。
+model TeamInvite {
+  id          String    @id @default(uuid())
+  tenant_id   String
+  tenant      Tenant    @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  email       String?
+  role        String
+  token_hash  String    @unique
+  status      String    @default("pending")
+  invited_by  String
+  expires_at  DateTime
+  accepted_by String?
+  created_at  DateTime  @default(now())
+  resolved_at DateTime?
+
+  @@index([tenant_id, status])
 }
 
 // 短信验证码。只存哈希，不存明文验证码，也不存明文手机号（phone_hash 是带密钥的 HMAC）。
