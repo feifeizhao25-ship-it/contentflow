@@ -57,6 +57,31 @@ class ApiClient {
         return this.request<T>('DELETE', path);
     }
 
+    /**
+     * 下载二进制文件（周报 xlsx / pdf）。仍走 /api/v1 代理和 ff_token cookie。
+     * 401 与 JSON 接口一样回到登录页。
+     */
+    async download(path: string, filename: string): Promise<void> {
+        let response: Response;
+        try {
+            response = await fetch(`${BASE_URL}${path}`, { credentials: 'include' });
+        } catch {
+            throw new FriendlyApiError('网络连接失败，请稍后重试');
+        }
+        if (response.status === 401) {
+            if (typeof window !== 'undefined') window.location.href = '/login';
+            return;
+        }
+        if (!response.ok) throw new FriendlyApiError('下载失败，请稍后重试');
+        const blob = await response.blob();
+        const url = URL.createObjectURL(blob);
+        const anchor = document.createElement('a');
+        anchor.href = url;
+        anchor.download = filename;
+        anchor.click();
+        URL.revokeObjectURL(url);
+    }
+
     private async request<T>(method: string, path: string, body?: any, init?: { redirectOn401?: boolean }): Promise<T> {
         let response: Response;
         try {
