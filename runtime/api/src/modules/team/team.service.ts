@@ -65,16 +65,17 @@ export class TeamService {
     const actor = await this.requireOwner(tenantId, actorId);
     const email = normalizeEmail(input.email);
     const role = normalizeRole(input.role);
-    const tenant = await this.prisma.tenant.findUnique({ where: { id: tenantId } });
-    if (!tenant) throw new BadRequestException('工作区不存在');
-    const cap = seatLimit(tenant, now.getTime());
-    const used = await this.seatsHeld(tenantId, now);
-    if (used + 1 > cap) throw new BadRequestException(`席位已满（上限 ${cap}）`);
     const token = randomBytes(32).toString('base64url');
     const token_hash = hashToken(token);
     const expires_at = new Date(now.getTime() + INVITE_TTL_MS);
-    const row = await this.prisma.teamInvite.create({
-      data: { tenant_id: tenantId, email, role, token_hash, status: 'pending', invited_by: actor.id, expires_at },
+    const row = await this.prisma.$transaction(async (tx) => {
+      const tenant = await lockTenant(tx, tenantId);
+      const cap = seatLimit(tenant, now.getTime());
+      const used = await seatsHeld(tx, tenantId, now);
+      if (used + 1 > cap) fail('INVITE_SEAT_FULL', `席位已满（上限 ${cap}）`, `This workspace has no seats left (limit ${cap}).`);
+      return tx.teamInvite.create({
+        data: { tenant_id: tenantId, email, role, token_hash, status: 'pending', invited_by: actor.id, expires_at },
+      });
     });
     if (email) {
       await this.mailer.send({ to: email, tenantId, role, token, expiresAt: expires_at.toISOString() });
@@ -105,12 +106,20 @@ export class TeamService {
 
   async revokeInvite(tenantId: string, actorId: string, inviteId: string, now = new Date()) {
     await this.requireOwner(tenantId, actorId);
-    const row = await this.prisma.teamInvite.findFirst({ where: { id: inviteId, tenant_id: tenantId } });
-    if (!row || row.status !== 'pending' || row.expires_at.getTime() <= now.getTime()) {
-      throw new BadRequestException('只能撤销尚未使用且未过期的邀请');
-    }
-    await this.prisma.teamInvite.update({ where: { id: row.id }, data: { status: 'revoked', resolved_at: now } });
-    return { revoked: true, id: row.id };
+    return this.prisma.$transaction(async (tx) => {
+      await lockTenant(tx, tenantId);
+      const claimed = await tx.teamInvite.updateMany({
+        where: { id: inviteId, tenant_id: tenantId, status: 'pending', expires_at: { gt: now } },
+        data: { status: 'revoked', resolved_at: now },
+      });
+      if (claimed.count !== 1) {
+        const row = await tx.teamInvite.findFirst({ where: { id: inviteId, tenant_id: tenantId } });
+        if (row?.status === 'revoked') fail('INVITE_REVOKED', '邀请已被撤销', 'This invite was revoked.');
+        if (row && row.expires_at.getTime() <= now.getTime()) fail('INVITE_EXPIRED', '邀请已过期', 'This invite has expired.');
+        fail('INVITE_CLOSED', '只能撤销尚未使用且未过期的邀请', 'Only a pending invite that has not expired can be revoked.');
+      }
+      return { revoked: true, id: inviteId };
+    });
   }
 
   async acceptInvite(actorId: string, token: string, now = new Date()) {
@@ -122,33 +131,51 @@ export class TeamService {
   }
 
   private async resolveInvite(actorId: string, token: string, next: 'accepted' | 'declined', now: Date) {
-    const row = await this.prisma.teamInvite.findUnique({ where: { token_hash: hashToken(token) } });
-    if (!row || !safeEqual(row.token_hash, hashToken(token))) throw new BadRequestException('邀请不存在');
-    if (row.status !== 'pending') throw new BadRequestException('邀请已结束');
-    if (row.expires_at.getTime() <= now.getTime()) {
-      await this.prisma.teamInvite.update({ where: { id: row.id }, data: { status: 'expired', resolved_at: now } });
-      throw new BadRequestException('邀请已过期');
-    }
+    const token_hash = hashToken(token);
+    const preview = await this.prisma.teamInvite.findUnique({ where: { token_hash } });
+    if (!preview || !safeEqual(preview.token_hash, token_hash)) fail('INVITE_NOT_FOUND', '邀请不存在', 'This invite does not exist.');
     const actor = await this.prisma.user.findFirst({ where: { id: actorId, status: 'active' } });
-    if (!actor) throw new BadRequestException('账号不存在');
+    if (!actor) fail('INVITE_NOT_FOUND', '账号不存在', 'This account does not exist.');
+    if (preview.expires_at.getTime() <= now.getTime() || preview.status === 'expired') {
+      fail('INVITE_EXPIRED', '邀请已过期', 'This invite has expired.');
+    }
+    if (preview.status === 'revoked') fail('INVITE_REVOKED', '邀请已被撤销', 'This invite was revoked.');
+    if (preview.status !== 'pending') fail('INVITE_CLOSED', '邀请已结束', 'This invite has already been used.');
     const actorEmail = String(actor.email || '').trim().toLowerCase();
-    if (row.email && (publicEmail(actor.email) === '' || actorEmail !== row.email)) {
-      throw new BadRequestException('这个邀请只发给指定邮箱');
+    if (preview.email && (publicEmail(actor.email) === '' || actorEmail !== preview.email)) {
+      fail('INVITE_WRONG_EMAIL', '这个邀请只发给指定邮箱', 'This invite was sent to a different email address.');
     }
-    if (next === 'declined') {
-      await this.prisma.teamInvite.update({ where: { id: row.id }, data: { status: 'declined', resolved_at: now } });
-      return { declined: true, id: row.id };
+    if (next === 'accepted') {
+      if (actor.tenant_id === preview.tenant_id) fail('INVITE_ALREADY_MEMBER', '你已经在这个工作区', 'You are already in this workspace.');
+      const siblings = await this.prisma.user.count({ where: { tenant_id: actor.tenant_id, status: 'active' } });
+      if (siblings !== 1) fail('INVITE_WORKSPACE_BUSY', '你当前的工作区还有其他成员，不能转入新的工作区', 'Your current workspace still has other members.');
     }
-    if (actor.tenant_id === row.tenant_id) throw new BadRequestException('你已经在这个工作区');
-    const siblings = await this.prisma.user.count({ where: { tenant_id: actor.tenant_id, status: 'active' } });
-    if (siblings !== 1) throw new BadRequestException('你当前的工作区还有其他成员，不能转入新的工作区');
-    const tenant = await this.prisma.tenant.findUnique({ where: { id: row.tenant_id } });
-    if (!tenant) throw new BadRequestException('工作区不存在');
-    const active = await this.prisma.user.count({ where: { tenant_id: row.tenant_id, status: 'active' } });
-    if (active + 1 > seatLimit(tenant, now.getTime())) throw new BadRequestException(`席位已满（上限 ${seatLimit(tenant, now.getTime())}）`);
-    await this.prisma.user.update({ where: { id: actor.id }, data: { tenant_id: row.tenant_id, role: row.role } });
-    await this.prisma.teamInvite.update({ where: { id: row.id }, data: { status: 'accepted', accepted_by: actor.id, resolved_at: now } });
-    return { accepted: true, id: row.id, tenantId: row.tenant_id, role: row.role };
+    return this.prisma.$transaction(async (tx) => {
+      await lockTenant(tx, preview.tenant_id);
+      const claimed = await tx.teamInvite.updateMany({
+        where: { id: preview.id, status: 'pending', expires_at: { gt: now } },
+        data: {
+          status: next,
+          resolved_at: now,
+          ...(next === 'accepted' ? { accepted_by: actor.id } : {}),
+        },
+      });
+      if (claimed.count !== 1) {
+        const current = await tx.teamInvite.findUnique({ where: { id: preview.id } });
+        if (current && current.expires_at.getTime() <= now.getTime()) fail('INVITE_EXPIRED', '邀请已过期', 'This invite has expired.');
+        if (current?.status === 'revoked') fail('INVITE_REVOKED', '邀请已被撤销', 'This invite was revoked.');
+        if (current?.status === 'expired') fail('INVITE_EXPIRED', '邀请已过期', 'This invite has expired.');
+        fail('INVITE_CLOSED', '邀请已结束', 'This invite has already been used.');
+      }
+      if (next === 'declined') return { declined: true, id: preview.id };
+      const tenant = await tx.tenant.findUnique({ where: { id: preview.tenant_id } });
+      if (!tenant) fail('INVITE_NOT_FOUND', '工作区不存在', 'This workspace does not exist.');
+      const active = await tx.user.count({ where: { tenant_id: preview.tenant_id, status: 'active' } });
+      const cap = seatLimit(tenant, now.getTime());
+      if (active + 1 > cap) fail('INVITE_SEAT_FULL', `席位已满（上限 ${cap}）`, `This workspace has no seats left (limit ${cap}).`);
+      await tx.user.update({ where: { id: actor.id }, data: { tenant_id: preview.tenant_id, role: preview.role } });
+      return { accepted: true, id: preview.id, tenantId: preview.tenant_id, role: preview.role };
+    });
   }
 
   private async requireOwner(tenantId: string, actorId: string) {
@@ -157,13 +184,34 @@ export class TeamService {
     return actor;
   }
 
-  private async seatsHeld(tenantId: string, now: Date) {
-    const members = await this.prisma.user.count({ where: { tenant_id: tenantId, status: 'active' } });
-    const pending = await this.prisma.teamInvite.count({
-      where: { tenant_id: tenantId, status: 'pending', expires_at: { gt: now } },
-    });
-    return members + pending;
-  }
+}
+
+async function lockTenant(tx: PrismaTx, tenantId: string) {
+  const rows = await tx.$queryRaw<Array<{ id: string }>>`SELECT "id" FROM "Tenant" WHERE "id" = ${tenantId} FOR UPDATE`;
+  if (!rows.length) fail('INVITE_NOT_FOUND', '工作区不存在', 'This workspace does not exist.');
+  const tenant = await tx.tenant.findUnique({ where: { id: tenantId } });
+  if (!tenant) fail('INVITE_NOT_FOUND', '工作区不存在', 'This workspace does not exist.');
+  return tenant;
+}
+
+async function seatsHeld(tx: PrismaTx, tenantId: string, now: Date) {
+  const members = await tx.user.count({ where: { tenant_id: tenantId, status: 'active' } });
+  const pending = await tx.teamInvite.count({
+    where: { tenant_id: tenantId, status: 'pending', expires_at: { gt: now } },
+  });
+  return members + pending;
+}
+
+type PrismaTx = {
+  $queryRaw: PrismaService['$queryRaw'];
+  tenant: PrismaService['tenant'];
+  user: PrismaService['user'];
+  teamInvite: PrismaService['teamInvite'];
+};
+
+function fail(code: string, zh: string, en: string): never {
+  const message = process.env.MARKET_REGION === 'global' ? en : zh;
+  throw new BadRequestException({ code, message });
 }
 
 function normalizeEmail(value: string | undefined): string | null {

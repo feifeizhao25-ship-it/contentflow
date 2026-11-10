@@ -1,5 +1,13 @@
 import { fireEvent, render, screen } from '@testing-library/react';
+import { inviteReason } from '@/lib/invite-reason';
 import { TeamInvites, invitePayload } from './TeamInvites';
+
+it('names the API reason for an invite that cannot be used', () => {
+  expect(inviteReason({ error: { code: 'INVITE_EXPIRED' } })).toBe('This invite has expired.');
+  expect(inviteReason({ error: { code: 'INVITE_REVOKED' } })).toBe('This invite was revoked.');
+  expect(inviteReason({ error: { code: 'INVITE_WRONG_EMAIL' } })).toBe('This invite was sent to a different email address.');
+  expect(inviteReason({ error: { code: 'INVITE_SEAT_FULL' } })).toBe('This workspace has no seats left.');
+});
 
 it('builds an email invite or a link invite without inventing an address', () => {
   expect(invitePayload('  person@example.com ', 'editor')).toEqual({ email: 'person@example.com', role: 'editor' });

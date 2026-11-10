@@ -421,7 +421,7 @@ function TeamContent() {
                     >
                         <Input
                             prefix={<MailOutlined />}
-                            placeholder="member@example.com"
+                            placeholder="请输入同事的邮箱"
                             size="large"
                         />
                     </Form.Item>

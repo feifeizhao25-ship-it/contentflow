@@ -18,4 +18,4 @@ CREATE TABLE "TeamInvite" (
 CREATE UNIQUE INDEX "TeamInvite_token_hash_key" ON "TeamInvite"("token_hash");
 CREATE INDEX "TeamInvite_tenant_id_status_idx" ON "TeamInvite"("tenant_id", "status");
 
-ALTER TABLE "TeamInvite" ADD CONSTRAINT "TeamInvite_tenant_id_fkey" FOREIGN KEY ("tenant_id") REFERENCES "Tenant"("id") ON DELETE CASCADE;
+ALTER TABLE "TeamInvite" ADD CONSTRAINT "TeamInvite_tenant_id_fkey" FOREIGN KEY ("tenant_id") REFERENCES "Tenant"("id") ON DELETE CASCADE ON UPDATE CASCADE;

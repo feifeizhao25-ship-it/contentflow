@@ -3,7 +3,7 @@
 import React, { Suspense, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Button } from 'antd';
-import { apiErrorText } from '@/lib/api-error';
+import { inviteReason } from '@/lib/invite-reason';
 
 export default function AcceptInvitePage() {
   return (
@@ -28,7 +28,7 @@ function AcceptInvite() {
       setResult(path === 'accept' ? '已加入工作区。' : '已拒绝邀请。');
       return;
     }
-    setResult(apiErrorText(envelope) ?? '邀请没有完成。');
+    setResult(inviteReason(envelope));
   };
 
   return (

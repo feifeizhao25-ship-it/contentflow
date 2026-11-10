@@ -2,6 +2,7 @@
 
 import { Suspense, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
+import { inviteReason } from '@/lib/invite-reason';
 
 export default function InviteDecisionPage() {
   return (
@@ -27,7 +28,7 @@ function InviteDecision() {
       setNotice(path === 'accept' ? 'You joined the workspace.' : 'You declined the invite.');
       return;
     }
-    setNotice('This invite can no longer be used.');
+    setNotice(inviteReason(envelope));
   };
 
   return (

@@ -27,16 +27,29 @@ function memory() {
         return row;
       },
       findMany: async ({ where }: any) => invites.filter((row) => row.tenant_id === where.tenant_id),
-      findFirst: async ({ where }: any) => invites.find((row) => row.id === where.id && row.tenant_id === where.tenant_id) ?? null,
-      findUnique: async ({ where }: any) => invites.find((row) => row.token_hash === where.token_hash) ?? null,
-      update: async ({ where, data }: any) => {
-        const row = invites.find((item) => item.id === where.id);
-        Object.assign(row, data);
-        return row;
+      findFirst: async ({ where }: any) => invites.find((row) => (!where.id || row.id === where.id) && (!where.tenant_id || row.tenant_id === where.tenant_id)) ?? null,
+      findUnique: async ({ where }: any) => invites.find((row) => (where.token_hash ? row.token_hash === where.token_hash : row.id === where.id)) ?? null,
+      updateMany: async ({ where, data }: any) => {
+        const matched = invites.filter((row) => {
+          if (where.id && row.id !== where.id) return false;
+          if (where.tenant_id && row.tenant_id !== where.tenant_id) return false;
+          if (where.status && row.status !== where.status) return false;
+          if (where.expires_at?.gt && !(row.expires_at > where.expires_at.gt)) return false;
+          return true;
+        });
+        for (const row of matched) Object.assign(row, data);
+        return { count: matched.length };
       },
       count: async ({ where }: any) => invites.filter((row) => row.tenant_id === where.tenant_id && row.status === where.status && row.expires_at > where.expires_at.gt).length,
     },
     activityLog: { create: async () => ({}) },
+    $queryRaw: async () => [{ id: 'locked' }],
+  };
+  let tail = Promise.resolve();
+  prisma.$transaction = (fn: (tx: any) => Promise<unknown>) => {
+    const run = tail.then(() => fn(prisma));
+    tail = run.then(() => undefined, () => undefined);
+    return run;
   };
   return { tenants, users, invites, prisma };
 }
@@ -112,7 +125,7 @@ describe('团队邀请', () => {
 
     const revoked = await service.createInvite('t1', 'owner', { email: 'other@example.com' }, now);
     await service.revokeInvite('t1', 'owner', revoked.id, now);
-    await expect(service.acceptInvite('other', revoked.token, now)).rejects.toThrow(/已结束/);
+    await expect(service.acceptInvite('other', revoked.token, now)).rejects.toThrow(/撤销/);
 
     const stale = await service.createInvite('t1', 'owner', { email: 'other@example.com' }, now);
     await expect(service.acceptInvite('other', stale.token, new Date(now.getTime() + 24 * 60 * 60 * 1000))).rejects.toThrow(/过期/);
@@ -130,5 +143,38 @@ describe('团队邀请', () => {
     await expect(service.listInvites('t2', 'intruder', now)).resolves.toEqual([]);
     await expect(service.acceptInvite('intruder', invite.token, now)).rejects.toThrow(/指定邮箱/);
     expect(store.users.get('intruder').tenant_id).toBe('t2');
+  });
+
+  it('同一个链接同时接受两次，只有一次成功', async () => {
+    const store = memory();
+    workspace(store, 't1', 'team');
+    workspace(store, 'solo-a', 'free');
+    workspace(store, 'solo-b', 'free');
+    store.users.set('owner', { id: 'owner', tenant_id: 't1', role: 'owner', status: 'active', email: 'o@example.com' });
+    store.users.set('a', { id: 'a', tenant_id: 'solo-a', role: 'owner', status: 'active', email: 'a@example.com' });
+    store.users.set('b', { id: 'b', tenant_id: 'solo-b', role: 'owner', status: 'active', email: 'b@example.com' });
+    const service = new TeamService(store.prisma, new RecordingTeamInviteMailer());
+    const invite = await service.createInvite('t1', 'owner', {}, now);
+    const results = await Promise.allSettled([
+      service.acceptInvite('a', invite.token, now),
+      service.acceptInvite('b', invite.token, now),
+    ]);
+    const won = results.filter((item) => item.status === 'fulfilled');
+    expect(won).toHaveLength(1);
+    const joined = ['a', 'b'].filter((id) => store.users.get(id).tenant_id === 't1');
+    expect(joined).toHaveLength(1);
+  });
+
+  it('只剩一个席位时同时创建多份邀请，只有一份成功', async () => {
+    const store = memory();
+    workspace(store, 't1', 'team');
+    store.users.set('owner', { id: 'owner', tenant_id: 't1', role: 'owner', status: 'active', email: 'o@example.com' });
+    const service = new TeamService(store.prisma, new RecordingTeamInviteMailer());
+    for (let i = 0; i < 3; i += 1) await service.createInvite('t1', 'owner', { email: `held-${i}@example.com` }, now);
+    const results = await Promise.allSettled(
+      Array.from({ length: 6 }, (_, i) => service.createInvite('t1', 'owner', { email: `race-${i}@example.com` }, now)),
+    );
+    expect(results.filter((item) => item.status === 'fulfilled')).toHaveLength(1);
+    expect(store.invites.filter((row) => row.status === 'pending')).toHaveLength(4);
   });
 });

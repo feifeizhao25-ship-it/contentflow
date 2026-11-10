@@ -1,6 +1,7 @@
 'use client';
 
 import { FormEvent, useState } from 'react';
+import { inviteReason } from '@/lib/invite-reason';
 
 type Issued = { token: string; role: string; email: string | null };
 
@@ -27,7 +28,7 @@ export function TeamInvites() {
     const envelope = await response.json().catch(() => ({}));
     const payload = envelope?.data ?? envelope;
     if (!response.ok || !payload?.token) {
-      setNotice('The invite was not created. Check the seat limit or sign in as the workspace owner.');
+      setNotice(inviteReason(envelope));
       return;
     }
     setIssued({ token: payload.token, role: payload.role, email: payload.email ?? null });
