@@ -1,5 +1,9 @@
 # Video Merging Service Configuration
 
+> **Historical setup note. Domestic video generation is not open.** The studio labels 视频生成 as 暂未开放 and does not call Shotstack, Cloudinary, or Fal. The steps below are an earlier design record, not a current configuration guide.
+
+
+
 This document explains how to configure the video merging service for multi-segment video generation.
 
 ## Shotstack API Setup (Recommended)

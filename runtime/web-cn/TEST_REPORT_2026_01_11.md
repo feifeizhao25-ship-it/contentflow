@@ -1,3 +1,5 @@
+> **历史测试记录，不是当前国内版说明。** 下文把未测的 AI 调用写成 OpenRouter、SiliconFlow 和 Fal.ai。现行国内文本路由不走 OpenRouter（`runtime/api/src/modules/ai/market-routing.ts` 对 `cn` / `china` / `zh-cn` 固定 `useOpenRouter: false`），国内配图不走 Fal.ai，创作台「视频生成」为「暂未开放」。正文保留当时的测试结果。
+
 # 分发侠 (ContentFlow) - 项目测试报告
 
 **测试日期**: 2026-01-11  

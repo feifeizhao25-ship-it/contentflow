@@ -10,12 +10,19 @@ export interface SignupProfileInput {
   province?: string;
 }
 
+export interface SignupProfile {
+  industry: string | null;
+  job_role: string | null;
+  growth_stage: string | null;
+  province: string | null;
+}
+
 function blankToNull(value: string): string | null {
   const trimmed = value.trim();
   return trimmed ? trimmed : null;
 }
 
-function signupProfileOf(row: { industry: string | null; job_role: string | null; growth_stage: string | null; province: string | null }) {
+function signupProfileOf(row: SignupProfile): SignupProfile {
   return {
     industry: row.industry ?? null,
     job_role: row.job_role ?? null,
@@ -106,14 +113,25 @@ export class UserService {
     return this.prisma.user.update({ where: { id }, data: patch, select: UserService.SAFE_SELECT });
   }
 
+  /** 注册三问与省份。只读令牌对应的这一行。 */
   async getSignupProfile(userId: string) {
-    const row = await this.prisma.user.findUnique({ where: { id: userId }, select: UserService.SIGNUP_SELECT });
+    const row = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: UserService.SIGNUP_SELECT,
+    });
     if (!row || row.status !== 'active') throw new NotFoundException('用户不存在');
     return signupProfileOf(row);
   }
 
+  /**
+   * 只写这四个字段，且 where 固定为当前用户。
+   * 请求体里的 user id、角色、工作区一律进不了这里。
+   */
   async saveSignupProfile(userId: string, data: SignupProfileInput) {
-    const current = await this.prisma.user.findUnique({ where: { id: userId }, select: UserService.SIGNUP_SELECT });
+    const current = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: UserService.SIGNUP_SELECT,
+    });
     if (!current || current.status !== 'active') throw new NotFoundException('用户不存在');
     const patch: { industry?: string | null; job_role?: string | null; growth_stage?: string | null; province?: string | null } = {};
     if (data.industry !== undefined) patch.industry = blankToNull(data.industry);
@@ -121,11 +139,16 @@ export class UserService {
     if (data.growth_stage !== undefined) patch.growth_stage = blankToNull(data.growth_stage);
     if (data.province !== undefined) patch.province = blankToNull(data.province);
     if (!Object.keys(patch).length) return signupProfileOf(current);
-    const row = await this.prisma.user.update({ where: { id: userId }, data: patch, select: UserService.SIGNUP_SELECT });
+    const row = await this.prisma.user.update({
+      where: { id: userId },
+      data: patch,
+      select: UserService.SIGNUP_SELECT,
+    });
     return signupProfileOf(row);
   }
 
   private static readonly SIGNUP_SELECT = {
+    id: true,
     status: true,
     industry: true,
     job_role: true,

@@ -1,3 +1,5 @@
+> **历史选型备忘，不是当前接入说明。** 国内文本不走 OpenRouter，国内配图不走 Fal.ai（见 `runtime/api/src/modules/ai/market-routing.ts`）。下面第 2.3 节把可灵、Runway 写成视频主选，创作台 `runtime/web-cn/src/app/(main)/studio/page.tsx` 仍把「视频生成」标为「暂未开放」，也没有 Shotstack 拼接。不要按本表去配置或对外介绍已开通的视频能力。正文保留。
+
 # API and Data Service Architecture Strategy
 
 ## 1. Platform Publishing APIs

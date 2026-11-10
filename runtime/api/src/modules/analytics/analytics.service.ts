@@ -10,6 +10,8 @@ import {
   overviewWindows,
   summarizePublish,
 } from './own-data-overview';
+import { weeklySheets } from './weekly-report';
+import { buildXlsx } from './xlsx';
 
 @Injectable()
 export class AnalyticsService {
@@ -135,6 +137,68 @@ export class AnalyticsService {
         .sort((a, b) => b.count - a.count)
         .slice(0, 5),
       engagement: engagementUnavailable(lang),
+    };
+  }
+
+  /**
+   * 本周 xlsx。只查当前工作区已保存的内容、发布任务和 AI 记录。
+   * 互动数据没有平台授权时只写说明，不填播放、点赞或涨粉。
+   */
+  async weeklyWorkbook(tenantId: string, now: Date | number = Date.now(), lang: OverviewLang = 'zh') {
+    const windows = overviewWindows(now);
+    const overview = await this.getOverview(tenantId, now, lang);
+    const taskWindow = {
+      tenant_id: tenantId,
+      OR: [
+        { scheduled_at: { gte: windows.week.start, lt: windows.week.end } },
+        { scheduled_at: null, created_at: { gte: windows.week.start, lt: windows.week.end } },
+      ],
+    };
+    const [contents, tasks] = await Promise.all([
+      this.prisma.content.findMany({
+        where: {
+          tenant_id: tenantId,
+          status: { not: 'deleted' },
+          created_at: { gte: windows.week.start, lt: windows.week.end },
+        },
+        select: { title: true, content_type: true, status: true, created_at: true },
+        orderBy: { created_at: 'desc' },
+        take: 501,
+      }),
+      this.prisma.publishTask.findMany({
+        where: taskWindow,
+        select: {
+          status: true,
+          scheduled_at: true,
+          created_at: true,
+          platform_content: { select: { platform: true } },
+          platform_account: { select: { platform: true } },
+        },
+        orderBy: { created_at: 'desc' },
+        take: 501,
+      }),
+    ]);
+    const truncated = contents.length > 500 || tasks.length > 500;
+    const sheets = weeklySheets({
+      lang,
+      windowStart: windows.week.start,
+      windowEnd: windows.week.end,
+      publish: overview.week.publish,
+      ai: overview.week.ai,
+      contents: contents.slice(0, 500),
+      tasks: tasks.slice(0, 500).map((row) => ({
+        platform: row.platform_content?.platform ?? row.platform_account?.platform ?? null,
+        status: row.status,
+        scheduled_at: row.scheduled_at,
+        created_at: row.created_at,
+      })),
+      engagementNote: overview.engagement.detail,
+      truncated,
+    });
+    return {
+      filename: 'weekly-report.xlsx',
+      body: buildXlsx(sheets),
+      truncated,
     };
   }
 }

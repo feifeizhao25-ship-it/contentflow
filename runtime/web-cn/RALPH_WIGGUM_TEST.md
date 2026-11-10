@@ -149,6 +149,8 @@ ls ~/Library/Application\ Support/Claude/plugins/ralph-wiggum/
 
 ### 测试 5: Bug 修复迭代
 
+> **历史演练，不是现行视频说明。** 创作台「视频生成」仍是「暂未开放」。下面的超时修复步骤不要当成已经接入 Fal.ai、Shotstack 或可灵。
+
 **场景**: 修复视频生成 API 的超时问题
 
 **命令**:

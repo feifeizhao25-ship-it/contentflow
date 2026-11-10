@@ -86,7 +86,7 @@ model User {
   // 用户偏好
   preferences Json @default("{\"theme\": \"light\", \"default_platforms\": [], \"ai_style\": \"professional\"}")
 
-  // 注册三问和省份。只属于当前账号，供推荐排序。
+  // 注册三问 + 省份。只属于这个账号，供「为你推荐」排序；不向同工作区的其他成员返回。
   industry     String?
   job_role     String?
   growth_stage String?
@@ -1278,4 +1278,23 @@ model AiQuotaReservation {
   @@unique([tenant_id, idempotency_key])
   @@index([status, expires_at])
   @@map("ai_quota_reservations")
+}
+
+// 合规规则的版本、正例、反例和人工签署人。
+// reviewer 默认为空。只有真人签署才写入；迁移和创建路径都不得代填。
+model ComplianceRule {
+  id              String   @id @default(uuid())
+  rule_id         String
+  market          String
+  version         String
+  reviewer        String?
+  example         String?
+  counter_example String?
+  body            String   @default("")
+  published       Boolean  @default(false)
+  created_at      DateTime @default(now())
+  updated_at      DateTime @updatedAt
+
+  @@unique([market, rule_id])
+  @@map("compliance_rules")
 }

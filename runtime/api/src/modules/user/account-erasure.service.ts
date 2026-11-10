@@ -154,6 +154,7 @@ export const TABLE_CLASSIFICATION: Readonly<Record<string, { kind: 'user' | 'ten
   GrowthEvent: { kind: 'user', note: '已登录用户的漏斗事件按 user_id 删除；匿名访客事件不含个人身份。工作区唯一成员注销时再按 tenant_id 删除' },
   GrowthAuditEntry: { kind: 'global', note: '自改进审计，只追加，不含用户个人数据列' },
   GeoCitationObservation: { kind: 'global', note: '中文 AI 搜索引用观测，公开查询，无用户列' },
+  compliance_rules: { kind: 'global', note: '合规规则版本与人工签署字段，不含用户个人数据；注销账号不删除' },
   AccountStatsHistory: { kind: 'cascade', note: 'PlatformAccount' },
   PlatformContent: { kind: 'cascade', note: 'Content' },
   PublishTask: { kind: 'cascade', note: 'Content' },

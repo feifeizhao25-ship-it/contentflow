@@ -16,9 +16,12 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import sys
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+
+MACHINE_REVIEWER = re.compile(r"openclaw|自动复核|自动审核|github-actions|^(?:bot|system|auto|cron|ci)\b", re.I)
 
 RAG_DIR = Path(__file__).resolve().parents[1] / "runtime" / "api" / "data" / "rag_cache"
 CHINA = timezone(timedelta(hours=8))
@@ -35,6 +38,9 @@ def main(argv: list[str] | None = None) -> int:
     reviewer = args.reviewer.strip()
     if not reviewer:
         print("复核人不能为空", file=sys.stderr)
+        return 2
+    if MACHINE_REVIEWER.search(reviewer):
+        print("复核人必须是真人。自动复核不能当作签署。", file=sys.stderr)
         return 2
     if not args.confirm_original_checked:
         print("请先打开资料的 source_url 对照原文核对，确认无误后加 --confirm-original-checked 再运行。", file=sys.stderr)

@@ -72,6 +72,8 @@ check("抓取 44 天、3 天前有复核人复核 → 通过", lambda: assert_(r
 check("只改复核日期、不写复核人 → 失败，并说明必须写复核人", lambda: assert_(any("reviewed_by" in e for e in run_gate({**BASE, "retrieved_at": iso(44), "reviewed_by": "", "reviewed_at": iso(1)}))))
 check("复核日期在未来 → 失败", lambda: assert_(any("未来" in e for e in run_gate({**BASE, "retrieved_at": iso(10), "reviewed_by": "张某", "reviewed_at": iso(-3)}))))
 check("距到期 ≤ 5 天 → 通过但给提醒", lambda: (assert_(run_gate({**BASE, "retrieved_at": iso(27), "reviewed_by": None, "reviewed_at": None}) == []), assert_(any("到期" in w for w in gate.warnings))))
+check("待审核且未发布：正文保留，不要求改成 verified", lambda: assert_(run_gate({**BASE, "review_status": "待审核", "published": False, "retrieved_at": iso(1), "reviewed_by": None, "reviewed_at": None, "content": "摘要还在"}) == [], "未复核资料不应被要求标成 verified"))
+check("OpenClaw 自动复核不能当作已核验", lambda: assert_(any("不是人工签署" in e for e in run_gate({**BASE, "retrieved_at": iso(1), "reviewed_by": "OpenClaw 自动复核", "reviewed_at": iso(0.1), "review_status": "verified"}))))
 
 
 def failure_explanation_is_chinese():
@@ -97,6 +99,9 @@ def review_script_requires_confirmation_and_reviewer():
         with redirect_stdout(io.StringIO()):
             assert review.main(["--file", "a.json", "--reviewer", "张某", "--dir", tmp]) == 2
             assert review.main(["--file", "a.json", "--reviewer", "  ", "--confirm-original-checked", "--dir", tmp]) == 2
+            assert review.main(["--file", "a.json", "--reviewer", "OpenClaw 自动复核", "--confirm-original-checked", "--dir", tmp]) == 2
+            record = json.loads(Path(tmp, "a.json").read_text(encoding="utf-8"))
+            assert record.get("reviewed_by") in (None, ""), "自动复核不应写入 reviewed_by"
             assert review.main(["--file", "a.json", "--reviewer", "张某", "--confirm-original-checked", "--dir", tmp]) == 0
         record = json.loads(Path(tmp, "a.json").read_text(encoding="utf-8"))
         assert record["reviewed_by"] == "张某"

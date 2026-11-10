@@ -87,7 +87,7 @@ export default function HotPage() {
                 <div className="max-w-2xl relative z-10">
                     <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
                         <h1 className="text-3xl md:text-5xl font-black mb-4">热点与爆款拆解</h1>
-                        <p className="text-zinc-300 text-base sm:text-lg mb-8">接入合规授权的热点数据后，为您提供有据可依的选题灵感；目前可以用「AI 爆款拆解」分析您手上的爆款内容。</p>
+                        <p className="text-zinc-300 text-base sm:text-lg mb-8">没有签约的热点数据源时，本页不展示榜单，也不会编造热度。你仍可以把自己的文案贴进来做拆解。</p>
                         <div className="flex gap-4">
                             <Button size="large" icon={<ThunderboltOutlined />} onClick={() => setShowAnalyzer(true)} className="h-14 px-8 rounded-2xl bg-white text-zinc-900 border-none font-bold hover:scale-105 transition-all">AI 爆款拆解</Button>
                         </div>

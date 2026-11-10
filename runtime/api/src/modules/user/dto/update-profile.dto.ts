@@ -26,7 +26,7 @@ export class UpdateProfileDto {
   preferences?: Record<string, unknown>;
 }
 
-/** 注册三问和省份。空字符串表示清空。 */
+/** 注册时的三问（行业、岗位、成长阶段）和省份。空字符串表示清空。 */
 export class SignupProfileDto {
   @IsOptional()
   @IsString()

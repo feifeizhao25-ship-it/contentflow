@@ -31,15 +31,17 @@ export class UserController {
   }
 
   @Get('me/signup-profile')
-  @ApiOperation({ summary: '读取当前用户的注册三问和省份' })
+  @ApiOperation({ summary: '读取我的注册三问与省份（只返回当前登录用户）' })
   async getSignupProfile(@Request() req: any) {
-    return { profile: await this.userService.getSignupProfile(req.user.sub) };
+    const profile = await this.userService.getSignupProfile(req.user.sub);
+    return { profile };
   }
 
   @Put('me/signup-profile')
-  @ApiOperation({ summary: '保存当前用户的注册三问和省份' })
+  @ApiOperation({ summary: '保存我的注册三问与省份（只写当前登录用户）' })
   async saveSignupProfile(@Request() req: any, @Body() data: SignupProfileDto) {
-    return { profile: await this.userService.saveSignupProfile(req.user.sub, data) };
+    const profile = await this.userService.saveSignupProfile(req.user.sub, data);
+    return { profile };
   }
 
   // ─── 导出个人信息 / 注销账号 ───
