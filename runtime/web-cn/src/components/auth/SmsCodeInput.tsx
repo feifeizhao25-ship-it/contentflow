@@ -17,12 +17,14 @@ export function SmsCodeInput({
   onChange,
   getPhone,
   send,
+  'aria-label': ariaLabel,
+  ...rest
 }: {
   value?: string;
   onChange?: (value: string) => void;
   getPhone: () => string;
   send: (phone: string) => Promise<SmsSendResult>;
-}) {
+} & Omit<React.ComponentProps<typeof Input>, 'value' | 'onChange' | 'prefix'>) {
   const [left, setLeft] = useState(0);
   const [sending, setSending] = useState(false);
 
@@ -53,6 +55,8 @@ export function SmsCodeInput({
   return (
     <Space.Compact style={{ width: '100%' }}>
       <Input
+        {...rest}
+        aria-label={ariaLabel || '验证码'}
         prefix={<SafetyCertificateOutlined />}
         placeholder="6 位验证码"
         inputMode="numeric"

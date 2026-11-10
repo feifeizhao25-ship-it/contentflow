@@ -358,13 +358,13 @@ function PricingContent() {
                                     {plan.icon}
                                 </div>
                                 <h3 className="text-2xl font-black mb-2">{plan.name}</h3>
-                                <p className="text-zinc-500 text-sm font-medium h-10">{plan.description}</p>
+                                <p className="text-zinc-700 text-sm font-medium h-10">{plan.description}</p>
                             </div>
 
                             <div className="mb-8 p-4 rounded-xl bg-zinc-50 dark:bg-zinc-800/50">
                                 <div className="flex items-baseline gap-1">
                                     <span className="text-4xl font-black tracking-tight">{plan.price == null ? '按需报价' : `¥${plan.price}`}</span>
-                                    <span className="text-zinc-400 font-medium">{isYearly ? '/年' : '/月'}</span>
+                                    <span className="text-zinc-700 font-medium">{isYearly ? '/年' : '/月'}</span>
                                 </div>
                                 {plan.credits && (
                                     <div className="mt-2 text-xs font-bold text-indigo-600 flex items-center gap-1">
@@ -408,7 +408,7 @@ function PricingContent() {
                     ))}
 
                 </div>
-                <p className="mb-20 text-xs text-zinc-500">每张卡底部一行「路线图（即将上线）」列出尚未开通的卖点（如平台授权、团队审批、操作审计），开通前不影响当前价格。</p>
+                <p className="mb-20 text-xs text-zinc-700">每张卡底部一行「路线图（即将上线）」列出尚未开通的卖点（如平台授权、团队审批、操作审计），开通前不影响当前价格。</p>
 
                 <Modal
                     open={checkoutPlan !== null}
@@ -482,7 +482,7 @@ function PricingContent() {
                                 <h4 className="font-bold text-lg mb-2 flex items-center gap-2">
                                     <span className="text-indigo-500">问</span> {item.q}
                                 </h4>
-                                <p className="text-zinc-500 text-sm leading-relaxed">{item.a}</p>
+                                <p className="text-zinc-700 text-sm leading-relaxed">{item.a}</p>
                             </div>
                         ))}
                     </div>
@@ -490,7 +490,7 @@ function PricingContent() {
 
                 {/* Trust Footer */}
                 <div className="text-center pb-8 border-t border-zinc-100 dark:border-zinc-800 pt-8">
-                    <div className="inline-flex items-center gap-2 text-zinc-400 text-xs font-bold uppercase tracking-wider">
+                    <div className="inline-flex items-center gap-2 text-zinc-800 text-xs font-bold uppercase tracking-wider">
                         <SafetyCertificateOutlined className="text-emerald-500 text-lg" />
                         <span>付款前请核对订单信息与服务条款</span>
                     </div>

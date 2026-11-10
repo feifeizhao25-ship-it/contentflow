@@ -26,18 +26,19 @@ export function ClientProviders({ children }: Readonly<{ children: React.ReactNo
           theme={{
             algorithm: isDark ? theme.darkAlgorithm : theme.defaultAlgorithm,
             token: {
-              colorPrimary: '#6366f1', borderRadius: 12, fontFamily: 'var(--font-inter)',
+              colorPrimary: '#4f46e5', borderRadius: 12, fontFamily: 'var(--font-inter)',
               colorBgContainer: isDark ? '#18181b' : '#ffffff',
               colorBgElevated: isDark ? '#27272a' : '#ffffff',
               colorText: isDark ? '#e4e4e7' : '#0f172a',
-              colorTextSecondary: isDark ? '#a1a1aa' : '#64748b',
+              colorTextSecondary: isDark ? '#a1a1aa' : '#52525b',
+              colorTextDescription: isDark ? '#a1a1aa' : '#52525b',
               colorBorder: isDark ? '#3f3f46' : '#e2e8f0',
               colorBgLayout: isDark ? '#09090b' : '#f8fafc',
             },
             components: {
               Button: { controlHeight: 40, borderRadius: 10, colorBgContainer: isDark ? '#27272a' : '#ffffff' },
               Card: { borderRadiusLG: 16, colorBgContainer: isDark ? '#18181b' : '#ffffff' },
-              Input: { controlHeight: 40, borderRadius: 10, activeBorderColor: '#6366f1', colorBgContainer: isDark ? '#27272a' : '#ffffff' },
+              Input: { controlHeight: 40, borderRadius: 10, activeBorderColor: '#4f46e5', colorBgContainer: isDark ? '#27272a' : '#ffffff' },
               Menu: { darkItemBg: '#18181b', darkSubMenuItemBg: '#27272a' },
             },
           }}

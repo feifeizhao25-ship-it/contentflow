@@ -1,0 +1,12 @@
+{
+  "name": "contentflow-axe-smoke",
+  "private": true,
+  "description": "Serious and critical axe-core smoke for the key ContentFlow pages. Not a WCAG certification.",
+  "scripts": {
+    "test": "playwright test"
+  },
+  "devDependencies": {
+    "@axe-core/playwright": "4.10.2",
+    "@playwright/test": "1.62.0"
+  }
+}

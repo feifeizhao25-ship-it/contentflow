@@ -238,7 +238,7 @@ export default function SettingsPage() {
                 <div style={{ padding: '24px 0' }}>
                     <Card
                         bordered={false}
-                        title={<Space><ThunderboltOutlined style={{ color: '#6366f1' }} /> AI 内容连贯性与频率设置</Space>}
+                        title={<Space><ThunderboltOutlined style={{ color: '#4338ca' }} /> AI 内容连贯性与频率设置</Space>}
                     >
                         <Paragraph style={{ color: '#64748b', marginBottom: 24 }}>
                             设置不同社交媒体的内容分发逻辑，确保内容的前后呼应与节奏感。
