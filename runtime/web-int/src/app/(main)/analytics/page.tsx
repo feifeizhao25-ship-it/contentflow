@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import { RecordPage } from '@/components/workspace/RecordPage';
 import { analyticsRows } from '@/lib/workspace-records';
 
@@ -8,24 +9,36 @@ const REPORTS = [
   { href: '/api/v1/analytics/weekly-report.pdf?lang=en', file: 'weekly-report.pdf', label: 'Download this week\'s PDF' },
 ] as const;
 
-async function saveReport(event: React.MouseEvent<HTMLAnchorElement>, href: string, filename: string) {
-  event.preventDefault();
-  const response = await fetch(href, { credentials: 'same-origin' });
-  if (response.status === 401) {
-    window.location.href = '/login';
-    return;
-  }
-  if (!response.ok) return;
-  const blob = await response.blob();
-  const url = URL.createObjectURL(blob);
-  const anchor = document.createElement('a');
-  anchor.href = url;
-  anchor.download = filename;
-  anchor.click();
-  URL.revokeObjectURL(url);
-}
+const DOWNLOAD_FAILED = 'Download failed. Please try again.';
 
 export default function AnalyticsPage() {
+  const [downloadError, setDownloadError] = useState('');
+
+  const saveReport = async (event: React.MouseEvent<HTMLAnchorElement>, href: string, filename: string) => {
+    event.preventDefault();
+    setDownloadError('');
+    try {
+      const response = await fetch(href, { credentials: 'same-origin' });
+      if (response.status === 401) {
+        window.location.href = '/login';
+        return;
+      }
+      if (!response.ok) {
+        setDownloadError(DOWNLOAD_FAILED);
+        return;
+      }
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement('a');
+      anchor.href = url;
+      anchor.download = filename;
+      anchor.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      setDownloadError(DOWNLOAD_FAILED);
+    }
+  };
+
   return (
     <>
       <nav aria-label="Weekly report downloads" className="shell report-downloads">
@@ -34,6 +47,7 @@ export default function AnalyticsPage() {
             {report.label}
           </a>
         ))}
+        {downloadError ? <p role="status">{downloadError}</p> : null}
       </nav>
       <RecordPage
         eyebrow="Analytics"

@@ -1,6 +1,6 @@
 import { readFileSync } from 'fs';
 import { join } from 'path';
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import AnalyticsPage from './page';
 
 const fetchMock = jest.fn();
@@ -20,6 +20,14 @@ it('links the signed-in weekly spreadsheet and PDF in English', async () => {
     'href',
     '/api/v1/analytics/weekly-report.pdf?lang=en',
   );
+});
+
+it('shows a visible message when the weekly download returns 500', async () => {
+  fetchMock.mockResolvedValue({ ok: false, status: 500, blob: async () => new Blob() });
+  render(<AnalyticsPage />);
+  fireEvent.click(await screen.findByRole('link', { name: "Download this week's PDF" }));
+  const message = await screen.findByText('Download failed. Please try again.');
+  expect(message).toHaveAttribute('role', 'status');
 });
 
 it('uses the cookie session and the existing login page when the report is unauthorized', () => {
