@@ -106,7 +106,7 @@ export default function RegisterPage() {
             }]}
         >
             <Checkbox>
-                我已阅读并同意 <Link href="/terms" target="_blank">《用户协议》</Link> 和 <Link href="/privacy" target="_blank">《隐私政策》</Link>
+                我已阅读并同意 <Link href="/terms" target="_blank" style={{ color: '#4338ca' }}>《用户协议》</Link> 和 <Link href="/privacy" target="_blank" style={{ color: '#4338ca' }}>《隐私政策》</Link>
             </Checkbox>
         </Form.Item>
     );
@@ -175,6 +175,7 @@ export default function RegisterPage() {
                             children: (
                                 <Form form={smsForm} name="register-phone" onFinish={onPhoneFinish} autoComplete="off" layout="vertical" size="large">
                                     <Form.Item
+                                        label="手机号"
                                         name="phone"
                                         rules={[
                                             { required: true, message: '请输入手机号' },
@@ -183,16 +184,16 @@ export default function RegisterPage() {
                                     >
                                         <Input prefix={<MobileOutlined />} placeholder="手机号" inputMode="tel" maxLength={16} />
                                     </Form.Item>
-                                    <Form.Item name="code" rules={[{ required: true, message: '请输入验证码' }, { pattern: /^\d{6}$/, message: '验证码为 6 位数字' }]}>
+                                    <Form.Item label="验证码" name="code" rules={[{ required: true, message: '请输入验证码' }, { pattern: /^\d{6}$/, message: '验证码为 6 位数字' }]}>
                                         <SmsCodeInput
                                             getPhone={() => String(smsForm.getFieldValue('phone') ?? '')}
                                             send={(phone) => sendSmsCode({ phone, purpose: 'register' })}
                                         />
                                     </Form.Item>
-                                    <Form.Item name="name">
+                                    <Form.Item name="name" label="姓名（选填）">
                                         <Input prefix={<UserOutlined />} placeholder="姓名（选填）" maxLength={50} />
                                     </Form.Item>
-                                    <Form.Item name="tenantName">
+                                    <Form.Item name="tenantName" label="团队或公司名称（选填）">
                                         <Input prefix={<TeamOutlined />} placeholder="团队/公司名称（选填）" maxLength={100} />
                                     </Form.Item>
                                     {profileItems}
@@ -212,6 +213,7 @@ export default function RegisterPage() {
                             children: (
                                 <Form name="register" onFinish={onFinish} autoComplete="off" layout="vertical" size="large">
                     <Form.Item
+                        label="姓名"
                         name="name"
                         rules={[{ required: true, message: '请输入您的姓名' }]}
                     >
@@ -222,6 +224,7 @@ export default function RegisterPage() {
                     </Form.Item>
 
                     <Form.Item
+                        label="邮箱"
                         name="email"
                         rules={[
                             { required: true, message: '请输入邮箱' },
@@ -235,6 +238,7 @@ export default function RegisterPage() {
                     </Form.Item>
 
                     <Form.Item
+                        label="团队或公司名称"
                         name="tenantName"
                         rules={[{ required: true, message: '请输入团队/公司名称' }]}
                     >
@@ -245,6 +249,7 @@ export default function RegisterPage() {
                     </Form.Item>
 
                     <Form.Item
+                        label="密码"
                         name="password"
                         rules={[
                             { required: true, message: '请输入密码' },
@@ -259,6 +264,7 @@ export default function RegisterPage() {
                     </Form.Item>
 
                     <Form.Item
+                        label="确认密码"
                         name="confirmPassword"
                         dependencies={['password']}
                         rules={[
@@ -299,7 +305,7 @@ export default function RegisterPage() {
 
                 <div style={{ textAlign: 'center' }}>
                     <span style={{ color: '#6b7280' }}>已有账号？</span>
-                    <Link href="/login" style={{ marginLeft: 8, color: '#6366f1', fontWeight: 500 }}>
+                    <Link href="/login" style={{ marginLeft: 8, color: '#4338ca', fontWeight: 500 }}>
                         立即登录
                     </Link>
                 </div>

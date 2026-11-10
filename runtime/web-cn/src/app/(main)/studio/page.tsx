@@ -365,10 +365,10 @@ function StudioContent() {
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
             <h1 className="text-3xl font-serif text-zinc-900">创作工作室</h1>
-            <p className="text-sm text-zinc-500 mt-2">从灵感到发布，今天就完成一次完整闭环。</p>
+            <p className="text-sm text-zinc-700 mt-2">从灵感到发布，今天就完成一次完整闭环。</p>
           </div>
           <div className="flex items-center gap-3">
-            <Tag color="gold">发布完成为核心目标</Tag>
+            <Tag style={{ color: '#78350f', background: '#fef3c7', borderColor: '#d97706' }}>发布完成为核心目标</Tag>
             <Button onClick={() => router.push('/publish')}>查看发布中心</Button>
           </div>
         </div>
@@ -384,9 +384,9 @@ function StudioContent() {
         <Steps
           current={script ? (coverUrl ? 2 : 1) : 0}
           items={[
-            { title: '主题与平台', description: '定义核心方向' },
-            { title: '内容生成', description: 'AI 文案与封面' },
-            { title: '分发排期', description: '目前所有平台都是人工确认发布，复制文案后到平台手动发出' },
+            { title: '主题与平台', description: <span className="text-zinc-700">定义核心方向</span> },
+            { title: '内容生成', description: <span className="text-zinc-700">AI 文案与封面</span> },
+            { title: '分发排期', description: <span className="text-zinc-700">目前所有平台都是人工确认发布，复制文案后到平台手动发出</span> },
           ]}
         />
       </Card>
@@ -399,6 +399,7 @@ function StudioContent() {
           </h3>
           <VoiceField mic={<VoiceMicButton onFinal={(spoken) => setTopic((current) => appendVoice(current, spoken))} />}>
             <Input
+              aria-label="内容主题"
               placeholder="一句话描述你想做的内容"
               value={topic}
               onChange={(e) => setTopic(e.target.value)}
@@ -407,8 +408,10 @@ function StudioContent() {
           </VoiceField>
           <div className="mt-4 space-y-3">
             <div>
-              <div className="text-xs text-zinc-500 mb-2">选择平台</div>
+              <div className="text-xs text-zinc-700 mb-2">选择平台</div>
               <Select
+                id="studio-platforms"
+                aria-label="选择平台"
                 mode="multiple"
                 value={selectedPlatforms}
                 onChange={setSelectedPlatforms}
@@ -417,8 +420,10 @@ function StudioContent() {
               />
             </div>
             <div>
-              <div className="text-xs text-zinc-500 mb-2">风格偏好</div>
+              <div className="text-xs text-zinc-700 mb-2">风格偏好</div>
               <Select
+                id="studio-style"
+                aria-label="风格偏好"
                 value={style}
                 onChange={setStyle}
                 className="w-full"
@@ -442,22 +447,22 @@ function StudioContent() {
           >
             一键生成文案包
           </Button>
-          <div className="text-xs text-zinc-500 mt-2 bg-zinc-50 p-2 rounded-lg space-y-1" data-testid="ai-allowance">
+          <div className="text-xs text-zinc-700 mt-2 bg-zinc-50 p-2 rounded-lg space-y-1" data-testid="ai-allowance">
             <div className={clsx('font-medium', allowance.exhausted ? 'text-red-600' : 'text-zinc-700')}>{allowance.summary}</div>
             {allowance.exhausted && (
               <div>本月额度已用完，可 <Link href="/pricing" className="text-indigo-600">升级套餐</Link>，或等下月 1 日恢复。</div>
             )}
-            <div className="text-[11px] text-zinc-400">{allowance.rule}</div>
+            <div className="text-[11px] text-zinc-700">{allowance.rule}</div>
           </div>
 
           <Divider className="my-6" />
 
           {/* 视频生成：国内版还没有接入境内视频模型，只说明暂未开放且不可点 */}
-          <div className="flex items-center justify-between gap-3 text-sm text-zinc-400" aria-disabled="true">
+          <div className="flex items-center justify-between gap-3 text-sm text-zinc-700" aria-disabled="true">
             <span className="flex items-center gap-2"><PlayCircle className="w-4 h-4" />视频生成</span>
             <Tag className="m-0">暂未开放</Tag>
           </div>
-          <p className="text-[11px] text-zinc-400 mt-1">国内版还没有接入视频模型，开放后会在这里提示。</p>
+          <p className="text-[11px] text-zinc-700 mt-1">国内版还没有接入视频模型，开放后会在这里提示。</p>
         </Card>
 
         <Card className="lg:col-span-2 rounded-[24px] border-none">
@@ -491,7 +496,7 @@ function StudioContent() {
                         {t}
                       </Tag>
                     </VoiceReadout>
-                  )) : <span className="text-xs text-zinc-400">生成后显示</span>}
+                  )) : <span className="text-xs text-zinc-800">生成后显示</span>}
                 </div>
               </div>
               <div className="max-md:rounded-2xl max-md:border max-md:border-zinc-200 max-md:bg-zinc-50 max-md:p-3">
@@ -551,7 +556,7 @@ function StudioContent() {
                       <div className="absolute left-2 top-2 rounded bg-black/60 px-2 py-0.5 text-[11px] text-white">AI 生成</div>
                     )}
                     {!coverUrl && (
-                      <div className="absolute inset-0 flex flex-col items-center justify-center text-xs text-zinc-500 text-center p-4">
+                      <div className="absolute inset-0 flex flex-col items-center justify-center text-xs text-zinc-800 text-center p-4">
                         <ImageIcon className="w-8 h-8 mb-2 opacity-50" />
                         <div>还没有封面<br />点右上角「生成封面」后在这里预览</div>
                       </div>
@@ -571,10 +576,10 @@ function StudioContent() {
               <CalendarClock className="w-4 h-4 text-amber-600" />
               发布草案
             </h3>
-            <p className="text-xs text-zinc-500 mt-2">{PUBLISH_CHANNEL_NOTICE}。</p>
+            <p className="text-xs text-zinc-700 mt-2">{PUBLISH_CHANNEL_NOTICE}。</p>
           </div>
           <div className="flex items-center gap-2">
-            <Select value={publishType} onChange={setPublishType} options={[
+            <Select id="studio-publish-time" aria-label="发布时间" value={publishType} onChange={setPublishType} options={[
               { label: '立即发布', value: 'immediate' },
               { label: '定时发布', value: 'scheduled' },
             ]} />

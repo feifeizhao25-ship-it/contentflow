@@ -3,7 +3,7 @@ import type { ThemeConfig } from 'antd';
 export const theme: ThemeConfig = {
     token: {
         // Primary colors - 活力紫 (Vibrant Purple)
-        colorPrimary: '#6366f1',
+        colorPrimary: '#4f46e5',
         colorSuccess: '#10b981',
         colorWarning: '#f59e0b',
         colorError: '#ef4444',

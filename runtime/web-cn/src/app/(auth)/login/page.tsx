@@ -95,6 +95,7 @@ export default function LoginPage() {
                             children: (
                                 <Form form={smsForm} name="login-sms" onFinish={onSms} autoComplete="off" layout="vertical" size="large">
                                     <Form.Item
+                                        label="手机号"
                                         name="phone"
                                         rules={[
                                             { required: true, message: '请输入手机号' },
@@ -103,7 +104,7 @@ export default function LoginPage() {
                                     >
                                         <Input prefix={<MobileOutlined />} placeholder="手机号" inputMode="tel" maxLength={16} />
                                     </Form.Item>
-                                    <Form.Item name="code" rules={[{ required: true, message: '请输入验证码' }, { pattern: /^\d{6}$/, message: '验证码为 6 位数字' }]}>
+                                    <Form.Item label="验证码" name="code" rules={[{ required: true, message: '请输入验证码' }, { pattern: /^\d{6}$/, message: '验证码为 6 位数字' }]}>
                                         <SmsCodeInput
                                             getPhone={() => String(smsForm.getFieldValue('phone') ?? '')}
                                             send={(phone) => sendSmsCode({ phone, purpose: 'login' })}
@@ -123,6 +124,7 @@ export default function LoginPage() {
                             children: (
                                 <Form name="login" onFinish={onPassword} autoComplete="off" layout="vertical" size="large">
                                     <Form.Item
+                                        label="邮箱"
                                         name="email"
                                         rules={[
                                             { required: true, message: '请输入邮箱' },
@@ -131,7 +133,7 @@ export default function LoginPage() {
                                     >
                                         <Input prefix={<MailOutlined />} placeholder="邮箱地址" />
                                     </Form.Item>
-                                    <Form.Item name="password" rules={[{ required: true, message: '请输入密码' }]}>
+                                    <Form.Item label="密码" name="password" rules={[{ required: true, message: '请输入密码' }]}>
                                         <Input.Password prefix={<LockOutlined />} placeholder="密码" />
                                     </Form.Item>
                                     <Form.Item>
@@ -154,7 +156,7 @@ export default function LoginPage() {
 
                 <div style={{ textAlign: 'center' }}>
                     <span style={{ color: '#6b7280' }}>还没有账号？</span>
-                    <Link href="/register" style={{ marginLeft: 8, color: '#6366f1', fontWeight: 500 }}>
+                    <Link href="/register" style={{ marginLeft: 8, color: '#4338ca', fontWeight: 500 }}>
                         立即注册
                     </Link>
                 </div>

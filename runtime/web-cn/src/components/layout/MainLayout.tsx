@@ -178,7 +178,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
                                     itemBg: 'transparent',
                                     subMenuItemBg: 'transparent',
                                     itemColor: isDark ? '#a1a1aa' : '#64748b',
-                                    itemSelectedColor: '#6366f1',
+                                    itemSelectedColor: '#4338ca',
                                     itemSelectedBg: 'rgba(99, 102, 241, 0.1)',
                                     itemHoverColor: isDark ? '#e4e4e7' : '#0f172a',
                                     itemHoverBg: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0, 0, 0, 0.03)',
