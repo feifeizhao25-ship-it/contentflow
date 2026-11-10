@@ -11,6 +11,7 @@ import {
   summarizePublish,
 } from './own-data-overview';
 import { weeklySheets } from './weekly-report';
+import { buildPdf } from './pdf';
 import { buildXlsx } from './xlsx';
 
 @Injectable()
@@ -141,10 +142,11 @@ export class AnalyticsService {
   }
 
   /**
-   * 本周 xlsx。只查当前工作区已保存的内容、发布任务和 AI 记录。
-   * 互动数据没有平台授权时只写说明，不填播放、点赞或涨粉。
+   * 本周报告。只查当前工作区已保存的内容、发布任务和 AI 记录。
+   * xlsx 与 PDF 用同一份字段。互动数据没有平台授权时只写说明，不填播放、点赞或涨粉。
+   * 套餐里的「导出格式」仍是未执行的权益，所以这里只按登录和工作区隔离，不另加套餐门槛。
    */
-  async weeklyWorkbook(tenantId: string, now: Date | number = Date.now(), lang: OverviewLang = 'zh') {
+  private async weeklySheetsFor(tenantId: string, now: Date | number, lang: OverviewLang) {
     const windows = overviewWindows(now);
     const overview = await this.getOverview(tenantId, now, lang);
     const taskWindow = {
@@ -195,10 +197,16 @@ export class AnalyticsService {
       engagementNote: overview.engagement.detail,
       truncated,
     });
-    return {
-      filename: 'weekly-report.xlsx',
-      body: buildXlsx(sheets),
-      truncated,
-    };
+    return { sheets, truncated };
+  }
+
+  async weeklyWorkbook(tenantId: string, now: Date | number = Date.now(), lang: OverviewLang = 'zh') {
+    const report = await this.weeklySheetsFor(tenantId, now, lang);
+    return { filename: 'weekly-report.xlsx', body: buildXlsx(report.sheets), truncated: report.truncated };
+  }
+
+  async weeklyPdf(tenantId: string, now: Date | number = Date.now(), lang: OverviewLang = 'zh') {
+    const report = await this.weeklySheetsFor(tenantId, now, lang);
+    return { filename: 'weekly-report.pdf', body: buildPdf(report.sheets), truncated: report.truncated };
   }
 }
