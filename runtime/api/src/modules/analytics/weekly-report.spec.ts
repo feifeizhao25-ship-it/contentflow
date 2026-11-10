@@ -2,7 +2,9 @@
  * 周报 xlsx：只导出当前登录用户所在工作区已保存的记录。
  * 没有记录时表格写明是空的，不编造播放、点赞或涨粉。
  */
-import { readFileSync } from 'fs';
+import { execFileSync } from 'child_process';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'fs';
+import { tmpdir } from 'os';
 import { join } from 'path';
 import { ExecutionContext, INestApplication, UnauthorizedException } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
@@ -14,7 +16,7 @@ import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { PrismaService } from '../../database/prisma.service';
 import { AnalyticsController } from './analytics.controller';
 import { AnalyticsService } from './analytics.service';
-import { buildPdf, pdfPlainText } from './pdf';
+import { buildPdf } from './pdf';
 import { weeklySheets } from './weekly-report';
 import { buildXlsx } from './xlsx';
 
@@ -78,9 +80,28 @@ const week = {
   truncated: false,
 };
 
+/** qpdf 确认文件能打开，pdftotext 确认中英文和「互动不可用」是正文而不是图。 */
+function checkedPdfText(pdf: Buffer): string {
+  expect(pdf.subarray(0, 5).toString()).toBe('%PDF-');
+  expect(pdf.length).toBeGreaterThan(1000);
+  expect(pdf.length).toBeLessThan(256 * 1024);
+  const dir = mkdtempSync(join(tmpdir(), 'weekly-pdf-'));
+  const file = join(dir, 'report.pdf');
+  try {
+    writeFileSync(file, pdf);
+    const check = execFileSync('qpdf', ['--check', file], { encoding: 'utf8' });
+    expect(check).toMatch(/No syntax or stream encoding errors/);
+    return execFileSync('pdftotext', ['-layout', file, '-'], { encoding: 'utf8' });
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+}
+
 describe('weekly pdf pages', () => {
-  it('an empty week uses the same fields and does not invent engagement numbers', () => {
-    const text = pdfPlainText(buildPdf(weeklySheets(week)));
+  it('an empty week uses the same fields and does not invent engagement numbers', async () => {
+    const pdf = await buildPdf(weeklySheets(week));
+    console.log(`weekly-pdf-bytes en=${pdf.length}`);
+    const text = checkedPdfText(pdf);
     expect(text).toContain('Weekly workspace report');
     expect(text).toContain('No content was saved this week');
     expect(text).toContain('No publish tasks were stored this week');
@@ -91,8 +112,8 @@ describe('weekly pdf pages', () => {
     expect(text).not.toMatch(/\b12\b/);
   });
 
-  it('stored rows and the Chinese labels are written as themselves', () => {
-    const text = pdfPlainText(buildPdf(weeklySheets({
+  it('stored rows and the Chinese labels are written as themselves', async () => {
+    const pdf = await buildPdf(weeklySheets({
       ...week,
       lang: 'zh',
       publish: { ...week.publish, total: 1, published: 1 },
@@ -100,7 +121,9 @@ describe('weekly pdf pages', () => {
       contents: [{ title: '发布说明', content_type: 'article', status: 'draft', created_at: INSIDE }],
       tasks: [{ platform: 'linkedin', status: 'published', scheduled_at: null, created_at: INSIDE }],
       engagementNote: '播放、点赞、评论、涨粉等互动数据只能通过平台开放接口获取。',
-    })));
+    }));
+    console.log(`weekly-pdf-bytes zh=${pdf.length}`);
+    const text = checkedPdfText(pdf);
     expect(text).toContain('本周工作区报告');
     expect(text).toContain('发布说明');
     expect(text).toContain('linkedin');
@@ -295,7 +318,8 @@ describe('GET /analytics/weekly-report.pdf', () => {
 
   it('exports only the signed-in workspace, in English or Chinese', async () => {
     const english = await pdf('tenant-a', '?lang=en');
-    const en = pdfPlainText(english.body);
+    const enBody = Buffer.isBuffer(english.body) ? english.body : Buffer.from(english.body);
+    const en = checkedPdfText(enBody);
     expect(en).toContain('A real draft');
     expect(en).toContain('linkedin');
     expect(en).toContain('Engagement data available');
@@ -304,20 +328,24 @@ describe('GET /analytics/weekly-report.pdf', () => {
     expect(en).not.toMatch(/8\.5%|10\.2w|涨粉 893/);
 
     const chinese = await pdf('tenant-a', '?lang=zh');
-    const zh = pdfPlainText(chinese.body);
+    const zhBody = Buffer.isBuffer(chinese.body) ? chinese.body : Buffer.from(chinese.body);
+    const zh = checkedPdfText(zhBody);
+    console.log(`weekly-pdf-bytes http-en=${enBody.length} http-zh=${zhBody.length}`);
     expect(zh).toContain('本周工作区报告');
     expect(zh).toContain('A real draft');
     expect(zh).toContain('没有');
     expect(zh).not.toContain('B secret draft');
 
     process.env.MARKET_REGION = 'global';
-    const international = pdfPlainText((await pdf('tenant-a')).body);
+    const internationalBody = (await pdf('tenant-a')).body;
+    const international = checkedPdfText(Buffer.isBuffer(internationalBody) ? internationalBody : Buffer.from(internationalBody));
     expect(international).toContain('Weekly workspace report');
     expect(international).not.toContain('本周工作区报告');
   });
 
   it('a workspace with no rows gets the empty-sheet note', async () => {
-    const text = pdfPlainText((await pdf('tenant-empty', '?lang=en')).body);
+    const emptyBody = (await pdf('tenant-empty', '?lang=en')).body;
+    const text = checkedPdfText(Buffer.isBuffer(emptyBody) ? emptyBody : Buffer.from(emptyBody));
     expect(text).toContain('No content was saved this week');
     expect(text).toContain('No publish tasks were stored this week');
     expect(text).not.toContain('A real draft');

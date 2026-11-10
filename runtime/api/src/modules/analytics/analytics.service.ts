@@ -207,6 +207,6 @@ export class AnalyticsService {
 
   async weeklyPdf(tenantId: string, now: Date | number = Date.now(), lang: OverviewLang = 'zh') {
     const report = await this.weeklySheetsFor(tenantId, now, lang);
-    return { filename: 'weekly-report.pdf', body: buildPdf(report.sheets), truncated: report.truncated };
+    return { filename: 'weekly-report.pdf', body: await buildPdf(report.sheets), truncated: report.truncated };
   }
 }

@@ -27,6 +27,8 @@ COPY --from=build --chown=app:app /app/node_modules ./node_modules
 COPY --from=build --chown=app:app /app/dist ./dist
 COPY --from=build --chown=app:app /app/src/database/prisma ./src/database/prisma
 COPY --chown=app:app data ./data
+# Weekly PDF fonts. Noto Sans is OFL; Droid Sans Fallback is Apache-2.0. Licenses sit beside the files.
+COPY --chown=app:app assets ./assets
 COPY --chown=app:app package.json ./
 COPY --chown=app:app docker-entrypoint.sh ./
 RUN chmod +x docker-entrypoint.sh
