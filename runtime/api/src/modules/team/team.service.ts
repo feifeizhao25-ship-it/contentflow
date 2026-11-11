@@ -1,9 +1,9 @@
 import { createHash, randomBytes, timingSafeEqual } from 'crypto';
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { BadRequestException, Inject, Injectable } from '@nestjs/common';
 import { PrismaService } from '../../database/prisma.service';
 import { publicEmail } from '../auth/phone-account';
 import { seatLimit } from './seat-limit';
-import { RecordingTeamInviteMailer, type TeamInviteMailer } from './team-invite.mailer';
+import { RecordingTeamInviteMailer, TEAM_INVITE_MAILER, type TeamInviteMailer } from './team-invite.mailer';
 
 /** 文档没有写过期时长。24 小时是待决定前的保守值。邀请只能使用一次。 */
 export const INVITE_TTL_MS = 24 * 60 * 60 * 1000;
@@ -14,6 +14,7 @@ export type InviteRole = (typeof INVITE_ROLES)[number];
 export class TeamService {
   constructor(
     private readonly prisma: PrismaService,
+    @Inject(TEAM_INVITE_MAILER)
     private readonly mailer: TeamInviteMailer = new RecordingTeamInviteMailer(),
   ) {}
 

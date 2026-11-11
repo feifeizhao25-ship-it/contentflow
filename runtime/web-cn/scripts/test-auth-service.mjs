@@ -84,6 +84,14 @@ await check('isValidChinaMobile：与后端同一规则', () => {
   for (const bad of ['', '12345678901', '1381234567', '138123456789', 'abc', '10086', '23812345678']) assert.equal(svc.isValidChinaMobile(bad), false, bad);
 });
 
+await check('注册失败在页面上有 role=alert 的中文提示', () => {
+  const text = fs.readFileSync(path.join(ROOT, 'src/app/(auth)/register/page.tsx'), 'utf8');
+  assert.match(text, /role="alert"/);
+  assert.match(text, /注册失败，请重试/);
+  assert.match(text, /setFormError/);
+  assert.equal((text.match(/\{failureAlert\}/g) || []).length, 2);
+});
+
 await check('登录页与注册页都用这个库，不再各自直接 fetch', () => {
   for (const p of ['src/app/(auth)/login/page.tsx', 'src/app/(auth)/register/page.tsx']) {
     const text = fs.readFileSync(path.join(ROOT, p), 'utf8');

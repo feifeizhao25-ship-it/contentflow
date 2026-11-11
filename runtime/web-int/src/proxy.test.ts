@@ -24,3 +24,25 @@ describe('legal pages are public', () => {
     expect(res.headers.get('location')).toContain('/login');
   });
 });
+
+describe('public registration and unknown urls', () => {
+  it('lets /register render without sending the visitor to login', () => {
+    const res = proxy(new NextRequest('http://localhost/register'));
+    expect(res.status).not.toBe(307);
+    expect(res.headers.get('location')).toBeNull();
+  });
+
+  it.each(['/this-page-does-not-exist', '/nope/nested', '/pricing/unknown'])(
+    'does not redirect unknown %s to login',
+    (path) => {
+      const res = proxy(new NextRequest(`http://localhost${path}`));
+      expect(res.headers.get('location')).toBeNull();
+      expect(res.headers.get('x-middleware-next')).toBe('1');
+    },
+  );
+
+  it('still protects a nested workspace route', () => {
+    const res = proxy(new NextRequest('http://localhost/team/invite'));
+    expect(res.headers.get('location')).toBe('http://localhost/login?next=%2Fteam%2Finvite');
+  });
+});

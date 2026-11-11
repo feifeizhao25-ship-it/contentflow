@@ -14,6 +14,9 @@ export interface TeamInviteMailer {
   send(mail: TeamInviteMail): Promise<void>;
 }
 
+/** Nest 注入令牌。接口在编译后会被擦掉，不能靠类型本身注入。 */
+export const TEAM_INVITE_MAILER = 'TEAM_INVITE_MAILER';
+
 export class RecordingTeamInviteMailer implements TeamInviteMailer {
   readonly sent: TeamInviteMail[] = [];
 
