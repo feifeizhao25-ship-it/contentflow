@@ -16,6 +16,7 @@ import { signupProfileBody } from '@/lib/signup-profile';
 
 export default function RegisterPage() {
     const [loading, setLoading] = useState(false);
+    const [formError, setFormError] = useState('');
     const [smsForm] = Form.useForm();
     const router = useRouter();
 
@@ -27,6 +28,7 @@ export default function RegisterPage() {
     // 注册一律是免费版，付费在「会员方案」页下单。
     const onFinish = async (values: any) => {
         setLoading(true);
+        setFormError('');
         try {
             await registerWithEmail({
                 email: values.email,
@@ -40,7 +42,7 @@ export default function RegisterPage() {
             message.success('注册成功');
             router.push('/studio');
         } catch (error) {
-            message.error(safeErrorText(error, '注册失败，请重试'));
+            showFailure(error);
         } finally {
             setLoading(false);
         }
@@ -49,6 +51,7 @@ export default function RegisterPage() {
     // 手机号 + 验证码注册：验证码由后端校验（一次性、5 分钟有效、错 5 次作废），同意协议由后端留痕。
     const onPhoneFinish = async (values: any) => {
         setLoading(true);
+        setFormError('');
         try {
             await registerWithPhone({
                 phone: values.phone,
@@ -62,10 +65,17 @@ export default function RegisterPage() {
             message.success('注册成功');
             router.push('/studio');
         } catch (error) {
-            message.error(safeErrorText(error, '注册失败，请重试'));
+            showFailure(error);
         } finally {
             setLoading(false);
         }
+    };
+
+    // toast 在部分环境下看不见。失败原因必须留在表单上（role=alert），中文。
+    const showFailure = (error: unknown) => {
+        const text = safeErrorText(error, '注册失败，请重试');
+        setFormError(text);
+        try { message.error(text); } catch { /* 页面上的提示已经写明原因 */ }
     };
 
     const saveSignupAnswers = async (values: Record<string, unknown>) => {
@@ -112,6 +122,23 @@ export default function RegisterPage() {
     );
 
     // 「我已满 16 周岁」：必须勾选，服务端同样校验（confirmedAge16 只认布尔 true）
+    const failureAlert = formError ? (
+        <div
+            role="alert"
+            style={{
+                marginBottom: 16,
+                padding: '10px 12px',
+                borderRadius: 8,
+                background: '#fef2f2',
+                color: '#991b1b',
+                fontSize: 14,
+                lineHeight: 1.5,
+            }}
+        >
+            {formError}
+        </div>
+    ) : null;
+
     const ageItem = (
         <Form.Item
             name="ageConfirmed"
@@ -199,6 +226,7 @@ export default function RegisterPage() {
                                     {profileItems}
                                     {agreementItem}
                                     {ageItem}
+                                    {failureAlert}
                                     <Form.Item>
                                         <Button type="primary" htmlType="submit" block loading={loading}>
                                             注册
@@ -288,6 +316,7 @@ export default function RegisterPage() {
                     {profileItems}
                     {agreementItem}
                     {ageItem}
+                    {failureAlert}
 
                     <Form.Item>
                         <Button type="primary" htmlType="submit" block loading={loading}>
