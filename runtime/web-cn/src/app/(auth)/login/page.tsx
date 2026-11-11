@@ -13,6 +13,7 @@ import { safeErrorText } from '@/lib/api-error';
 
 export default function LoginPage() {
     const [loading, setLoading] = useState(false);
+    const [formError, setFormError] = useState('');
     const [mode, setMode] = useState<'sms' | 'password'>('sms');
     const [smsForm] = Form.useForm();
     const router = useRouter();
@@ -23,12 +24,21 @@ export default function LoginPage() {
         router.push(safeRedirectTarget(new URLSearchParams(window.location.search).get('redirect')));
     };
 
+    // toast 在部分环境下看不见。失败原因必须留在表单上（role=alert），中文。
+    // 英文原文和内部错误走 safeErrorText，不会原样上屏。
+    const showFailure = (error: unknown, fallback: string) => {
+        const text = safeErrorText(error, fallback);
+        setFormError(text);
+        try { message.error(text); } catch { /* 页面上的提示已经写明原因 */ }
+    };
+
     const onPassword = async (values: { email: string; password: string }) => {
         setLoading(true);
+        setFormError('');
         try {
             finish(await loginWithPassword({ email: values.email, password: values.password }));
         } catch (error) {
-            message.error(safeErrorText(error, '登录失败，请检查邮箱和密码'));
+            showFailure(error, '登录失败，请检查邮箱和密码');
         } finally {
             setLoading(false);
         }
@@ -36,14 +46,32 @@ export default function LoginPage() {
 
     const onSms = async (values: { phone: string; code: string }) => {
         setLoading(true);
+        setFormError('');
         try {
             finish(await loginWithSms({ phone: values.phone, code: values.code }));
         } catch (error) {
-            message.error(safeErrorText(error, '登录失败，请检查验证码'));
+            showFailure(error, '登录失败，请检查验证码');
         } finally {
             setLoading(false);
         }
     };
+
+    const failureAlert = formError ? (
+        <div
+            role="alert"
+            style={{
+                marginBottom: 16,
+                padding: '10px 12px',
+                borderRadius: 8,
+                background: '#fef2f2',
+                color: '#991b1b',
+                fontSize: 14,
+                lineHeight: 1.5,
+            }}
+        >
+            {formError}
+        </div>
+    ) : null;
 
     return (
         <div
@@ -110,6 +138,7 @@ export default function LoginPage() {
                                             send={(phone) => sendSmsCode({ phone, purpose: 'login' })}
                                         />
                                     </Form.Item>
+                                    {failureAlert}
                                     <Form.Item>
                                         <Button type="primary" htmlType="submit" block loading={loading}>
                                             登录
@@ -136,6 +165,7 @@ export default function LoginPage() {
                                     <Form.Item label="密码" name="password" rules={[{ required: true, message: '请输入密码' }]}>
                                         <Input.Password prefix={<LockOutlined />} placeholder="密码" />
                                     </Form.Item>
+                                    {failureAlert}
                                     <Form.Item>
                                         <Button type="primary" htmlType="submit" block loading={loading}>
                                             登录

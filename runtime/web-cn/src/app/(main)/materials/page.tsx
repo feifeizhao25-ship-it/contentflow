@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import Image from 'next/image';
+import Link from 'next/link';
 import { Card, Row, Col, Input, Button, Upload, Tag, Space, Tabs, Empty, Progress, List, Typography, Tooltip, Divider } from 'antd';
 import { message, modal } from '@/lib/antd-app';
 import {
@@ -26,6 +27,7 @@ import type { UploadProps } from 'antd';
 import { fetchCurrentUser } from '@/lib/session';
 import { getUserMaterials, getStorageUsage, Material } from '@/lib/materials-service';
 import { usePermissions } from '@/hooks/usePermissions';
+import registry from '@/lib/entitlements.json';
 import clsx from 'clsx';
 import { safeErrorText } from '@/lib/api-error';
 import { formatCnDate } from '@/lib/cn-display';
@@ -52,13 +54,15 @@ function formatFileSize(bytes: number): string {
 
 export default function MaterialsPage() {
     // 权限系统
-    const { isPremium, plan } = usePermissions();
+    const { isPremium, plan, loading: permissionsLoading } = usePermissions();
+    // 套餐名只取国内权益注册表。存储额度各档都有，没有单独「解锁存储」的一档，也不写死容量。
+    const tierName = registry.tiers[plan]?.name;
 
     const [materials, setMaterials] = useState<Material[]>([]);
     const [loading, setLoading] = useState(false);
     const [searchText, setSearchText] = useState('');
     const [activeTab, setActiveTab] = useState('all');
-    const [storageUsage, setStorageUsage] = useState({ used: 0, limit: 10 * 1024 * 1024 * 1024, percentage: 0 });
+    const [storageUsage, setStorageUsage] = useState({ used: 0, limit: 0, percentage: 0 });
     const [userId, setUserId] = useState<string | null>(null);
 
     // 获取用户ID并加载数据
@@ -339,16 +343,18 @@ export default function MaterialsPage() {
                                 />
                                 <div className="mt-4">
                                     <div className="text-lg font-semibold text-zinc-900">
-                                        {formatFileSize(storageUsage.used)} / {formatFileSize(storageUsage.limit)}
+                                        {storageUsage.limit > 0
+                                            ? `${formatFileSize(storageUsage.used)} / ${formatFileSize(storageUsage.limit)}`
+                                            : formatFileSize(storageUsage.used)}
                                     </div>
                                     <div className="text-xs text-zinc-500 mt-1">
-                                        {isPremium ? (
+                                        {!permissionsLoading && isPremium && tierName ? (
                                             <span className="flex items-center justify-center gap-1 text-green-600">
-                                                <CrownFilled /> Pro 会员已扩容至 10GB
+                                                <CrownFilled /> 当前套餐：{tierName}
                                             </span>
-                                        ) : (
-                                            '升级 Pro 解锁更大存储空间'
-                                        )}
+                                        ) : !permissionsLoading ? (
+                                            <Link href="/pricing" className="text-indigo-600">升级会员</Link>
+                                        ) : null}
                                     </div>
                                 </div>
                             </div>

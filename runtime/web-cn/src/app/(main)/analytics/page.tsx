@@ -3,7 +3,8 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Button, Segmented, Skeleton } from 'antd';
-import { apiClient, FriendlyApiError } from '@/lib/api-client';
+import { apiClient } from '@/lib/api-client';
+import { safeErrorText } from '@/lib/api-error';
 import { parseAnalyticsOverview, type AnalyticsOverview } from '@/lib/page-data';
 import { AiUsage, EngagementPlaceholder, FailureReasons, PublishStats } from '@/components/analytics/OwnDataOverview';
 
@@ -23,7 +24,7 @@ export default function AnalyticsPage() {
         try {
             await apiClient.download(path, filename);
         } catch (error) {
-            setDownloadError(error instanceof FriendlyApiError ? error.message : '下载失败，请稍后重试');
+            setDownloadError(safeErrorText(error, '下载失败，请稍后重试'));
         }
     };
 

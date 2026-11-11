@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { Button, Tag } from 'antd';
+import Link from 'next/link';
 import {
     RocketOutlined,
     ThunderboltFilled,
@@ -77,22 +78,22 @@ export const StrategyPanel = () => {
                     </div>
                 </div>
 
-                {/* Module 3: Pro Upsell */}
+                {/* 会员方案入口：不使用 PRO 角标，链到定价页 */}
                 <div className="bg-gradient-to-r from-zinc-900 to-zinc-800 rounded-xl p-4 text-white relative overflow-hidden group">
                     <div className="absolute top-0 right-0 p-3">
                         <CrownFilled className="text-5xl text-white/5 -rotate-12" />
                     </div>
                     <div className="relative z-10">
                         <div className="flex items-center gap-2 mb-2">
-                            <span className="bg-yellow-500 text-black text-[10px] font-bold px-1.5 py-0.5 rounded">PRO</span>
+                            <Link href="/pricing" className="bg-yellow-500 text-black text-[10px] font-bold px-1.5 py-0.5 rounded">升级会员</Link>
                             <span className="font-bold text-sm">解锁高级排期</span>
                         </div>
                         <p className="text-xs text-zinc-400 mb-3">
                             获得 AI 自动填补空缺 + 跨平台一键分发 + 数据预测分析
                         </p>
-                        <Button size="small" type="primary" className="bg-yellow-500 text-black border-none font-bold w-full hover:bg-yellow-400">
-                            立即升级
-                        </Button>
+                        <Link href="/pricing" className="inline-flex w-full items-center justify-center rounded-md bg-yellow-500 px-2 py-1 text-sm font-bold text-black">
+                            升级会员
+                        </Link>
                     </div>
                 </div>
 
