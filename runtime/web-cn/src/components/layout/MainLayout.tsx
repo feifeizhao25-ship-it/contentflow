@@ -63,6 +63,11 @@ export default function MainLayout({ children }: MainLayoutProps) {
         return () => media.removeEventListener('change', updateViewport);
     }, []);
 
+    // 手机抽屉盖在页面上。点导航或路由变化后必须收起，否则点「内容」后菜单一直挡着正文。
+    useEffect(() => {
+        setMobileMenuOpen(false);
+    }, [pathname]);
+
     // 登录身份：initializeAuth 原来没有任何地方调用，store 里的 user 永远是 null，
     // 设置页「个人资料」的姓名因此为空（注册时明明填了）。进入工作台时从 /auth/profile 读一次。
     useEffect(() => {
@@ -193,11 +198,13 @@ export default function MainLayout({ children }: MainLayoutProps) {
                             selectedKeys={[pathname]}
                             items={menuItems}
                             inlineCollapsed={sidebarCollapsed}
+                            onClick={() => setMobileMenuOpen(false)}
                             style={{ border: 'none', background: 'transparent' }}
                         />
                     </ConfigProvider>
                     <Link
                         href="/rules"
+                        onClick={() => setMobileMenuOpen(false)}
                         className={clsx(
                             "mx-3 mb-3 rounded-lg px-3 py-2 text-sm font-medium",
                             sidebarCollapsed && "px-1 text-center",
@@ -215,7 +222,10 @@ export default function MainLayout({ children }: MainLayoutProps) {
                         isDarkMode ? "border-zinc-800" : "border-zinc-200"
                     )}>
                         <div 
-                            onClick={() => router.push('/pricing')}
+                            onClick={() => {
+                                setMobileMenuOpen(false);
+                                router.push('/pricing');
+                            }}
                             className={clsx(
                                 "rounded-xl p-3 border cursor-pointer transition-all",
                                 isDarkMode 

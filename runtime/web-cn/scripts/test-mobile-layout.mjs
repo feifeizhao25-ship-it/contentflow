@@ -52,6 +52,13 @@ check('主布局：手机内容区 16px 边距', () => {
   assert.match(read('components/layout/MainLayout.tsx'), /"flex-1 p-4 sm:p-6 overflow-x-hidden min-w-0"/);
 });
 
+check('手机侧栏：点导航项或路由变化后关闭抽屉，不再盖住页面', () => {
+  const src = read('components/layout/MainLayout.tsx');
+  assert.match(src, /useEffect\(\(\) => \{\s*setMobileMenuOpen\(false\);\s*\}, \[pathname\]\);/);
+  assert.match(src, /<Menu[\s\S]*?onClick=\{\(\) => setMobileMenuOpen\(false\)\}/);
+  assert.match(src, /href="\/rules"[\s\S]*?onClick=\{\(\) => setMobileMenuOpen\(false\)\}/);
+});
+
 check('团队成员表在窄屏可横向滚动，而不是被裁掉', () => {
   assert.match(read('app/(main)/team/page.tsx'), /scroll=\{\{ x: 'max-content' \}\}/);
 });

@@ -237,5 +237,25 @@ check('权限 Hook 使用注册表完整覆盖团队版和有限付费额度', (
     assert.ok(!src.includes("subscription.plan !== 'free') return true"), '付费套餐仍错误绕过有限额度检查');
 });
 
+check('素材库和其它界面不用 Pro / 专业版称呼套餐，升级入口链到会员方案', () => {
+    const materials = readSrc('src/app/(main)/materials/page.tsx');
+    assert.match(materials, /href="\/pricing"/);
+    assert.match(materials, /升级会员/);
+    assert.match(materials, /entitlements\.json/);
+    assert.doesNotMatch(materials, /升级 Pro|Pro 会员|10GB|专业版/);
+    for (const rel of [
+        'src/components/ai-create/GrowthSidebar.tsx',
+        'src/components/ai-create/MainWorkspace.tsx',
+        'src/components/calendar/StrategyPanel.tsx',
+    ]) {
+        const src = readSrc(rel);
+        assert.doesNotMatch(src, /专业版|升级 Pro|Pro 会员|count="PRO"|>(PRO)</, rel);
+    }
+    assert.match(readSrc('src/components/ai-create/GrowthSidebar.tsx'), /href="\/pricing"/);
+    assert.match(readSrc('src/components/ai-create/GrowthSidebar.tsx'), /升级会员/);
+    assert.match(readSrc('src/components/calendar/StrategyPanel.tsx'), /href="\/pricing"/);
+    assert.match(readSrc('src/components/calendar/StrategyPanel.tsx'), /升级会员/);
+});
+
 console.log(failures === 0 ? '\n全部通过' : `\n${failures} 项失败`);
 process.exit(failures === 0 ? 0 : 1);

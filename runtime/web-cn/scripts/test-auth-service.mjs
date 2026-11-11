@@ -92,6 +92,36 @@ await check('注册失败在页面上有 role=alert 的中文提示', () => {
   assert.equal((text.match(/\{failureAlert\}/g) || []).length, 2);
 });
 
+await check('登录失败：验证码错误、过于频繁、密码错误都是中文，不带英文原文', async () => {
+  await assert.rejects(
+    () => svc.loginWithSms({ phone: '13812345678', code: '000000' }, reply(400, { success: false, error: { message: '验证码错误或已失效' } })),
+    (e) => e.name === 'AuthError' && e.status === 400 && e.message === '验证码错误或已失效',
+  );
+  await assert.rejects(
+    () => svc.loginWithSms({ phone: '13812345678', code: '000000' }, reply(400, { message: 'Bad Request' })),
+    (e) => e.message === '登录失败，请检查验证码' && !/Bad Request|Internal/.test(e.message),
+  );
+  await assert.rejects(
+    () => svc.loginWithSms({ phone: '13812345678', code: '000000' }, reply(429, { success: false, error: { message: '获取验证码太频繁，请 42 秒后再试' } })),
+    (e) => e.status === 429 && e.message === '获取验证码太频繁，请 42 秒后再试',
+  );
+  await assert.rejects(
+    () => svc.loginWithPassword({ email: 'a@b.cn', password: 'wrong' }, reply(401, { message: 'Invalid credentials' })),
+    (e) => e.message === '登录失败，请检查邮箱和密码' && !/Invalid credentials/.test(e.message),
+  );
+});
+
+await check('登录失败在页面上有 role=alert 的中文提示（验证码与密码两个页签）', () => {
+  const text = fs.readFileSync(path.join(ROOT, 'src/app/(auth)/login/page.tsx'), 'utf8');
+  assert.match(text, /role="alert"/);
+  assert.match(text, /safeErrorText/);
+  assert.match(text, /setFormError/);
+  assert.match(text, /登录失败，请检查验证码/);
+  assert.match(text, /登录失败，请检查邮箱和密码/);
+  assert.equal((text.match(/\{failureAlert\}/g) || []).length, 2);
+  assert.doesNotMatch(text, /error\.message/);
+});
+
 await check('登录页与注册页都用这个库，不再各自直接 fetch', () => {
   for (const p of ['src/app/(auth)/login/page.tsx', 'src/app/(auth)/register/page.tsx']) {
     const text = fs.readFileSync(path.join(ROOT, p), 'utf8');

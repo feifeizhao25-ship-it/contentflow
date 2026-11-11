@@ -13,6 +13,7 @@ import {
 } from '@ant-design/icons';
 import clsx from 'clsx';
 import { motion } from 'framer-motion';
+import Link from 'next/link';
 
 const { Text } = Typography;
 
@@ -46,7 +47,9 @@ export const GrowthSidebar = () => {
                                 <div>
                                     <div className="font-bold text-sm text-zinc-800 flex items-center gap-1">
                                         生成封面
-                                        <Tag color="gold" className="m-0 text-[8px] px-1 py-0 h-4 leading-4 border-0">专业版</Tag>
+                                        <Link href="/pricing">
+                                            <Tag color="gold" className="m-0 text-[8px] px-1 py-0 h-4 leading-4 border-0">升级会员</Tag>
+                                        </Link>
                                     </div>
                                     <div className="text-[10px] text-zinc-400">10版精美封面</div>
                                 </div>
@@ -115,25 +118,25 @@ export const GrowthSidebar = () => {
                     </div>
                 </div>
 
-                {/* Module 4: Pro Upsell (Soft) */}
-                <div className="mt-4 p-4 rounded-xl bg-gradient-to-br from-indigo-600 to-violet-600 text-white shadow-lg shadow-indigo-500/20 relative overflow-hidden group cursor-pointer">
+                {/* 会员方案入口，链到定价页 */}
+                <Link href="/pricing" className="mt-4 block p-4 rounded-xl bg-gradient-to-br from-indigo-600 to-violet-600 text-white shadow-lg shadow-indigo-500/20 relative overflow-hidden group cursor-pointer">
                     <div className="absolute top-0 right-0 p-2 opacity-10 group-hover:opacity-20 transition-opacity">
                         <CrownFilled className="text-6xl -rotate-12" />
                     </div>
                     <div className="relative z-10">
                         <div className="flex items-center gap-2 mb-1">
                             <CrownFilled className="text-yellow-300" />
-                            <span className="font-bold text-sm">升级到专业版</span>
+                            <span className="font-bold text-sm">升级会员</span>
                         </div>
                         <p className="text-xs text-indigo-100 leading-relaxed mb-3">
                             获得 批量适配 + 高清导出 + 专属客服支持。
                             <span className="block mt-1 font-bold text-white">本次预计节省 18 分钟</span>
                         </p>
-                        <Button size="small" className="w-full bg-white/20 border-white/40 text-white hover:bg-white hover:text-indigo-600 border-none backdrop-blur-sm">
-                            立即升级
-                        </Button>
+                        <span className="inline-flex w-full items-center justify-center rounded-md bg-white/20 px-2 py-1 text-sm text-white">
+                            升级会员
+                        </span>
                     </div>
-                </div>
+                </Link>
 
             </div>
         </div>

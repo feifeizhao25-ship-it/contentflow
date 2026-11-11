@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Button, Select, Input, Badge, Tooltip } from 'antd';
+import { Button, Select, Input, Tooltip } from 'antd';
 import {
     ExperimentOutlined,
     ThunderboltFilled,
@@ -40,7 +40,6 @@ export const MainWorkspace = ({
                     <div>
                         <h1 className="text-2xl font-black text-zinc-900 flex items-center gap-2">
                             AI 创作中心
-                            <Badge count="PRO" style={{ backgroundColor: '#6366f1' }} />
                         </h1>
                         <p className="text-zinc-500 text-sm font-medium mt-1">
                             输入主题 → 生成内容包 → 一键适配多平台
