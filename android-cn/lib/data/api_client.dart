@@ -170,6 +170,14 @@ class ApiClient {
     );
   }
 
+  /// 首页：注册资料能对上的选题，以及待审核正文。接口失败由调用方处理。
+  Future<HomeBrief> getHomeBrief() async {
+    return _handle(
+      () => _dio.get('/home/today'),
+      (payload) => HomeBrief.fromJson(_extractMap(payload)),
+    );
+  }
+
   /// Saved content-pack drafts, newest first.
   Future<List<ContentDraft>> getContentDrafts() async {
     return _handle(

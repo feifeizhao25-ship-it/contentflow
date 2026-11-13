@@ -27,6 +27,8 @@ export interface DomesticComplianceHit {
   matchedDetails?: Array<{ term: string; legalBasis: string }>;
   severity: ComplianceSeverity;
   humanOverrideAllowed: boolean;
+  /** 规则还没有律师签署时的状态。缺省表示沿用既有口径，不另挂标签。 */
+  label?: string;
 }
 
 /**
@@ -225,6 +227,60 @@ const ART25_YIELD = /年化[^。\n]{0,16}(?:稳赚|保证|保本|无风险|保�
 /** 「必涨」「闭眼买入」「没有任何风险」是对投资结果的保证性断言，与「保本、无风险」同属第二十五条禁止的承诺。 */
 const ART25_CERTAINTY = /必涨|必赚|一定(?:会)?涨|闭眼(?:买|入|冲)|稳赚不赔|(?:没有|毫无|零|无)任何风险|绝对安全/;
 
+/**
+ * 《广告法》第二十四条第一项（2026-11-13 对照中国政府网现行文本核对）：
+ * 教育、培训广告不得对升学、通过考试、获得学位学历或者合格证书，或者对教育、培训的效果作出明示或者暗示的保证性承诺。
+ * https://www.gov.cn/guoqing/2021-10/29/content_5647620.htm
+ * 该页题头记至 2018 年修正；第二十四条第一项与北京市市场监督管理局 2024-01-26 提示函所引原文一致。
+ * 关键词筛查不是律师意见，所以命中带「待法律顾问确认」，不把没命中写成可以发布。
+ */
+export const AD_LAW_ART24_LABEL = '待法律顾问确认';
+export const AD_LAW_ART24_SOURCE_URL = 'https://www.gov.cn/guoqing/2021-10/29/content_5647620.htm';
+export const AD_LAW_ART24_SOURCE = '《中华人民共和国广告法》第二十四条第一项（教育、培训广告不得对升学、通过考试、获得学位学历或者合格证书，或者对教育、培训的效果作出明示或者暗示的保证性承诺）。原文：https://www.gov.cn/guoqing/2021-10/29/content_5647620.htm。状态：待法律顾问确认';
+
+/**
+ * 只拦「答应一个结果」的写法。
+ * - 「保过」不包含「保过期」（食品保质期）。
+ * - 「提分」必须跟着分数（提分 30 分、提分30分、提分三十分）。「提分方法分享」「提分技巧」没有许诺结果，不拦。
+ * - 「提升 30 分」不拦：条文针对的是「提分 N 分」这类招生承诺，不把所有「提升」都当成效果保证。
+ * - 「保证通过」「保证录取 / 包录取 / 保录取」按第二十四条的「通过考试」「升学」承诺处理，不解析否定句。
+ * 「包过」仍会同时命中旧的 CN-AD-RISK-001（那条没有对应法条）；本条补上第二十四条的出处。
+ */
+const ART24_PROMISES: readonly RegExp[] = [
+  /保过(?!期)/g,
+  /包过/g,
+  /提分\s*(?:\d{1,4}|[一二三四五六七八九十百零〇两]{1,6})\s*分/g,
+  /保证通过/g,
+  /保证录取|包录取|保录取/g,
+  /保证升学|保证拿证/g,
+  /保证提高\s*(?:\d{1,4}|[一二三四五六七八九十百零〇两]{1,6})\s*分/g,
+];
+
+function checkEducationResultPromise(content: string): DomesticComplianceHit | null {
+  const text = String(content || '').normalize('NFKC');
+  const matchedTerms: string[] = [];
+  for (const pattern of ART24_PROMISES) {
+    const re = new RegExp(pattern.source, 'g');
+    for (const match of text.matchAll(re)) {
+      const term = match[0].replace(/\s+/g, ' ').trim();
+      if (term && !matchedTerms.includes(term)) matchedTerms.push(term);
+    }
+  }
+  if (!matchedTerms.length) return null;
+  return {
+    gate: 'advertising_law',
+    ruleId: 'CN-AD-ART24',
+    source: AD_LAW_ART24_SOURCE,
+    sourceUrl: AD_LAW_ART24_SOURCE_URL,
+    sourceRetrievedAt: '2026-11-13',
+    reason: '疑似在教育、培训广告里对考试通过、录取或提分效果作出保证性承诺',
+    matchedTerms,
+    severity: 'block',
+    humanOverrideAllowed: true,
+    label: AD_LAW_ART24_LABEL,
+  };
+}
+
 /** 第二十五条原文写了保本、无风险、保收益。年化搭配保证性用语一并拦截。稳赚仍走原有风险词，不改挂法条。 */
 function checkInvestmentGuarantee(content: string): DomesticComplianceHit | null {
   const text = String(content || '').normalize('NFKC');
@@ -333,7 +389,7 @@ function checkSyntheticLabel(content: string): DomesticComplianceHit | null {
 }
 
 /** 词表规则之外的专项与提示检查。条数见 DOMESTIC_EXTRA_CHECKS。 */
-export const DOMESTIC_EXTRA_CHECKS = 9;
+export const DOMESTIC_EXTRA_CHECKS = 10;
 
 export const DOMESTIC_NOT_CHECKED: readonly string[] = [
   '各平台（抖音、小红书、快手、视频号等）现行社区规范原文——尚未逐条人工复核',
@@ -369,7 +425,7 @@ export function evaluateDomesticContent(content: string, options?: { conservativ
       humanOverrideAllowed: rule.humanOverrideAllowed,
     }] : [];
   });
-  const extras = [checkAdDisclosure(content), checkHealthClaim(content), checkHealthPageCommerce(content), checkInvestmentGuarantee(content), checkSyntheticLabel(content), ...checkReviewOnly(content)];
+  const extras = [checkAdDisclosure(content), checkEducationResultPromise(content), checkHealthClaim(content), checkHealthPageCommerce(content), checkInvestmentGuarantee(content), checkSyntheticLabel(content), ...checkReviewOnly(content)];
   const order = (gate: DomesticGateId) => DOMESTIC_GATE_ORDER_INTERNAL.indexOf(gate);
   for (const extra of extras) {
     if (!extra) continue;

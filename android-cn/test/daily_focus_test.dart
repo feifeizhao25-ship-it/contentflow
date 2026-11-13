@@ -46,6 +46,7 @@ void main() {
         contentDraftsProvider.overrideWith((ref) async => <ContentDraft>[]),
         todaySchedulesProvider.overrideWith((ref) async => <Schedule>[]),
         analyticsOverviewProvider.overrideWith((ref) async => _overview()),
+        homeBriefProvider.overrideWith((ref) async => HomeBrief.empty),
       ],
       child: MaterialApp(home: Scaffold(body: DailyFocusCard(clock: () => DateTime(2026, 11, 1)))),
     ));
@@ -63,6 +64,7 @@ void main() {
           contentDraftsProvider.overrideWith((ref) async => drafts),
           todaySchedulesProvider.overrideWith((ref) async => <Schedule>[]),
           analyticsOverviewProvider.overrideWith((ref) async => _overview(published: 4, failed: 0)),
+          homeBriefProvider.overrideWith((ref) async => HomeBrief.empty),
         ],
         child: MaterialApp(home: Scaffold(body: DailyFocusCard(clock: () => now))),
       ));
@@ -75,5 +77,45 @@ void main() {
     await pump();
     final k2 = (tester.widget(first.first).key as ValueKey).value;
     expect(k1, isNot(k2));
+  });
+
+  test('home brief only keeps titles the server already sent', () {
+    final brief = HomeBrief.fromJson({
+      'suggestions': [
+        {'title': '按你填的资料写：教育培训 · 老师 · 浙江', 'reason': '只用你注册时填写的行业「教育培训」'},
+        {'title': '  '},
+      ],
+      'pending_items': [
+        {'id': 'c-1', 'title': '寒假班课表'},
+        {'id': '', 'title': '丢掉'},
+      ],
+    });
+    expect(brief.suggestions, hasLength(1));
+    expect(brief.suggestions.first.title, contains('教育培训'));
+    expect(brief.pending, hasLength(1));
+    expect(brief.pending.first.title, '寒假班课表');
+  });
+
+  testWidgets('two registration profiles are not the same home card', (tester) async {
+    Future<void> pump(HomeBrief brief) async {
+      await tester.pumpWidget(ProviderScope(
+        key: UniqueKey(),
+        overrides: [
+          contentDraftsProvider.overrideWith((ref) async => <ContentDraft>[]),
+          todaySchedulesProvider.overrideWith((ref) async => <Schedule>[]),
+          analyticsOverviewProvider.overrideWith((ref) async => _overview()),
+          homeBriefProvider.overrideWith((ref) async => brief),
+        ],
+        child: MaterialApp(home: Scaffold(body: DailyFocusCard(clock: () => DateTime(2026, 11, 1)))),
+      ));
+      await tester.pumpAndSettle();
+    }
+
+    await pump(HomeBrief(suggestions: const [HomeSuggestion(title: '按你填的资料写：教育培训 · 浙江', reason: '行业「教育培训」')]));
+    expect(find.textContaining('教育培训'), findsWidgets);
+    await pump(HomeBrief(suggestions: const [HomeSuggestion(title: '按你填的资料写：养生 · 四川', reason: '行业「养生」')], pending: const [HomePendingItem(id: 'c-1', title: '待审核的食谱')]));
+    expect(find.textContaining('养生'), findsWidgets);
+    expect(find.text('待审核的食谱'), findsOneWidget);
+    expect(find.textContaining('教育培训'), findsNothing);
   });
 }

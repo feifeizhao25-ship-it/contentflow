@@ -6,8 +6,9 @@ class ComplianceHit {
   final bool blocking;
   final String reason;
   final List<String> matchedTerms;
+  final String label;
 
-  const ComplianceHit({required this.ruleId, required this.blocking, required this.reason, this.matchedTerms = const []});
+  const ComplianceHit({required this.ruleId, required this.blocking, required this.reason, this.matchedTerms = const [], this.label = ''});
 
   static List<ComplianceHit> parseList(Object? raw) {
     if (raw is! List) return const [];
@@ -22,6 +23,7 @@ class ComplianceHit {
         blocking: item['severity'] == 'block',
         reason: reason,
         matchedTerms: terms is List ? terms.whereType<String>().toList() : const [],
+        label: item['label'] is String ? (item['label'] as String).trim() : '',
       ));
     }
     return out;

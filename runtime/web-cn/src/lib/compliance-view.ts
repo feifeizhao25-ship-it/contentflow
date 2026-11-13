@@ -2,6 +2,7 @@ export interface ComplianceHitView {
   ruleId: string;
   severity: 'block' | 'review';
   reason: string;
+  label?: string;
 }
 
 export interface ComplianceView {
@@ -20,7 +21,8 @@ function asHits(value: unknown): ComplianceHitView[] {
     if (!reason.trim()) return [];
     const severity = (hit as { severity?: unknown }).severity === 'block' ? 'block' : 'review';
     const ruleId = typeof (hit as { ruleId?: unknown }).ruleId === 'string' ? (hit as { ruleId: string }).ruleId : '';
-    return [{ ruleId, severity, reason }];
+    const label = typeof (hit as { label?: unknown }).label === 'string' ? (hit as { label: string }).label.trim() : '';
+    return [{ ruleId, severity, reason, ...(label ? { label } : {}) }];
   });
 }
 

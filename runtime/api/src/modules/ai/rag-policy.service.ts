@@ -35,7 +35,7 @@ export interface RagSourceStatus {
   checkedBy: 'review' | 'retrieval';
   daysSinceCheck: number | null;
   daysLeft: number | null;
-  state: 'current' | 'due_soon' | 'stale' | 'invalid';
+  state: 'current' | 'due_soon' | 'stale' | 'invalid' | 'unreviewed';
 }
 
 export interface RagFreshnessReport {
@@ -78,6 +78,63 @@ export function lastCheckedAt(record: Partial<RagPolicySource>, now: number): { 
   return { at: retrieved, by: 'retrieval' };
 }
 
+/** 来源地址可能写在 source_url、url，或 source 字符串 / { url } 里。空的不算可读。 */
+export function readSourceUrl(record: object): string {
+  const row = record as { source_url?: unknown; url?: unknown; source?: unknown };
+  if (typeof row.source_url === 'string' && row.source_url.trim()) return row.source_url.trim();
+  if (typeof row.url === 'string' && row.url.trim()) return row.url.trim();
+  if (typeof row.source === 'string' && /^https?:\/\//i.test(row.source.trim())) return row.source.trim();
+  if (row.source && typeof row.source === 'object') {
+    const url = (row.source as { url?: unknown }).url;
+    if (typeof url === 'string' && url.trim()) return url.trim();
+  }
+  return '';
+}
+
+export function readSourceName(record: object): string {
+  const row = record as { source_name?: unknown; title?: unknown; name?: unknown; source?: unknown };
+  if (typeof row.source_name === 'string' && row.source_name.trim()) return row.source_name.trim();
+  if (typeof row.title === 'string' && row.title.trim()) return row.title.trim();
+  if (typeof row.name === 'string' && row.name.trim()) return row.name.trim();
+  if (row.source && typeof row.source === 'object') {
+    const title = (row.source as { title?: unknown }).title;
+    if (typeof title === 'string' && title.trim()) return title.trim();
+  }
+  return '';
+}
+
+/** 把 source 对象或 url 别名补成 source_url / source_name，避免字段在但读不出来。 */
+export function normalizeComplianceSource<T extends object>(record: T): T & { source_url?: string; source_name?: string } {
+  const source_url = readSourceUrl(record);
+  const source_name = readSourceName(record);
+  return {
+    ...record,
+    ...(source_url ? { source_url } : {}),
+    ...(source_name ? { source_name } : {}),
+  };
+}
+
+/** 字段本身读不出来时返回缺的名字。未复核、未发布不算字段损坏。 */
+export function sourceFieldErrors(record: Partial<RagPolicySource> | null): string[] {
+  if (!record) return ['record'];
+  const errors: string[] = [];
+  const url = readSourceUrl(record);
+  if (!url) errors.push('source_url');
+  else {
+    try {
+      const source = new URL(url);
+      if (source.protocol !== 'https:' || !ALLOWED_ORIGINS.includes(source.origin) || source.username || source.password || source.hash) errors.push('source_url');
+    } catch {
+      errors.push('source_url');
+    }
+  }
+  if (!readSourceName(record)) errors.push('source_name');
+  if (!Number.isFinite(Date.parse(String(record.published_at ?? '')))) errors.push('published_at');
+  if (!Number.isFinite(Date.parse(String(record.retrieved_at ?? '')))) errors.push('retrieved_at');
+  if (typeof record.content !== 'string' || !record.content.trim()) errors.push('content');
+  return errors;
+}
+
 @Injectable()
 export class RagPolicyService implements OnApplicationBootstrap, OnModuleDestroy {
   private readonly logger = new Logger(RagPolicyService.name);
@@ -100,8 +157,23 @@ export class RagPolicyService implements OnApplicationBootstrap, OnModuleDestroy
     catch { this.logger.warn(`RAG policy directory unavailable: ${this.directory()}`); return []; }
     const out: Array<{ name: string; record: RagPolicySource | null }> = [];
     for (const name of names.sort()) {
-      try { out.push({ name, record: JSON.parse(await fs.readFile(path.join(this.directory(), name), 'utf8')) as RagPolicySource }); }
-      catch { out.push({ name, record: null }); }
+      try {
+        const parsed = JSON.parse(await fs.readFile(path.join(this.directory(), name), 'utf8')) as unknown;
+        const rows = parsed && typeof parsed === 'object' && Array.isArray((parsed as { sources?: unknown }).sources)
+          ? (parsed as { sources: unknown[] }).sources
+          : [parsed];
+        // 一份文件里有多条来源时逐条展开。单条资料文件仍是一条。
+        if (rows.length > 1 || (parsed && typeof parsed === 'object' && Array.isArray((parsed as { sources?: unknown }).sources))) {
+          rows.forEach((row, index) => {
+            if (!row || typeof row !== 'object' || Array.isArray(row)) out.push({ name: `${name}#${index}`, record: null });
+            else out.push({ name: `${name}#${index}`, record: normalizeComplianceSource(row) as RagPolicySource });
+          });
+        } else if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+          out.push({ name, record: normalizeComplianceSource(parsed) as RagPolicySource });
+        } else {
+          out.push({ name, record: null });
+        }
+      } catch { out.push({ name, record: null }); }
     }
     return out;
   }
@@ -144,8 +216,14 @@ export class RagPolicyService implements OnApplicationBootstrap, OnModuleDestroy
       // 触发 502 AI_LANGUAGE_MISMATCH（I-03）。国际版只引用非 CN 管辖区的英文来源；目前没有，则如实报「无已核验来源」。
       if (global && (record.jurisdiction === 'CN' || /[\u3400-\u9fff]/.test(String(record.content ?? '')))) continue;
       const checked = lastCheckedAt(record, now);
-      const valid = !!checked && this.isWellFormed(record) && now - checked.at <= maxAgeDays * DAY;
-      if (!valid) { this.logger.warn(`Ignored stale or invalid RAG source: ${name}`); continue; }
+      const fieldErrors = sourceFieldErrors(record);
+      const valid = !!checked && fieldErrors.length === 0 && this.isWellFormed(record) && now - checked.at <= maxAgeDays * DAY;
+      if (!valid) {
+        // 未复核但字段可读：不引用，也不说字段坏了。只有真的读不出地址、名称或日期才报字段不可读。
+        if (fieldErrors.length) this.logger.warn(`Ignored unreadable compliance source fields (${fieldErrors.join(', ')}): ${name}`);
+        else if (this.isWellFormed(record)) this.logger.warn(`Ignored stale or invalid RAG source: ${name}`);
+        continue;
+      }
       const platformMatch = record.platforms.includes('all') || record.platforms.some(value => normalizedPlatforms.has(value.toLowerCase()));
       const topicMatch = record.topics.includes('all') || record.topics.some(value => topic.includes(value));
       if (platformMatch && topicMatch) selected.push(record);
@@ -158,8 +236,19 @@ export class RagPolicyService implements OnApplicationBootstrap, OnModuleDestroy
     const maxAgeDays = this.maxAgeDays();
     const sources: RagSourceStatus[] = (await this.readAll()).map(({ name, record }) => {
       const checked = record ? lastCheckedAt(record, now) : null;
-      if (!record || !checked || !this.isWellFormed(record)) {
+      if (!record || sourceFieldErrors(record).length > 0) {
         return { id: record?.id || name, name: record?.source_name || name, lastCheckedAt: null, checkedBy: 'retrieval' as const, daysSinceCheck: null, daysLeft: null, state: 'invalid' as const };
+      }
+      if (!checked || !this.isWellFormed(record)) {
+        return {
+          id: record.id || name,
+          name: record.source_name || name,
+          lastCheckedAt: checked ? new Date(checked.at).toISOString() : null,
+          checkedBy: checked?.by ?? 'retrieval',
+          daysSinceCheck: checked ? Math.floor((now - checked.at) / DAY) : null,
+          daysLeft: null,
+          state: 'unreviewed' as const,
+        };
       }
       const daysSince = Math.floor((now - checked.at) / DAY);
       const daysLeft = maxAgeDays - daysSince;
@@ -167,7 +256,7 @@ export class RagPolicyService implements OnApplicationBootstrap, OnModuleDestroy
       return { id: record.id, name: record.source_name, lastCheckedAt: new Date(checked.at).toISOString(), checkedBy: checked.by, daysSinceCheck: daysSince, daysLeft, state };
     });
     const current = sources.filter((s) => s.state === 'current' || s.state === 'due_soon').length;
-    const needsReview = sources.length === 0 || sources.some((s) => s.state === 'stale' || s.state === 'invalid');
+    const needsReview = sources.length === 0 || sources.some((s) => s.state === 'stale' || s.state === 'invalid' || s.state === 'unreviewed');
     return {
       maxAgeDays,
       total: sources.length,
@@ -193,6 +282,8 @@ export class RagPolicyService implements OnApplicationBootstrap, OnModuleDestroy
         this.logger.error(`[合规资料复核提醒] ${COMPLIANCE_REVIEW_NOTICE}：「${source.name}」上次核对于 ${source.lastCheckedAt?.slice(0, 10)}，已 ${source.daysSinceCheck} 天，超过 ${report.maxAgeDays} 天时效，线上已停止引用该资料，生成未停用。请对照原文复核后用 scripts/review_rag_source.py 登记复核人与日期。`);
       } else if (source.state === 'invalid') {
         this.logger.error(`[合规资料复核提醒] 「${source.name}」来源字段不完整或无法解析，线上未引用，请检查资料文件。`);
+      } else if (source.state === 'unreviewed') {
+        this.logger.warn(`[合规资料复核提醒] 「${source.name}」尚未人工复核，字段可以读取，线上不引用。`);
       } else if (source.state === 'due_soon') {
         this.logger.warn(`[合规资料复核提醒] 「${source.name}」还有 ${source.daysLeft} 天到期（上次核对 ${source.lastCheckedAt?.slice(0, 10)}），请安排复核。`);
       }

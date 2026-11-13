@@ -500,6 +500,52 @@ class User {
   }
 }
 
+/// 首页接口里的一条选题。只保留服务端已经写好的标题和理由，本地不补句子。
+class HomeSuggestion {
+  final String title;
+  final String reason;
+  const HomeSuggestion({required this.title, required this.reason});
+}
+
+/// 首页上待审核的一条内容。
+class HomePendingItem {
+  final String id;
+  final String title;
+  const HomePendingItem({required this.id, required this.title});
+}
+
+class HomeBrief {
+  final List<HomeSuggestion> suggestions;
+  final List<HomePendingItem> pending;
+  const HomeBrief({this.suggestions = const [], this.pending = const []});
+  static const empty = HomeBrief();
+
+  factory HomeBrief.fromJson(Map<String, dynamic> json) {
+    final suggestions = <HomeSuggestion>[];
+    final rawSuggestions = json['suggestions'];
+    if (rawSuggestions is List) {
+      for (final item in rawSuggestions) {
+        if (item is! Map) continue;
+        final title = item['title']?.toString().trim() ?? '';
+        if (title.isEmpty) continue;
+        suggestions.add(HomeSuggestion(title: title, reason: item['reason']?.toString().trim() ?? ''));
+      }
+    }
+    final pending = <HomePendingItem>[];
+    final rawPending = json['pending_items'];
+    if (rawPending is List) {
+      for (final item in rawPending) {
+        if (item is! Map) continue;
+        final title = item['title']?.toString().trim() ?? '';
+        final id = item['id']?.toString().trim() ?? '';
+        if (title.isEmpty || id.isEmpty) continue;
+        pending.add(HomePendingItem(id: id, title: title));
+      }
+    }
+    return HomeBrief(suggestions: suggestions, pending: pending);
+  }
+}
+
 /// A saved content (what "Save to content pack" creates). Only the fields the Assets tab needs.
 class ContentDraft {
   final String id;

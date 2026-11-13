@@ -374,9 +374,10 @@ function StudioContent() {
         </div>
       </div>
 
-      <ComplianceReviewNotice />
-
-      <TodayCard />
+      <div className="flex flex-col gap-6">
+        <ComplianceReviewNotice />
+        <TodayCard />
+      </div>
 
       <LibraryHomeCard />
 
