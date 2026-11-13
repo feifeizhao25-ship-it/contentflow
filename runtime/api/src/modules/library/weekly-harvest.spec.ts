@@ -57,10 +57,11 @@ describe('weekly knowledge harvest', () => {
     expect(report.named_reviewer).toBeNull();
     expect(report.review_status).toBe('待审核');
     expect(report.cadence).toBe(HARVEST_CADENCE);
-    expect(report.added).toEqual(['CF-01', 'CF-02', 'CF-04', 'CF-05', 'CF-06', 'CF-07', 'CF-INT-255', 'CF-INT-FTC-PDF', 'CF-INT-ASA', 'CF-INT-AI-50', 'CF-INT-CODE', 'CF-INT-GL']);
+    expect(report.added).toEqual(['CF-01', 'CF-02', 'CF-04', 'CF-05', 'CF-06', 'CF-07', 'CF-INT-255', 'CF-INT-FTC-PDF', 'CF-INT-ASA', 'CF-INT-AI-50', 'CF-INT-CODE', 'CF-INT-GL', 'CF-SKILL-AWESOME']);
     expect(report.skipped).toEqual([]);
     expect(report.sections['cn-official']).toEqual(['CF-01', 'CF-02', 'CF-04', 'CF-05']);
     expect(report.sections['intl-disclosure']).toEqual(['CF-INT-255', 'CF-INT-FTC-PDF', 'CF-INT-ASA']);
+    expect(report.sections['skill-discovery']).toEqual(['CF-SKILL-AWESOME']);
 
     const cn = JSON.parse(readFileSync(join(out, 'cn-official', 'CF-01.json'), 'utf8'));
     expect(cn.reviewer).toBe('');

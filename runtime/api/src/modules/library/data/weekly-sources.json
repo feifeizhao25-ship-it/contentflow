@@ -37,6 +37,12 @@
       "title": "AI transparency references",
       "language": "en",
       "note": "Article 50, the Code of Practice published 2026-06-10, and guidelines C(2026) 5054 final are references. ContentFlow has not confirmed that it has signed the Code of Practice."
+    },
+    {
+      "id": "skill-discovery",
+      "title": "技能发现线索",
+      "language": "zh",
+      "note": "只收录可引用的发现清单，不整包安装，不自动发布。许可不通过的不会写入候选。"
     }
   ],
   "sources": [
@@ -231,6 +237,22 @@
       "region": "EU",
       "license": "",
       "language": "en"
+    },
+    {
+      "id": "CF-SKILL-AWESOME",
+      "section": "skill-discovery",
+      "product": "contentflow-cn",
+      "title": "awesome-social-media-skills",
+      "url": "https://github.com/UnderleveledBuilder/awesome-social-media-skills",
+      "doi": "",
+      "publisher": "UnderleveledBuilder",
+      "excerpt": "自媒体运营技能清单。只作发现线索，不整包安装，不自动发布。",
+      "published_at": "2026-11-12",
+      "effective_at": "",
+      "expires_at": "",
+      "region": "CN",
+      "license": "CC0-1.0",
+      "language": "zh"
     }
   ]
 }
