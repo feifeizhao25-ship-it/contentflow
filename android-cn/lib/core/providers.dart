@@ -24,6 +24,15 @@ final todaySchedulesProvider = FutureProvider<List<Schedule>>((ref) async {
   return api.getTodaySchedules();
 });
 
+/// 注册资料选题和待审核列表。连不上就当没有，不在客户端编一条。
+final homeBriefProvider = FutureProvider<HomeBrief>((ref) async {
+  try {
+    return await ref.read(apiClientProvider).getHomeBrief();
+  } catch (_) {
+    return HomeBrief.empty;
+  }
+});
+
 final confirmPublishProvider = FutureProvider.family<bool, String>((
   ref,
   scheduleId,

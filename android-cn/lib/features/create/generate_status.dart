@@ -130,6 +130,7 @@ class GenerateStatusCard extends StatelessWidget {
                       style: TextStyle(fontWeight: FontWeight.w600, color: hit.blocking ? theme.colorScheme.error : Colors.orange.shade800),
                     ),
                     TextSpan(text: hit.reason),
+                    if (hit.label.isNotEmpty) TextSpan(text: '（${hit.label}）'),
                     if (hit.matchedTerms.isNotEmpty) TextSpan(text: '（涉及：${hit.matchedTerms.map((t) => '「$t」').join('、')}）'),
                     if (hit.ruleId.isNotEmpty) TextSpan(text: '  规则编号 ${hit.ruleId}', style: TextStyle(fontSize: 11, color: Colors.grey.shade600)),
                   ])),

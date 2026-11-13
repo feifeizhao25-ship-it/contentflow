@@ -1,7 +1,9 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../database/prisma.service';
 import { chinaDayStart } from '../../common/china-period';
+import { EMPTY_PROFILE, ProfileAnswers } from '../library/feed';
 import { Lang, TodaySignals, nextStep } from './today';
+import { pendingItems, suggestionsForProfile } from './suggestions';
 
 @Injectable()
 export class HomeService {
@@ -35,15 +37,52 @@ export class HomeService {
     return this.signals(u?.tenant_id ?? '', userId, now);
   }
 
+  private async profile(userId: string): Promise<ProfileAnswers> {
+    const find = (this.prisma as any).user?.findUnique;
+    if (typeof find !== 'function') return EMPTY_PROFILE;
+    const row = await find.call((this.prisma as any).user, {
+      where: { id: userId },
+      select: { industry: true, job_role: true, growth_stage: true, province: true },
+    });
+    const text = (value: unknown) => (typeof value === 'string' ? value.trim() : '');
+    return {
+      industry: text(row?.industry),
+      jobRole: text(row?.job_role),
+      growthStage: text(row?.growth_stage),
+      province: text(row?.province),
+    };
+  }
+
+  private async pendingRows(tenantId: string): Promise<Array<{ id?: unknown; title?: unknown }>> {
+    const findMany = (this.prisma as any).content?.findMany;
+    if (typeof findMany !== 'function') return [];
+    const rows = await findMany.call((this.prisma as any).content, {
+      where: { tenant_id: tenantId, status: 'pending_review' },
+      select: { id: true, title: true },
+      orderBy: { created_at: 'desc' },
+      take: 5,
+    });
+    return Array.isArray(rows) ? rows : [];
+  }
+
   async today(user: { id: string; tenantId: string }, now = new Date()) {
     const lang: Lang = process.env.MARKET_REGION === 'global' ? 'en' : 'zh';
-    const signals = await this.signals(user.tenantId, user.id, now);
+    const [signals, profile, pending] = await Promise.all([
+      this.signals(user.tenantId, user.id, now),
+      this.profile(user.id),
+      this.pendingRows(user.tenantId),
+    ]);
     const day = new Date(chinaDayStart(now).getTime() + 8 * 3600_000).toISOString().slice(0, 10);
+    // 国际版响应不增加这些字段。国内版在没绑账号时仍给出注册资料能对上的建议，并列出待审核正文。
+    const domestic = lang === 'zh'
+      ? { suggestions: suggestionsForProfile(profile), pending_items: pendingItems(pending) }
+      : {};
     return {
       generated_for: day,
       language: lang,
       signals,
       next_step: nextStep(signals, lang, lang === 'zh'),
+      ...domestic,
       data_source: 'your_workspace_activity',
     };
   }

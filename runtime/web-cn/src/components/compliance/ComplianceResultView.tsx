@@ -22,6 +22,7 @@ export function ComplianceResultView({ view }: { view: ComplianceView }) {
           {view.hits.map((hit, index) => (
             <p key={`${hit.ruleId}-${index}`} className="m-0">
               {hit.severity === 'block' ? '拦截' : '风险'}：{hit.reason}
+              {hit.label ? `（${hit.label}）` : ''}
             </p>
           ))}
         </div>

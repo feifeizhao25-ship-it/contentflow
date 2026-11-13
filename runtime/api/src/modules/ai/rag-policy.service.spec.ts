@@ -113,6 +113,45 @@ describe('合规资料人工复核流程（reviewed_by / reviewed_at）', () => 
     expect((await service().freshnessReport(now)).sources[0].checkedBy).toBe('retrieval');
   });
 
+  it('来源写成 source 对象时仍能读出地址，不把四条资料报成字段不可读', async () => {
+    const svc = service();
+    const warn = jest.spyOn((svc as any).logger, 'warn').mockImplementation(() => undefined);
+    const error = jest.spyOn((svc as any).logger, 'error').mockImplementation(() => undefined);
+    const pages = ['a', 'b', 'c', 'd'].map((id, index) => ({
+      id,
+      source: { url: `https://www.cac.gov.cn/policy-${index}`, title: `资料${id}` },
+      published_at: '2025-03-14',
+      retrieved_at: '2026-10-01T00:00:00+08:00',
+      jurisdiction: 'CN',
+      source_tier: 'S',
+      review_status: '待审核',
+      published: false,
+      platforms: ['all'],
+      topics: ['all'],
+      content: `摘要${id}`,
+    }));
+    await Promise.all(pages.map((page) => fs.writeFile(path.join(directory, `${page.id}.json`), JSON.stringify(page))));
+    const report = await svc.remindOperators(now);
+    expect(report.sources).toHaveLength(4);
+    expect(report.sources.every((item) => item.state === 'unreviewed')).toBe(true);
+    const logged = [...warn.mock.calls, ...error.mock.calls].map(([message]) => String(message)).join('\n');
+    expect(logged).not.toContain('来源字段不完整或无法解析');
+    expect(logged).not.toContain('unreadable compliance source fields');
+  });
+
+  it('仓库里待审核的合规资料字段可读，启动提醒不再说字段无法解析', async () => {
+    const dir = path.join(__dirname, '../../../data/rag_cache');
+    const svc = new RagPolicyService({ get: (key: string) => key === 'RAG_POLICY_DIR' ? dir : 30 } as any);
+    const warn = jest.spyOn((svc as any).logger, 'warn').mockImplementation(() => undefined);
+    const error = jest.spyOn((svc as any).logger, 'error').mockImplementation(() => undefined);
+    const report = await svc.remindOperators(Date.parse('2026-11-13T00:00:00+08:00'));
+    expect(report.sources.length).toBeGreaterThan(0);
+    expect(report.sources.some((item) => item.state === 'invalid')).toBe(false);
+    const logged = [...warn.mock.calls, ...error.mock.calls].map(([message]) => String(message)).join('\n');
+    expect(logged).not.toContain('来源字段不完整或无法解析');
+    expect(logged).not.toContain('unreadable compliance source fields');
+  });
+
   it('未复核、未发布的仓库资料仍保留正文，但不会被当成已核验来源返回', async () => {
     const dir = path.join(__dirname, '../../../data/rag_cache');
     const svc = new RagPolicyService({ get: (key: string) => key === 'RAG_POLICY_DIR' ? dir : 365 } as any);

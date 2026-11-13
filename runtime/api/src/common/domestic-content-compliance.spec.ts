@@ -6,6 +6,9 @@ import {
   checkAdDisclosure,
   AD_LAW_ART9_TERMS,
   AD_TERM_WHITELIST_CONTEXTS,
+  AD_LAW_ART24_LABEL,
+  AD_LAW_ART24_SOURCE,
+  AD_LAW_ART24_SOURCE_URL,
 } from './domestic-content-compliance';
 
 describe('domestic content six-gate compliance', () => {
@@ -112,5 +115,53 @@ describe('互联网广告管理办法第九条：种草/测评 + 购物链接须
   });
   it('does not flag plain reviews without any purchase method', () => {
     expect(checkAdDisclosure('这次测评了三款面霜，记录真实使用感受')).toBeNull();
+  });
+});
+
+describe('《广告法》第二十四条：教育、培训广告不得保证结果', () => {
+  const hit = (text: string) => evaluateDomesticContent(text).hits.find((item) => item.ruleId === 'CN-AD-ART24');
+
+  it('寒假班保过、提分 30 分不再被判 clear', () => {
+    const result = evaluateDomesticContent('寒假班开课，保过、提分 30 分。');
+    expect(result.level).not.toBe('clear');
+    expect(result.passed).toBe(false);
+    expect(result.hitCounts.total).toBeGreaterThan(0);
+    const found = hit('寒假班开课，保过、提分 30 分。');
+    expect(found?.matchedTerms).toEqual(expect.arrayContaining(['保过', '提分 30 分']));
+    expect(found?.severity).toBe('block');
+    expect(found?.label).toBe(AD_LAW_ART24_LABEL);
+    expect(found?.source).toBe(AD_LAW_ART24_SOURCE);
+    expect(found?.source).toContain(AD_LAW_ART24_SOURCE_URL);
+    expect(found?.sourceUrl).toBe(AD_LAW_ART24_SOURCE_URL);
+    expect(found?.source).toContain('待法律顾问确认');
+  });
+
+  it.each([
+    ['本课程包过，不过退费', '包过'],
+    ['提分30分，一周见效', '提分30分'],
+    ['提分三十分', '提分三十分'],
+    ['保证通过考试', '保证通过'],
+    ['保证录取名校', '保证录取'],
+    ['包录取，签协议', '包录取'],
+    ['保证提高 20 分', '保证提高 20 分'],
+  ])('命中保证性承诺：%s', (text, term) => {
+    expect(hit(text)?.matchedTerms).toContain(term);
+    expect(hit(text)?.label).toBe('待法律顾问确认');
+  });
+
+  it('「包过」同时保留旧的未挂法条规则，并补上第二十四条出处', () => {
+    const ids = evaluateDomesticContent('这个班包过').hits.map((item) => item.ruleId);
+    expect(ids).toEqual(expect.arrayContaining(['CN-AD-ART24', 'CN-AD-RISK-001']));
+  });
+
+  it.each([
+    '提分方法分享',
+    '分享三条提分技巧，不承诺分数',
+    '保过期食品请扔掉',
+    '寒假班开课，课程表已公布，欢迎了解安排',
+    '阅读速度提升 30 分没有意义，这里只记方法',
+  ])('不把没有结果承诺的句子判成违规：%s', (text) => {
+    expect(hit(text)).toBeUndefined();
+    expect(evaluateDomesticContent(text).level).toBe('clear');
   });
 });

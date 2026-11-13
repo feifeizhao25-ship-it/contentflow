@@ -70,7 +70,8 @@ class DailyFocusCard extends ConsumerWidget {
     final drafts = ref.watch(contentDraftsProvider);
     final schedules = ref.watch(todaySchedulesProvider);
     final overview = ref.watch(analyticsOverviewProvider);
-    final all = [drafts, schedules, overview];
+    final brief = ref.watch(homeBriefProvider);
+    final all = [drafts, schedules, overview, brief];
     final loading = all.any((a) => a.isLoading && !a.hasValue);
     final allFailed = all.every((a) => a.hasError);
     Widget body;
@@ -85,14 +86,40 @@ class DailyFocusCard extends ConsumerWidget {
         overview: overview.valueOrNull,
         now: (clock ?? DateTime.now)(),
       );
+      final home = brief.valueOrNull ?? HomeBrief.empty;
+      final extras = <Widget>[
+        if (home.suggestions.isNotEmpty) ...[
+          const SizedBox(height: 12),
+          const Text('按你的注册资料', key: ValueKey('home-suggestions'), style: TextStyle(fontSize: 12, color: Colors.grey)),
+          for (final item in home.suggestions) ...[
+            const SizedBox(height: 6),
+            Text(item.title, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
+            if (item.reason.isNotEmpty) Text(item.reason, style: const TextStyle(fontSize: 12, color: Colors.black54)),
+          ],
+        ],
+        if (home.pending.isNotEmpty) ...[
+          const SizedBox(height: 12),
+          const Text('待审核', key: ValueKey('home-pending'), style: TextStyle(fontSize: 12, color: Colors.grey)),
+          for (final item in home.pending) ...[
+            const SizedBox(height: 4),
+            Text(item.title, style: const TextStyle(fontSize: 14)),
+          ],
+        ],
+      ];
       if (focus == null) {
-        body = const Column(
-          key: ValueKey('daily-focus-empty'),
+        body = Column(
+          key: const ValueKey('daily-focus-empty'),
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('还没有你的内容活动', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
-            SizedBox(height: 4),
-            Text('先到「创作」生成一个内容包并保存。之后这里每天会根据你的草稿和发布记录，给出一条今日重点。', style: TextStyle(fontSize: 13, color: Colors.black54)),
+            const Text('还没有你的内容活动', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
+            const SizedBox(height: 4),
+            Text(
+              home.suggestions.isEmpty
+                  ? '先到「创作」生成一个内容包并保存。之后这里每天会根据你的草稿和发布记录，给出一条今日重点。'
+                  : '还没有草稿和发布记录。下面是按你注册时填写的资料给出的选题，不是外部热点。',
+              style: const TextStyle(fontSize: 13, color: Colors.black54),
+            ),
+            ...extras,
           ],
         );
       } else {
@@ -103,6 +130,7 @@ class DailyFocusCard extends ConsumerWidget {
             Text(focus.headline, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
             const SizedBox(height: 4),
             Text(focus.detail, style: const TextStyle(fontSize: 13, color: Colors.black87)),
+            ...extras,
           ],
         );
       }

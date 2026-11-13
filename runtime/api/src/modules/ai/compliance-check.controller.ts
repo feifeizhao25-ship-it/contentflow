@@ -60,6 +60,8 @@ export class ComplianceCheckController {
         severity: hit.severity,
         reason: hit.reason,
         matchedTerms: hit.matchedTerms,
+        ...('label' in hit && hit.label ? { label: hit.label } : {}),
+        ...('sourceUrl' in hit && hit.sourceUrl ? { sourceUrl: hit.sourceUrl } : {}),
       })),
     };
   }
