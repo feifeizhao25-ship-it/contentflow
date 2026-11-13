@@ -11,6 +11,7 @@
  * 具名人工复核人仍为空。
  */
 import { createHash } from 'crypto';
+import { decideHarvestLicense } from './license-filter';
 import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'fs';
 import { join, relative, resolve, sep } from 'path';
 
@@ -59,6 +60,8 @@ export interface WeeklySource {
   license?: string;
   language?: string;
   fetch_error?: string;
+  /** 技能发现等条目的风险标记，例如 scraper / auto-comment。空则只看许可证和名称。 */
+  kind?: string;
 }
 
 export interface WeeklyCatalog {
@@ -99,7 +102,8 @@ export interface CandidateRecord {
 export interface SkippedSource {
   id?: string;
   url: string;
-  status: 'blocked_unverified_url' | 'unconfirmed_url';
+  status: 'blocked_unverified_url' | 'unconfirmed_url' | 'license_rejected';
+  reason?: string;
 }
 
 export interface HarvestReport {
@@ -318,6 +322,11 @@ export function harvestWeekly(opts: {
     const bare = url.replace(/\/+$/, '');
     if (!url || !url.startsWith('https://') || blocked.has(url) || blocked.has(bare)) {
       skipped.push({ id: source.id, url, status: url && (blocked.has(url) || blocked.has(bare)) ? 'blocked_unverified_url' : 'unconfirmed_url' });
+      continue;
+    }
+    const licenseDecision = decideHarvestLicense(source);
+    if (!licenseDecision.pass) {
+      skipped.push({ id: source.id, url, status: 'license_rejected', reason: licenseDecision.reason });
       continue;
     }
     if (!ID_RE.test(source.id)) throw new Error('unsafe source id');
