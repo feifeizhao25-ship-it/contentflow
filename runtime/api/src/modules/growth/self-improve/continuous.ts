@@ -22,6 +22,7 @@ import { CandidateStore, Ledger } from './store';
 import { LibraryStore, loadStagedRules, sources as librarySources } from '../../library/store';
 import { evaluateAll, renderMd as renderGateMd } from '../../library/promote-gate';
 import { domainOk } from './sources';
+import { passageById } from '../../ai/growth-rag/corpus';
 
 export const CONTINUOUS_CRON = {
   stale_scan: '30 2 * * *', // 每天 02:30
@@ -32,7 +33,7 @@ export const CONTINUOUS_CRON = {
 } as const;
 export const CONTINUOUS_SLOTS = { stale_scan: 'daily@02:30', golden_eval: 'weekly:SUN@03:30', radar_stage: 'weekly:WED@06:00', promote_gate: 'weekly:WED@07:00', monthly_report: 'monthly:1@05:00' } as const;
 
-export type GoldenChannel = 'skill' | 'rule' | 'library';
+export type GoldenChannel = 'skill' | 'rule' | 'library' | 'corpus';
 export interface GoldenSource {
   title: string;
   issuer: string;
@@ -53,6 +54,9 @@ export interface GoldenCase {
   must_include?: (string | string[])[];
   must_not_include?: string[];
   sources?: GoldenSource[];
+  /** 语料通道：对应 sources.registry.json 里的原文段落编号。 */
+  corpus_id?: string;
+  platform?: string;
   valid_until?: string;
   review_status?: string;
   reviewer?: string;
@@ -190,6 +194,10 @@ export function defaultAnswer(c: GoldenCase, staged: StagedEntry[] = []): Golden
   if (c.channel === 'library') {
     const hit = staged.filter((e) => (c.entry_ids ?? []).includes(e.id));
     return { text: hit.map((e) => `${e.title}\n${e.text}`).join('\n'), refused: !hit.length };
+  }
+  if (c.channel === 'corpus') {
+    const passage = passageById(String(c.corpus_id ?? ''));
+    return { text: passage?.text ?? '', refused: !passage };
   }
   const text = String(c.input?.text ?? c.question);
   if (c.rule === 'aigc-label') {

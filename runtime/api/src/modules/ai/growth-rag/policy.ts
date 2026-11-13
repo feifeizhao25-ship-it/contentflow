@@ -55,7 +55,7 @@ export function policyFromDefaultRegistry(env: NodeJS.ProcessEnv = process.env, 
     registry,
     now,
     freshnessRan: freshness?.ran === true && freshness.needsReview.length === 0,
-    evalPassed: env.GROWTH_RAG_EVAL_PASSED === '1' && runFrozenEval(frozenCases(), () => []),
+    evalPassed: env.GROWTH_RAG_EVAL_PASSED === '1' && runFrozenEval(refusalFrozenCases(), () => []),
   });
 }
 
@@ -64,6 +64,16 @@ export interface FrozenCase {
   query: string;
   expectCitations: number;
   expectRefusal: boolean;
+  /** 留出集里有原文依据的题。无引用拒答题不填这些字段。 */
+  corpus_id?: string;
+  must_include?: string[];
+  answer?: string;
+  platform?: string;
+}
+
+/** 没有引用就必须拒答的那一部分。扩进留出集之后，开关仍只看这一部分。 */
+export function refusalFrozenCases(cases: FrozenCase[] = frozenCases()): FrozenCase[] {
+  return cases.filter((item) => item.expectRefusal && item.expectCitations === 0);
 }
 
 export function frozenCases(file = join(__dirname, 'evals', 'frozen.jsonl')): FrozenCase[] {

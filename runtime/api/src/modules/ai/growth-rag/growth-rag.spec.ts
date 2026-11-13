@@ -1,7 +1,7 @@
 import { embedWithFallback, localHashEmbed } from './embedder';
 import { runFreshnessJob } from './freshness';
 import { hashText } from './hash';
-import { decideRagPolicy, policyFromDefaultRegistry, runFrozenEval, frozenCases, usableSources } from './policy';
+import { decideRagPolicy, policyFromDefaultRegistry, runFrozenEval, frozenCases, refusalFrozenCases, usableSources } from './policy';
 import { complianceConclusionsPaused, loadRegistry, markIfHashChanged, validateSource } from './registry';
 import { retrieve } from './retrieve';
 import { rerankWithFallback } from './reranker';
@@ -100,7 +100,10 @@ describe('增长 RAG', () => {
   });
 
   it('冻结评测在没有引用时要求拒绝', () => {
-    expect(runFrozenEval(frozenCases(), () => [])).toBe(true);
-    expect(runFrozenEval(frozenCases(), () => [{ source_id: 'invented' }])).toBe(false);
+    const refusals = refusalFrozenCases();
+    expect(refusals.length).toBeGreaterThan(0);
+    expect(runFrozenEval(refusals, () => [])).toBe(true);
+    expect(runFrozenEval(refusals, () => [{ source_id: 'invented' }])).toBe(false);
+    expect(frozenCases().length).toBeGreaterThanOrEqual(60);
   });
 });

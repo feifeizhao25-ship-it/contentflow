@@ -1,0 +1,11 @@
+{
+  "captured_at": "2026-11-13",
+  "note": "扩集之前：金标准 37 题全部通过（通过率 1），冻结评测 1 条无引用拒答通过。扩集后的通过率、引用忠实、召回和拒答不得低于这些下限。",
+  "golden_pass_rate": 1,
+  "corpus_grounding": 1,
+  "faithfulness": 1,
+  "citation_accuracy": 1,
+  "recall_at_8": 1,
+  "frozen_holdout_grounding": 1,
+  "refusal_accuracy": 1
+}
