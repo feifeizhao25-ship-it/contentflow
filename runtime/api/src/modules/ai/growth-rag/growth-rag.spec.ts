@@ -3,7 +3,7 @@ import { runFreshnessJob } from './freshness';
 import { hashText } from './hash';
 import { decideRagPolicy, policyFromDefaultRegistry, runFrozenEval, frozenCases, refusalFrozenCases, usableSources } from './policy';
 import { complianceConclusionsPaused, loadRegistry, markIfHashChanged, validateSource } from './registry';
-import { retrieve } from './retrieve';
+import { retrieve, CITATION_OMISSION_MARK } from './retrieve';
 import { rerankWithFallback } from './reranker';
 import { GrowthSource } from './types';
 
@@ -97,6 +97,49 @@ describe('增长 RAG', () => {
     const reranked = await rerankWithFallback('选题', ['选题草稿'], { GROWTH_RERANKER_PROVIDER: 'bge-reranker-v2-m3' }, fetchImpl);
     expect(reranked.fallback).toBe(true);
     expect(fetchImpl).not.toHaveBeenCalled();
+  });
+
+  it('回答路径：被引原文里没有的文号、标准号或平台名不能当成已引用', async () => {
+    const cited = source({
+      text: '标准号：GB 45438-2025。国信办通字〔2025〕2号。哔哩哔哩要求标明来源。',
+      title: '标识办法题录',
+    });
+    const seen = await retrieve('标识', [cited], {
+      now,
+      draft: '文本标识见 GB 45438-2025。抖音要求执行令第99号。哔哩哔哩要求标明来源。',
+    });
+    expect(seen.refused).toBe(false);
+    expect(seen.citations.length).toBeGreaterThan(0);
+    expect(seen.answer).toBe(`文本标识见 GB 45438-2025。${CITATION_OMISSION_MARK}哔哩哔哩要求标明来源。`);
+    expect(seen.answer).not.toContain('抖音');
+    expect(seen.answer).not.toContain('令第99号');
+  });
+
+  it('回答路径：整段都对不上被引原文时，不保留文号或平台名', async () => {
+    const cited = source({ text: '标准号：GB 45438-2025。', title: '题录' });
+    const seen = await retrieve('标识', [cited], { now, draft: '抖音执行令第99号。' });
+    expect(seen.refused).toBe(false);
+    expect(seen.citations).toHaveLength(1);
+    expect(seen.answer).toBe(CITATION_OMISSION_MARK);
+    expect(seen.note).toBe(CITATION_OMISSION_MARK);
+    expect(seen.answer).not.toContain('抖音');
+    expect(seen.answer).not.toContain('令第99号');
+  });
+
+  it('回答路径：文号紧贴上一句时仍按原文核对，对得上的句子不改写', async () => {
+    const cited = source({ text: '国信办通字〔2025〕2号。', title: '标识办法' });
+    const draft = '用户应当主动声明国信办通字〔2025〕2号。本产品不代发国信办通字〔2025〕2号。';
+    const seen = await retrieve('文号', [cited], { now, draft });
+    expect(seen.answer).toBe(draft);
+    expect(seen.answer).not.toContain(CITATION_OMISSION_MARK);
+    expect(seen.note).toBe('引用仅包含本次检索到的来源');
+  });
+
+  it('回答路径：没有资料时拒绝，不把候选回答里的文号当作引用', async () => {
+    const seen = await retrieve('自动发布', [], { now, draft: '可以自动发布，依据令第23号。' });
+    expect(seen).toMatchObject({ refused: true, citations: [] });
+    expect(seen.answer).toBe('没有可用资料，不能下结论');
+    expect(seen.answer).not.toContain('令第23号');
   });
 
   it('冻结评测在没有引用时要求拒绝', () => {
