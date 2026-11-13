@@ -23,6 +23,7 @@ import { ComplianceResultView } from '@/components/compliance/ComplianceResultVi
 import { complianceFromError, parseCompliance, type ComplianceView } from '@/lib/compliance-view';
 import { FriendlyApiError } from '@/lib/api-client';
 import { contentReviewState, parseReviewPolicy, reviewNote, validateRejectReason, type ReviewPolicy } from '@/lib/content-review';
+import { PRE_PUBLISH_CHECKLIST } from '@/lib/pre-publish-checklist';
 import { SpeakButton, VoiceField, VoiceMicButton, VoiceReadout, appendVoice } from '@/components/voice/VoiceControls';
 
 const { Search } = Input;
@@ -559,6 +560,9 @@ function ContentsContent() {
                     description="确认后这条内容会标记为「所有者自行确认」，并记录确认人和时间，以后添加的团队成员也能在内容库看到。如需他人把关，可以在团队页邀请管理员后再由对方审核。"
                 />
                 <p className="mb-2 text-sm font-medium text-zinc-800">「{selfConfirmFor?.title || '未命名内容'}」</p>
+                <ul className="mb-3 list-disc pl-5 text-sm text-zinc-700">
+                    {PRE_PUBLISH_CHECKLIST.map((item) => <li key={item.id}>{item.label}：{item.detail}</li>)}
+                </ul>
                 <Checkbox checked={selfChecked} onChange={(e) => setSelfChecked(e.target.checked)}>
                     我已自行检查：没有违禁词和「最好」「第一」之类的绝对化用语；AI 生成的内容保留了「AI 生成」标识；图文不侵犯他人权利。
                 </Checkbox>
@@ -581,6 +585,9 @@ function ContentsContent() {
                 style={{ maxWidth: 'calc(100vw - 32px)' }}
             >
                 <Alert type="info" showIcon className="mb-4" message={PUBLISH_CHANNEL_NOTICE} />
+                <ul className="mb-3 list-disc pl-5 text-sm text-zinc-700">
+                    {PRE_PUBLISH_CHECKLIST.map((item) => <li key={item.id}>{item.label}：{item.detail}</li>)}
+                </ul>
                 {compliance && <ComplianceResultView view={compliance} />}
                 {compliance?.level === 'risk' && (
                     <Checkbox className="mt-3" checked={riskAck} onChange={(e) => setRiskAck(e.target.checked)}>

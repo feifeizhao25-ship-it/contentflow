@@ -87,6 +87,9 @@ check('内容库页面：提交审核、通过、驳回（原因）、自行确�
   assert.match(page, /onClick=\{\(\) => openEditor\('create'\)\}/);
   assert.match(page, /onClick=\{\(\) => openEditor\('edit', record\)\}/);
   assert.doesNotMatch(page, /<Button type="link" size="small" icon=\{<EditOutlined \/>\}>编辑<\/Button>/);
+  assert.match(page, /PRE_PUBLISH_CHECKLIST/);
+  const checklist = read('lib/pre-publish-checklist.ts');
+  assert.match(checklist, /AI生成内容标识/);
 });
 
 check('创作工作室「创建发布任务」：保存后直接提交审核，而不是只留一个走不下去的草稿', () => {
