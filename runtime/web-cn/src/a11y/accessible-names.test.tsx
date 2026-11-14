@@ -4,6 +4,7 @@ import { Button } from 'antd';
 import { DownloadOutlined } from '@ant-design/icons';
 import { ClientProviders } from '@/app/client-providers';
 import LoginPage from '@/app/(auth)/login/page';
+import RegisterPage from '@/app/(auth)/register/page';
 import SettingsPage from '@/app/(main)/settings/page';
 import { DATA_EXPORT_TIMEOUT_MS } from '@/lib/account-service';
 
@@ -33,6 +34,33 @@ function renderInApp(node: ReactNode) {
   return render(<ClientProviders>{node}</ClientProviders>);
 }
 
+const SETTINGS_TABS = ['个人资料', '创作计划偏好', '团队设置', '套餐与用量', '通知设置', '账号与数据'] as const;
+
+/**
+ * testing-library 按无障碍名称规范计算，会跳过 aria-hidden。
+ * iOS Safari 不会：aria-labelledby 指向的页签里，图标 aria-label（safety）仍会拼进标签面板的名字。
+ */
+function iosSafariLabelledByName(panel: HTMLElement) {
+  const id = panel.getAttribute('aria-labelledby');
+  const source = id ? document.getElementById(id) : null;
+  if (!source) return '';
+  const iconNames = [...source.querySelectorAll<HTMLElement>('[aria-label]')]
+    .map((node) => node.getAttribute('aria-label')?.trim() ?? '')
+    .filter((name) => name.length > 0);
+  const text = (source.textContent ?? '').replace(/\s+/g, ' ').trim();
+  return [...iconNames, text].filter(Boolean).join(' ');
+}
+
+function expectTabAndPanel(name: string) {
+  const tab = screen.getByRole('tab', { name });
+  expect(tab).toHaveAccessibleName(name);
+  fireEvent.click(tab);
+  const panel = screen.getByRole('tabpanel');
+  expect(panel).toHaveAccessibleName(name);
+  expect(panel).toHaveAttribute('aria-labelledby', tab.id);
+  expect(iosSafariLabelledByName(panel)).toBe(name);
+}
+
 describe('登录按钮的可访问名称', () => {
   it('是「登录」，不是插了空格的「登 录」，并用字距类保住视觉', () => {
     renderInApp(<LoginPage />);
@@ -41,7 +69,7 @@ describe('登录按钮的可访问名称', () => {
     for (const button of buttons) expect(button).toHaveClass('cn-cjk-pair');
     expect(screen.queryByRole('button', { name: '登 录' })).not.toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('tab', { name: '邮箱密码登录' }));
+    for (const name of ['手机验证码登录', '邮箱密码登录']) expectTabAndPanel(name);
     expect(screen.getByRole('button', { name: '登录' })).toHaveClass('cn-cjk-pair');
     expect(screen.queryByRole('button', { name: '登 录' })).not.toBeInTheDocument();
     expect(screen.queryByRole('img', { name: /eye/i })).not.toBeInTheDocument();
@@ -67,17 +95,20 @@ describe('图标不进入控件名称', () => {
     expect(screen.queryByRole('img', { name: 'download' })).not.toBeInTheDocument();
   });
 
-  it('设置页页签和导出按钮只用中文名称', () => {
+  it('设置页页签和标签面板只用可见中文，图标名不会进可访问名称', () => {
     renderInApp(<SettingsPage />);
-    for (const name of ['个人资料', '创作计划偏好', '团队设置', '套餐与用量', '通知设置', '账号与数据']) {
-      expect(screen.getByRole('tab', { name })).toBeInTheDocument();
-    }
+    for (const name of SETTINGS_TABS) expectTabAndPanel(name);
     expect(screen.queryByRole('tab', { name: /safety|user|bell|team|credit-card|calendar/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('tabpanel', { name: /safety|user|bell|team|credit-card|calendar/i })).not.toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('tab', { name: '账号与数据' }));
     expect(screen.getByRole('button', { name: '导出' })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /download/i })).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: '注销账号' })).toBeInTheDocument();
+  });
+
+  it('注册页页签和标签面板的可访问名称只有可见中文', () => {
+    renderInApp(<RegisterPage />);
+    for (const name of ['手机号注册', '邮箱注册']) expectTabAndPanel(name);
   });
 });
 

@@ -51,6 +51,7 @@ import Link from 'next/link';
 import { apiClient } from '@/lib/api-client';
 import { describePlan, type PlanView } from '@/lib/page-data';
 import { passwordVisibilityIcon } from '@/components/a11y/password-icon';
+import { tabLabel } from '@/components/a11y/tab-label';
 import { PhoneBinding } from '@/components/auth/PhoneBinding';
 
 const { Option } = Select;
@@ -200,7 +201,7 @@ export default function SettingsPage() {
     const tabItems = [
         {
             key: 'profile',
-            label: (<span><UserOutlined aria-hidden /> 个人资料</span>),
+            label: tabLabel(<UserOutlined aria-hidden />, '个人资料'),
             children: (
                 <div style={{ maxWidth: 600, padding: '24px 0' }}>
                     <Card bordered={false}>
@@ -239,7 +240,7 @@ export default function SettingsPage() {
         },
         {
             key: 'schedule',
-            label: (<span><CalendarOutlined aria-hidden /> 创作计划偏好</span>),
+            label: tabLabel(<CalendarOutlined aria-hidden />, '创作计划偏好'),
             children: (
                 <div style={{ padding: '24px 0' }}>
                     <Card
@@ -324,7 +325,7 @@ export default function SettingsPage() {
         },
         {
             key: 'tenant',
-            label: (<span><TeamOutlined aria-hidden /> 团队设置</span>),
+            label: tabLabel(<TeamOutlined aria-hidden />, '团队设置'),
             children: (
                 <div style={{ maxWidth: 600, padding: '24px 0' }}>
                     <Card bordered={false}>
@@ -348,7 +349,7 @@ export default function SettingsPage() {
         },
         {
             key: 'plan',
-            label: (<span><CreditCardOutlined aria-hidden /> 套餐与用量</span>),
+            label: tabLabel(<CreditCardOutlined aria-hidden />, '套餐与用量'),
             children: (
                 <div style={{ padding: '24px 0' }}>
                     <Space direction="vertical" style={{ width: '100%' }} size="large">
@@ -389,7 +390,7 @@ export default function SettingsPage() {
         },
         {
             key: 'notifications',
-            label: (<span><BellOutlined aria-hidden /> 通知设置</span>),
+            label: tabLabel(<BellOutlined aria-hidden />, '通知设置'),
             children: (
                 <div style={{ padding: '24px 0' }}>
                     <Card bordered={false}>
@@ -420,7 +421,7 @@ export default function SettingsPage() {
         },
         {
             key: 'data',
-            label: (<span><SafetyOutlined aria-hidden /> 账号与数据</span>),
+            label: tabLabel(<SafetyOutlined aria-hidden />, '账号与数据'),
             children: (
                 <div style={{ maxWidth: 720, padding: '24px 0' }}>
                     <Card bordered={false} title="导出我的数据">
