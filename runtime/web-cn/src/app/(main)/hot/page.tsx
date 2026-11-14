@@ -89,7 +89,7 @@ export default function HotPage() {
                         <h1 className="text-3xl md:text-5xl font-black mb-4">热点与爆款拆解</h1>
                         <p className="text-zinc-300 text-base sm:text-lg mb-8">没有签约的热点数据源时，本页不展示榜单，也不会编造热度。你仍可以把自己的文案贴进来做拆解。</p>
                         <div className="flex gap-4">
-                            <Button size="large" icon={<ThunderboltOutlined />} onClick={() => setShowAnalyzer(true)} className="h-14 px-8 rounded-2xl bg-white text-zinc-900 border-none font-bold hover:scale-105 transition-all">AI 爆款拆解</Button>
+                            <Button size="large" icon={<ThunderboltOutlined aria-hidden />} onClick={() => setShowAnalyzer(true)} className="h-14 px-8 rounded-2xl bg-white text-zinc-900 border-none font-bold hover:scale-105 transition-all">AI 爆款拆解</Button>
                         </div>
                     </motion.div>
                 </div>
@@ -115,8 +115,8 @@ export default function HotPage() {
                                 <h3 className="text-lg font-black text-zinc-900 dark:text-zinc-50 mb-2 line-clamp-2 min-h-14">{topic.title}</h3>
                                 <p className="mb-4 text-xs leading-5 text-zinc-600 dark:text-zinc-300">截至 {formatCnDate(topic.fetchedAt, true) || '时间未提供'} · 来源 {topic.source || '未标明'}</p>
                                 <div className="flex items-center justify-between mt-auto">
-                                    <div data-testid="hot-heat" className="text-zinc-700 dark:text-zinc-200 text-xs font-bold"><AreaChartOutlined /> {formatHeat(topic.heat)} 热度</div>
-                                    <Button shape="circle" icon={<ArrowRightOutlined />} onClick={() => router.push(`/studio?topic=${encodeURIComponent(topic.title)}`)} className="bg-zinc-900 border-none text-white transition-transform" />
+                                    <div data-testid="hot-heat" className="text-zinc-700 dark:text-zinc-200 text-xs font-bold"><AreaChartOutlined aria-hidden /> {formatHeat(topic.heat)} 热度</div>
+                                    <Button shape="circle" aria-label="用这个选题去创作" icon={<ArrowRightOutlined aria-hidden />} onClick={() => router.push(`/studio?topic=${encodeURIComponent(topic.title)}`)} className="bg-zinc-900 border-none text-white transition-transform" />
                                 </div>
                             </Card>
                         </motion.div>
@@ -128,11 +128,11 @@ export default function HotPage() {
                     <Title level={3}>AI 爆款内容拆解</Title>
                     <TextArea rows={6} value={analysisInput} onChange={e => setAnalysisInput(e.target.value)} placeholder="粘贴爆款内容原文..." className="rounded-2xl border-zinc-200 bg-zinc-50 p-4 focus:bg-white transition-all text-lg" />
                     {analysisError && <Alert type="error" showIcon message="这次没有拆解成功" description={analysisError} />}
-                    <Button type="primary" block size="large" onClick={handleAnalyze} loading={isAnalyzing} icon={<ThunderboltFilled />} className="h-16 rounded-2xl bg-indigo-600 font-bold text-lg">一键拆解</Button>
+                    <Button type="primary" block size="large" onClick={handleAnalyze} loading={isAnalyzing} icon={<ThunderboltFilled aria-hidden />} className="h-16 rounded-2xl bg-indigo-600 font-bold text-lg">一键拆解</Button>
                     <AnimatePresence>
                         {analysisResult && (
                             <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="mt-8 bg-indigo-50/50 rounded-[32px] p-8 border border-indigo-100">
-                                <Title level={4}><RiseOutlined /> 拆解结果</Title>
+                                <Title level={4}><RiseOutlined aria-hidden /> 拆解结果</Title>
                                 <p className="text-xs text-zinc-500">{AI_TEXT_LABEL}以下分析由 AI 根据你粘贴的内容生成，仅供参考，不代表平台的推荐规则。</p>
                                 <Divider />
                                 {flattenViralAnalysis(analysisResult).length === 0 ? (

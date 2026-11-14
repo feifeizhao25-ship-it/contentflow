@@ -249,3 +249,9 @@ body::before {
     border-box linear-gradient(135deg, rgba(99, 102, 241, 0.5), rgba(168, 85, 247, 0.5));
   border: 1px solid transparent;
 }
+
+/* 两个汉字的按钮：字距代替 antd 插在中间的空格（「登 录」→「登录」）。数值与 antd .ant-btn-two-chinese-chars 一致。 */
+.ant-btn.cn-cjk-pair > span:not(.anticon):not(.ant-btn-icon):not(.ant-btn-loading-icon) {
+  letter-spacing: 0.34em;
+  margin-inline-end: -0.34em;
+}

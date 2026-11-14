@@ -55,6 +55,7 @@ export default function PublishPage() {
             content: '每条任务会单独处理：平台通道未接通、授权失效的任务不会被重试，结果会逐条告诉你原因。',
             okText: '开始重试',
             cancelText: '取消',
+            cancelButtonProps: { className: 'cn-cjk-pair' },
             onOk: () => runBatchRetry(),
         });
     };

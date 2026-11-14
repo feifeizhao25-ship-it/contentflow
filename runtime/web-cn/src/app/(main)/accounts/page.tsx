@@ -155,7 +155,7 @@ export default function AccountsPage() {
                 {/* Left: Account List */}
                 <div className="lg:col-span-2 space-y-6">
                     <h2 className="text-lg font-bold text-zinc-900 flex items-center gap-2">
-                        <SafetyCertificateOutlined className="text-emerald-500" />
+                        <SafetyCertificateOutlined aria-hidden className="text-emerald-500" />
                         已授权账号
                     </h2>
 
@@ -213,7 +213,7 @@ export default function AccountsPage() {
                                                     onClick={() => handleUnbind(account.id)}
                                                     className="p-2 rounded-lg hover:bg-red-50 text-zinc-600 hover:text-red-600 transition-colors"
                                                 >
-                                                    <DeleteOutlined />
+                                                    <DeleteOutlined aria-hidden />
                                                 </button>
                                             </Tooltip>
                                         </div>
@@ -230,7 +230,7 @@ export default function AccountsPage() {
                             className="glass-card p-5 rounded-2xl border border-dashed border-zinc-300 hover:border-indigo-500/50 flex flex-col items-center justify-center gap-3 text-zinc-400 hover:text-indigo-600 transition-colors min-h-[160px] bg-white/40"
                         >
                             <div className="w-12 h-12 rounded-full bg-white/5 flex items-center justify-center text-xl">
-                                <PlusOutlined />
+                                <PlusOutlined aria-hidden />
                             </div>
                             <span className="text-sm font-medium">添加新账号</span>
                         </motion.button>
@@ -240,7 +240,7 @@ export default function AccountsPage() {
                 {/* Right: Available Platforms */}
                 <div id="platform-list" className="space-y-6">
                     <h2 className="text-lg font-bold text-zinc-900 flex items-center gap-2">
-                        <LinkOutlined className="text-indigo-500" />
+                        <LinkOutlined aria-hidden className="text-indigo-500" />
                         支持平台
                     </h2>
                     <div className="glass-card p-2 rounded-2xl border border-zinc-200 bg-white/60">
@@ -260,8 +260,8 @@ export default function AccountsPage() {
                                     <span className="text-zinc-700 font-medium group-hover:text-zinc-900 transition-colors">{platform.name}</span>
                                 </div>
                                 {authorizing === platform.key
-                                    ? <ReloadOutlined spin className="text-zinc-400" />
-                                    : <PlusOutlined className="text-zinc-400 group-hover:text-zinc-600 transition-colors" />}
+                                    ? <ReloadOutlined aria-hidden spin className="text-zinc-400" />
+                                    : <PlusOutlined aria-hidden className="text-zinc-400 group-hover:text-zinc-600 transition-colors" />}
                             </div>
                         ))}
                     </div>

@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { Card, Form, Input, Button, Divider, Checkbox, Tabs } from 'antd';
 import { message } from '@/lib/antd-app';
 import { UserOutlined, LockOutlined, MailOutlined, TeamOutlined, MobileOutlined } from '@ant-design/icons';
+import { passwordVisibilityIcon } from '@/components/a11y/password-icon';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { isValidChinaMobile, registerWithEmail, registerWithPhone, sendSmsCode } from '@/lib/auth-service';
@@ -209,7 +210,7 @@ export default function RegisterPage() {
                                             { validator: (_, value) => (!value || isValidChinaMobile(value) ? Promise.resolve() : Promise.reject(new Error('请输入正确的 11 位手机号'))) },
                                         ]}
                                     >
-                                        <Input prefix={<MobileOutlined />} placeholder="手机号" inputMode="tel" maxLength={16} />
+                                        <Input prefix={<MobileOutlined aria-hidden />} placeholder="手机号" inputMode="tel" maxLength={16} />
                                     </Form.Item>
                                     <Form.Item label="验证码" name="code" rules={[{ required: true, message: '请输入验证码' }, { pattern: /^\d{6}$/, message: '验证码为 6 位数字' }]}>
                                         <SmsCodeInput
@@ -218,17 +219,17 @@ export default function RegisterPage() {
                                         />
                                     </Form.Item>
                                     <Form.Item name="name" label="姓名（选填）">
-                                        <Input prefix={<UserOutlined />} placeholder="姓名（选填）" maxLength={50} />
+                                        <Input prefix={<UserOutlined aria-hidden />} placeholder="姓名（选填）" maxLength={50} />
                                     </Form.Item>
                                     <Form.Item name="tenantName" label="团队或公司名称（选填）">
-                                        <Input prefix={<TeamOutlined />} placeholder="团队/公司名称（选填）" maxLength={100} />
+                                        <Input prefix={<TeamOutlined aria-hidden />} placeholder="团队/公司名称（选填）" maxLength={100} />
                                     </Form.Item>
                                     {profileItems}
                                     {agreementItem}
                                     {ageItem}
                                     {failureAlert}
                                     <Form.Item>
-                                        <Button type="primary" htmlType="submit" block loading={loading}>
+                                        <Button type="primary" htmlType="submit" block loading={loading} className="cn-cjk-pair">
                                             注册
                                         </Button>
                                     </Form.Item>
@@ -246,7 +247,7 @@ export default function RegisterPage() {
                         rules={[{ required: true, message: '请输入您的姓名' }]}
                     >
                         <Input
-                            prefix={<UserOutlined />}
+                            prefix={<UserOutlined aria-hidden />}
                             placeholder="姓名"
                         />
                     </Form.Item>
@@ -260,7 +261,7 @@ export default function RegisterPage() {
                         ]}
                     >
                         <Input
-                            prefix={<MailOutlined />}
+                            prefix={<MailOutlined aria-hidden />}
                             placeholder="邮箱地址"
                         />
                     </Form.Item>
@@ -271,7 +272,7 @@ export default function RegisterPage() {
                         rules={[{ required: true, message: '请输入团队/公司名称' }]}
                     >
                         <Input
-                            prefix={<TeamOutlined />}
+                            prefix={<TeamOutlined aria-hidden />}
                             placeholder="团队/公司名称"
                         />
                     </Form.Item>
@@ -286,7 +287,8 @@ export default function RegisterPage() {
                         ]}
                     >
                         <Input.Password
-                            prefix={<LockOutlined />}
+                            prefix={<LockOutlined aria-hidden />}
+                            iconRender={passwordVisibilityIcon}
                             placeholder="密码（至少6位）"
                         />
                     </Form.Item>
@@ -308,7 +310,8 @@ export default function RegisterPage() {
                         ]}
                     >
                         <Input.Password
-                            prefix={<LockOutlined />}
+                            prefix={<LockOutlined aria-hidden />}
+                            iconRender={passwordVisibilityIcon}
                             placeholder="确认密码"
                         />
                     </Form.Item>
@@ -319,7 +322,7 @@ export default function RegisterPage() {
                     {failureAlert}
 
                     <Form.Item>
-                        <Button type="primary" htmlType="submit" block loading={loading}>
+                        <Button type="primary" htmlType="submit" block loading={loading} className="cn-cjk-pair">
                             注册
                         </Button>
                     </Form.Item>

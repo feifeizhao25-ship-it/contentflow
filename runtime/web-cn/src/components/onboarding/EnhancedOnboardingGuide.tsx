@@ -92,7 +92,7 @@ export default function EnhancedOnboardingGuide() {
         message.success({ 
           content: '🎉 恭喜完成新手引导！+100 积分 + 新星徽章', 
           duration: 4,
-          icon: <CrownOutlined style={{ color: '#f59e0b' }} />,
+          icon: <CrownOutlined aria-hidden style={{ color: '#f59e0b' }} />,
         });
         break;
     }
@@ -203,7 +203,7 @@ export default function EnhancedOnboardingGuide() {
           onClick={handleSkip}
           className="absolute top-4 right-4 text-white/80 hover:text-white transition-colors"
         >
-          <CloseOutlined className="text-lg" />
+          <CloseOutlined aria-hidden className="text-lg" />
         </button>
 
         {/* 步骤指示器 */}
@@ -227,7 +227,7 @@ export default function EnhancedOnboardingGuide() {
                 )}
               >
                 {index + 1 < currentStep ? (
-                  <CheckCircleOutlined />
+                  <CheckCircleOutlined aria-hidden />
                 ) : (
                   step.id
                 )}
@@ -348,7 +348,7 @@ export default function EnhancedOnboardingGuide() {
               currentStep === 1 ? 'invisible' : ''
             )}
           >
-            <ArrowLeftOutlined /> 上一步
+            <ArrowLeftOutlined aria-hidden /> 上一步
           </Button>
 
           {/* 中间奖励提示 */}
@@ -384,7 +384,7 @@ export default function EnhancedOnboardingGuide() {
               "bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500",
               "border-none shadow-lg shadow-indigo-500/20"
             )}
-            icon={currentStep === 5 ? <CrownOutlined /> : <ArrowRightOutlined />}
+            icon={currentStep === 5 ? <CrownOutlined aria-hidden /> : <ArrowRightOutlined aria-hidden />}
           >
             {currentStep === 5 ? '领取奖励' : 
              currentStep === 4 ? '生成视频' :

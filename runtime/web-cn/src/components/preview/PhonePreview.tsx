@@ -136,9 +136,9 @@ export const PhonePreview: React.FC<PhonePreviewProps> = ({
                     </div>
                 </div>
                 <div className="flex items-center gap-4 text-xl">
-                    <HeartOutlined />
-                    <StarOutlined />
-                    <ShareAltOutlined />
+                    <HeartOutlined aria-hidden />
+                    <StarOutlined aria-hidden />
+                    <ShareAltOutlined aria-hidden />
                 </div>
             </div>
 

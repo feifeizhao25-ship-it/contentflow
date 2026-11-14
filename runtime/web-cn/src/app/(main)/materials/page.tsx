@@ -36,11 +36,11 @@ const { Search } = Input;
 const { Title, Text, Paragraph } = Typography;
 
 const EXTERNAL_RESOURCES = [
-    { name: 'Unsplash', description: '全球知名的超高质量无版权图片库', url: 'https://unsplash.com', tags: ['图片', '高清', '摄影'], icon: <PictureOutlined /> },
-    { name: 'Pexels', description: '优秀的免费高清视频与图片共享社区', url: 'https://www.pexels.com', tags: ['图片', '视频', 'CC0'], icon: <VideoCameraOutlined /> },
-    { name: 'Pixabay', description: '不仅有图文视频，还有矢量图和音乐素材', url: 'https://pixabay.com', tags: ['文案', '音乐', '插画'], icon: <GlobalOutlined /> },
-    { name: 'Mixkit', description: '由 Envato 提供的免费视频片段、音乐和模版', url: 'https://mixkit.co', tags: ['视频模板', '音效', '转场'], icon: <VideoCameraOutlined /> },
-    { name: 'Awesome Stock Resources', description: 'GitHub 上最全的开源素材聚合项目', url: 'https://github.com/neutraltone/awesome-stock-resources', tags: ['GitHub', '聚合', '开源'], icon: <GithubOutlined /> },
+    { name: 'Unsplash', description: '全球知名的超高质量无版权图片库', url: 'https://unsplash.com', tags: ['图片', '高清', '摄影'], icon: <PictureOutlined aria-hidden /> },
+    { name: 'Pexels', description: '优秀的免费高清视频与图片共享社区', url: 'https://www.pexels.com', tags: ['图片', '视频', 'CC0'], icon: <VideoCameraOutlined aria-hidden /> },
+    { name: 'Pixabay', description: '不仅有图文视频，还有矢量图和音乐素材', url: 'https://pixabay.com', tags: ['文案', '音乐', '插画'], icon: <GlobalOutlined aria-hidden /> },
+    { name: 'Mixkit', description: '由 Envato 提供的免费视频片段、音乐和模版', url: 'https://mixkit.co', tags: ['视频模板', '音效', '转场'], icon: <VideoCameraOutlined aria-hidden /> },
+    { name: 'Awesome Stock Resources', description: 'GitHub 上最全的开源素材聚合项目', url: 'https://github.com/neutraltone/awesome-stock-resources', tags: ['GitHub', '聚合', '开源'], icon: <GithubOutlined aria-hidden /> },
 ];
 
 // 格式化文件大小
@@ -137,6 +137,8 @@ export default function MaterialsPage() {
         modal.confirm({
             title: '确认删除',
             content: `确定要删除"${material.name}"吗？此操作不可撤销。`,
+            okButtonProps: { className: 'cn-cjk-pair' },
+            cancelButtonProps: { className: 'cn-cjk-pair' },
             onOk: async () => {
                 try {
                     const { deleteMaterial } = await import('@/lib/materials-service');
@@ -208,7 +210,7 @@ export default function MaterialsPage() {
                         beforeUpload={handleUpload}
                         accept="image/*,video/*"
                     >
-                        <Button type="primary" icon={<UploadOutlined />} className="!rounded-lg">
+                        <Button type="primary" icon={<UploadOutlined aria-hidden />} className="!rounded-lg">
                             上传素材
                         </Button>
                     </Upload>
@@ -228,7 +230,7 @@ export default function MaterialsPage() {
                                     placeholder="搜索素材..."
                                     onSearch={setSearchText}
                                     className="w-full sm:max-w-xs"
-                                    prefix={<SearchOutlined />}
+                                    prefix={<SearchOutlined aria-hidden />}
                                     allowClear
                                 />
                             </div>
@@ -258,13 +260,14 @@ export default function MaterialsPage() {
                                                                 className="max-w-full max-h-full object-contain" 
                                                             />
                                                         ) : (
-                                                            <VideoCameraOutlined style={{ fontSize: 48, color: '#9ca3af' }} />
+                                                            <VideoCameraOutlined aria-hidden style={{ fontSize: 48, color: '#9ca3af' }} />
                                                         )}
                                                         <div className="absolute top-2 right-2">
                                                             <Button
                                                                 shape="circle"
                                                                 size="small"
-                                                                icon={item.is_favorite ? <StarFilled style={{ color: '#f59e0b' }} /> : <StarOutlined />}
+                                                                aria-label={item.is_favorite ? '取消收藏' : '收藏'}
+                                                                icon={item.is_favorite ? <StarFilled aria-hidden style={{ color: '#f59e0b' }} /> : <StarOutlined aria-hidden />}
                                                                 className="!border-none !bg-white/80 hover:!bg-white"
                                                                 onClick={() => handleToggleFavorite(item)}
                                                             />
@@ -293,7 +296,7 @@ export default function MaterialsPage() {
                                                     <Button 
                                                         type="link" 
                                                         size="small" 
-                                                        icon={<DownloadOutlined />} 
+                                                        icon={<DownloadOutlined aria-hidden />} 
                                                         className="!p-0"
                                                         onClick={() => window.open(item.url)}
                                                     >
@@ -303,7 +306,7 @@ export default function MaterialsPage() {
                                                         type="link" 
                                                         size="small" 
                                                         danger 
-                                                        icon={<DeleteOutlined />} 
+                                                        icon={<DeleteOutlined aria-hidden />} 
                                                         className="!p-0"
                                                         onClick={() => handleDelete(item)}
                                                     >
@@ -321,7 +324,7 @@ export default function MaterialsPage() {
                                         beforeUpload={handleUpload}
                                         accept="image/*,video/*"
                                     >
-                                        <Button type="primary" icon={<UploadOutlined />}>
+                                        <Button type="primary" icon={<UploadOutlined aria-hidden />}>
                                             上传第一个素材
                                         </Button>
                                     </Upload>
@@ -350,7 +353,7 @@ export default function MaterialsPage() {
                                     <div className="text-xs text-zinc-500 mt-1">
                                         {!permissionsLoading && isPremium && tierName ? (
                                             <span className="flex items-center justify-center gap-1 text-green-600">
-                                                <CrownFilled /> 当前套餐：{tierName}
+                                                <CrownFilled aria-hidden /> 当前套餐：{tierName}
                                             </span>
                                         ) : !permissionsLoading ? (
                                             <Link href="/pricing" className="text-indigo-600">升级会员</Link>
@@ -374,7 +377,7 @@ export default function MaterialsPage() {
                         <Card 
                             title={
                                 <span className="flex items-center gap-2">
-                                    <GlobalOutlined className="text-indigo-600" /> 
+                                    <GlobalOutlined aria-hidden className="text-indigo-600" /> 
                                     灵感源泉：开源素材资源
                                 </span>
                             } 
@@ -393,7 +396,8 @@ export default function MaterialsPage() {
                                             <Tooltip title="前往官网" key="link">
                                                 <Button 
                                                     type="text" 
-                                                    icon={<LinkOutlined />} 
+                                                    aria-label="前往官网"
+                                                    icon={<LinkOutlined aria-hidden />} 
                                                     onClick={() => window.open(item.url)}
                                                 />
                                             </Tooltip>
@@ -423,7 +427,7 @@ export default function MaterialsPage() {
                             <Divider dashed />
                             <Card size="small" className="bg-blue-50 border-blue-100">
                                 <div className="flex gap-3">
-                                    <InfoCircleOutlined className="text-blue-500 mt-1" />
+                                    <InfoCircleOutlined aria-hidden className="text-blue-500 mt-1" />
                                     <div>
                                         <Text strong className="text-blue-900 text-sm">使用提示：</Text>
                                         <div className="text-xs text-blue-700 mt-1">

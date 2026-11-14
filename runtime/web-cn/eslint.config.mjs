@@ -10,5 +10,18 @@ export default defineConfig([
       'react-hooks/purity': 'off',
     },
   },
+  {
+    files: ['**/*.test.ts', '**/*.test.tsx'],
+    languageOptions: {
+      globals: {
+        jest: 'readonly',
+        describe: 'readonly',
+        it: 'readonly',
+        expect: 'readonly',
+        beforeEach: 'readonly',
+        afterEach: 'readonly',
+      },
+    },
+  },
   globalIgnores(['.next/**', 'coverage/**', 'next-env.d.ts']),
 ]);

@@ -35,6 +35,8 @@ async function proxy(
       body: ['GET', 'HEAD'].includes(request.method) ? undefined : await request.arrayBuffer(),
       cache: 'no-store',
       redirect: 'manual',
+      // 浏览器放弃等待（导出超时等）时，不要继续挂着上游连接。
+      signal: request.signal,
     });
   } catch {
     return NextResponse.json({ success: false, message: '服务暂时不可用，请稍后重试' }, { status: 502 });

@@ -8,6 +8,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { safeRedirectTarget } from '@/lib/safe-redirect';
 import { isValidChinaMobile, loginWithPassword, loginWithSms, sendSmsCode } from '@/lib/auth-service';
+import { passwordVisibilityIcon } from '@/components/a11y/password-icon';
 import { SmsCodeInput } from '@/components/auth/SmsCodeInput';
 import { safeErrorText } from '@/lib/api-error';
 
@@ -130,7 +131,7 @@ export default function LoginPage() {
                                             { validator: (_, value) => (!value || isValidChinaMobile(value) ? Promise.resolve() : Promise.reject(new Error('请输入正确的 11 位手机号'))) },
                                         ]}
                                     >
-                                        <Input prefix={<MobileOutlined />} placeholder="手机号" inputMode="tel" maxLength={16} />
+                                        <Input prefix={<MobileOutlined aria-hidden />} placeholder="手机号" inputMode="tel" maxLength={16} />
                                     </Form.Item>
                                     <Form.Item label="验证码" name="code" rules={[{ required: true, message: '请输入验证码' }, { pattern: /^\d{6}$/, message: '验证码为 6 位数字' }]}>
                                         <SmsCodeInput
@@ -140,7 +141,7 @@ export default function LoginPage() {
                                     </Form.Item>
                                     {failureAlert}
                                     <Form.Item>
-                                        <Button type="primary" htmlType="submit" block loading={loading}>
+                                        <Button type="primary" htmlType="submit" block loading={loading} className="cn-cjk-pair">
                                             登录
                                         </Button>
                                     </Form.Item>
@@ -160,14 +161,14 @@ export default function LoginPage() {
                                             { type: 'email', message: '请输入有效的邮箱地址' },
                                         ]}
                                     >
-                                        <Input prefix={<MailOutlined />} placeholder="邮箱地址" />
+                                        <Input prefix={<MailOutlined aria-hidden />} placeholder="邮箱地址" />
                                     </Form.Item>
                                     <Form.Item label="密码" name="password" rules={[{ required: true, message: '请输入密码' }]}>
-                                        <Input.Password prefix={<LockOutlined />} placeholder="密码" />
+                                        <Input.Password prefix={<LockOutlined aria-hidden />} iconRender={passwordVisibilityIcon} placeholder="密码" />
                                     </Form.Item>
                                     {failureAlert}
                                     <Form.Item>
-                                        <Button type="primary" htmlType="submit" block loading={loading}>
+                                        <Button type="primary" htmlType="submit" block loading={loading} className="cn-cjk-pair">
                                             登录
                                         </Button>
                                         <div style={{ marginTop: 8, textAlign: 'right' }}>

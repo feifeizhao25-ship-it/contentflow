@@ -35,9 +35,9 @@ const { Meta } = Card;
 
 // 快捷操作
 const quickActions = [
-  { icon: <FileTextOutlined />, label: '去创作', path: '/studio', color: '#722ed1' },
-  { icon: <CalendarOutlined />, label: '发布日历', path: '/calendar', color: '#eb2f96' },
-  { icon: <BarChartOutlined />, label: '已保存的数据', path: '/analytics', color: '#13c2c2' },
+  { icon: <FileTextOutlined aria-hidden />, label: '去创作', path: '/studio', color: '#722ed1' },
+  { icon: <CalendarOutlined aria-hidden />, label: '发布日历', path: '/calendar', color: '#eb2f96' },
+  { icon: <BarChartOutlined aria-hidden />, label: '已保存的数据', path: '/analytics', color: '#13c2c2' },
 ];
 
 export default function DashboardWorkspace() {
@@ -100,7 +100,7 @@ export default function DashboardWorkspace() {
             <Badge dot={!todayStatus.checkedIn}>
               <Button
                 type="default"
-                icon={<GiftOutlined />}
+                icon={<GiftOutlined aria-hidden />}
                 onClick={() => setCheckInVisible(true)}
                 className="border-orange-300 text-orange-500 hover:bg-orange-50"
               >
@@ -111,7 +111,7 @@ export default function DashboardWorkspace() {
             {/* 分享按钮 */}
             <Button
               type="primary"
-              icon={<FireOutlined />}
+              icon={<FireOutlined aria-hidden />}
               onClick={() => setShareVisible(true)}
               className="bg-gradient-to-r from-purple-500 to-pink-500 border-none"
             >
@@ -137,7 +137,7 @@ export default function DashboardWorkspace() {
             
             {consecutiveDays > 1 && (
               <div className="flex items-center gap-2 px-4 py-2 bg-white/50 rounded-full">
-                <FireOutlined className="text-red-500" />
+                <FireOutlined aria-hidden className="text-red-500" />
                 <span className="font-medium">连续签到 {consecutiveDays} 天</span>
               </div>
             )}
@@ -264,7 +264,7 @@ export default function DashboardWorkspace() {
                     你已解锁全部功能
                   </div>
                   <Tag color="success" className="mt-2">
-                    <CheckCircleOutlined /> 新手礼包已领取
+                    <CheckCircleOutlined aria-hidden /> 新手礼包已领取
                   </Tag>
                 </div>
               )}

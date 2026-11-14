@@ -57,7 +57,7 @@ export function SmsCodeInput({
       <Input
         {...rest}
         aria-label={ariaLabel || '验证码'}
-        prefix={<SafetyCertificateOutlined />}
+        prefix={<SafetyCertificateOutlined aria-hidden />}
         placeholder="6 位验证码"
         inputMode="numeric"
         maxLength={6}

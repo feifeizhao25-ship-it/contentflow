@@ -130,7 +130,7 @@ function PricingContent() {
         description: plan.custom ? '按团队规模与服务范围报价' : '价格与权益由服务端统一管理',
         features: (Array.isArray(plan.features) ? plan.features.map(String) : []) as string[],
         comingSoon: comingSoonFor(String(plan.id)),
-        icon: plan.id === 'enterprise' ? <CrownFilled /> : plan.id === 'team' ? <SafetyCertificateOutlined /> : plan.id === 'pro' ? <ThunderboltFilled /> : <RocketFilled />,
+        icon: plan.id === 'enterprise' ? <CrownFilled aria-hidden /> : plan.id === 'team' ? <SafetyCertificateOutlined aria-hidden /> : plan.id === 'pro' ? <ThunderboltFilled aria-hidden /> : <RocketFilled aria-hidden />,
         buttonText: plan.id === 'free' ? '免费使用' : plan.custom ? '联系商务顾问' : '立即开通',
         custom: Boolean(plan.custom),
         highlight: plan.id === 'pro',
@@ -331,7 +331,7 @@ function PricingContent() {
                     {plansFailed && (
                         <div className="col-span-full rounded-2xl border border-amber-200 bg-amber-50 p-5 flex flex-col sm:flex-row items-center justify-center gap-4 text-amber-800">
                             <span>价格信息加载失败，请稍后重试。当前展示经校验的会员权益注册表，支付前会再次确认实时价格。</span>
-                            <Button onClick={handleRetry} loading={retrying} className="shrink-0">
+                            <Button onClick={handleRetry} loading={retrying} className="shrink-0 cn-cjk-pair">
                                 重试
                             </Button>
                         </div>
@@ -368,7 +368,7 @@ function PricingContent() {
                                 </div>
                                 {plan.credits && (
                                     <div className="mt-2 text-xs font-bold text-indigo-600 flex items-center gap-1">
-                                        <GiftFilled /> 包含 {plan.credits}
+                                        <GiftFilled aria-hidden /> 包含 {plan.credits}
                                     </div>
                                 )}
                             </div>
@@ -376,7 +376,7 @@ function PricingContent() {
                             <ul className="space-y-4 mb-4 flex-1">
                                 {plan.features.filter((f) => !isComingSoonFeature(typedRegistry, f)).map((f, i) => (
                                     <li key={i} className="flex items-start gap-3 text-sm font-medium text-zinc-600 dark:text-zinc-300">
-                                        <CheckCircleFilled className={clsx("mt-0.5", plan.highlight ? "text-indigo-500" : "text-zinc-300")} />
+                                        <CheckCircleFilled aria-hidden className={clsx("mt-0.5", plan.highlight ? "text-indigo-500" : "text-zinc-300")} />
                                         <span>{f}</span>
                                     </li>
                                 ))}
@@ -491,7 +491,7 @@ function PricingContent() {
                 {/* Trust Footer */}
                 <div className="text-center pb-8 border-t border-zinc-100 dark:border-zinc-800 pt-8">
                     <div className="inline-flex items-center gap-2 text-zinc-800 text-xs font-bold uppercase tracking-wider">
-                        <SafetyCertificateOutlined className="text-emerald-500 text-lg" />
+                        <SafetyCertificateOutlined aria-hidden className="text-emerald-500 text-lg" />
                         <span>付款前请核对订单信息与服务条款</span>
                     </div>
                 </div>

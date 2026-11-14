@@ -147,7 +147,7 @@ export default function CheckInModal({ visible, onClose }: CheckInModalProps) {
           onClick={onClose}
           className="absolute top-4 right-4 text-white/80 hover:text-white"
         >
-          <CloseOutlined className="text-lg" />
+          <CloseOutlined aria-hidden className="text-lg" />
         </button>
 
         <div className="text-center">
@@ -156,7 +156,7 @@ export default function CheckInModal({ visible, onClose }: CheckInModalProps) {
             animate={{ scale: 1, opacity: 1 }}
             className="mb-2"
           >
-            <GiftOutlined className="text-4xl" />
+            <GiftOutlined aria-hidden className="text-4xl" />
           </motion.div>
           
           <h2 className="text-xl font-bold mb-1">每日签到</h2>
@@ -176,7 +176,7 @@ export default function CheckInModal({ visible, onClose }: CheckInModalProps) {
               animate={{ scale: 1 }}
               className="flex items-center gap-1 px-3 py-1 bg-white/20 rounded-full"
             >
-              <FireOutlined className="text-red-300" />
+              <FireOutlined aria-hidden className="text-red-300" />
               <span className="text-sm font-medium">{consecutiveDays}天连签</span>
             </motion.div>
           )}
@@ -218,7 +218,7 @@ export default function CheckInModal({ visible, onClose }: CheckInModalProps) {
                 )}
               >
                 {day.isCheckedIn ? (
-                  <CheckCircleOutlined />
+                  <CheckCircleOutlined aria-hidden />
                 ) : (
                   day.date.getDate()
                 )}
@@ -321,7 +321,7 @@ export default function CheckInModal({ visible, onClose }: CheckInModalProps) {
                     ? 'bg-gray-100 text-gray-400 border-none'
                     : 'bg-gradient-to-r from-amber-400 to-orange-500 border-none'
                 )}
-                icon={status.checkedIn ? <CheckCircleOutlined /> : <GiftOutlined />}
+                icon={status.checkedIn ? <CheckCircleOutlined aria-hidden /> : <GiftOutlined aria-hidden />}
               >
                 {isAnimating 
                   ? '签到中...' 

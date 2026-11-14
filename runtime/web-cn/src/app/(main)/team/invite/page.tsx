@@ -38,8 +38,8 @@ function AcceptInvite() {
       {!token && <p className="mt-4">缺少邀请链接。</p>}
       {token && (
         <div className="mt-6 flex gap-3">
-          <Button type="primary" onClick={() => send('accept')}>接受</Button>
-          <Button onClick={() => send('decline')}>拒绝</Button>
+          <Button type="primary" className="cn-cjk-pair" onClick={() => send('accept')}>接受</Button>
+          <Button className="cn-cjk-pair" onClick={() => send('decline')}>拒绝</Button>
         </div>
       )}
       {result && <p className="mt-4">{result}</p>}

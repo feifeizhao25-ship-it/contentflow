@@ -17,10 +17,10 @@ interface ShareModalProps {
 }
 
 const SHARE_PLATFORMS = [
-  { key: 'wechat', name: '微信', icon: <WechatOutlined />, color: '#07C160' },
-  { key: 'weibo', name: '微博', icon: <WeiboOutlined />, color: '#E6162D' },
-  { key: 'qq', name: 'QQ', icon: <QqOutlined />, color: '#12B7F5' },
-  { key: 'copy_link', name: '复制链接', icon: <CopyOutlined />, color: '#1890FF' },
+  { key: 'wechat', name: '微信', icon: <WechatOutlined aria-hidden />, color: '#07C160' },
+  { key: 'weibo', name: '微博', icon: <WeiboOutlined aria-hidden />, color: '#E6162D' },
+  { key: 'qq', name: 'QQ', icon: <QqOutlined aria-hidden />, color: '#12B7F5' },
+  { key: 'copy_link', name: '复制链接', icon: <CopyOutlined aria-hidden />, color: '#1890FF' },
 ] satisfies Array<{ key: SharePlatform; name: string; icon: React.ReactNode; color: string }>;
 
 export default function ShareModal({
