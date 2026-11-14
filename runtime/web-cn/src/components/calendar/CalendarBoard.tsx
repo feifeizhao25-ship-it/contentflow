@@ -103,9 +103,9 @@ export const CalendarBoard = () => {
                         </Button>
                     </div>
                     <div className="hidden md:flex items-center gap-2 text-sm font-bold text-zinc-700">
-                        <Button type="text" size="small" icon={<LeftOutlined />} onClick={() => setCurrentDate(currentDate.subtract(1, view))} />
+                        <Button type="text" size="small" aria-label={view === 'week' ? '上一周' : '上一月'} icon={<LeftOutlined aria-hidden />} onClick={() => setCurrentDate(currentDate.subtract(1, view))} />
                         <span>{currentDate.format('YYYY年 M月')}</span>
-                        <Button type="text" size="small" icon={<RightOutlined />} onClick={() => setCurrentDate(currentDate.add(1, view))} />
+                        <Button type="text" size="small" aria-label={view === 'week' ? '下一周' : '下一月'} icon={<RightOutlined aria-hidden />} onClick={() => setCurrentDate(currentDate.add(1, view))} />
                     </div>
                 </div>
 

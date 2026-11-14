@@ -165,16 +165,16 @@ export const PublishTaskList = ({ filter, reloadKey = 0, onLoaded }: Props) => {
 
     const getStatusConfig = (status: string) => {
         switch (status) {
-            case 'manual_pending': return { color: 'orange', icon: <ClockCircleFilled />, text: '待人工发布' };
-            case 'manual_done': return { color: 'green', icon: <CheckCircleFilled />, text: '已人工发布' };
-            case 'submitted_unconfirmed': return { color: 'cyan', icon: <ClockCircleFilled />, text: '已提交待平台确认' };
-            case 'published': return { color: 'green', icon: <CheckCircleFilled />, text: '发布成功' };
-            case 'submitted': return { color: 'cyan', icon: <ClockCircleFilled />, text: '平台审核中' };
-            case 'failed': return { color: 'red', icon: <CloseCircleFilled />, text: '发布失败' };
-            case 'processing': return { color: 'blue', icon: <SyncOutlined spin />, text: '发布中' };
-            case 'cancelled': return { color: 'default', icon: <CloseCircleFilled />, text: '已取消' };
-            case 'queued': return { color: 'gold', icon: <ClockCircleFilled />, text: '队列中' };
-            default: return { color: 'default', icon: <ClockCircleFilled />, text: '待发布' };
+            case 'manual_pending': return { color: 'orange', icon: <ClockCircleFilled aria-hidden />, text: '待人工发布' };
+            case 'manual_done': return { color: 'green', icon: <CheckCircleFilled aria-hidden />, text: '已人工发布' };
+            case 'submitted_unconfirmed': return { color: 'cyan', icon: <ClockCircleFilled aria-hidden />, text: '已提交待平台确认' };
+            case 'published': return { color: 'green', icon: <CheckCircleFilled aria-hidden />, text: '发布成功' };
+            case 'submitted': return { color: 'cyan', icon: <ClockCircleFilled aria-hidden />, text: '平台审核中' };
+            case 'failed': return { color: 'red', icon: <CloseCircleFilled aria-hidden />, text: '发布失败' };
+            case 'processing': return { color: 'blue', icon: <SyncOutlined aria-hidden spin />, text: '发布中' };
+            case 'cancelled': return { color: 'default', icon: <CloseCircleFilled aria-hidden />, text: '已取消' };
+            case 'queued': return { color: 'gold', icon: <ClockCircleFilled aria-hidden />, text: '队列中' };
+            default: return { color: 'default', icon: <ClockCircleFilled aria-hidden />, text: '待发布' };
         }
     };
 
@@ -194,6 +194,7 @@ export const PublishTaskList = ({ filter, reloadKey = 0, onLoaded }: Props) => {
                 title="确认已手动发布"
                 okText="确认已发布"
                 cancelText="取消"
+                cancelButtonProps={{ className: 'cn-cjk-pair' }}
                 confirmLoading={confirming}
                 onOk={() => void submitManualDone()}
                 onCancel={() => setConfirmTask(null)}
@@ -271,7 +272,7 @@ export const PublishTaskList = ({ filter, reloadKey = 0, onLoaded }: Props) => {
                                         >
                                             处理办法
                                         </Button>
-                                        <Button size="small" icon={<RightOutlined rotate={isExpanded ? 90 : 0} />} type="text" />
+                                        <Button size="small" aria-label={isExpanded ? '收起失败原因' : '展开失败原因'} icon={<RightOutlined aria-hidden rotate={isExpanded ? 90 : 0} />} type="text" />
                                     </>
                                 )}
                                 {task.status === 'processing' && <Button size="small" loading>正在同步</Button>}
@@ -289,14 +290,14 @@ export const PublishTaskList = ({ filter, reloadKey = 0, onLoaded }: Props) => {
                                 >
                                     <div className="p-4 px-6 flex items-start gap-6">
                                         <div className="w-10 h-10 rounded-full bg-red-100 text-red-500 flex items-center justify-center flex-none">
-                                            <WarningFilled className="text-xl" />
+                                            <WarningFilled aria-hidden className="text-xl" />
                                         </div>
                                         <div className="flex-1">
                                             <h4 className="font-bold text-red-600 mb-1">失败原因：{displayFailureReason(task.error)}</h4>
                                             <p className="text-sm text-zinc-600 mb-4">请根据真实错误处理。账号授权或平台通道未恢复前，重复重试不会被标记为成功。</p>
 
                                             <div className="flex gap-3 mb-4">
-                                                <Button icon={<ReloadOutlined />} onClick={() => runAction(task, 'retry')}>重试</Button>
+                                                <Button icon={<ReloadOutlined aria-hidden />} onClick={() => runAction(task, 'retry')}>重试</Button>
                                                 <Button type="text" danger onClick={() => runAction(task, 'cancel')}>取消任务</Button>
                                             </div>
 

@@ -49,7 +49,7 @@ export const MainWorkspace = ({
                         <Button
                             type="primary"
                             size="large"
-                            icon={<ExperimentOutlined />}
+                            icon={<ExperimentOutlined aria-hidden />}
                             loading={isGenerating}
                             onClick={onGenerate}
                             className="rounded-full px-8 bg-gradient-to-r from-indigo-600 to-purple-600 border-none shadow-lg shadow-indigo-500/25 hover:shadow-indigo-500/40 hover:-translate-y-0.5 transition-all"
@@ -111,7 +111,7 @@ export const MainWorkspace = ({
                     {/* Smart Hint Overlay (Example) */}
                     {!content && (
                         <div className="absolute top-1/3 left-0 right-0 text-center pointer-events-none opacity-40">
-                            <RocketOutlined className="text-4xl text-indigo-300 mb-4" />
+                            <RocketOutlined aria-hidden className="text-4xl text-indigo-300 mb-4" />
                             <h3 className="text-xl font-bold text-zinc-400">开始您的创作之旅</h3>
                             <p className="text-zinc-300 mt-2">点击顶部“生成内容包”或直接在此输入</p>
                         </div>
@@ -151,8 +151,8 @@ export const MainWorkspace = ({
                         已自动保存
                     </span>
                     <div className="h-3 w-px bg-zinc-200 mx-2" />
-                    <Button type="text" size="small" icon={<EyeOutlined />}>预览</Button>
-                    <Button type="text" size="small" icon={<SaveOutlined />}>存草稿</Button>
+                    <Button type="text" size="small" icon={<EyeOutlined aria-hidden />}>预览</Button>
+                    <Button type="text" size="small" icon={<SaveOutlined aria-hidden />}>存草稿</Button>
                 </div>
             </div>
         </div>

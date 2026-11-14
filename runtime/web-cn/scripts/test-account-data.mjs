@@ -110,6 +110,50 @@ await check('文件名按日期生成', () => {
   assert.equal(exportFilename(new Date(2026, 0, 5)), '分发侠-我的数据-20260105.json');
 });
 
+await check('导出：断网立即提示「导出失败，请稍后重试」', async () => {
+  const started = Date.now();
+  const err = await fetchMyDataExport(async () => { throw new TypeError('Failed to fetch'); }).catch((e) => e);
+  assert.ok(Date.now() - started < 1000);
+  assert.ok(err instanceof AccountError);
+  assert.equal(err.status, 0);
+  assert.equal(err.message, '导出失败，请稍后重试');
+});
+
+await check('导出：接口一直不返回时在时限内结束，按钮侧可以离开等待，并提示「导出失败，请稍后重试」', async () => {
+  const started = Date.now();
+  let sawSignal = false;
+  const err = await fetchMyDataExport((_url, init) => {
+    sawSignal = init?.signal instanceof AbortSignal;
+    return new Promise(() => { /* 连接挂起，不监听 abort，模拟 API 无响应 */ });
+  }, undefined, 40).catch((e) => e);
+  assert.ok(sawSignal);
+  assert.ok(Date.now() - started < 1000);
+  assert.ok(err instanceof AccountError);
+  assert.equal(err.status, 0);
+  assert.equal(err.message, '导出失败，请稍后重试');
+});
+
+await check('导出：超时会中止请求；4xx 中文原因不被这句覆盖', async () => {
+  let aborted = false;
+  const hung = await fetchMyDataExport((_url, init) => new Promise((_resolve, reject) => {
+    init.signal.addEventListener('abort', () => {
+      aborted = true;
+      reject(new DOMException('The operation was aborted', 'AbortError'));
+    });
+  }), undefined, 30).catch((e) => e);
+  assert.equal(aborted, true);
+  assert.equal(hung.message, '导出失败，请稍后重试');
+
+  const bad = await fetchMyDataExport(async () => json(400, { message: '请求不完整，请检查后重试' })).catch((e) => e);
+  assert.equal(bad.status, 400);
+  assert.match(bad.message, /请求不完整/);
+});
+
+await check('导出成功不会被超时打断', async () => {
+  const { text } = await fetchMyDataExport(async () => json(200, { success: true, data: { account: { email: 'a@example.com' } } }), new Date(2026, 0, 2), 50);
+  assert.equal(JSON.parse(text).account.email, 'a@example.com');
+});
+
 await check('设置页：有「账号与数据」页签，注销必须勾选确认，且不再用定时器假装保存', () => {
   const src = fs.readFileSync(path.join(ROOT, 'src/app/(main)/settings/page.tsx'), 'utf8');
   assert.match(src, /key: 'data'/);

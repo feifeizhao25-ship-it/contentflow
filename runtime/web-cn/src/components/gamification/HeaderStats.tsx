@@ -49,7 +49,7 @@ export const HeaderStats = () => {
                         animate={{ scale: [1, 1.2, 1] }}
                         transition={{ repeat: Infinity, duration: 2, repeatDelay: 3 }}
                     >
-                        <FireFilled className="text-orange-500 text-sm" />
+                        <FireFilled aria-hidden className="text-orange-500 text-sm" />
                     </motion.div>
                     <span className="text-xs font-black text-zinc-700">{streak}</span>
                 </div>

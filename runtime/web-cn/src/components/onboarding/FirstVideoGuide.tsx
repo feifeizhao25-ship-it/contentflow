@@ -119,7 +119,7 @@ export default function FirstVideoGuide({ onVideoGenerated, isGenerating }: Firs
           />
         ) : (
           <div className="text-center text-white/60">
-            <RocketOutlined className="text-4xl mb-2" />
+            <RocketOutlined aria-hidden className="text-4xl mb-2" />
             <p>视频预览将在这里显示</p>
           </div>
         )}
@@ -147,12 +147,12 @@ export default function FirstVideoGuide({ onVideoGenerated, isGenerating }: Firs
           className="p-4 bg-green-50 dark:bg-green-900/20 rounded-xl border border-green-200 dark:border-green-800"
         >
           <div className="flex items-center gap-2 text-green-700 dark:text-green-400 mb-2">
-            <CheckCircleOutlined />
+            <CheckCircleOutlined aria-hidden />
             <span className="font-medium">真实视频片段生成成功</span>
           </div>
           <div className="flex items-center gap-4 text-sm text-gray-600 dark:text-gray-400">
             <span className="flex items-center gap-1">
-              <ClockCircleOutlined /> {generatedVideo.duration}
+              <ClockCircleOutlined aria-hidden /> {generatedVideo.duration}
             </span>
             <span>实际画质以服务返回文件为准</span>
           </div>
@@ -166,7 +166,7 @@ export default function FirstVideoGuide({ onVideoGenerated, isGenerating }: Firs
         loading={isCreating || isGenerating}
         disabled={isCreating}
         className="w-full h-12 rounded-xl font-medium bg-gradient-to-r from-purple-600 to-pink-600 border-none"
-        icon={<ThunderboltOutlined />}
+        icon={<ThunderboltOutlined aria-hidden />}
       >
         {isCreating ? '视频生成中...' : '🎬 生成首个视频片段'}
       </Button>
@@ -197,7 +197,7 @@ export default function FirstVideoGuide({ onVideoGenerated, isGenerating }: Firs
           className="flex gap-2"
         >
           <Button 
-            icon={<DownloadOutlined />} 
+            icon={<DownloadOutlined aria-hidden />} 
             className="flex-1 h-10"
             href={generatedVideo.url}
             target="_blank"
@@ -207,7 +207,7 @@ export default function FirstVideoGuide({ onVideoGenerated, isGenerating }: Firs
           </Button>
           <Button 
             type="primary"
-            icon={<PlayCircleOutlined />} 
+            icon={<PlayCircleOutlined aria-hidden />} 
             className="flex-1 h-10"
             onClick={() => window.open(generatedVideo.url, '_blank', 'noopener,noreferrer')}
           >

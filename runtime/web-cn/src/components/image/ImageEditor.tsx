@@ -319,8 +319,9 @@ export function ImageEditor({ imageUrl, onSave, onClose, visible = true }: Image
                         <div className="flex items-center gap-2">
                             <Tooltip title="撤销">
                                 <Button 
-                                    type="text" 
-                                    icon={<UndoOutlined />} 
+                                    type="text"
+                                    aria-label="撤销"
+                                    icon={<UndoOutlined aria-hidden />} 
                                     onClick={handleUndo}
                                     disabled={historyIndex === 0}
                                     className="!text-white hover:!bg-white/10"
@@ -328,8 +329,9 @@ export function ImageEditor({ imageUrl, onSave, onClose, visible = true }: Image
                             </Tooltip>
                             <Tooltip title="重做">
                                 <Button 
-                                    type="text" 
-                                    icon={<RedoOutlined />} 
+                                    type="text"
+                                    aria-label="重做"
+                                    icon={<RedoOutlined aria-hidden />} 
                                     onClick={handleRedo}
                                     disabled={historyIndex === history.length - 1}
                                     className="!text-white hover:!bg-white/10"
@@ -338,8 +340,9 @@ export function ImageEditor({ imageUrl, onSave, onClose, visible = true }: Image
                             <Divider type="vertical" className="!border-zinc-600" />
                             <Tooltip title="放大">
                                 <Button 
-                                    type="text" 
-                                    icon={<ZoomInOutlined />} 
+                                    type="text"
+                                    aria-label="放大"
+                                    icon={<ZoomInOutlined aria-hidden />} 
                                     onClick={() => setZoom(z => Math.min(z + 0.25, 3))}
                                     className="!text-white hover:!bg-white/10"
                                 />
@@ -349,8 +352,9 @@ export function ImageEditor({ imageUrl, onSave, onClose, visible = true }: Image
                             </span>
                             <Tooltip title="缩小">
                                 <Button 
-                                    type="text" 
-                                    icon={<ZoomOutOutlined />} 
+                                    type="text"
+                                    aria-label="缩小"
+                                    icon={<ZoomOutOutlined aria-hidden />} 
                                     onClick={() => setZoom(z => Math.max(z - 0.25, 0.25))}
                                     className="!text-white hover:!bg-white/10"
                                 />
@@ -360,32 +364,36 @@ export function ImageEditor({ imageUrl, onSave, onClose, visible = true }: Image
                         <div className="flex items-center gap-2">
                             <Tooltip title="左旋转">
                                 <Button 
-                                    type="text" 
-                                    icon={<RotateLeftOutlined />} 
+                                    type="text"
+                                    aria-label="左旋转"
+                                    icon={<RotateLeftOutlined aria-hidden />} 
                                     onClick={() => handleOperationChange('rotation', operations.rotation - 90)}
                                     className="!text-white hover:!bg-white/10"
                                 />
                             </Tooltip>
                             <Tooltip title="右旋转">
                                 <Button 
-                                    type="text" 
-                                    icon={<RotateRightOutlined />} 
+                                    type="text"
+                                    aria-label="右旋转"
+                                    icon={<RotateRightOutlined aria-hidden />} 
                                     onClick={() => handleOperationChange('rotation', operations.rotation + 90)}
                                     className="!text-white hover:!bg-white/10"
                                 />
                             </Tooltip>
                             <Tooltip title="水平翻转">
                                 <Button 
-                                    type="text" 
-                                    icon={<ColumnWidthOutlined />} 
+                                    type="text"
+                                    aria-label="水平翻转"
+                                    icon={<ColumnWidthOutlined aria-hidden />} 
                                     onClick={() => handleOperationChange('scaleX', -operations.scaleX)}
                                     className="!text-white hover:!bg-white/10"
                                 />
                             </Tooltip>
                             <Tooltip title="垂直翻转">
                                 <Button 
-                                    type="text" 
-                                    icon={<ColumnHeightOutlined />} 
+                                    type="text"
+                                    aria-label="垂直翻转"
+                                    icon={<ColumnHeightOutlined aria-hidden />} 
                                     onClick={() => handleOperationChange('scaleY', -operations.scaleY)}
                                     className="!text-white hover:!bg-white/10"
                                 />
@@ -393,8 +401,9 @@ export function ImageEditor({ imageUrl, onSave, onClose, visible = true }: Image
                             <Divider type="vertical" className="!border-zinc-600" />
                             <Tooltip title="重置">
                                 <Button 
-                                    type="text" 
-                                    icon={<ClearOutlined />} 
+                                    type="text"
+                                    aria-label="重置"
+                                    icon={<ClearOutlined aria-hidden />} 
                                     onClick={handleReset}
                                     className="!text-white hover:!bg-white/10"
                                 />
@@ -531,7 +540,7 @@ export function ImageEditor({ imageUrl, onSave, onClose, visible = true }: Image
                                     exit={{ opacity: 0, x: -20 }}
                                     className="text-center text-zinc-500 py-8"
                                 >
-                                    <ScissorOutlined className="text-4xl mb-4 text-zinc-300" />
+                                    <ScissorOutlined aria-hidden className="text-4xl mb-4 text-zinc-300" />
                                     <p>裁剪功能开发中...</p>
                                 </motion.div>
                             )}
@@ -541,14 +550,14 @@ export function ImageEditor({ imageUrl, onSave, onClose, visible = true }: Image
                     {/* 底部按钮 */}
                     <div className="p-4 border-t border-zinc-200 flex gap-2">
                         <Button 
-                            icon={<CloseOutlined />}
+                            icon={<CloseOutlined aria-hidden />}
                             onClick={onClose}
                             className="flex-1"
                         >
                             取消
                         </Button>
                         <Button 
-                            icon={<DownloadOutlined />}
+                            icon={<DownloadOutlined aria-hidden />}
                             onClick={handleDownload}
                             className="flex-1"
                         >
@@ -556,7 +565,7 @@ export function ImageEditor({ imageUrl, onSave, onClose, visible = true }: Image
                         </Button>
                         <Button 
                             type="primary"
-                            icon={<SaveOutlined />}
+                            icon={<SaveOutlined aria-hidden />}
                             onClick={handleSave}
                             loading={isSaving}
                             className="flex-1 !bg-indigo-600"
@@ -611,7 +620,7 @@ export function BatchDownload({ images }: { images: Array<{ url: string; name: s
             </p>
             <Button
                 type="primary"
-                icon={<DownloadOutlined />}
+                icon={<DownloadOutlined aria-hidden />}
                 onClick={handleBatchDownload}
                 loading={downloading}
                 className="!bg-indigo-600"

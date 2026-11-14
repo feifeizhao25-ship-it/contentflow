@@ -25,18 +25,18 @@ interface ContentPackPanelProps {
 export const ContentPackPanel = ({ activeSection, onSectionChange }: ContentPackPanelProps) => {
 
     const menuItems = [
-        { id: 'title', label: '标题', count: 10, icon: <FileTextOutlined />, status: 'completed' },
-        { id: 'script', label: '脚本/正文', count: 1, icon: <FileTextOutlined />, status: 'completed' },
-        { id: 'cover', label: '视觉封面', count: 0, icon: <PictureOutlined />, status: 'pending' },
-        { id: 'adapter', label: '平台适配', count: '0/3', icon: <GlobalOutlined />, status: 'pending' },
-        { id: 'tags', label: '标签话题', count: '缺2', icon: <TagsOutlined />, status: 'warning' },
-        { id: 'schedule', label: '排期发布', count: '未设', icon: <CalendarOutlined />, status: 'pending' },
+        { id: 'title', label: '标题', count: 10, icon: <FileTextOutlined aria-hidden />, status: 'completed' },
+        { id: 'script', label: '脚本/正文', count: 1, icon: <FileTextOutlined aria-hidden />, status: 'completed' },
+        { id: 'cover', label: '视觉封面', count: 0, icon: <PictureOutlined aria-hidden />, status: 'pending' },
+        { id: 'adapter', label: '平台适配', count: '0/3', icon: <GlobalOutlined aria-hidden />, status: 'pending' },
+        { id: 'tags', label: '标签话题', count: '缺2', icon: <TagsOutlined aria-hidden />, status: 'warning' },
+        { id: 'schedule', label: '排期发布', count: '未设', icon: <CalendarOutlined aria-hidden />, status: 'pending' },
     ];
 
     const renderStatusIcon = (status: string) => {
         switch (status) {
-            case 'completed': return <CheckCircleFilled className="text-green-500" />;
-            case 'warning': return <ClockCircleFilled className="text-orange-400" />;
+            case 'completed': return <CheckCircleFilled aria-hidden className="text-green-500" />;
+            case 'warning': return <ClockCircleFilled aria-hidden className="text-orange-400" />;
             default: return <div className="w-3 h-3 rounded-full border border-zinc-300" />;
         }
     };
@@ -56,7 +56,7 @@ export const ContentPackPanel = ({ activeSection, onSectionChange }: ContentPack
                     </div>
                     <Progress percent={80} showInfo={false} strokeColor="#6366f1" size="small" className="!m-0" />
                     <div className="text-[10px] text-zinc-400 mt-2 flex items-center gap-1">
-                        <CheckCircleFilled className="text-green-500" /> 已自动保存 3秒前
+                        <CheckCircleFilled aria-hidden className="text-green-500" /> 已自动保存 3秒前
                     </div>
                 </div>
             </div>
@@ -101,12 +101,12 @@ export const ContentPackPanel = ({ activeSection, onSectionChange }: ContentPack
 
             {/* Footer Actions */}
             <div className="p-4 border-t border-zinc-100 bg-zinc-50/50 space-y-2">
-                <Button block icon={<PlusOutlined />} className="text-left justify-start border-dashed border-zinc-300 hover:border-indigo-500 hover:text-indigo-600">
+                <Button block icon={<PlusOutlined aria-hidden />} className="text-left justify-start border-dashed border-zinc-300 hover:border-indigo-500 hover:text-indigo-600">
                     新增平台版本
                 </Button>
                 <div className="grid grid-cols-2 gap-2">
-                    <Button block size="small" icon={<ExportOutlined />} className="text-xs text-zinc-500">导出</Button>
-                    <Button block size="small" icon={<HistoryOutlined />} className="text-xs text-zinc-500">历史</Button>
+                    <Button block size="small" icon={<ExportOutlined aria-hidden />} className="text-xs text-zinc-500">导出</Button>
+                    <Button block size="small" icon={<HistoryOutlined aria-hidden />} className="text-xs text-zinc-500">历史</Button>
                 </div>
             </div>
         </div>

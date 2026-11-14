@@ -28,25 +28,25 @@ const steps = [
     {
         title: '欢迎使用分发侠',
         description: '您的AI创作助手',
-        icon: <SmileOutlined className="text-4xl text-indigo-500" />,
+        icon: <SmileOutlined aria-hidden className="text-4xl text-indigo-500" />,
         content: '让AI帮您创作高质量内容，一键分发到全平台',
     },
     {
         title: 'AI 智能创作',
         description: '输入主题自动生成',
-        icon: <ThunderboltOutlined className="text-4xl text-amber-500" />,
+        icon: <ThunderboltOutlined aria-hidden className="text-4xl text-amber-500" />,
         content: '支持多种风格：专业、种草、幽默、情感...',
     },
     {
         title: '一键分发',
         description: '多平台同步发布',
-        icon: <RocketOutlined className="text-4xl text-purple-500" />,
+        icon: <RocketOutlined aria-hidden className="text-4xl text-purple-500" />,
         content: '支持抖音、小红书、微信公众号、微博等平台',
     },
     {
         title: '每日签到',
         description: '领积分兑好礼',
-        icon: <GiftOutlined className="text-4xl text-orange-500" />,
+        icon: <GiftOutlined aria-hidden className="text-4xl text-orange-500" />,
         content: '连续签到获得额外积分，解锁更多权益',
     },
 ];
@@ -110,7 +110,7 @@ export default function OnboardingGuide({ onComplete }: OnboardingGuideProps) {
         
         message.success({
             content: '🎉 新手礼包已发放！+100 积分',
-            icon: <GiftOutlined style={{ color: '#f59e0b' }} />,
+            icon: <GiftOutlined aria-hidden style={{ color: '#f59e0b' }} />,
             duration: 4,
         });
         
@@ -217,12 +217,12 @@ export default function OnboardingGuide({ onComplete }: OnboardingGuideProps) {
                     {currentStep === 1 && (
                         <div className="flex items-center gap-4">
                             <div className="px-4 py-2 bg-white dark:bg-zinc-700 rounded-lg shadow-sm">
-                                <EditOutlined className="text-indigo-500 mr-2" />
+                                <EditOutlined aria-hidden className="text-indigo-500 mr-2" />
                                 输入创作主题
                             </div>
-                            <ArrowRightOutlined className="text-zinc-400" />
+                            <ArrowRightOutlined aria-hidden className="text-zinc-400" />
                             <div className="px-4 py-2 bg-white dark:bg-zinc-700 rounded-lg shadow-sm">
-                                <ThunderboltOutlined className="text-amber-500 mr-2" />
+                                <ThunderboltOutlined aria-hidden className="text-amber-500 mr-2" />
                                 AI 自动生成
                             </div>
                         </div>
@@ -245,12 +245,12 @@ export default function OnboardingGuide({ onComplete }: OnboardingGuideProps) {
                     {currentStep === 3 && (
                         <div className="flex items-center gap-4">
                             <div className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-zinc-700 rounded-lg">
-                                <CheckCircleOutlined className="text-green-500" />
+                                <CheckCircleOutlined aria-hidden className="text-green-500" />
                                 每日签到
                             </div>
-                            <ArrowRightOutlined className="text-zinc-400" />
+                            <ArrowRightOutlined aria-hidden className="text-zinc-400" />
                             <div className="flex items-center gap-2 px-4 py-2 bg-amber-100 dark:bg-amber-900/30 rounded-lg">
-                                <GiftOutlined className="text-amber-500" />
+                                <GiftOutlined aria-hidden className="text-amber-500" />
                                 +100 积分
                             </div>
                         </div>
@@ -279,7 +279,7 @@ export default function OnboardingGuide({ onComplete }: OnboardingGuideProps) {
                             "bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500",
                             "border-none shadow-lg shadow-indigo-500/20"
                         )}
-                        icon={currentStep === steps.length - 1 ? <CheckCircleOutlined /> : undefined}
+                        icon={currentStep === steps.length - 1 ? <CheckCircleOutlined aria-hidden /> : undefined}
                     >
                         {currentStep === steps.length - 1 ? '开始使用' : '下一步'}
                     </Button>
@@ -298,7 +298,7 @@ export default function OnboardingGuide({ onComplete }: OnboardingGuideProps) {
                         <div className="flex items-center justify-between">
                             <div className="flex items-center gap-3">
                                 <div className="w-10 h-10 rounded-full bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center">
-                                    <GiftOutlined className="text-lg text-amber-500" />
+                                    <GiftOutlined aria-hidden className="text-lg text-amber-500" />
                                 </div>
                                 <div>
                                     <p className="text-sm font-medium text-zinc-900 dark:text-white">

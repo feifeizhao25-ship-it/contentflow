@@ -67,26 +67,26 @@ export const TiptapEditor = ({ content, onChange }: TiptapEditorProps) => {
                     label="加粗"
                     active={editor.isActive('bold')}
                     onClick={() => editor.chain().focus().toggleBold().run()}
-                    icon={<BoldOutlined />}
+                    icon={<BoldOutlined aria-hidden />}
                 />
                 <ToolbarButton
                     label="斜体"
                     active={editor.isActive('italic')}
                     onClick={() => editor.chain().focus().toggleItalic().run()}
-                    icon={<ItalicOutlined />}
+                    icon={<ItalicOutlined aria-hidden />}
                 />
                 <div className="w-px h-4 bg-white/10 mx-1" />
                 <ToolbarButton
                     label="无序列表"
                     active={editor.isActive('bulletList')}
                     onClick={() => editor.chain().focus().toggleBulletList().run()}
-                    icon={<UnorderedListOutlined />}
+                    icon={<UnorderedListOutlined aria-hidden />}
                 />
                 <ToolbarButton
                     label="有序列表"
                     active={editor.isActive('orderedList')}
                     onClick={() => editor.chain().focus().toggleOrderedList().run()}
-                    icon={<OrderedListOutlined />}
+                    icon={<OrderedListOutlined aria-hidden />}
                 />
             </div>
 

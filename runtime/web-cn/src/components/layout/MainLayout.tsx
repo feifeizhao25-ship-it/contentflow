@@ -85,12 +85,12 @@ export default function MainLayout({ children }: MainLayoutProps) {
     }, []);
 
     const navIcon: Record<string, React.ReactNode> = {
-        '/studio': <EditOutlined />,
-        '/contents': <FileTextOutlined />,
-        '/publish': <SendOutlined />,
-        '/analytics': <BarChartOutlined />,
-        '/accounts': <UserOutlined />,
-        '/settings': <SettingOutlined />,
+        '/studio': <EditOutlined aria-hidden />,
+        '/contents': <FileTextOutlined aria-hidden />,
+        '/publish': <SendOutlined aria-hidden />,
+        '/analytics': <BarChartOutlined aria-hidden />,
+        '/accounts': <UserOutlined aria-hidden />,
+        '/settings': <SettingOutlined aria-hidden />,
     };
     // 只有六项。热点没有授权数据源，社区页只是跳转，都不放进导航，避免空卖点。
     const menuItems = PRIMARY_NAV.map((item) => ({
@@ -100,13 +100,13 @@ export default function MainLayout({ children }: MainLayoutProps) {
     }));
 
     const userMenuItems = [
-        { key: 'profile', icon: <UserOutlined />, label: '个人资料' },
-        { key: 'settings', icon: <SettingOutlined />, label: '账号设置' },
-        { key: 'pricing', icon: <CreditCardOutlined />, label: <Link href="/pricing" className="text-inherit">升级会员</Link> },
+        { key: 'profile', icon: <UserOutlined aria-hidden />, label: '个人资料' },
+        { key: 'settings', icon: <SettingOutlined aria-hidden />, label: '账号设置' },
+        { key: 'pricing', icon: <CreditCardOutlined aria-hidden />, label: <Link href="/pricing" className="text-inherit">升级会员</Link> },
         { type: 'divider' as const },
         {
             key: 'logout',
-            icon: <LogoutOutlined />,
+            icon: <LogoutOutlined aria-hidden />,
             label: '退出登录',
             danger: true,
             onClick: async () => {
@@ -234,7 +234,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
                             )}
                         >
                             <div className="flex items-center gap-2 mb-2">
-                                <CrownOutlined className={clsx("text-sm", isDarkMode ? "text-amber-400" : "text-amber-600")} />
+                                <CrownOutlined aria-hidden className={clsx("text-sm", isDarkMode ? "text-amber-400" : "text-amber-600")} />
                                 <span className={clsx(
                                     "text-sm font-bold",
                                     isDarkMode ? "text-amber-400" : "text-amber-600"
@@ -282,12 +282,12 @@ export default function MainLayout({ children }: MainLayoutProps) {
                                     : "hover:bg-zinc-100 text-zinc-500 hover:text-zinc-900"
                             )}
                         >
-                            {isMobile || sidebarCollapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
+                            {isMobile || sidebarCollapsed ? <MenuUnfoldOutlined aria-hidden /> : <MenuFoldOutlined aria-hidden />}
                         </button>
 
                         {/* 搜索框 */}
                         <div className="relative group hidden md:block w-48">
-                            <SearchOutlined className={clsx(
+                            <SearchOutlined aria-hidden className={clsx(
                                 "absolute left-3 top-1/2 -translate-y-1/2",
                                 isDarkMode ? "text-zinc-500" : "text-slate-400"
                             )} />
@@ -308,6 +308,8 @@ export default function MainLayout({ children }: MainLayoutProps) {
                     <div className="flex items-center gap-3">
                         {/* 主题切换 */}
                         <motion.button
+                            type="button"
+                            aria-label={isDark ? '切换到浅色外观' : '切换到深色外观'}
                             whileHover={{ scale: 1.05 }}
                             whileTap={{ scale: 0.95 }}
                             onClick={toggleTheme}
@@ -318,7 +320,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
                                     : "bg-indigo-50 text-indigo-600 hover:bg-indigo-100"
                             )}
                         >
-                            {isDark ? <SunOutlined /> : <MoonOutlined />}
+                            {isDark ? <SunOutlined aria-hidden /> : <MoonOutlined aria-hidden />}
                         </motion.button>
 
                         {/* 签到、积分、通知铃铛已移除：积分不再作为权益展示（「积分中心」只是跳到定价页），
@@ -326,6 +328,8 @@ export default function MainLayout({ children }: MainLayoutProps) {
 
                         {/* 新建按钮 */}
                         <motion.button
+                            type="button"
+                            aria-label="新建"
                             whileHover={{ scale: 1.05 }}
                             whileTap={{ scale: 0.95 }}
                             onClick={() => router.push('/ai-create')}
@@ -334,13 +338,15 @@ export default function MainLayout({ children }: MainLayoutProps) {
                                 "bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500"
                             )}
                         >
-                            <PlusOutlined />
+                            <PlusOutlined aria-hidden />
                             <span className="hidden sm:inline">新建</span>
                         </motion.button>
 
                         {/* 用户菜单 */}
                         <Dropdown menu={{ items: userMenuItems }} placement="bottomRight" trigger={['click']}>
                             <motion.button
+                                type="button"
+                                aria-label={user?.name ? `账户菜单，${user.name}` : '账户菜单'}
                                 whileHover={{ scale: 1.02 }}
                                 className="flex items-center gap-2 group cursor-pointer ml-2"
                             >
@@ -354,7 +360,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
                                 </div>
                                 <Avatar
                                     src={user?.avatar_url}
-                                    icon={<UserOutlined />}
+                                    icon={<UserOutlined aria-hidden />}
                                     className={clsx(
                                         "border-2",
                                         isDarkMode 

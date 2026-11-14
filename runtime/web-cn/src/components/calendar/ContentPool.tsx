@@ -35,7 +35,7 @@ export const ContentPool = () => {
             {/* Header / Filter */}
             <div className="p-4 border-b border-zinc-100 space-y-3">
                 <Input
-                    prefix={<SearchOutlined className="text-zinc-400" />}
+                    prefix={<SearchOutlined aria-hidden className="text-zinc-400" />}
                     placeholder="搜索内容..."
                     className="rounded-full bg-zinc-50 border-zinc-200"
                 />
@@ -71,7 +71,7 @@ export const ContentPool = () => {
                             <h4 className="font-bold text-sm text-zinc-800 line-clamp-2 leading-relaxed">
                                 {item.title}
                             </h4>
-                            <HolderOutlined className="text-zinc-300" />
+                            <HolderOutlined aria-hidden className="text-zinc-300" />
                         </div>
 
                         <div className="flex items-center gap-2 mb-3">
@@ -93,8 +93,8 @@ export const ContentPool = () => {
                             </div>
 
                             <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                <Button size="small" type="text" icon={<EyeOutlined />} className="text-zinc-400" />
-                                <Button size="small" type="text" icon={<PlusOutlined />} className="text-indigo-600 bg-indigo-50" />
+                                <Button size="small" type="text" aria-label="预览" icon={<EyeOutlined aria-hidden />} className="text-zinc-400" />
+                                <Button size="small" type="text" aria-label="加入排期" icon={<PlusOutlined aria-hidden />} className="text-indigo-600 bg-indigo-50" />
                             </div>
                         </div>
                     </div>

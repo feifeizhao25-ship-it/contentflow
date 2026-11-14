@@ -50,6 +50,7 @@ import { logout } from '@/lib/session';
 import Link from 'next/link';
 import { apiClient } from '@/lib/api-client';
 import { describePlan, type PlanView } from '@/lib/page-data';
+import { passwordVisibilityIcon } from '@/components/a11y/password-icon';
 import { PhoneBinding } from '@/components/auth/PhoneBinding';
 
 const { Option } = Select;
@@ -147,8 +148,10 @@ export default function SettingsPage() {
 
     // ── 账号与数据 ──
     const [exporting, setExporting] = useState(false);
+    const [exportError, setExportError] = useState<string | null>(null);
     const handleExport = async () => {
         setExporting(true);
+        setExportError(null);
         try {
             const { filename, text } = await fetchMyDataExport();
             const url = URL.createObjectURL(new Blob([text], { type: 'application/json;charset=utf-8' }));
@@ -159,7 +162,10 @@ export default function SettingsPage() {
             URL.revokeObjectURL(url);
             message.success('已导出，文件里不含密码与平台授权凭据');
         } catch (error) {
-            message.error(errorText(error, '导出失败，请稍后重试'));
+            // 提示条在部分环境下看不见（与登录页相同）。失败原因留在卡片上。
+            const text = errorText(error, '导出失败，请稍后重试');
+            setExportError(text);
+            try { message.error(text); } catch { /* 页面上的提示已经写明原因 */ }
         } finally {
             setExporting(false);
         }
@@ -194,27 +200,27 @@ export default function SettingsPage() {
     const tabItems = [
         {
             key: 'profile',
-            label: (<span><UserOutlined /> 个人资料</span>),
+            label: (<span><UserOutlined aria-hidden /> 个人资料</span>),
             children: (
                 <div style={{ maxWidth: 600, padding: '24px 0' }}>
                     <Card bordered={false}>
                         <div style={{ marginBottom: 24, textAlign: 'center' }}>
-                            <Avatar size={100} src={user?.avatar_url} icon={<UserOutlined />} />
+                            <Avatar size={100} src={user?.avatar_url} icon={<UserOutlined aria-hidden />} />
                             <div style={{ marginTop: 16 }}>
                                 <Button size="small" disabled title="头像上传暂未开放">更换头像</Button>
                             </div>
                         </div>
                         <Form form={profileForm} layout="vertical" onFinish={handleUpdateProfile}>
                             <Form.Item label="姓名" name="name" rules={[{ required: true }]}>
-                                <Input prefix={<UserOutlined />} />
+                                <Input prefix={<UserOutlined aria-hidden />} />
                             </Form.Item>
                             {user?.email ? (
                                 <Form.Item label="电子邮箱" name="email">
-                                    <Input prefix={<UserOutlined />} disabled />
+                                    <Input prefix={<UserOutlined aria-hidden />} disabled />
                                 </Form.Item>
                             ) : null}
                             <Form.Item>
-                                <Button type="primary" htmlType="submit" loading={loading} icon={<SaveOutlined />}>
+                                <Button type="primary" htmlType="submit" loading={loading} icon={<SaveOutlined aria-hidden />}>
                                     保存修改
                                 </Button>
                             </Form.Item>
@@ -233,12 +239,12 @@ export default function SettingsPage() {
         },
         {
             key: 'schedule',
-            label: (<span><CalendarOutlined /> 创作计划偏好</span>),
+            label: (<span><CalendarOutlined aria-hidden /> 创作计划偏好</span>),
             children: (
                 <div style={{ padding: '24px 0' }}>
                     <Card
                         bordered={false}
-                        title={<Space><ThunderboltOutlined style={{ color: '#4338ca' }} /> AI 内容连贯性与频率设置</Space>}
+                        title={<Space><ThunderboltOutlined aria-hidden style={{ color: '#4338ca' }} /> AI 内容连贯性与频率设置</Space>}
                     >
                         <Paragraph style={{ color: '#64748b', marginBottom: 24 }}>
                             设置不同社交媒体的内容分发逻辑，确保内容的前后呼应与节奏感。
@@ -307,7 +313,7 @@ export default function SettingsPage() {
 
                             <Divider />
                             <Form.Item>
-                                <Button type="primary" htmlType="submit" loading={loading} icon={<SaveOutlined />}>
+                                <Button type="primary" htmlType="submit" loading={loading} icon={<SaveOutlined aria-hidden />}>
                                     保存计划偏好
                                 </Button>
                             </Form.Item>
@@ -318,13 +324,13 @@ export default function SettingsPage() {
         },
         {
             key: 'tenant',
-            label: (<span><TeamOutlined /> 团队设置</span>),
+            label: (<span><TeamOutlined aria-hidden /> 团队设置</span>),
             children: (
                 <div style={{ maxWidth: 600, padding: '24px 0' }}>
                     <Card bordered={false}>
                         <Form form={tenantForm} layout="vertical">
                             <Form.Item label="团队名称" name="tenantName" rules={[{ required: true }]}>
-                                <Input prefix={<TeamOutlined />} disabled />
+                                <Input prefix={<TeamOutlined aria-hidden />} disabled />
                             </Form.Item>
                             <Form.Item label="当前版本" name="plan">
                                 <Select disabled>
@@ -342,7 +348,7 @@ export default function SettingsPage() {
         },
         {
             key: 'plan',
-            label: (<span><CreditCardOutlined /> 套餐与用量</span>),
+            label: (<span><CreditCardOutlined aria-hidden /> 套餐与用量</span>),
             children: (
                 <div style={{ padding: '24px 0' }}>
                     <Space direction="vertical" style={{ width: '100%' }} size="large">
@@ -383,7 +389,7 @@ export default function SettingsPage() {
         },
         {
             key: 'notifications',
-            label: (<span><BellOutlined /> 通知设置</span>),
+            label: (<span><BellOutlined aria-hidden /> 通知设置</span>),
             children: (
                 <div style={{ padding: '24px 0' }}>
                     <Card bordered={false}>
@@ -414,7 +420,7 @@ export default function SettingsPage() {
         },
         {
             key: 'data',
-            label: (<span><SafetyOutlined /> 账号与数据</span>),
+            label: (<span><SafetyOutlined aria-hidden /> 账号与数据</span>),
             children: (
                 <div style={{ maxWidth: 720, padding: '24px 0' }}>
                     <Card bordered={false} title="导出我的数据">
@@ -422,7 +428,8 @@ export default function SettingsPage() {
                             下载一份 JSON 文件：你的账号资料、个人数据，以及你名下工作区的内容、平台账号、素材与 AI 生成记录。
                             文件里不含密码和平台授权凭据。
                         </Paragraph>
-                        <Button icon={<DownloadOutlined />} loading={exporting} onClick={handleExport}>导出</Button>
+                        {exportError ? <Alert type="error" showIcon message={exportError} style={{ marginBottom: 12 }} /> : null}
+                        <Button icon={<DownloadOutlined aria-hidden />} loading={exporting} onClick={handleExport}>导出</Button>
                     </Card>
                     <Card bordered={false} title="注销账号" style={{ marginTop: 16 }}>
                         <Paragraph>注销后，以下内容会被<Text strong type="danger">永久删除，无法恢复</Text>：</Paragraph>
@@ -438,7 +445,7 @@ export default function SettingsPage() {
                         <Paragraph type="secondary">
                             如果工作区里还有其他成员，所有者需要先转让所有权或移除成员，才能注销。
                         </Paragraph>
-                        <Button danger icon={<DeleteOutlined />} onClick={openDelete}>注销账号</Button>
+                        <Button danger icon={<DeleteOutlined aria-hidden />} onClick={openDelete}>注销账号</Button>
                     </Card>
                     <Modal
                         title="确认注销账号"
@@ -453,6 +460,7 @@ export default function SettingsPage() {
                         <Space direction="vertical" style={{ width: '100%' }} size={12}>
                             <Alert type="warning" showIcon message="此操作不可撤销" />
                             <Input.Password
+                                iconRender={passwordVisibilityIcon}
                                 placeholder="请输入当前登录密码"
                                 value={deletePassword}
                                 onChange={(e) => setDeletePassword(e.target.value)}

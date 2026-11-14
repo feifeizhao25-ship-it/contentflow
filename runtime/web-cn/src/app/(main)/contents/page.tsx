@@ -115,6 +115,7 @@ function ContentsContent() {
             content: '提交后进入「待审核」，审核期间不能修改。审核通过后才能发布；被驳回可以按原因修改后再提交。',
             okText: '提交审核',
             cancelText: '取消',
+            cancelButtonProps: { className: 'cn-cjk-pair' },
             onOk: async () => {
                 try {
                     await apiClient.post(`/contents/${record.id}/submit`, {});
@@ -131,7 +132,9 @@ function ContentsContent() {
             title: `通过「${record.title || '未命名内容'}」？`,
             content: '通过后作者即可创建发布任务。',
             okText: '通过',
+            okButtonProps: { className: 'cn-cjk-pair' },
             cancelText: '取消',
+            cancelButtonProps: { className: 'cn-cjk-pair' },
             onOk: async () => {
                 try {
                     await apiClient.post(`/contents/${record.id}/review`, { action: 'approve' });
@@ -263,7 +266,7 @@ function ContentsContent() {
         const state = contentReviewState(record, policy);
         return (
             <>
-                {state.actions.includes('edit') && <Button type="link" size="small" icon={<EditOutlined />} onClick={() => openEditor('edit', record)}>编辑</Button>}
+                {state.actions.includes('edit') && <Button type="link" size="small" icon={<EditOutlined aria-hidden />} onClick={() => openEditor('edit', record)}>编辑</Button>}
                 {state.actions.includes('submit') && <Button type="link" size="small" onClick={() => submitForReview(record)}>提交审核</Button>}
                 {state.actions.includes('review') && (
                     <>
@@ -353,9 +356,9 @@ function ContentsContent() {
             fixed: 'right',
             render: (_, record: any) => (
                 <Space size={[4, 0]} wrap>
-                    <Button type="link" size="small" icon={<EyeOutlined />} onClick={() => setPreviewFor(record)}>预览</Button>
+                    <Button type="link" size="small" icon={<EyeOutlined aria-hidden />} onClick={() => setPreviewFor(record)}>预览</Button>
                     {renderReviewActions(record)}
-                    <Button type="link" size="small" danger icon={<DeleteOutlined />} onClick={() => handleDelete(record.id)}>删除</Button>
+                    <Button type="link" size="small" danger icon={<DeleteOutlined aria-hidden />} onClick={() => handleDelete(record.id)}>删除</Button>
                 </Space>
             ),
         },
@@ -372,6 +375,8 @@ function ContentsContent() {
         modal.confirm({
             title: '确认一键清理',
             content: `确定要删除选中的 ${selectedRowKeys.length} 条内容吗？此操作不可撤销。`,
+            okButtonProps: { className: 'cn-cjk-pair' },
+            cancelButtonProps: { className: 'cn-cjk-pair' },
             onOk: async () => {
                 for (const key of selectedRowKeys) {
                     await apiClient.delete(`/contents/${String(key)}`);
@@ -413,9 +418,9 @@ function ContentsContent() {
                 </div>
             </div>
             <div className="mt-3 flex flex-wrap gap-x-1 border-t border-zinc-100 pt-2">
-                <Button type="link" size="small" icon={<EyeOutlined />} onClick={() => setPreviewFor(record)}>预览</Button>
+                <Button type="link" size="small" icon={<EyeOutlined aria-hidden />} onClick={() => setPreviewFor(record)}>预览</Button>
                 {renderReviewActions(record)}
-                <Button type="link" size="small" danger icon={<DeleteOutlined />} onClick={() => handleDelete(record.id)}>删除</Button>
+                <Button type="link" size="small" danger icon={<DeleteOutlined aria-hidden />} onClick={() => handleDelete(record.id)}>删除</Button>
             </div>
         </div>
     );
@@ -427,7 +432,7 @@ function ContentsContent() {
                     <h1 className="m-0 whitespace-nowrap text-2xl font-bold">内容库管理</h1>
                     <Text type="secondary">管理您的所有 AI 创作与手动上传的内容</Text>
                 </div>
-                <Button type="primary" icon={<PlusOutlined />} size="large" className="self-start sm:self-auto" style={{ borderRadius: 8 }} onClick={() => openEditor('create')}>
+                <Button type="primary" icon={<PlusOutlined aria-hidden />} size="large" className="self-start sm:self-auto" style={{ borderRadius: 8 }} onClick={() => openEditor('create')}>
                     新建内容
                 </Button>
             </div>
@@ -442,7 +447,7 @@ function ContentsContent() {
                             onChange={(e) => setKeyword(e.target.value)}
                             onSearch={(value) => fetchContents(value)}
                             className="w-full sm:w-80"
-                            prefix={<SearchOutlined />}
+                            prefix={<SearchOutlined aria-hidden />}
                             size="large"
                         />
                         <Select
@@ -503,7 +508,8 @@ function ContentsContent() {
                 okText="保存"
                 cancelText="取消"
                 confirmLoading={saving}
-                okButtonProps={{ disabled: Boolean(editorError) }}
+                okButtonProps={{ disabled: Boolean(editorError), className: 'cn-cjk-pair' }}
+                cancelButtonProps={{ className: 'cn-cjk-pair' }}
                 onOk={() => void saveEditor()}
                 onCancel={() => setEditor(null)}
                 width={720}
@@ -529,8 +535,9 @@ function ContentsContent() {
                 open={rejectFor !== null}
                 title={`驳回：${rejectFor?.title || '未命名内容'}`}
                 okText="驳回"
-                okButtonProps={{ danger: true, disabled: Boolean(rejectError) }}
+                okButtonProps={{ danger: true, disabled: Boolean(rejectError), className: 'cn-cjk-pair' }}
                 cancelText="取消"
+                cancelButtonProps={{ className: 'cn-cjk-pair' }}
                 confirmLoading={rejecting}
                 onOk={() => void submitReject()}
                 onCancel={() => setRejectFor(null)}
@@ -547,6 +554,7 @@ function ContentsContent() {
                 okText="确认可以发布"
                 cancelText="取消"
                 okButtonProps={{ disabled: !selfChecked }}
+                cancelButtonProps={{ className: 'cn-cjk-pair' }}
                 confirmLoading={selfConfirming}
                 onOk={() => void submitSelfConfirm()}
                 onCancel={() => setSelfConfirmFor(null)}
@@ -574,6 +582,7 @@ function ContentsContent() {
                 title={`发布：${manualFor?.title || '未命名内容'}`}
                 okText="创建人工发布任务"
                 cancelText="取消"
+                cancelButtonProps={{ className: 'cn-cjk-pair' }}
                 confirmLoading={creatingManual}
                 okButtonProps={{
                     disabled: manualPlatforms.length === 0

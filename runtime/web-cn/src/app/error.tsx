@@ -35,7 +35,7 @@ export default function Error({
                     <Button
                         type="primary"
                         size="large"
-                        icon={<ReloadOutlined />}
+                        icon={<ReloadOutlined aria-hidden />}
                         onClick={reset}
                         className="!rounded-xl !bg-white !text-black hover:!bg-zinc-200 !font-bold !h-12 border-none"
                     >
@@ -44,7 +44,7 @@ export default function Error({
                     <Button
                         type="default"
                         size="large"
-                        icon={<HomeOutlined />}
+                        icon={<HomeOutlined aria-hidden />}
                         href="/dashboard"
                         className="!rounded-xl !text-zinc-100 hover:!text-white hover:!bg-white/10 !h-12 !border-white/20"
                     >

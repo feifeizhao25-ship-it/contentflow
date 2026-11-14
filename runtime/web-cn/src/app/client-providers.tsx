@@ -23,6 +23,7 @@ export function ClientProviders({ children }: Readonly<{ children: React.ReactNo
       <AntdRegistry>
         <ConfigProvider
           locale={zhCN}
+          button={{ autoInsertSpace: false }}
           theme={{
             algorithm: isDark ? theme.darkAlgorithm : theme.defaultAlgorithm,
             token: {

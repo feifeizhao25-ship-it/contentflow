@@ -31,7 +31,7 @@ export const StrategyPanel = () => {
                         {plans.map((p, i) => (
                             <div key={p.id} className="bg-zinc-50 p-3 rounded-xl border border-zinc-100 hover:border-indigo-300 hover:shadow-md transition-all group cursor-pointer relative overflow-hidden">
                                 <div className="absolute right-0 top-0 p-2 opacity-10 group-hover:opacity-20">
-                                    <RocketOutlined className="text-4xl text-indigo-500" />
+                                    <RocketOutlined aria-hidden className="text-4xl text-indigo-500" />
                                 </div>
                                 <div className="relative z-10">
                                     <div className="flex justify-between items-start mb-1">
@@ -57,7 +57,7 @@ export const StrategyPanel = () => {
                             <div className="flex-1">
                                 <div className="font-bold text-xs">抖音</div>
                                 <div className="text-xs text-green-600 font-mono flex items-center gap-1">
-                                    <ClockCircleOutlined /> 今日推荐 12:05 / 20:30
+                                    <ClockCircleOutlined aria-hidden /> 今日推荐 12:05 / 20:30
                                 </div>
                             </div>
                         </div>
@@ -67,7 +67,7 @@ export const StrategyPanel = () => {
                             <div className="flex-1">
                                 <div className="font-bold text-xs">小红书</div>
                                 <div className="text-xs text-green-600 font-mono flex items-center gap-1">
-                                    <ClockCircleOutlined /> 今日推荐 11:40 / 22:10
+                                    <ClockCircleOutlined aria-hidden /> 今日推荐 11:40 / 22:10
                                 </div>
                             </div>
                         </div>
@@ -81,7 +81,7 @@ export const StrategyPanel = () => {
                 {/* 会员方案入口：不使用 PRO 角标，链到定价页 */}
                 <div className="bg-gradient-to-r from-zinc-900 to-zinc-800 rounded-xl p-4 text-white relative overflow-hidden group">
                     <div className="absolute top-0 right-0 p-3">
-                        <CrownFilled className="text-5xl text-white/5 -rotate-12" />
+                        <CrownFilled aria-hidden className="text-5xl text-white/5 -rotate-12" />
                     </div>
                     <div className="relative z-10">
                         <div className="flex items-center gap-2 mb-2">

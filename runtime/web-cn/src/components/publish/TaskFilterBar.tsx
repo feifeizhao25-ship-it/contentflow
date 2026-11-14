@@ -93,12 +93,12 @@ export const TaskFilterBar = ({ value, onChange, failedCount, onBatchRetry, onEx
 
             <div className="grid grid-cols-2 gap-3 sm:flex sm:items-center sm:justify-end">
                 <Tooltip title={failedCount === 0 ? '当前列表没有失败的任务' : `重试当前列表中的 ${failedCount} 条失败任务`}>
-                    <Button className="w-full sm:w-auto" icon={<ReloadOutlined />} disabled={failedCount === 0} loading={retrying} onClick={onBatchRetry}>
+                    <Button className="w-full sm:w-auto" icon={<ReloadOutlined aria-hidden />} disabled={failedCount === 0} loading={retrying} onClick={onBatchRetry}>
                         批量重试{failedCount > 0 ? `（${failedCount}）` : ''}
                     </Button>
                 </Tooltip>
                 <Tooltip title="按当前筛选条件导出本工作区的发布记录（CSV，可用 Excel / WPS 打开）">
-                    <Button className="w-full sm:w-auto" icon={<ExportOutlined />} loading={exporting} onClick={onExport}>导出日志</Button>
+                    <Button className="w-full sm:w-auto" icon={<ExportOutlined aria-hidden />} loading={exporting} onClick={onExport}>导出日志</Button>
                 </Tooltip>
             </div>
         </div>

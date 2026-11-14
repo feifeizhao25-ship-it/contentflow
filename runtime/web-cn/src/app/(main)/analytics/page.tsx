@@ -71,7 +71,7 @@ export default function AnalyticsPage() {
             {state === 'error' && (
                 <div className="rounded-2xl border border-amber-200 bg-amber-50 p-5 text-amber-800">
                     <p>数据加载失败，请稍后重试。</p>
-                    <Button className="mt-3" onClick={() => void load()}>重试</Button>
+                    <Button className="mt-3 cn-cjk-pair" onClick={() => void load()}>重试</Button>
                 </div>
             )}
 

@@ -74,7 +74,7 @@ export default function CompletionGuide() {
         className="text-center"
       >
         <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-gradient-to-br from-amber-400 to-orange-500 mb-4">
-          <CrownOutlined className="text-4xl text-white" />
+          <CrownOutlined aria-hidden className="text-4xl text-white" />
         </div>
         <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
           🎉 恭喜完成新手引导！
@@ -87,7 +87,7 @@ export default function CompletionGuide() {
       {/* 你的选择 */}
       <div className="p-4 bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-indigo-900/20 dark:to-purple-900/20 rounded-xl border border-indigo-200 dark:border-indigo-800">
         <h3 className="font-medium text-indigo-600 dark:text-indigo-400 mb-3 flex items-center gap-2">
-          <StarOutlined /> 你的创作配置
+          <StarOutlined aria-hidden /> 你的创作配置
         </h3>
         
         <div className="space-y-2">
@@ -118,7 +118,7 @@ export default function CompletionGuide() {
       <Card className="border-2 border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20">
         <div className="flex items-start gap-4">
           <div className="flex-shrink-0 w-12 h-12 rounded-full bg-amber-100 dark:bg-amber-900/40 flex items-center justify-center">
-            <GiftOutlined className="text-2xl text-amber-600" />
+            <GiftOutlined aria-hidden className="text-2xl text-amber-600" />
           </div>
           <div className="flex-1">
             <h3 className="font-bold text-amber-700 dark:text-amber-400 mb-2">
@@ -126,15 +126,15 @@ export default function CompletionGuide() {
             </h3>
             <ul className="space-y-1 text-sm text-amber-600 dark:text-amber-300">
               <li className="flex items-center gap-2">
-                <ThunderboltOutlined className="text-green-500" />
+                <ThunderboltOutlined aria-hidden className="text-green-500" />
                 +150 积分（已到账）
               </li>
               <li className="flex items-center gap-2">
-                <StarOutlined className="text-yellow-500" />
+                <StarOutlined aria-hidden className="text-yellow-500" />
                 🌟 新星创作者徽章
               </li>
               <li className="flex items-center gap-2">
-                <BookOutlined className="text-blue-500" />
+                <BookOutlined aria-hidden className="text-blue-500" />
                 免费使用3天VIP会员
               </li>
             </ul>
@@ -148,7 +148,7 @@ export default function CompletionGuide() {
           type="primary"
           onClick={handleClaimRewards}
           className="w-full h-12 rounded-xl font-medium bg-gradient-to-r from-indigo-600 to-purple-600 border-none"
-          icon={<CrownOutlined />}
+          icon={<CrownOutlined aria-hidden />}
         >
           领取奖励并开始创作
         </Button>
@@ -163,7 +163,7 @@ export default function CompletionGuide() {
         <Button
           onClick={handleShare}
           className="w-full h-10 rounded-xl"
-          icon={<ShareAltOutlined />}
+          icon={<ShareAltOutlined aria-hidden />}
         >
           分享给好友（获得额外积分）
         </Button>

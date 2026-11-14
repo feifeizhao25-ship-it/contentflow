@@ -126,10 +126,10 @@ function TeamContent() {
     };
 
     const roleIcons: Record<string, React.ReactNode> = {
-        owner: <CrownOutlined />,
-        admin: <SafetyOutlined />,
-        editor: <EditOutlined />,
-        viewer: <UserOutlined />,
+        owner: <CrownOutlined aria-hidden />,
+        admin: <SafetyOutlined aria-hidden />,
+        editor: <EditOutlined aria-hidden />,
+        viewer: <UserOutlined aria-hidden />,
     };
 
     const rolePermissions = {
@@ -185,6 +185,8 @@ function TeamContent() {
             content: '确定要将该成员从团队中移除吗？',
             okText: '确认',
             cancelText: '取消',
+            okButtonProps: { className: 'cn-cjk-pair' },
+            cancelButtonProps: { className: 'cn-cjk-pair' },
             onOk: async () => {
                 try {
                     // 批2：后端已补 DELETE /api/v1/team/members/:userId（所有者/管理员，写团队动态）。
@@ -210,7 +212,7 @@ function TeamContent() {
             key: 'member',
             render: (record: TeamMember) => (
                 <Space>
-                    <Avatar icon={<UserOutlined />} src={record.avatar_url} />
+                    <Avatar icon={<UserOutlined aria-hidden />} src={record.avatar_url} />
                     <div>
                         <div style={{ fontWeight: 500 }}>{record.name || record.email?.split('@')[0] || '未命名成员'}</div>
                         {record.email && <div style={{ fontSize: 12, color: '#3f3f46' }}>{record.email}</div>}
@@ -274,7 +276,7 @@ function TeamContent() {
                     <div style={{ marginBottom: 16, display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 12 }}>
                         <Button
                             type="primary"
-                            icon={<UserAddOutlined />}
+                            icon={<UserAddOutlined aria-hidden />}
                             onClick={() => setInviteModalVisible(true)}
                         >
                             邀请成员
@@ -420,7 +422,7 @@ function TeamContent() {
                         ]}
                     >
                         <Input
-                            prefix={<MailOutlined />}
+                            prefix={<MailOutlined aria-hidden />}
                             placeholder="请输入同事的邮箱"
                             size="large"
                         />
@@ -435,19 +437,19 @@ function TeamContent() {
                         <Select size="large">
                             <Option value="admin">
                                 <Space>
-                                    <SafetyOutlined />
+                                    <SafetyOutlined aria-hidden />
                                     <span>管理员</span>
                                 </Space>
                             </Option>
                             <Option value="editor">
                                 <Space>
-                                    <EditOutlined />
+                                    <EditOutlined aria-hidden />
                                     <span>编辑</span>
                                 </Space>
                             </Option>
                             <Option value="viewer">
                                 <Space>
-                                    <UserOutlined />
+                                    <UserOutlined aria-hidden />
                                     <span>查看者</span>
                                 </Space>
                             </Option>
@@ -466,7 +468,7 @@ function TeamContent() {
 
                     <Form.Item>
                         <Space style={{ width: '100%', justifyContent: 'flex-end' }}>
-                            <Button onClick={() => setInviteModalVisible(false)}>
+                            <Button className="cn-cjk-pair" onClick={() => setInviteModalVisible(false)}>
                                 取消
                             </Button>
                             <Button type="primary" htmlType="submit">

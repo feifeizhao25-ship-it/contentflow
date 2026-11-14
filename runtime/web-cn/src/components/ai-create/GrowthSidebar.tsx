@@ -29,7 +29,7 @@ export const GrowthSidebar = () => {
                         <div className="bg-white p-3 rounded-xl border border-zinc-100 shadow-sm flex items-center justify-between group hover:border-indigo-200 transition-all cursor-pointer">
                             <div className="flex items-center gap-3">
                                 <div className="w-8 h-8 rounded-lg bg-red-50 text-red-500 flex items-center justify-center">
-                                    <RocketOutlined />
+                                    <RocketOutlined aria-hidden />
                                 </div>
                                 <div>
                                     <div className="font-bold text-sm text-zinc-800">适配小红书版</div>
@@ -42,7 +42,7 @@ export const GrowthSidebar = () => {
                         <div className="bg-white p-3 rounded-xl border border-zinc-100 shadow-sm flex items-center justify-between group hover:border-indigo-200 transition-all cursor-pointer">
                             <div className="flex items-center gap-3">
                                 <div className="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-500 flex items-center justify-center">
-                                    <PictureOutlined />
+                                    <PictureOutlined aria-hidden />
                                 </div>
                                 <div>
                                     <div className="font-bold text-sm text-zinc-800 flex items-center gap-1">
@@ -60,7 +60,7 @@ export const GrowthSidebar = () => {
                         <div className="bg-white p-3 rounded-xl border border-zinc-100 shadow-sm flex items-center justify-between group hover:border-indigo-200 transition-all cursor-pointer">
                             <div className="flex items-center gap-3">
                                 <div className="w-8 h-8 rounded-lg bg-green-50 text-green-500 flex items-center justify-center">
-                                    <CalendarOutlined />
+                                    <CalendarOutlined aria-hidden />
                                 </div>
                                 <div>
                                     <div className="font-bold text-sm text-zinc-800">一键排期</div>
@@ -100,7 +100,7 @@ export const GrowthSidebar = () => {
                             </div>
                         ))}
                         <div className="p-2 bg-zinc-50 text-center">
-                            <Button type="text" size="small" icon={<ThunderboltFilled />} className="text-xs text-indigo-500 w-full">再生成3个</Button>
+                            <Button type="text" size="small" icon={<ThunderboltFilled aria-hidden />} className="text-xs text-indigo-500 w-full">再生成3个</Button>
                         </div>
                     </div>
                 </div>
@@ -112,7 +112,7 @@ export const GrowthSidebar = () => {
                         {['抖音', '小红书'].map(p => (
                             <div key={p} className="flex items-center justify-between p-3 bg-white rounded-lg border border-zinc-100">
                                 <span className="text-xs font-medium text-zinc-600">{p}</span>
-                                <RightOutlined className="text-zinc-300 text-xs" />
+                                <RightOutlined aria-hidden className="text-zinc-300 text-xs" />
                             </div>
                         ))}
                     </div>
@@ -121,11 +121,11 @@ export const GrowthSidebar = () => {
                 {/* 会员方案入口，链到定价页 */}
                 <Link href="/pricing" className="mt-4 block p-4 rounded-xl bg-gradient-to-br from-indigo-600 to-violet-600 text-white shadow-lg shadow-indigo-500/20 relative overflow-hidden group cursor-pointer">
                     <div className="absolute top-0 right-0 p-2 opacity-10 group-hover:opacity-20 transition-opacity">
-                        <CrownFilled className="text-6xl -rotate-12" />
+                        <CrownFilled aria-hidden className="text-6xl -rotate-12" />
                     </div>
                     <div className="relative z-10">
                         <div className="flex items-center gap-2 mb-1">
-                            <CrownFilled className="text-yellow-300" />
+                            <CrownFilled aria-hidden className="text-yellow-300" />
                             <span className="font-bold text-sm">升级会员</span>
                         </div>
                         <p className="text-xs text-indigo-100 leading-relaxed mb-3">

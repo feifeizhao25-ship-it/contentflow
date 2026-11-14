@@ -67,10 +67,48 @@ export function exportFilename(now: Date = new Date()): string {
   return `分发侠-我的数据-${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}.json`;
 }
 
-/** 取服务端生成的导出（只含本人数据、不含任何凭据），返回可直接保存的文本。 */
-export async function fetchMyDataExport(fetchImpl: FetchLike = defaultFetch, now?: Date): Promise<{ filename: string; text: string }> {
-  const data = await call('GET', '/users/me/export', undefined, fetchImpl);
-  return { filename: exportFilename(now), text: JSON.stringify(data, null, 2) };
+/** 导出请求最长等待。接口挂起时不能让按钮一直转、页面像卡住。 */
+export const DATA_EXPORT_TIMEOUT_MS = 10_000;
+
+const EXPORT_FAILED = '导出失败，请稍后重试';
+
+/**
+ * 取服务端生成的导出（只含本人数据、不含任何凭据），返回可直接保存的文本。
+ * 断网或超过 DATA_EXPORT_TIMEOUT_MS 没有响应时，抛出「导出失败，请稍后重试」（与设置页兜底文案相同）。
+ * HTTP 错误（401 / 400 等）仍用 explainError 的原文，不改成这句。
+ */
+export async function fetchMyDataExport(
+  fetchImpl: FetchLike = defaultFetch,
+  now?: Date,
+  timeoutMs: number = DATA_EXPORT_TIMEOUT_MS,
+): Promise<{ filename: string; text: string }> {
+  const controller = new AbortController();
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const fetchWithSignal: FetchLike = (input, init) => fetchImpl(input, { ...init, signal: controller.signal });
+  try {
+    const data = await new Promise<any>((resolve, reject) => {
+      timer = setTimeout(() => {
+        controller.abort();
+        reject(new AccountError(EXPORT_FAILED, 0));
+      }, timeoutMs);
+      call('GET', '/users/me/export', undefined, fetchWithSignal).then(
+        (value) => {
+          if (timer) clearTimeout(timer);
+          resolve(value);
+        },
+        (error: unknown) => {
+          if (timer) clearTimeout(timer);
+          reject(error);
+        },
+      );
+    });
+    return { filename: exportFilename(now), text: JSON.stringify(data, null, 2) };
+  } catch (error) {
+    if (error instanceof AccountError && error.status !== 0) throw error;
+    throw new AccountError(EXPORT_FAILED, 0);
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
 }
 
 /** 注销账号。有口令的账号必须带口令；confirm 恒为 true（页面上用户已明确勾选）。 */

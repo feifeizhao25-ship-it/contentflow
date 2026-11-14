@@ -145,7 +145,7 @@ export default function SchedulePage() {
     // Monthly View
     const renderMonthView = () => (
         <div className="grid grid-cols-7 gap-px bg-zinc-200 dark:bg-zinc-800 rounded-2xl overflow-hidden border border-zinc-200 dark:border-zinc-800 shadow-sm relative">
-            {isLoading && <div className="absolute inset-0 bg-white/50 dark:bg-black/50 z-20 flex items-center justify-center"><LoadingOutlined className="text-3xl text-indigo-500" /></div>}
+            {isLoading && <div className="absolute inset-0 bg-white/50 dark:bg-black/50 z-20 flex items-center justify-center"><LoadingOutlined aria-hidden className="text-3xl text-indigo-500" /></div>}
             {['日', '一', '二', '三', '四', '五', '六'].map(d => (
                 <div key={d} className="bg-zinc-50 dark:bg-zinc-900 py-2 text-center text-xs font-bold text-zinc-700 dark:text-zinc-200 sm:py-3">{d}</div>
             ))}
@@ -175,7 +175,7 @@ export default function SchedulePage() {
                         <div className="mt-1 space-y-1 hidden sm:block">
                             {dayTasks.slice(0, 3).map(t => (
                                 <div key={t.id} className="text-[10px] px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-700 truncate border border-indigo-100 flex items-center gap-1">
-                                    {hasConflict(t) && <ExclamationCircleFilled className="text-amber-500 text-[8px]" />}
+                                    {hasConflict(t) && <ExclamationCircleFilled aria-hidden className="text-amber-500 text-[8px]" />}
                                     {t.title}
                                 </div>
                             ))}
@@ -252,9 +252,9 @@ export default function SchedulePage() {
                         <Option value="all">全部平台</Option>
                         {PLATFORMS.map(p => <Option key={p.id} value={p.id}>{p.icon} {p.name}</Option>)}
                     </Select>
-                    <Segmented value={viewMode} onChange={(v) => setViewMode(v as any)} options={[{ label: '日历', value: 'month', icon: <CalendarOutlined /> }, { label: '列表', value: 'list', icon: <UnorderedListOutlined /> }]} />
+                    <Segmented value={viewMode} onChange={(v) => setViewMode(v as any)} options={[{ label: '日历', value: 'month', icon: <CalendarOutlined aria-hidden /> }, { label: '列表', value: 'list', icon: <UnorderedListOutlined aria-hidden /> }]} />
                     {/* 排期必须绑定真实内容与平台账号，由内容工作室创建发布任务；这里不再有只存在于页面内存里、刷新即消失的「假排期」。 */}
-                    <Link href="/studio"><Button type="primary" icon={<PlusOutlined />} className="bg-indigo-600 rounded-xl">去内容工作室排期</Button></Link>
+                    <Link href="/studio"><Button type="primary" icon={<PlusOutlined aria-hidden />} className="bg-indigo-600 rounded-xl">去内容工作室排期</Button></Link>
                 </div>
             </header>
 

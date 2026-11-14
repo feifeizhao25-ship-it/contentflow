@@ -80,7 +80,7 @@ export function PhoneBinding({
               { validator: (_, value) => (!value || isValidChinaMobile(value) ? Promise.resolve() : Promise.reject(new Error('请输入正确的 11 位手机号'))) },
             ]}
           >
-            <Input prefix={<MobileOutlined />} placeholder="11 位手机号" inputMode="tel" maxLength={16} />
+            <Input prefix={<MobileOutlined aria-hidden />} placeholder="11 位手机号" inputMode="tel" maxLength={16} />
           </Form.Item>
           <Form.Item label="验证码" name="code" rules={[{ required: true, message: '请输入验证码' }, { pattern: /^\d{6}$/, message: '验证码为 6 位数字' }]}>
             <SmsCodeInput

@@ -73,14 +73,14 @@ export class ErrorBoundary extends Component<Props, State> {
                     <Card className="max-w-lg w-full shadow-xl rounded-2xl">
                         <Result
                             status="error"
-                            icon={<ExclamationCircleOutlined className="text-red-500" />}
+                            icon={<ExclamationCircleOutlined aria-hidden className="text-red-500" />}
                             title="页面出错了"
                             subTitle="很抱歉，遇到了技术问题。请尝试刷新页面或返回首页。"
                             extra={[
                                 <Button 
                                     key="reload" 
                                     type="primary"
-                                    icon={<ReloadOutlined />}
+                                    icon={<ReloadOutlined aria-hidden />}
                                     onClick={this.handleReload}
                                     className="!rounded-lg"
                                 >
@@ -88,7 +88,7 @@ export class ErrorBoundary extends Component<Props, State> {
                                 </Button>,
                                 <Button 
                                     key="home"
-                                    icon={<HomeOutlined />}
+                                    icon={<HomeOutlined aria-hidden />}
                                     onClick={this.handleGoHome}
                                     className="!rounded-lg"
                                 >

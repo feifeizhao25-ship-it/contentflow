@@ -134,7 +134,7 @@ export default function FirstScriptGuide({ onScriptGenerated, isGenerating }: Fi
         loading={isCreating || isGenerating}
         disabled={!topic.trim() || isCreating}
         className="w-full h-12 rounded-xl font-medium bg-gradient-to-r from-indigo-600 to-purple-600 border-none"
-        icon={<ThunderboltOutlined />}
+        icon={<ThunderboltOutlined aria-hidden />}
       >
         {isCreating ? 'AI正在创作中...' : '✨ 一键生成脚本'}
       </Button>
@@ -150,7 +150,7 @@ export default function FirstScriptGuide({ onScriptGenerated, isGenerating }: Fi
           >
             <div className="flex items-center justify-between mb-3">
               <h4 className="font-medium text-indigo-600 dark:text-indigo-400 flex items-center gap-2">
-                <StarOutlined /> 生成结果
+                <StarOutlined aria-hidden /> 生成结果
               </h4>
               <span className="rounded-full bg-green-100 px-2 py-0.5 text-sm text-green-700 dark:bg-green-900/30 dark:text-green-400">
                 已由真实服务生成
@@ -166,7 +166,7 @@ export default function FirstScriptGuide({ onScriptGenerated, isGenerating }: Fi
             </div>
 
             <div className="flex gap-2 mt-3">
-              <Button onClick={handleCopy} icon={copied ? <CheckCircleOutlined /> : <CopyOutlined />} className="flex-1">
+              <Button onClick={handleCopy} icon={copied ? <CheckCircleOutlined aria-hidden /> : <CopyOutlined aria-hidden />} className="flex-1">
                 {copied ? '已复制' : '复制脚本'}
               </Button>
             </div>
