@@ -8,6 +8,7 @@ describe('GET /growth/plan 带近 7 天真实活动（I-10）', () => {
       { getGrowthPlan: async () => plan } as any,
       {} as any,
       { signalsForUser: async (id: string) => (id === 'u1' ? signals : null) } as any,
+      { checkQuota: async () => true } as any,
     );
     const r: any = await ctl.getPlan({ user: { id: 'u1' } });
     expect(r).toMatchObject({ goals: [], hasGoals: false });

@@ -14,6 +14,7 @@ import { adaptBodyForPlatform } from '../ai/platform-adaptation';
 import { bulkPublishBlockReason } from './bulk-identical';
 import { WebhookService } from '../developer/webhook.service';
 import { RagPolicyService } from '../ai/rag-policy.service';
+import { PUBLISH_MONTHLY_QUOTA_MESSAGE, quotaExceededException } from '../../common/quota-error';
 
 @Injectable()
 export class PublishService {
@@ -86,9 +87,7 @@ export class PublishService {
     // 检查配额
     // 一次发到 N 个账号计 N 条；按北京时间自然月计数（见 TenantService.currentUsageStats）。
     const canPublish = await this.tenantService.checkQuota(tenantId, 'publish', accountIds.length);
-    if (!canPublish) {
-      throw new BadRequestException('发布次数已达上限，请升级套餐');
-    }
+    if (!canPublish) throw quotaExceededException(PUBLISH_MONTHLY_QUOTA_MESSAGE);
 
     // 在写入任何任务前一次性验证所有账号与真实适配器能力，避免批量部分成功。
     const accounts = await Promise.all(
@@ -265,7 +264,7 @@ export class PublishService {
     await this.assertRealNameIfRequired(userId);
     const content = await this.loadPublishableContent(tenantId, data.contentId, data.riskAcknowledged === true);
     if (!(await this.tenantService.checkQuota(tenantId, 'publish', platforms.length))) {
-      throw new BadRequestException('本月发布次数已达上限，请升级套餐或下月再发');
+      throw quotaExceededException(PUBLISH_MONTHLY_QUOTA_MESSAGE);
     }
     const aiGenerated = content.source === 'ai';
     const body = content.body || '';

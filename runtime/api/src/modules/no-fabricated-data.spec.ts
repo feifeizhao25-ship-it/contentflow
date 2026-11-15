@@ -95,7 +95,9 @@ describe('service 不得返回编造的业务数据', () => {
     const offenders: string[] = [];
     for (const rel of ['growth/growth.controller.ts', 'competitor/competitor.controller.ts']) {
       const src = stripComments(fs.readFileSync(path.join(MODULES_DIR, rel), 'utf8'));
-      const withoutWorkspaceFunnel = src.replace(/funnelForTenant\(req\.user\.tenantId\)/g, 'funnelForTenant(workspaceId)');
+      const withoutWorkspaceFunnel = src
+        .replace(/funnelForTenant\(req\.user\.tenantId\)/g, 'funnelForTenant(workspaceId)')
+        .replace(/checkQuota\(req\.user\.tenantId,/g, 'checkQuota(workspaceId,');
       if (/req\.user\.tenantId/.test(withoutWorkspaceFunnel)) offenders.push(rel);
       if (/growthService\.\w+\([^)]*tenantId/.test(src)) offenders.push(`${rel} 把 tenantId 传进了 GrowthGoal`);
     }

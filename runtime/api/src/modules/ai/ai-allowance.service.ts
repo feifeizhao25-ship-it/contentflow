@@ -1,6 +1,7 @@
 import { HttpException, HttpStatus, Injectable, Logger } from '@nestjs/common';
 import { AIService } from './ai.service';
 import { IMAGE_TOKEN_EQUIVALENT } from './model-pricing';
+import { quotaExceededException } from '../../common/quota-error';
 import {
   AI_MONTHLY_QUOTA_MESSAGE,
   AiQuotaExceededError,
@@ -43,9 +44,7 @@ export class AiAllowanceService {
         idempotencyKey: opts.idempotencyKey,
       }, opts.run);
     } catch (error) {
-      if (error instanceof AiQuotaExceededError) {
-        throw new HttpException({ message: error.message, error: 'AI_MONTHLY_QUOTA' }, HttpStatus.TOO_MANY_REQUESTS);
-      }
+      if (error instanceof AiQuotaExceededError) throw quotaExceededException(error.message);
       if (error instanceof AiRequestInProgressError) {
         throw new HttpException({ message: error.message, error: 'AI_REQUEST_IN_PROGRESS' }, HttpStatus.CONFLICT);
       }
@@ -60,10 +59,9 @@ export class AiAllowanceService {
       ? await this.usageService.checkQuota(tenantId, ResourceType.TOKENS)
       : await this.usageService.checkQuota(tenantId, ResourceType.TOKENS, requiredTokens);
     if (!hasQuota) {
-      throw new HttpException(
-        { message: requiredTokens === undefined ? AI_MONTHLY_QUOTA_MESSAGE : `本月 AI 剩余额度不足，本次生成需要 ${requiredTokens} 令牌，可升级套餐，或在下月 1 日额度恢复后再试`, error: 'AI_MONTHLY_QUOTA' },
-        HttpStatus.TOO_MANY_REQUESTS,
-      );
+      throw quotaExceededException(requiredTokens === undefined
+        ? AI_MONTHLY_QUOTA_MESSAGE
+        : `本月 AI 剩余额度不足，本次生成需要 ${requiredTokens} 令牌，可升级套餐，或在下月 1 日额度恢复后再试`);
     }
   }
 

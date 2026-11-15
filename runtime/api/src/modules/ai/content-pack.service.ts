@@ -1,5 +1,6 @@
 import { Injectable, Logger, InternalServerErrorException, HttpException, HttpStatus } from '@nestjs/common';
 import { AIService } from './ai.service';
+import { quotaExceededException } from '../../common/quota-error';
 import { UsageService, AiQuotaExceededError, AiRequestInProgressError } from '../system/usage.service';
 import { AI_HOLD_TOKENS } from './ai-holds';
 import { ComplianceService } from './compliance.service';
@@ -197,9 +198,7 @@ export class ContentPackService {
             };
             });
         } catch (error) {
-            if (error instanceof AiQuotaExceededError) {
-                throw new HttpException({ message: error.message, error: 'AI_MONTHLY_QUOTA' }, HttpStatus.TOO_MANY_REQUESTS);
-            }
+            if (error instanceof AiQuotaExceededError) throw quotaExceededException(error.message);
             if (error instanceof AiRequestInProgressError) {
                 throw new HttpException({ message: error.message, error: 'AI_REQUEST_IN_PROGRESS' }, HttpStatus.CONFLICT);
             }
