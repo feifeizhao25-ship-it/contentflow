@@ -8,6 +8,9 @@ import { bindPhone, isValidChinaMobile, sendBindCode } from '@/lib/auth-service'
 import { safeErrorText } from '@/lib/api-error';
 import { SmsCodeInput } from './SmsCodeInput';
 
+// antd 预设绿标签：#389e0d 写在 #f6ffed 上是 3.37:1。#237804 写在同一浅底上是 5.44:1。
+const verifiedTagStyle = { color: '#237804', background: '#f6ffed', borderColor: '#b7eb8f' };
+
 /**
  * 设置页「手机号与实名」：已绑定显示脱敏手机号；未绑定给「手机号 + 验证码」表单。
  * 发布信息类服务需要实名：实名认证（公安 / 运营商二要素）服务尚未接入，这里如实写「暂未开通」，
@@ -49,7 +52,7 @@ export function PhoneBinding({
           <Typography.Text strong>手机号：</Typography.Text>{' '}
           {bound ? (
             <>
-              <Typography.Text>{phone}</Typography.Text> <Tag color="green">已验证</Tag>
+              <Typography.Text>{phone}</Typography.Text> <Tag style={verifiedTagStyle}>已验证</Tag>
             </>
           ) : (
             <Tag>未绑定</Tag>
@@ -57,7 +60,7 @@ export function PhoneBinding({
         </div>
         <div>
           <Typography.Text strong>实名认证：</Typography.Text>{' '}
-          {realNameVerified ? <Tag color="green">已实名</Tag> : <Tag style={{ color: '#78350f', background: '#fef3c7', borderColor: '#d97706' }}>未认证</Tag>}
+          {realNameVerified ? <Tag style={verifiedTagStyle}>已实名</Tag> : <Tag style={{ color: '#78350f', background: '#fef3c7', borderColor: '#d97706' }}>未认证</Tag>}
           {!realNameVerified && (
             <Typography.Text type="secondary">实名认证服务暂未开通，开通后会在这里通知并引导完成。</Typography.Text>
           )}
