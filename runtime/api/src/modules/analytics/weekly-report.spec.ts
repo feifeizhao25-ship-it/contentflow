@@ -2,7 +2,7 @@
  * 周报 xlsx：只导出当前登录用户所在工作区已保存的记录。
  * 没有记录时表格写明是空的，不编造播放、点赞或涨粉。
  */
-import { execFileSync } from 'child_process';
+import { execFileSync, spawnSync } from 'child_process';
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
@@ -19,6 +19,34 @@ import { AnalyticsService } from './analytics.service';
 import { buildPdf } from './pdf';
 import { weeklySheets } from './weekly-report';
 import { buildXlsx } from './xlsx';
+
+/**
+ * qpdf 不在 PATH 上时，execFileSync 会让 jest worker 直接退出。
+ * 未设置 CI 时跳过这些检查并写明原因；CI=true 时照常运行。
+ */
+function qpdfInstalled(): boolean {
+  const found = spawnSync('qpdf', ['--version'], { stdio: 'ignore' });
+  return found.status === 0 && !found.error;
+}
+
+const QPDF_SKIP_REASON = 'qpdf is not installed';
+const skipPdfWithoutQpdf = !qpdfInstalled() && !process.env.CI;
+
+function describePdf(name: string, fn: () => void): void {
+  if (skipPdfWithoutQpdf) {
+    describe.skip(`${name} (${QPDF_SKIP_REASON})`, fn);
+    return;
+  }
+  describe(name, fn);
+}
+
+function itPdf(name: string, fn: jest.ProvidesCallback): void {
+  if (skipPdfWithoutQpdf) {
+    it.skip(`${name} (${QPDF_SKIP_REASON})`, fn);
+    return;
+  }
+  it(name, fn);
+}
 
 const NOW = new Date('2026-11-09T04:00:00Z');
 const INSIDE = new Date('2026-11-09T02:00:00Z');
@@ -97,7 +125,7 @@ function checkedPdfText(pdf: Buffer): string {
   }
 }
 
-describe('weekly pdf pages', () => {
+describePdf('weekly pdf pages', () => {
   it('an empty week uses the same fields and does not invent engagement numbers', async () => {
     const pdf = await buildPdf(weeklySheets(week));
     console.log(`weekly-pdf-bytes en=${pdf.length}`);
@@ -316,7 +344,7 @@ describe('GET /analytics/weekly-report.pdf', () => {
     expect(res.headers['x-export-truncated']).toBe('0');
   });
 
-  it('exports only the signed-in workspace, in English or Chinese', async () => {
+  itPdf('exports only the signed-in workspace, in English or Chinese', async () => {
     const english = await pdf('tenant-a', '?lang=en');
     const enBody = Buffer.isBuffer(english.body) ? english.body : Buffer.from(english.body);
     const en = checkedPdfText(enBody);
@@ -343,7 +371,7 @@ describe('GET /analytics/weekly-report.pdf', () => {
     expect(international).not.toContain('本周工作区报告');
   });
 
-  it('a workspace with no rows gets the empty-sheet note', async () => {
+  itPdf('a workspace with no rows gets the empty-sheet note', async () => {
     const emptyBody = (await pdf('tenant-empty', '?lang=en')).body;
     const text = checkedPdfText(Buffer.isBuffer(emptyBody) ? emptyBody : Buffer.from(emptyBody));
     expect(text).toContain('No content was saved this week');

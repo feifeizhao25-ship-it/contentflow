@@ -5,6 +5,7 @@ import { effectiveEntitlements } from '../billing/effective-limits';
 import { buildAiMediaMetadata } from '../../common/ai-content-label';
 import { PrismaService } from '../../database/prisma.service';
 import { chinaMonthPeriod } from '../../common/china-period';
+import { currentUsageStats } from '../tenant/tenant.service';
 
 /** 慢于文生图轮询上限（默认 60 次，每次请求最多 30 秒），避免还在生成时被对账任务退回。 */
 const AI_RESERVATION_TTL_MS = 45 * 60 * 1000;
@@ -216,7 +217,11 @@ export class UsageService {
         : resource === ResourceType.IMAGES
           ? (limits.max_images_monthly ?? 0)
           : (limits.max_videos_monthly ?? 0);
-    const current = (meter as any)?.[resource] || 0;
+    // 发布条数与额度检查、界面「本月发布」共用租户计数。
+    // usage_meters.publish_count 在发布时不会增加，读它会把已发布条数当成 0。
+    const current = resource === ResourceType.PUBLISHES
+      ? (Number(currentUsageStats(tenant.usage_stats).publishes_this_month) || 0)
+      : ((meter as any)?.[resource] || 0);
 
     // 如果限制是 GB，需要转换
     const adjustedCurrent = resource === ResourceType.STORAGE ? current / 1024 : current;

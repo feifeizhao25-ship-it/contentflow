@@ -1,5 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import { chinaMonthPeriod } from '../../common/china-period';
 import { PrismaService } from '../../database/prisma.service';
+import { currentUsageStats, TenantService } from '../tenant/tenant.service';
 import { ResourceType, UsageService } from './usage.service';
 
 describe('UsageService', () => {
@@ -89,12 +91,17 @@ describe('UsageService', () => {
   });
 
   it('allows usage below the tenant limit and rejects usage at the limit', async () => {
-    prisma.tenant.findUnique.mockResolvedValue({
-      limits: { max_publishes_monthly: 10 },
-    });
-    prisma.usageMeter.findFirst
-      .mockResolvedValueOnce({ ...meter, publish_count: 9 })
-      .mockResolvedValueOnce({ ...meter, publish_count: 10 });
+    const period = chinaMonthPeriod();
+    prisma.usageMeter.findFirst.mockResolvedValue({ ...meter, publish_count: 0 });
+    prisma.tenant.findUnique
+      .mockResolvedValueOnce({
+        limits: { max_publishes_monthly: 10 },
+        usage_stats: { publishes_this_month: 9, publishes_period: period },
+      })
+      .mockResolvedValueOnce({
+        limits: { max_publishes_monthly: 10 },
+        usage_stats: { publishes_this_month: 10, publishes_period: period },
+      });
 
     await expect(
       service.checkQuota('tenant_1', ResourceType.PUBLISHES),
@@ -102,6 +109,55 @@ describe('UsageService', () => {
     await expect(
       service.checkQuota('tenant_1', ResourceType.PUBLISHES),
     ).resolves.toBe(false);
+  });
+
+  it('agrees with the tenant counter shown as 本月发布 after a publish', async () => {
+    const period = chinaMonthPeriod();
+    const row: {
+      plan: string;
+      plan_expires_at: null;
+      limits: Record<string, never>;
+      usage_stats: { publishes_this_month: number; publishes_period: string };
+    } = {
+      plan: 'free',
+      plan_expires_at: null,
+      limits: {},
+      usage_stats: { publishes_this_month: 0, publishes_period: period },
+    };
+    const shared = {
+      tenant: {
+        findUnique: jest.fn(async () => JSON.parse(JSON.stringify(row))),
+        update: jest.fn(async ({ data }: { data: { usage_stats: typeof row.usage_stats } }) => {
+          row.usage_stats = data.usage_stats;
+          return row;
+        }),
+      },
+      usageMeter: {
+        findFirst: jest.fn(async () => ({ ...meter, publish_count: 0 })),
+      },
+    };
+    const usage = new UsageService(shared as never);
+    const tenants = new TenantService(shared as never);
+
+    // PublishService records a publish with TenantService.incrementUsage(..., 'publish').
+    await tenants.incrementUsage('tenant_1', 'publish', 1);
+    const shown = currentUsageStats(row.usage_stats).publishes_this_month;
+    expect(shown).toBe(1);
+    expect(await usage.checkQuota('tenant_1', ResourceType.PUBLISHES)).toBe(
+      await tenants.checkQuota('tenant_1', 'publish', 1),
+    );
+
+    let published = 1;
+    while (await tenants.checkQuota('tenant_1', 'publish', 1)) {
+      await tenants.incrementUsage('tenant_1', 'publish', 1);
+      published += 1;
+      expect(published).toBeLessThan(1000);
+    }
+
+    expect(currentUsageStats(row.usage_stats).publishes_this_month).toBe(published);
+    expect((await shared.usageMeter.findFirst()).publish_count).toBe(0);
+    expect(await usage.checkQuota('tenant_1', ResourceType.PUBLISHES)).toBe(false);
+    expect(await tenants.checkQuota('tenant_1', 'publish', 1)).toBe(false);
   });
 
   it('compares AI token usage with a token limit, not a call-count limit', async () => {
