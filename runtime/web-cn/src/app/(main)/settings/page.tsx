@@ -51,8 +51,12 @@ import Link from 'next/link';
 import { apiClient } from '@/lib/api-client';
 import { describePlan, type PlanView } from '@/lib/page-data';
 import { passwordVisibilityIcon } from '@/components/a11y/password-icon';
+import { SettingsTabBar } from '@/components/a11y/settings-tab-bar';
 import { tabLabel } from '@/components/a11y/tab-label';
 import { PhoneBinding } from '@/components/auth/PhoneBinding';
+
+// antd 错误色 #ff4d4f 在白底上是 3.26:1。#cf1322 是 5.57:1。
+const dangerTextColor = '#cf1322';
 
 const { Option } = Select;
 const { Text, Title, Paragraph } = Typography;
@@ -433,7 +437,7 @@ export default function SettingsPage() {
                         <Button icon={<DownloadOutlined aria-hidden />} loading={exporting} onClick={handleExport}>导出</Button>
                     </Card>
                     <Card bordered={false} title="注销账号" style={{ marginTop: 16 }}>
-                        <Paragraph>注销后，以下内容会被<Text strong type="danger">永久删除，无法恢复</Text>：</Paragraph>
+                        <Paragraph>注销后，以下内容会被<Text strong style={{ color: dangerTextColor }}>永久删除，无法恢复</Text>：</Paragraph>
                         <ul style={{ color: '#475569', lineHeight: 1.9 }}>
                             <li>个人资料、登录记录、通知、积分与成长记录</li>
                             <li>如果你是工作区里唯一的成员：工作区的全部内容、平台账号及其授权、素材、AI 生成记录和 API 密钥</li>
@@ -446,7 +450,14 @@ export default function SettingsPage() {
                         <Paragraph type="secondary">
                             如果工作区里还有其他成员，所有者需要先转让所有权或移除成员，才能注销。
                         </Paragraph>
-                        <Button danger icon={<DeleteOutlined aria-hidden />} onClick={openDelete}>注销账号</Button>
+                        <Button
+                            danger
+                            icon={<DeleteOutlined aria-hidden />}
+                            onClick={openDelete}
+                            style={{ color: dangerTextColor, borderColor: dangerTextColor }}
+                        >
+                            注销账号
+                        </Button>
                     </Card>
                     <Modal
                         title="确认注销账号"
@@ -486,7 +497,19 @@ export default function SettingsPage() {
             </div>
 
             <Card styles={{ body: { padding: '0 24px 24px' } }} style={{ borderRadius: 16 }}>
-                <Tabs items={tabItems} size="large" />
+                <Tabs
+                    className="settings-tabs"
+                    items={tabItems}
+                    size="large"
+                    renderTabBar={(props) => (
+                        <SettingsTabBar
+                            id={props.id}
+                            activeKey={props.activeKey}
+                            onTabClick={props.onTabClick}
+                            panes={props.panes}
+                        />
+                    )}
+                />
             </Card>
         </div>
     );

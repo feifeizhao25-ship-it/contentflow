@@ -250,6 +250,43 @@ body::before {
   border: 1px solid transparent;
 }
 
+/* 设置页页签换行。tablist 里只有页签，窄屏不用横向滚动，也不出现 antd 的「更多」按钮。 */
+.settings-tablist {
+  display: flex;
+  flex-wrap: wrap;
+  column-gap: 8px;
+  row-gap: 4px;
+  max-width: 100%;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.settings-tab {
+  flex: 0 1 auto;
+  max-width: 100%;
+  margin: 0;
+  padding: 12px 12px 10px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  color: #52525b;
+  font: inherit;
+  font-size: 16px;
+  line-height: 1.5;
+  text-align: start;
+  cursor: pointer;
+}
+
+.settings-tab.is-active {
+  color: #4f46e5;
+  border-bottom-color: #4f46e5;
+  font-weight: 600;
+}
+
+.settings-tab:focus-visible {
+  outline: 2px solid #4f46e5;
+  outline-offset: 2px;
+}
+
 /* 两个汉字的按钮：字距代替 antd 插在中间的空格（「登 录」→「登录」）。数值与 antd .ant-btn-two-chinese-chars 一致。 */
 .ant-btn.cn-cjk-pair > span:not(.anticon):not(.ant-btn-icon):not(.ant-btn-loading-icon) {
   letter-spacing: 0.34em;
