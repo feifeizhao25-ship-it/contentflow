@@ -75,7 +75,7 @@ export default function LoginPage() {
     ) : null;
 
     return (
-        <div
+        <main
             className="safe-auth"
             style={{
                 display: 'flex',
@@ -192,6 +192,6 @@ export default function LoginPage() {
                     </Link>
                 </div>
             </Card>
-        </div>
+        </main>
     );
 }
