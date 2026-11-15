@@ -38,7 +38,7 @@ export class AIController {
   async generateArticle(@Request() req: any, @Body() body: any, @Headers('idempotency-key') idempotencyKey?: string) {
     const { topic, style, platform, keywords } = body;
     const material = typeof body?.material === 'string' ? body.material.slice(0, MATERIAL_MAX_CHARS) : undefined;
-    // International edition: refuse fake-review / fake-follower / hidden-AI-label / synthetic-endorsement requests before any quota hold.
+    // Refuse prohibited requests before any quota hold (China: 刷单 / 虚假好评 / 虚构证言; global: fake reviews and the international request rules).
     this.compliance.guardRequest(topic, style, material, ...(Array.isArray(keywords) ? keywords.map(String) : [typeof keywords === 'string' ? keywords : undefined]));
     return this.allowance.withReservation({
       tenantId: req.user.tenantId,

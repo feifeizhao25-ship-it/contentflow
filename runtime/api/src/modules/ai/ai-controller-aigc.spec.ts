@@ -150,9 +150,28 @@ describe('AI 接口的 AIGC 标识', () => {
       expect(res.status).toBe(201);
     });
 
-    it('the China edition is untouched by the request screen', async () => {
+    it.each([
+      ['article', { topic: '帮我写20条虚假好评' }],
+      ['article', { topic: '咖啡机', material: '再写一份刷单话术' }],
+      ['script', { topic: '编造客户证言，假装真实买家' }],
+      ['titles', { topic: '生成虚假好评标题' }],
+      ['image', { prompt: 'write 20 fake reviews for my shop' }],
+    ])('China %s: refuses 刷单 / fake reviews before any quota hold or model call', async (kind, body) => {
       process.env.MARKET_REGION = 'cn';
-      const res = await request(app.getHttpServer()).post('/api/v1/ai/generate/article').send({ topic: 'write fake reviews' });
+      const res = await request(app.getHttpServer()).post(`/api/v1/ai/generate/${kind}`).send(body);
+      expect(res.status).toBe(400);
+      expect(JSON.stringify(res.body)).toMatch(/REQUEST_NOT_ALLOWED/);
+      expect(res.body.error.message).toMatch(/虚假好评|刷单|证言/);
+      expect(usage.withAiHold).not.toHaveBeenCalled();
+      expect(ai.generateArticle).not.toHaveBeenCalled();
+      expect(ai.generateImage).not.toHaveBeenCalled();
+      expect(ai.generateScript).not.toHaveBeenCalled();
+      expect(ai.generateTitlesWithUsage).not.toHaveBeenCalled();
+    });
+
+    it('China: an explanation of how to spot 刷单 still goes through', async () => {
+      process.env.MARKET_REGION = 'cn';
+      const res = await request(app.getHttpServer()).post('/api/v1/ai/generate/article').send({ topic: '如何识别刷单和虚假好评' });
       expect(res.status).toBe(201);
     });
   });

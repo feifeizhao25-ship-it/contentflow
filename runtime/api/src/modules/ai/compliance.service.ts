@@ -1,6 +1,7 @@
 import { BadRequestException, Injectable, Optional } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { evaluateDomesticContent } from '../../common/domestic-content-compliance';
+import { evaluateDomesticRequest } from '../../common/domestic-request-compliance';
 import { evaluateInternationalContent, evaluateInternationalRequest } from '../../common/international-content-compliance';
 import type { TargetMarket } from '../../common/target-market';
 
@@ -22,19 +23,36 @@ export class ComplianceService {
   }
 
   /**
-   * International edition only: screens what the user asked for BEFORE any generation or quota hold. Blocks requests for
-   * fake reviews or testimonials, fake followers or likes, removing the AI label, and synthetic endorsements by real people.
-   * Does nothing in the China edition (its own rule set runs on the output).
+   * Screens what the user asked for BEFORE any generation or quota hold.
+   * Global: fake reviews or testimonials, fake followers or likes, removing the AI label, synthetic endorsements.
+   * China: 刷单, 虚假好评, 虚构用户证言. Ordinary topics and explanations of why those acts are illegal still pass.
    */
   guardRequest(...parts: Array<string | undefined | null>): void {
-    if (!this.isGlobal()) return;
-    const r = evaluateInternationalRequest(parts.filter((p): p is string => typeof p === 'string' && p.length > 0));
-    if (!r.blocked) return;
+    const text = parts.filter((p): p is string => typeof p === 'string' && p.length > 0);
+    if (this.isGlobal()) {
+      const r = evaluateInternationalRequest(text);
+      if (!r.blocked) return;
+      throw new BadRequestException({
+        code: 'REQUEST_NOT_ALLOWED',
+        message: 'We cannot help with this request. Fake reviews or testimonials, bought followers or likes, hiding the AI label, and synthetic endorsements by real people are unfair or deceptive practices. This is not legal advice.',
+        ruleSetVersion: r.ruleSetVersion,
+        hits: r.hits.map((h) => ({ ruleId: h.ruleId, reason: h.reason, source: h.source, sourceUrl: h.sourceUrl })),
+      });
+    }
+    const domestic = evaluateDomesticRequest(text);
+    if (!domestic.blocked) return;
     throw new BadRequestException({
       code: 'REQUEST_NOT_ALLOWED',
-      message: 'We cannot help with this request. Fake reviews or testimonials, bought followers or likes, hiding the AI label, and synthetic endorsements by real people are unfair or deceptive practices. This is not legal advice.',
-      ruleSetVersion: r.ruleSetVersion,
-      hits: r.hits.map((h) => ({ ruleId: h.ruleId, reason: h.reason, source: h.source, sourceUrl: h.sourceUrl })),
+      message: '无法处理这个请求。虚假好评、刷单和虚构的用户证言不能代为生成。这不是法律意见。',
+      ruleSetVersion: domestic.ruleSetVersion,
+      hits: domestic.hits.map((h) => ({
+        ruleId: h.ruleId,
+        severity: h.severity,
+        reason: h.reason,
+        source: h.source,
+        sourceUrl: h.sourceUrl,
+        matchedTerms: h.matchedTerms,
+      })),
     });
   }
 
