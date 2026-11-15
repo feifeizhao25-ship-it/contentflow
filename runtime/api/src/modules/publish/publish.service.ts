@@ -14,7 +14,6 @@ import { adaptBodyForPlatform } from '../ai/platform-adaptation';
 import { bulkPublishBlockReason } from './bulk-identical';
 import { WebhookService } from '../developer/webhook.service';
 import { RagPolicyService } from '../ai/rag-policy.service';
-import { ResourceType, UsageService } from '../system/usage.service';
 import { PUBLISH_MONTHLY_QUOTA_MESSAGE, quotaExceededException } from '../../common/quota-error';
 
 @Injectable()
@@ -29,7 +28,6 @@ export class PublishService {
     private readonly config: ConfigService,
     @Optional() private readonly webhooks?: WebhookService,
     @Optional() private readonly rag?: RagPolicyService,
-    @Optional() private readonly usage?: UsageService,
   ) {}
 
   /**
@@ -404,9 +402,6 @@ export class PublishService {
    * 超过上限时只导出最新的 PUBLISH_LOG_MAX_ROWS 条，并在返回里标明被截断。
    */
   async exportTasksCsv(tenantId: string, filter: PublishTaskFilter): Promise<{ csv: string; rows: number; truncated: boolean }> {
-    // 批量导出原来不看套餐额度。超额直接拒绝，不读任务、不入账。
-    // CSV 的列、截断和筛选与原来相同。
-    await this.assertMonthlyAiQuota(tenantId);
     const where = publishTaskWhere(tenantId, filter);
     const tasks = await this.prisma.publishTask.findMany({
       where,
@@ -442,13 +437,6 @@ export class PublishService {
       }
     }
     return { requested: ids.length, retried: results.filter((r) => r.ok).length, results };
-  }
-
-  /** 与 AI 接口同一套月度令牌额度。只读，不入账。没有注入额度服务时拒绝，避免漏闸。 */
-  private async assertMonthlyAiQuota(tenantId: string): Promise<void> {
-    if (!this.usage) throw quotaExceededException();
-    const open = await this.usage.checkQuota(tenantId, ResourceType.TOKENS, 1);
-    if (!open) throw quotaExceededException();
   }
 
   private httpReason(error: HttpException): string {

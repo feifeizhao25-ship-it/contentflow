@@ -84,11 +84,6 @@ await check('generate-script requires login', async () => {
 });
 
 const quotaMessage = (fs.readFileSync(new URL('../../api/src/modules/system/usage.service.ts', import.meta.url), 'utf8').match(/AI_MONTHLY_QUOTA_MESSAGE = '([^']+)'/) || [])[1];
-const providerSrc = fs.readFileSync(new URL('../src/app/api/_lib/provider.ts', import.meta.url), 'utf8');
-await check('web export quota message matches the backend contract', async () => {
-  assert.ok(quotaMessage);
-  assert.ok(providerSrc.includes(quotaMessage));
-});
 
 await check('generate-script forwards the quota envelope and code', async () => {
   respond = () => new Response(JSON.stringify({
@@ -128,42 +123,22 @@ function makeMinimalPng() {
 const imageUrl = 'https://dashscope-result-bj.oss-cn-beijing.aliyuncs.com/a.png';
 const exportImage = await import('../src/app/api/ai/export-image/route.ts');
 
-function subscription(remaining, unlimited = false) {
-  return new Response(JSON.stringify({ success: true, data: { aiTokens: { remaining, unlimited } } }), { status: 200, headers: { 'content-type': 'application/json' } });
-}
-function routeExport(remaining, unlimited = false) {
+await check('export-image downloads an existing file and does not consult AI quota', async () => {
   calls.length = 0;
   respond = (url) => {
     const href = String(url);
     if (href.includes('/auth/profile')) return new Response('{"success":true}', { status: 200 });
-    if (href.includes('/billing/subscription')) return subscription(remaining, unlimited);
+    if (href.includes('/billing/subscription')) {
+      return new Response(JSON.stringify({ success: true, data: { aiTokens: { remaining: 0, unlimited: false } } }), { status: 200, headers: { 'content-type': 'application/json' } });
+    }
     return new Response(makeMinimalPng(), { status: 200, headers: { 'content-type': 'image/png' } });
   };
-  return exportImage.GET(req(`http://w/api/ai/export-image?url=${encodeURIComponent(imageUrl)}`, { cookie: 'ff_token=good', method: 'GET' }));
-}
-
-await check('export-image free under quota is allowed and does not post anywhere', async () => {
-  const res = await routeExport(100);
+  const res = await exportImage.GET(req(`http://w/api/ai/export-image?url=${encodeURIComponent(imageUrl)}`, { cookie: 'ff_token=good', method: 'GET' }));
   assert.equal(res.status, 200);
   assert.equal(res.headers.get('content-type'), 'image/png');
+  assert.equal(calls.some((call) => String(call.url).includes('/billing/subscription')), false);
   assert.ok(calls.some((call) => String(call.url).includes('aliyuncs.com')));
   assert.ok(calls.every((call) => !call.init.method || call.init.method === 'GET'));
-});
-
-await check('export-image free over quota uses the uniform error and does not fetch the image', async () => {
-  const res = await routeExport(0);
-  assert.equal(res.status, 429);
-  const body = await res.json();
-  assert.equal(body.success, false);
-  assert.equal(body.error.code, 'AI_MONTHLY_QUOTA');
-  assert.equal(body.error.message, quotaMessage);
-  assert.equal(calls.some((call) => String(call.url).includes('aliyuncs.com')), false);
-});
-
-await check('export-image paid above the free remainder is allowed', async () => {
-  const res = await routeExport(2_500_000);
-  assert.equal(res.status, 200);
-  assert.equal(res.headers.get('content-type'), 'image/png');
 });
 
 if (failures) { console.error(`${failures} failure(s)`); process.exit(1); }

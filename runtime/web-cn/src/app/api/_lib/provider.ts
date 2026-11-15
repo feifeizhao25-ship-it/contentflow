@@ -77,51 +77,6 @@ export function notAvailableInChina(feature: string): NextResponse {
   );
 }
 
-/** 与后端 AI_MONTHLY_QUOTA_MESSAGE 同一句。免费档超额时各导出接口返回这份。 */
-export const AI_MONTHLY_QUOTA_MESSAGE = '本月 AI 额度已用完，可升级套餐，或在下月 1 日额度恢复后再试';
-
-/** 订阅接口里的本月令牌：不限（remaining = -1）或剩余至少 1。读不到就当没有额度。 */
-export function subscriptionHasAiQuota(body: unknown): boolean {
-  const record = body && typeof body === 'object' ? body as { data?: { aiTokens?: QuotaView }; aiTokens?: QuotaView } : {};
-  const tokens = record.data?.aiTokens ?? record.aiTokens;
-  if (!tokens || typeof tokens !== 'object') return false;
-  if (tokens.unlimited === true) return true;
-  const remaining = Number(tokens.remaining);
-  return Number.isFinite(remaining) && (remaining === -1 || remaining >= 1);
-}
-
-interface QuotaView {
-  unlimited?: boolean;
-  remaining?: number;
-}
-
-/** 超额时返回与后端过滤器相同的信封；额度还够则返回 null。网络失败不放行。 */
-export async function assertMonthlyAiQuota(token: string, path: string): Promise<NextResponse | null> {
-  let upstream: Response;
-  try {
-    upstream = await fetch(`${apiOrigin()}/api/v1/billing/subscription`, {
-      headers: { authorization: `Bearer ${token}` },
-      cache: 'no-store',
-    });
-  } catch {
-    return NextResponse.json({ error: '额度校验暂时不可用，请稍后重试' }, { status: 503 });
-  }
-  if (!upstream.ok) {
-    return NextResponse.json({ error: '额度校验暂时不可用，请稍后重试' }, { status: 503 });
-  }
-  const body = await upstream.json().catch(() => null);
-  if (subscriptionHasAiQuota(body)) return null;
-  return NextResponse.json({
-    success: false,
-    error: {
-      code: 'AI_MONTHLY_QUOTA',
-      message: AI_MONTHLY_QUOTA_MESSAGE,
-      timestamp: new Date().toISOString(),
-      path,
-    },
-  }, { status: 429 });
-}
-
 export class UnauthorizedError extends Error {
   constructor() {
     super('未登录');

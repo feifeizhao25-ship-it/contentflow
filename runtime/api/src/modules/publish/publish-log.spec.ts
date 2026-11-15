@@ -17,7 +17,6 @@ import { TenantService } from '../tenant/tenant.service';
 import { AdapterRegistry } from './adapters/adapter.registry';
 import { PublishController } from './publish.controller';
 import { PublishService } from './publish.service';
-import { UsageService } from '../system/usage.service';
 import { channelUnavailableReason, csvCell, parsePublishTaskFilter, publishTaskWhere, publishTasksToCsv, PUBLISH_LOG_HEADERS } from './publish-log';
 
 const sampleTasks = [
@@ -58,7 +57,6 @@ describe('发布中心：筛选、批量重试、导出日志', () => {
         { provide: TenantService, useValue: {} },
         { provide: AdapterRegistry, useValue: adapters },
         { provide: ConfigService, useValue: { get: (_k: string, d: unknown) => d } },
-        { provide: UsageService, useValue: { checkQuota: jest.fn().mockResolvedValue(true) } },
       ],
     })
       .overrideGuard(JwtAuthGuard)

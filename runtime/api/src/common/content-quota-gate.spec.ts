@@ -349,7 +349,6 @@ describe('内容生成与导出的套餐额度闸', () => {
           PublishService,
           TenantService,
           { provide: PrismaService, useValue: prisma },
-          { provide: UsageService, useValue: new UsageService(prisma as never) },
           { provide: PublishQueueService, useValue: { addPublishTask: jest.fn(), retryPublishTask: jest.fn() } },
           { provide: AdapterRegistry, useValue: { get: () => ({ isLive: true }) } },
           { provide: ConfigService, useValue: { get: (_key: string, fallback: unknown) => fallback } },
@@ -410,33 +409,16 @@ describe('内容生成与导出的套餐额度闸', () => {
       expect(state.writes).toBe(1);
     });
 
-    it('GET /api/v1/publish/tasks/export 免费档令牌额度内可以导出', async () => {
+    it('GET /api/v1/publish/tasks/export 免费档 AI 令牌用完仍可导出自己的发布日志，且不入账', async () => {
       state.plan = 'free';
-      state.aiUsed = 0;
+      state.aiUsed = freePlan.aiTokenQuota;
+      state.postsUsed = freePlan.monthlyPostQuota;
       const res = await request(app.getHttpServer()).get('/api/v1/publish/tasks/export');
       expect(res.status).toBe(200);
       expect(res.headers['content-type']).toMatch(/text\/csv/);
       expect(prisma.publishTask.findMany).toHaveBeenCalled();
       expect(state.writes).toBe(0);
-    });
-
-    it('GET /api/v1/publish/tasks/export 免费档令牌超额拒绝且不读任务、不入账', async () => {
-      state.plan = 'free';
-      state.aiUsed = freePlan.aiTokenQuota;
-      const res = await request(app.getHttpServer()).get('/api/v1/publish/tasks/export');
-      quotaBody(res);
-      expect(prisma.publishTask.findMany).not.toHaveBeenCalled();
-      expect(state.writes).toBe(0);
       expect(state.aiUsed).toBe(freePlan.aiTokenQuota);
-    });
-
-    it('GET /api/v1/publish/tasks/export 付费档在免费令牌额度之上仍可导出', async () => {
-      state.plan = 'pro';
-      state.aiUsed = freePlan.aiTokenQuota;
-      const res = await request(app.getHttpServer()).get('/api/v1/publish/tasks/export');
-      expect(res.status).toBe(200);
-      expect(prisma.publishTask.findMany).toHaveBeenCalled();
-      expect(state.writes).toBe(0);
     });
   });
 });
