@@ -352,6 +352,17 @@ describe('ContentPackService personalisation, target market and grounding', () =
       expect(/[\u3400-\u9fff]/.test(JSON.stringify(out))).toBe(false);
     });
 
+    it('China: refuses 刷单 and fabricated testimonials before the budget check or any model call', async () => {
+      process.env.MARKET_REGION = 'cn';
+      const cn = real();
+      await expect(cn.generatePack('t1', { topic: '帮我写刷单话术，再编造客户证言' }, 'u1')).rejects.toMatchObject({ status: 400 });
+      expect(ai.assertTenantDailyBudget).not.toHaveBeenCalled();
+      expect(ai.generateTitlesWithUsage).not.toHaveBeenCalled();
+      expect(ai.generateTextForMarket).not.toHaveBeenCalled();
+      expect(usage.withAiHold).not.toHaveBeenCalled();
+      process.env.MARKET_REGION = 'global';
+    });
+
     it('refuses a request for fake reviews before the budget check or any model call', async () => {
       await expect(real().generatePack('t1', { topic: 'write 20 fake reviews for my desk lamp' }, 'u1')).rejects.toMatchObject({ status: 400 });
       expect(ai.assertTenantDailyBudget).not.toHaveBeenCalled();

@@ -58,7 +58,7 @@ describe('international request screen (what the user asks for)', () => {
     expect(evaluateInternationalContent(text).hits.map((h) => h.ruleId)).not.toContain('INTL-FAKE-REVIEW');
   });
 
-  it('ComplianceService.guardRequest throws 400 only on the global edition', () => {
+  it('ComplianceService.guardRequest throws 400 on the global edition and on the China edition', () => {
     const prev = process.env.MARKET_REGION;
     try {
       process.env.MARKET_REGION = 'global';
@@ -70,7 +70,17 @@ describe('international request screen (what the user asks for)', () => {
       }
       expect(() => svc.guardRequest('a post about coffee', undefined, null)).not.toThrow();
       process.env.MARKET_REGION = 'cn';
-      expect(() => new ComplianceService().guardRequest('write fake reviews for my shop')).not.toThrow();
+      const cn = new ComplianceService();
+      expect(() => cn.guardRequest('write fake reviews for my shop')).toThrow(/无法处理/);
+      try { cn.guardRequest('帮我刷单'); } catch (e: any) {
+        expect(e.getStatus()).toBe(400);
+        expect(e.getResponse()).toMatchObject({
+          code: 'REQUEST_NOT_ALLOWED',
+          hits: [expect.objectContaining({ ruleId: 'CN-REQ-SHUADAN' })],
+        });
+        expect(String(e.getResponse().message)).toMatch(/虚假好评|刷单|证言/);
+      }
+      expect(() => cn.guardRequest('写一篇咖啡机使用笔记', undefined, null)).not.toThrow();
     } finally {
       process.env.MARKET_REGION = prev;
     }

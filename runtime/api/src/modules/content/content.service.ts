@@ -165,11 +165,21 @@ export class ContentService {
   }
 
   async delete(id: string, tenantId: string) {
-    // 软删除
-    return this.prisma.content.update({
+    // 只软删除本工作区的内容。别的工作区或不存在都是 404，不把 Prisma 的「找不到行」变成 500。
+    const existing = await this.prisma.content.findFirst({
       where: { id, tenant_id: tenantId },
-      data: { status: "deleted" },
+      select: { id: true },
     });
+    if (!existing) throw new NotFoundException("内容不存在");
+    try {
+      return await this.prisma.content.update({
+        where: { id },
+        data: { status: "deleted" },
+      });
+    } catch (error) {
+      if ((error as { code?: string })?.code === "P2025") throw new NotFoundException("内容不存在");
+      throw error;
+    }
   }
 
   async submitForReview(id: string, tenantId: string, userId?: string) {

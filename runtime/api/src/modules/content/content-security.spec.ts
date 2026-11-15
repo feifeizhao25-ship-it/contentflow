@@ -169,6 +169,28 @@ describe('contents 接口的越权与绕过', () => {
     expect(again.split(AI_TEXT_LABEL).length - 1).toBe(1);
   });
 
+  it('DELETE /contents/:id：别的工作区或不存在的内容返回 404，不改库', async () => {
+    prisma.content.findFirst.mockResolvedValue(null);
+    const res = await http().delete('/api/v1/contents/c-other');
+    expect(res.status).toBe(404);
+    expect(res.body.error.message).toMatch(/不存在/);
+    expect(prisma.content.findFirst).toHaveBeenCalledWith({
+      where: { id: 'c-other', tenant_id: 't-mine' },
+      select: { id: true },
+    });
+    expect(prisma.content.update).not.toHaveBeenCalled();
+  });
+
+  it('DELETE /contents/:id：本工作区的内容软删除', async () => {
+    prisma.content.findFirst.mockResolvedValue({ id: 'c-1' });
+    const res = await http().delete('/api/v1/contents/c-1');
+    expect(res.status).toBe(200);
+    expect(prisma.content.update).toHaveBeenCalledWith({
+      where: { id: 'c-1' },
+      data: { status: 'deleted' },
+    });
+  });
+
   it('人工创作的内容不被加上 AI 标识', async () => {
     prisma.content.findFirst.mockResolvedValue({ id: 'c-1', tenant_id: 't-mine', status: 'draft', source: 'manual', body: '旧' });
     await http().put('/api/v1/contents/c-1').send({ body: '人写的正文' }).expect(200);

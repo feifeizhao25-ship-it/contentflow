@@ -55,8 +55,9 @@ export class ContentPackService {
     }
 
     async generatePack(tenantId: string, dto: GenerateContentPackDto, userId?: string, idempotencyKey?: string) {
-        // International edition: refuse requests for fake reviews, fake followers, hidden AI labels or synthetic endorsements
-        // before any budget check or token hold.
+        // Refuse prohibited requests before any budget check or token hold.
+        // Global: fake reviews, fake followers, hidden AI labels, synthetic endorsements.
+        // China: 刷单, 虚假好评, 虚构用户证言.
         this.complianceService.guardRequest?.(dto.topic, dto.material);
         // 额度闸：先查每日成本预算，再在数据库里占住本月令牌。占住之后才调用模型。
         await this.aiService.assertTenantDailyBudget(tenantId);
