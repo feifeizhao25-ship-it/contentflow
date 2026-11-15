@@ -5,7 +5,7 @@
  */
 export const DOMESTIC_REQUEST_RULESET_VERSION = 'cn-request-2026.11.15';
 
-const SOURCE = '《网络交易监督管理办法》（国家市场监督管理总局令第37号，2025年修正）第十四条：不得虚构交易、编造用户评价';
+const SOURCE = '《网络交易监督管理办法》（2021年3月15日国家市场监督管理总局令第37号公布）第十四条第二款第（一）项：不得虚构交易、编造用户评价';
 const SOURCE_URL = 'https://www.gov.cn/zhengce/2021-03/15/content_5723683.htm';
 const SOURCE_RETRIEVED_AT = '2026-11-15';
 
