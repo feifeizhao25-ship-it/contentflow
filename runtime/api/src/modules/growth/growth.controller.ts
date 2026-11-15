@@ -5,6 +5,8 @@ import { GrowthTrafficService } from './growth-traffic.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { HomeService } from '../home/home.service';
 import { skillById } from './skills/catalog';
+import { ResourceType, UsageService } from '../system/usage.service';
+import { quotaExceededException } from '../../common/quota-error';
 
 @ApiTags('growth')
 @Controller('growth')
@@ -15,6 +17,7 @@ export class GrowthController {
     private readonly growthService: GrowthService,
     private readonly traffic: GrowthTrafficService,
     private readonly home: HomeService,
+    private readonly usage: UsageService,
   ) {}
 
   @Get('plan')
@@ -41,8 +44,11 @@ export class GrowthController {
 
   @Post('skills/:id/draft')
   @ApiOperation({ summary: '生成技能草稿，不发布' })
-  draftSkill(@Param('id') id: string, @Body() body: Record<string, unknown>) {
+  async draftSkill(@Request() req: any, @Param('id') id: string, @Body() body: Record<string, unknown>) {
     if (!skillById(id)) throw new NotFoundException('未知技能');
+    // 平台改写草稿不调模型，但仍走同一套月度额度：超额不生成、不入账。
+    const open = this.usage ? await this.usage.checkQuota(req.user.tenantId, ResourceType.TOKENS, 1) : false;
+    if (!open) throw quotaExceededException();
     const input = body.input && typeof body.input === 'object' ? (body.input as Record<string, unknown>) : body;
     return this.traffic.draft(id, input);
   }

@@ -14,6 +14,8 @@ import { adaptBodyForPlatform } from '../ai/platform-adaptation';
 import { bulkPublishBlockReason } from './bulk-identical';
 import { WebhookService } from '../developer/webhook.service';
 import { RagPolicyService } from '../ai/rag-policy.service';
+import { ResourceType, UsageService } from '../system/usage.service';
+import { PUBLISH_MONTHLY_QUOTA_MESSAGE, quotaExceededException } from '../../common/quota-error';
 
 @Injectable()
 export class PublishService {
@@ -27,6 +29,7 @@ export class PublishService {
     private readonly config: ConfigService,
     @Optional() private readonly webhooks?: WebhookService,
     @Optional() private readonly rag?: RagPolicyService,
+    @Optional() private readonly usage?: UsageService,
   ) {}
 
   /**
@@ -86,9 +89,7 @@ export class PublishService {
     // 检查配额
     // 一次发到 N 个账号计 N 条；按北京时间自然月计数（见 TenantService.currentUsageStats）。
     const canPublish = await this.tenantService.checkQuota(tenantId, 'publish', accountIds.length);
-    if (!canPublish) {
-      throw new BadRequestException('发布次数已达上限，请升级套餐');
-    }
+    if (!canPublish) throw quotaExceededException(PUBLISH_MONTHLY_QUOTA_MESSAGE);
 
     // 在写入任何任务前一次性验证所有账号与真实适配器能力，避免批量部分成功。
     const accounts = await Promise.all(
@@ -265,7 +266,7 @@ export class PublishService {
     await this.assertRealNameIfRequired(userId);
     const content = await this.loadPublishableContent(tenantId, data.contentId, data.riskAcknowledged === true);
     if (!(await this.tenantService.checkQuota(tenantId, 'publish', platforms.length))) {
-      throw new BadRequestException('本月发布次数已达上限，请升级套餐或下月再发');
+      throw quotaExceededException(PUBLISH_MONTHLY_QUOTA_MESSAGE);
     }
     const aiGenerated = content.source === 'ai';
     const body = content.body || '';
@@ -403,6 +404,9 @@ export class PublishService {
    * 超过上限时只导出最新的 PUBLISH_LOG_MAX_ROWS 条，并在返回里标明被截断。
    */
   async exportTasksCsv(tenantId: string, filter: PublishTaskFilter): Promise<{ csv: string; rows: number; truncated: boolean }> {
+    // 批量导出原来不看套餐额度。超额直接拒绝，不读任务、不入账。
+    // CSV 的列、截断和筛选与原来相同。
+    await this.assertMonthlyAiQuota(tenantId);
     const where = publishTaskWhere(tenantId, filter);
     const tasks = await this.prisma.publishTask.findMany({
       where,
@@ -438,6 +442,13 @@ export class PublishService {
       }
     }
     return { requested: ids.length, retried: results.filter((r) => r.ok).length, results };
+  }
+
+  /** 与 AI 接口同一套月度令牌额度。只读，不入账。没有注入额度服务时拒绝，避免漏闸。 */
+  private async assertMonthlyAiQuota(tenantId: string): Promise<void> {
+    if (!this.usage) throw quotaExceededException();
+    const open = await this.usage.checkQuota(tenantId, ResourceType.TOKENS, 1);
+    if (!open) throw quotaExceededException();
   }
 
   private httpReason(error: HttpException): string {

@@ -6,7 +6,7 @@ import { message } from '@/lib/antd-app';
 import { ThunderboltOutlined, CopyOutlined, CheckCircleOutlined, StarOutlined } from '@ant-design/icons';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useOnboardingStore, DOMAIN_NAMES } from '@/store/onboardingStore';
-import { safeErrorText } from '@/lib/api-error';
+import { apiErrorText, safeErrorText } from '@/lib/api-error';
 import { labelAiGeneratedText } from '@/lib/ai-content-label';
 
 interface FirstScriptGuideProps {
@@ -49,7 +49,7 @@ export default function FirstScriptGuide({ onScriptGenerated, isGenerating }: Fi
       });
       const payload = await response.json();
       if (!response.ok) {
-        throw new Error(payload?.error || payload?.message || '脚本生成服务暂不可用');
+        throw new Error(apiErrorText(payload) || '脚本生成服务暂不可用');
       }
       const scenes = Array.isArray(payload?.scenes) ? payload.scenes : [];
       if (scenes.length === 0) throw new Error('生成结果没有有效分镜');

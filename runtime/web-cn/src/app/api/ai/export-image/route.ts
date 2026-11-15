@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { requireAuth, toErrorResponse } from '../../_lib/provider';
+import { assertMonthlyAiQuota, requireAuth, toErrorResponse } from '../../_lib/provider';
 import { buildAiImageLabel, labelImageBuffer } from '../../../../lib/ai-image-label';
 
 export const runtime = 'nodejs';
@@ -58,13 +58,15 @@ function assertSafeImageUrl(raw: string): URL {
 
 export async function GET(request: NextRequest) {
   try {
-    await requireAuth(request);
+    const token = await requireAuth(request);
 
     const raw = request.nextUrl.searchParams.get('url') || '';
     if (!raw) {
       return NextResponse.json({ error: 'url 不能为空' }, { status: 400 });
     }
     const safeUrl = assertSafeImageUrl(raw);
+    const denied = await assertMonthlyAiQuota(token, request.nextUrl.pathname);
+    if (denied) return denied;
 
     const upstream = await fetch(safeUrl, { cache: 'no-store', redirect: 'error' });
     if (!upstream.ok) {

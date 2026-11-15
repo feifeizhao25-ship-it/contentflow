@@ -1,4 +1,4 @@
-import { BadRequestException, NotFoundException } from '@nestjs/common';
+import { BadRequestException, HttpException, NotFoundException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { PrismaService } from '../../database/prisma.service';
 import { PublishQueueService } from '../../queue/publish-queue.service';
@@ -118,15 +118,18 @@ describe('PublishService', () => {
   });
 
   it('rejects publishing when the tenant quota is exhausted', async () => {
-    prisma.content.findFirst.mockResolvedValue({ id: 'content_1', status: 'approved' });
+    prisma.content.findFirst.mockResolvedValue({ id: 'content_1', status: 'approved', title: '标题', body: '普通正文' });
     tenant.checkQuota.mockResolvedValue(false);
-    await expect(
-      service.createTask('tenant_1', 'user_1', {
-        contentId: 'content_1',
-        platformAccountIds: ['account_1'],
-        publishType: 'immediate',
-      }),
-    ).rejects.toBeInstanceOf(BadRequestException);
+    const error = await service.createTask('tenant_1', 'user_1', {
+      contentId: 'content_1',
+      platformAccountIds: ['account_1'],
+      publishType: 'immediate',
+    }).catch((caught) => caught);
+    expect(error).toBeInstanceOf(HttpException);
+    expect(error.getStatus()).toBe(429);
+    expect(error.getResponse()).toMatchObject({ error: 'AI_MONTHLY_QUOTA', message: expect.stringContaining('发布次数已达上限') });
+    expect(tenant.incrementUsage).not.toHaveBeenCalled();
+    expect(prisma.publishTask.create).not.toHaveBeenCalled();
   });
 
   it('fails closed before queueing domestic content that hits a compliance gate', async () => {

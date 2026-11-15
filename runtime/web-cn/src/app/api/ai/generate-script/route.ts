@@ -28,7 +28,10 @@ export async function POST(request: NextRequest) {
   }
   const payload = await upstream.json().catch(() => ({}));
   if (!upstream.ok) {
-    // 后端的错误信封在 error.message；只认中文，没有就用兜底
+    // 额度超额保持后端的信封和错误码，其它失败仍只回中文原因。
+    if (payload?.error?.code === 'AI_MONTHLY_QUOTA') {
+      return NextResponse.json(payload, { status: upstream.status });
+    }
     return NextResponse.json(
       { error: apiErrorText(payload) ?? '脚本生成失败，请稍后重试' },
       { status: upstream.status },
