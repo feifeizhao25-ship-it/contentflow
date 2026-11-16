@@ -126,7 +126,17 @@ services:
       HOT_PROVIDER_KEY: ${CN_HOT_PROVIDER_KEY:-}
       HOT_PROVIDER_NAME: ${CN_HOT_PROVIDER_NAME:-}
       RAG_MAX_AGE_DAYS: ${CN_RAG_MAX_AGE_DAYS:-30}
+      # 每周自改进与资料库到期巡检：默认全部关闭，这里写明是为了让「关」成为看得见的配置，而不是靠变量缺席。
+      # 打开前必须先填 CN_POLICY_REVIEWERS（企业微信 userid，逗号分隔）——名单为空时没有任何人能批准改动。
+      # 容器根文件系统只读，状态一律写到下面挂载的 api_cn_state 卷（/app/var），否则打开后第一次写文件就会失败。
+      SIL_ENABLED: ${CN_SIL_ENABLED:-0}
+      SIL_AUTO_PROMOTE_INTERNAL: "0"
+      POLICY_REVIEWERS: ${CN_POLICY_REVIEWERS:-}
+      SIL_DATA_DIR: /app/var/self_improve/contentflow
+      LIBRARY_FRESHNESS_ENABLED: ${CN_LIBRARY_FRESHNESS_ENABLED:-0}
+      LIBRARY_DATA_DIR: /app/var/library
       ENABLE_API_DOCS: "false"
+    volumes: [api_cn_state:/app/var]
     depends_on:
       postgres-cn: {condition: service_healthy}
       redis-cn: {condition: service_healthy}
@@ -247,6 +257,7 @@ services:
 volumes:
   postgres_cn_data:
   redis_cn_data:
+  api_cn_state:
   postgres_int_data:
   redis_int_data:
   caddy_data:
