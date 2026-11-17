@@ -11,7 +11,10 @@
 #   RUN_DB_DOWNGRADE   =1 时回滚后执行数据库回退（默认 0，不执行）。
 #                      注意：Prisma migrate 无官方 downgrade，需提供 DB_DOWNGRADE_CMD。
 #   DB_DOWNGRADE_CMD   在 api 容器内执行的回退命令（RUN_DB_DOWNGRADE=1 时必填）
-#   HEALTH_URL         外部健康检查 URL；缺省在 api 容器内检查 http://127.0.0.1:4000/health
+#   HEALTH_URL         外部健康检查 URL；缺省在 API_SERVICE 容器内检查 http://127.0.0.1:4000/health
+#   SERVICES           要回滚的 compose 服务（默认 "api-cn web-cn api-int web-int"）。
+#                      只回滚国内线: SERVICES="api-cn web-cn"
+#   API_SERVICE        执行数据库回退和容器内健康检查的服务（默认 api-cn）
 #
 # 健康检查失败时退出非零。
 set -euo pipefail
@@ -21,7 +24,9 @@ COMPOSE_FILE="${COMPOSE_FILE:-runtime/docker-compose.production.yml}"
 RUN_DB_DOWNGRADE="${RUN_DB_DOWNGRADE:-0}"
 DB_DOWNGRADE_CMD="${DB_DOWNGRADE_CMD:-}"
 HEALTH_URL="${HEALTH_URL:-}"
-SERVICES="api web-cn web-int"
+# compose 文件里没有名为 api 的服务，只有 api-cn / api-int。
+SERVICES="${SERVICES:-api-cn web-cn api-int web-int}"
+API_SERVICE="${API_SERVICE:-api-cn}"
 
 cd "$(dirname "$0")/.."
 
@@ -41,7 +46,7 @@ if [ "$RUN_DB_DOWNGRADE" = "1" ]; then
     exit 1
   fi
   echo "[rollback] db downgrade: $DB_DOWNGRADE_CMD"
-  compose exec -T api sh -c "$DB_DOWNGRADE_CMD"
+  compose exec -T "$API_SERVICE" sh -c "$DB_DOWNGRADE_CMD"
 fi
 
 # 健康检查（最多等 60s）
@@ -50,7 +55,7 @@ for _ in $(seq 1 12); do
   if [ -n "$HEALTH_URL" ]; then
     curl -fsS -m 5 "$HEALTH_URL" >/dev/null 2>&1 && ok=1 && break
   else
-    compose exec -T api wget -qO- http://127.0.0.1:4000/health >/dev/null 2>&1 && ok=1 && break
+    compose exec -T "$API_SERVICE" wget -qO- http://127.0.0.1:4000/health >/dev/null 2>&1 && ok=1 && break
   fi
   sleep 5
 done
