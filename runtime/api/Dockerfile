@@ -34,6 +34,10 @@ COPY --chown=app:app docker-entrypoint.sh ./
 RUN chmod +x docker-entrypoint.sh
 # Signed generated media is written here (MEDIA_STORE_DIR). Mount a volume / shared disk in production.
 RUN mkdir -p /app/data/generated-media && chown app:app /app/data/generated-media
+# Self-improvement and library state (SIL_DATA_DIR / LIBRARY_DATA_DIR) lives under /app/var. The production
+# compose runs this image with a read-only root and mounts a named volume here; creating the directory with the
+# right owner means a fresh volume is writable by the non-root user.
+RUN mkdir -p /app/var && chown app:app /app/var
 USER app
 EXPOSE 4000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 CMD wget -qO- http://127.0.0.1:4000/health/ready >/dev/null || exit 1
