@@ -1,4 +1,5 @@
 import { CN_PLANS, PLANS } from '../billing/plans.constant';
+import { recordSignupEvent } from '../growth/signup-source/signup-source';
 import { randomUUID } from 'node:crypto';
 import { BadRequestException, Injectable, UnauthorizedException, ConflictException, Logger } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
@@ -147,6 +148,7 @@ export class AuthService {
       throw error;
     }
     this.logger.log(`手机号用户注册 ${maskPhone(phone)}`);
+    await recordSignupEvent(this.prisma, { userId: user.id, tenantId: user.tenant_id }, dto.signupSource);
     return this.issue(user);
   }
 
@@ -240,6 +242,8 @@ export class AuthService {
     const refreshToken = this.generateRefreshToken(user);
 
     this.logger.log(`User registered: ${maskEmail(email)}`);
+    // 注册来源只挂在 signup 事件上，不进日志、不进响应
+    await recordSignupEvent(this.prisma, { userId: user.id, tenantId: user.tenant_id }, dto.signupSource);
 
     return {
       user: this.authUser(user),

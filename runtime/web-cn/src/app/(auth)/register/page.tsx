@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useState } from 'react';
-import { Card, Form, Input, Button, Divider, Checkbox, Tabs } from 'antd';
+import React, { useEffect, useState } from 'react';
+import { Card, Form, Input, Button, Divider, Checkbox, Tabs, Select } from 'antd';
 import { message } from '@/lib/antd-app';
 import { UserOutlined, LockOutlined, MailOutlined, TeamOutlined, MobileOutlined } from '@ant-design/icons';
 import { passwordVisibilityIcon } from '@/components/a11y/password-icon';
@@ -12,6 +12,7 @@ import { SmsCodeInput } from '@/components/auth/SmsCodeInput';
 import { safeErrorText } from '@/lib/api-error';
 import { apiClient } from '@/lib/api-client';
 import { signupProfileBody } from '@/lib/signup-profile';
+import { parseSignupSourceOptions, signupSourceField, SignupSourceOption } from '@/lib/signup-source';
 
 
 
@@ -20,6 +21,16 @@ export default function RegisterPage() {
     const [formError, setFormError] = useState('');
     const [smsForm] = Form.useForm();
     const router = useRouter();
+    // 注册来源题：后端开关关着或请求失败时为空，题目不显示
+    const [sourceOptions, setSourceOptions] = useState<SignupSourceOption[]>([]);
+
+    useEffect(() => {
+        let alive = true;
+        apiClient.get('/growth/signup-source', { redirectOn401: false })
+            .then((payload) => { if (alive) setSourceOptions(parseSignupSourceOptions(payload)); })
+            .catch(() => { /* 当作未开启 */ });
+        return () => { alive = false; };
+    }, []);
 
     // 注册只走自己的后端（/api/auth/register → NestJS），成功后服务端写入登录 cookie。
     //
@@ -38,6 +49,7 @@ export default function RegisterPage() {
                 tenantName: values.tenantName,
                 agreedToTerms: values.agreement === true,
                 confirmedAge16: values.ageConfirmed === true,
+                ...signupSourceField(values.signupSource, sourceOptions),
             });
             await saveSignupAnswers(values);
             message.success('注册成功');
@@ -61,6 +73,7 @@ export default function RegisterPage() {
                 tenantName: values.tenantName || undefined,
                 agreedToTerms: values.agreement === true,
                 confirmedAge16: values.ageConfirmed === true,
+                ...signupSourceField(values.signupSource, sourceOptions),
             });
             await saveSignupAnswers(values);
             message.success('注册成功');
@@ -103,6 +116,16 @@ export default function RegisterPage() {
             <Form.Item name="province" label="所在省份（选填）">
                 <Input maxLength={20} placeholder="例如：浙江" />
             </Form.Item>
+            {sourceOptions.length > 0 && (
+                <Form.Item name="signupSource" label="从哪知道我们（选填，可跳过）">
+                    <Select
+                        allowClear
+                        placeholder="不想说可以不选"
+                        options={sourceOptions.map((option) => ({ value: option.code, label: option.label }))}
+                        data-testid="signup-source"
+                    />
+                </Form.Item>
+            )}
         </>
     );
 
