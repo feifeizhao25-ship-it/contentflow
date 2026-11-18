@@ -155,6 +155,8 @@ export const TABLE_CLASSIFICATION: Readonly<Record<string, { kind: 'user' | 'ten
   ai_quota_reservations: { kind: 'tenant', note: '含生成结果的额度预占，随工作区删除；已入账令牌仍留在 usage_meters' },
   GrowthEvent: { kind: 'user', note: '已登录用户的漏斗事件按 user_id 删除；匿名访客事件不含个人身份。工作区唯一成员注销时再按 tenant_id 删除' },
   GrowthAuditEntry: { kind: 'global', note: '自改进审计，只追加，不含用户个人数据列' },
+  GrowthTemplatePageSubmission: { kind: 'global', note: '运营中枢推来的模板页，只追加，无用户列' },
+  GrowthPublishReceiveAudit: { kind: 'global', note: '模板页接收口审计，只追加，无用户列' },
   GeoCitationObservation: { kind: 'global', note: '中文 AI 搜索引用观测，公开查询，无用户列' },
   compliance_rules: { kind: 'global', note: '合规规则版本与人工签署字段，不含用户个人数据；注销账号不删除' },
   AccountStatsHistory: { kind: 'cascade', note: 'PlatformAccount' },
