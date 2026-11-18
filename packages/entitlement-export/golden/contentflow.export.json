@@ -1,0 +1,185 @@
+{
+  "markets": [
+    {
+      "billing": "monthly_and_yearly",
+      "currency": "CNY",
+      "id": "cn",
+      "plans": [
+        {
+          "custom": false,
+          "features": [
+            "发布额度待确认",
+            "操作审计",
+            "团队协作与审批"
+          ],
+          "id": "enterprise",
+          "name": "商务版",
+          "priceMonthly": 1999,
+          "priceYearly": 19990,
+          "quotaStatus": "unconfirmed",
+          "quotas": {
+            "monthlyAiTokens": 40000000,
+            "monthlyPosts": 5000,
+            "platformAccounts": 100
+          }
+        },
+        {
+          "custom": false,
+          "features": [
+            "1个平台账号",
+            "每月5条发布",
+            "人工智能生成内容标识"
+          ],
+          "id": "free",
+          "name": "免费版",
+          "priceMonthly": 0,
+          "priceYearly": 0,
+          "quotaStatus": "confirmed",
+          "quotas": {
+            "monthlyAiTokens": 50000,
+            "monthlyPosts": 5,
+            "platformAccounts": 1
+          }
+        },
+        {
+          "custom": false,
+          "features": [
+            "10个平台账号",
+            "每月200条发布",
+            "内容日历与排期"
+          ],
+          "id": "pro",
+          "name": "个人版",
+          "priceMonthly": 99,
+          "priceYearly": 990,
+          "quotaStatus": "confirmed",
+          "quotas": {
+            "monthlyAiTokens": 2500000,
+            "monthlyPosts": 200,
+            "platformAccounts": 10
+          }
+        },
+        {
+          "custom": false,
+          "features": [
+            "30个平台账号",
+            "团队协作与审批",
+            "每月1000条发布"
+          ],
+          "id": "team",
+          "name": "团队版",
+          "priceMonthly": 499,
+          "priceYearly": 4990,
+          "quotaStatus": "confirmed",
+          "quotas": {
+            "monthlyAiTokens": 10000000,
+            "monthlyPosts": 1000,
+            "platformAccounts": 30
+          }
+        }
+      ],
+      "purchasableSkus": []
+    },
+    {
+      "billing": "monthly",
+      "currency": "USD",
+      "id": "intl",
+      "plans": [
+        {
+          "custom": true,
+          "features": [
+            "Custom platform and volume limits",
+            "API access",
+            "Dedicated support"
+          ],
+          "id": "enterprise",
+          "name": "Enterprise",
+          "priceMonthly": null,
+          "priceYearly": null,
+          "quotaStatus": null,
+          "quotas": {
+            "monthlyAiTokens": -1,
+            "monthlyPosts": -1,
+            "platformAccounts": -1
+          }
+        },
+        {
+          "custom": false,
+          "features": [
+            "3 platform accounts",
+            "10 posts per month",
+            "50K AI tokens per month"
+          ],
+          "id": "free",
+          "name": "Free",
+          "priceMonthly": 0,
+          "priceYearly": null,
+          "quotaStatus": null,
+          "quotas": {
+            "monthlyAiTokens": 50000,
+            "monthlyPosts": 10,
+            "platformAccounts": 3
+          }
+        },
+        {
+          "custom": false,
+          "features": [
+            "15 platform accounts",
+            "500 posts per month",
+            "2.5M AI tokens per month"
+          ],
+          "id": "pro",
+          "name": "Pro",
+          "priceMonthly": 99,
+          "priceYearly": null,
+          "quotaStatus": null,
+          "quotas": {
+            "monthlyAiTokens": 2500000,
+            "monthlyPosts": 500,
+            "platformAccounts": 15
+          }
+        },
+        {
+          "custom": false,
+          "features": [
+            "5 platform accounts",
+            "100 posts per month",
+            "500K AI tokens per month"
+          ],
+          "id": "starter",
+          "name": "Starter",
+          "priceMonthly": 29,
+          "priceYearly": null,
+          "quotaStatus": null,
+          "quotas": {
+            "monthlyAiTokens": 500000,
+            "monthlyPosts": 100,
+            "platformAccounts": 5
+          }
+        },
+        {
+          "custom": false,
+          "features": [
+            "30 platform accounts",
+            "2000 posts per month",
+            "10M AI tokens per month"
+          ],
+          "id": "team",
+          "name": "Team",
+          "priceMonthly": 299,
+          "priceYearly": null,
+          "quotaStatus": null,
+          "quotas": {
+            "monthlyAiTokens": 10000000,
+            "monthlyPosts": 2000,
+            "platformAccounts": 30
+          }
+        }
+      ],
+      "purchasableSkus": []
+    }
+  ],
+  "product": "contentflow",
+  "sourceKind": "generated",
+  "sourceLabel": "Generated from runtime/api/src/modules/billing/plans.constant.ts. Prices and quotas are copied from that source."
+}

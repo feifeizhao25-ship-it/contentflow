@@ -1,0 +1,42 @@
+{
+  "fixture": true,
+  "product": "jianji",
+  "sourceKind": "fixture",
+  "sourceLabel": "Fixture of the current daily_chat quotas 3/20/60. The jianji repository was not available in this workspace and was not modified. Tier names and prices are omitted rather than reconstructed.",
+  "markets": [
+    {
+      "id": "cn",
+      "currency": "CNY",
+      "billing": "unspecified",
+      "plans": [
+        {
+          "id": "daily_chat_3",
+          "name": null,
+          "priceMonthly": null,
+          "priceYearly": null,
+          "quotas": {
+            "daily_chat": 3
+          }
+        },
+        {
+          "id": "daily_chat_20",
+          "name": null,
+          "priceMonthly": null,
+          "priceYearly": null,
+          "quotas": {
+            "daily_chat": 20
+          }
+        },
+        {
+          "id": "daily_chat_60",
+          "name": null,
+          "priceMonthly": null,
+          "priceYearly": null,
+          "quotas": {
+            "daily_chat": 60
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,9 @@
+{
+  "name": "@contentflow/entitlement-export",
+  "private": true,
+  "type": "module",
+  "description": "Spike: one entitlements JSON in, one normalized export out. No shared runtime and no price changes.",
+  "scripts": {
+    "test": "node --experimental-strip-types --test src/export.test.mjs"
+  }
+}
