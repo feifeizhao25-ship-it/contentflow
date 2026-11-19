@@ -7,6 +7,7 @@ import { HomeService } from '../home/home.service';
 import { skillById } from './skills/catalog';
 import { ResourceType, UsageService } from '../system/usage.service';
 import { quotaExceededException } from '../../common/quota-error';
+import { publicSignupSourceOptions } from './signup-source/signup-source';
 
 @ApiTags('growth')
 @Controller('growth')
@@ -80,6 +81,12 @@ export class GrowthController {
 @Controller('growth')
 export class GrowthPublicController {
   constructor(private readonly traffic: GrowthTrafficService) {}
+
+  @Get('signup-source')
+  @ApiOperation({ summary: '注册来源题是否开启及选项（公开，不含任何用户数据；国内版且 SIGNUP_SOURCE_ENABLED=true 才开启）' })
+  signupSource() {
+    return publicSignupSourceOptions();
+  }
 
   @Post('visits')
   @ApiOperation({ summary: '记录官网访问。只收访客编号和来源，不收个人身份信息。' })

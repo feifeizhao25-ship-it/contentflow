@@ -644,8 +644,20 @@ model GrowthEvent {
   page_type    String?
   created_at   DateTime @default(now())
 
+  signup_source GrowthSignupSource?
+
   @@index([tenant_id, event])
   @@index([visitor_id])
+}
+
+// 注册来源题「从哪知道我们」的作答。只存枚举代码，没有任何身份列；随所属 signup 事件级联删除。
+model GrowthSignupSource {
+  event_id   String      @id
+  source     String
+  created_at DateTime    @default(now())
+  event      GrowthEvent @relation(fields: [event_id], references: [id], onDelete: Cascade)
+
+  @@index([source])
 }
 
 // 自改进审计。只追加，应用层不提供更新和删除。
