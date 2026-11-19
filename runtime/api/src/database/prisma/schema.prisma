@@ -670,6 +670,34 @@ model GrowthAuditEntry {
   created_at DateTime @default(now())
 }
 
+// 运营中枢推来的模板页（/growth/publish/template-page）。只存不发：不上线、不转发。
+// 只追加：迁移里的触发器拒绝 UPDATE 和 DELETE，应用层也只写 create。
+model GrowthTemplatePageSubmission {
+  id             String   @id @default(uuid())
+  content_sha256 String   @unique
+  approval_id    String?
+  title          String
+  body           String
+  url            String?
+  content_json   Json
+  status         String   @default("received")
+  received_at    DateTime @default(now())
+}
+
+// 模板页接收口的审计。每次通过鉴权的请求（接收、重复、拒绝）各写一行。只追加，触发器拒绝改和删。
+model GrowthPublishReceiveAudit {
+  id             Int      @id @default(autoincrement())
+  action         String
+  decision       String
+  reason         String
+  content_sha256 String?
+  submission_id  String?
+  detail         Json
+  created_at     DateTime @default(now())
+
+  @@index([created_at])
+}
+
 // 中文 AI 搜索引用观测。由人工或官方接口写入，不由爬虫抓取。
 model GeoCitationObservation {
   id         String   @id @default(uuid())
