@@ -5,6 +5,21 @@ import { join } from 'path';
 import { breakChineseLines, lineBreaksFollowClreq } from './chinese-layout';
 import { ExportDraft, buildDocx, buildSearchablePdf } from './document-export';
 
+/**
+ * 调用外部命令行工具（unzip / pdftotext / qpdf）。工具缺失或执行失败时抛出一条普通的 Error，写明是哪个工具、什么原因。
+ * 直接把 execFileSync 的异常抛给 jest 不行：那个异常对象的 error 属性指回它自己（循环引用），
+ * jest worker 序列化失败，整个文件只报「Converting circular structure to JSON」，看不出真正原因。
+ */
+function runTool(cmd: string, args: string[]): string {
+  try {
+    return execFileSync(cmd, args, { encoding: 'utf8' });
+  } catch (error) {
+    const e = error as NodeJS.ErrnoException & { status?: number | null; stderr?: unknown };
+    const why = e.code === 'ENOENT' ? `${cmd} is not installed (CI installs it in .github/workflows/ci.yml)` : `exit ${e.status ?? '?'}: ${String(e.stderr ?? e.message).slice(0, 500)}`;
+    throw new Error(`${cmd} ${args.join(' ')} failed: ${why}`);
+  }
+}
+
 const DRAFT: ExportDraft = {
   title: '发布说明',
   header: '分发侠',
@@ -16,7 +31,7 @@ const DRAFT: ExportDraft = {
 };
 
 function unzipText(file: string, entry: string): string {
-  return execFileSync('unzip', ['-p', file, entry], { encoding: 'utf8' });
+  return runTool('unzip', ['-p', file, entry]);
 }
 
 describe('稿件导出', () => {
@@ -33,7 +48,7 @@ describe('稿件导出', () => {
     const file = join(dir, 'draft.docx');
     try {
       writeFileSync(file, buffer);
-      const names = execFileSync('unzip', ['-l', file], { encoding: 'utf8' });
+      const names = runTool('unzip', ['-l', file]);
       expect(names).toMatch(/word\/document\.xml/);
       expect(names).toMatch(/word\/header\d*\.xml/);
       const documentXml = unzipText(file, 'word/document.xml');
@@ -57,7 +72,7 @@ describe('稿件导出', () => {
     const file = join(dir, 'draft.pdf');
     try {
       writeFileSync(file, pdf);
-      const text = execFileSync('pdftotext', ['-layout', file, '-'], { encoding: 'utf8' });
+      const text = runTool('pdftotext', ['-layout', file, '-']);
       expect(text).toContain('分发侠');
       expect(text).toContain('发布说明');
       expect(text).toContain('目录');

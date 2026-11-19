@@ -41,6 +41,17 @@ describe('public registration and unknown urls', () => {
     },
   );
 
+  it.each(['/signup', '/sign-up'])('sends the sign-up alias %s to the real registration page', (path) => {
+    const res = proxy(new NextRequest(`http://localhost${path}?ref=pricing`));
+    expect(res.status).toBe(307);
+    expect(res.headers.get('location')).toBe('http://localhost/register?ref=pricing');
+  });
+
+  it('does not treat a nested /signup path as the alias', () => {
+    const res = proxy(new NextRequest('http://localhost/signup/extra'));
+    expect(res.headers.get('location')).toBeNull();
+  });
+
   it('still protects a nested workspace route', () => {
     const res = proxy(new NextRequest('http://localhost/team/invite'));
     expect(res.headers.get('location')).toBe('http://localhost/login?next=%2Fteam%2Finvite');
