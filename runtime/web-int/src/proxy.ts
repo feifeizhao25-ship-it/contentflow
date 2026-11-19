@@ -21,8 +21,16 @@ const PROTECTED_SEGMENTS = new Set([
   'team',
 ]);
 
+// Common sign-up URLs people type or old links use. Self-serve registration lives at /register.
+const SIGNUP_ALIASES = new Set(['/signup', '/sign-up']);
+
 export function proxy(request: NextRequest) {
   const path = request.nextUrl.pathname;
+  if (SIGNUP_ALIASES.has(path)) {
+    const url = request.nextUrl.clone();
+    url.pathname = '/register';
+    return NextResponse.redirect(url);
+  }
   if (
     PUBLIC_PATHS.has(path) ||
     path.startsWith('/legal/') ||

@@ -199,12 +199,26 @@ describe('loop', () => {
 
   it('超时未批准就作废，永不晋升', async () => {
     const { loop, applied } = make({ propose: () => [] });
+    // 进入待审的时间写死，不跟着真实时钟走：原来用真实时间，过了 2026-11-17 这条就再也不会超时。
+    loop.store.setClock(() => '2026-11-16T03:00:00+08:00');
     loop.store.add(newCandidate({ id: 'late', kind: 'rule', target: 'x', summary: 's', origin: 'internal' }));
     loop.store.transition('late', 'evaluated');
     loop.store.transition('late', 'pending_approval');
+    // 默认 72 小时：96 小时后作废
     const rep = await loop.runWeekly(new Date('2026-11-20T03:00:00+08:00'));
     expect(rep.expired).toEqual(['late']);
     expect(applied).toEqual([]);
+  });
+
+  it('未到 72 小时的待审提案不作废', async () => {
+    const { loop } = make({ propose: () => [] });
+    loop.store.setClock(() => '2026-11-18T03:00:00+08:00');
+    loop.store.add(newCandidate({ id: 'fresh', kind: 'rule', target: 'x', summary: 's', origin: 'internal' }));
+    loop.store.transition('fresh', 'evaluated');
+    loop.store.transition('fresh', 'pending_approval');
+    const rep = await loop.runWeekly(new Date('2026-11-20T03:00:00+08:00'));
+    expect(rep.expired).toEqual([]);
+    expect(loop.store.get('fresh').state).toBe('pending_approval');
   });
 
   it('审批人名单为空：提案停在待审并告警，且无人能批', async () => {

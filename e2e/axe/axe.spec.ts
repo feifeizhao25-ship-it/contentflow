@@ -18,6 +18,7 @@ const ROUTES: Route[] = [
   { app: 'cn', path: '/pricing', name: 'plans' },
   { app: 'cn', path: '/settings', name: 'settings', signedInShell: true },
   { app: 'int', path: '/login', name: 'login' },
+  { app: 'int', path: '/register', name: 'signup' },
   { app: 'int', path: '/', name: 'workspace home' },
   { app: 'int', path: '/pricing', name: 'plans' },
   { app: 'int', path: '/settings', name: 'settings', signedInShell: true },
@@ -78,10 +79,12 @@ test('a control with no accessible name fails this gate', async ({ page }) => {
   expect(blocking(results.violations).length).toBeGreaterThan(0);
 });
 
-test('the international site has no signup page', async ({ page }) => {
+// The international site has self-serve registration at /register (src/app/register).
+// /signup is only an alias: it must redirect there, never 404 and never fake a second sign-up page.
+test('the international /signup alias redirects to the real registration page', async ({ page }) => {
   const response = await page.request.get(`${INT}/signup`, { maxRedirects: 0 });
   expect(response.status()).toBe(307);
-  expect(response.headers().location ?? '').toContain('/login');
+  expect(new URL(response.headers().location ?? '', INT).pathname).toBe('/register');
 });
 
 for (const route of ROUTES) {

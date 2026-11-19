@@ -62,9 +62,26 @@ require(
     "runtime/api/src/modules/materials/materials.service.ts",
     ("signed object-storage upload", "throw new BadRequestException"),
 )
+# 团队邀请：原来的门禁要求「没有签名邀请投递就拒绝加人」。#118 起改为一次性邀请：只存令牌摘要、待接受、
+# 24 小时过期；默认邮件实现只记录不外发，所以接口只能回 delivery 'recorded' / 'link'，界面也写明没有发邮件。
+# 这里检查的是这套真实行为，不允许回到「声称已发送」。
 require(
     "runtime/api/src/modules/team/team.service.ts",
-    ("signed invitation delivery", "throw new BadRequestException"),
+    (
+        "const token_hash = hashToken(token);",
+        "status: 'pending'",
+        "delivery: email ? 'recorded' : 'link'",
+        "throw new BadRequestException",
+    ),
+)
+forbid("runtime/api/src/modules/team/team.service.ts", ("delivery: 'sent'", "delivery: 'delivered'"))
+require(
+    "runtime/api/src/modules/team/team-invite.mailer.ts",
+    ("默认实现只记录，不打开网络、不调用邮件供应商",),
+)
+require(
+    "runtime/web-int/src/components/team/TeamInvites.tsx",
+    ("No email was sent by an outside provider.",),
 )
 require(
     "runtime/api/src/modules/billing/alipay.adapter.ts",

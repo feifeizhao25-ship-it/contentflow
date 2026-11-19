@@ -128,6 +128,8 @@ services:
       HOT_PROVIDER_KEY: ${CN_HOT_PROVIDER_KEY:-}
       HOT_PROVIDER_NAME: ${CN_HOT_PROVIDER_NAME:-}
       RAG_MAX_AGE_DAYS: ${CN_RAG_MAX_AGE_DAYS:-30}
+      # 注册来源题「从哪知道我们」。默认关闭；只在国内栈生效（见 runtime/docs/SIGNUP_SOURCE.md）。
+      SIGNUP_SOURCE_ENABLED: ${CN_SIGNUP_SOURCE_ENABLED:-false}
       ENABLE_API_DOCS: "false"
     depends_on:
       postgres-cn: {condition: service_healthy}
