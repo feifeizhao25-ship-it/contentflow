@@ -75,6 +75,11 @@ jobs:
           DATABASE_URL: postgresql://ci:ci-isolated-test-only@localhost:5432/contentflow_ci
         run: node scripts/test-billing-concurrency.cjs
 
+      # weekly-report / document-export 的测试在 CI=true 时用 qpdf 和 pdftotext（poppler-utils）检查生成的 PDF，
+      # 用 unzip 读 docx/xlsx。ubuntu 镜像不带 qpdf 和 poppler-utils，缺工具时整个测试文件只报循环引用错误。
+      - name: Install PDF check tools
+        run: sudo apt-get update -qq && sudo apt-get install -y --no-install-recommends qpdf poppler-utils unzip
+
       - name: Unit tests
         run: npm test -- --ci
 
