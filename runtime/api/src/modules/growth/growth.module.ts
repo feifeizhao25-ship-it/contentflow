@@ -3,11 +3,13 @@ import { GrowthService } from './growth.service';
 import { GrowthController, GrowthPublicController } from './growth.controller';
 import { HomeModule } from '../home/home.module';
 import { GrowthTrafficService } from './growth-traffic.service';
+import { SiteFunnelController } from './site-funnel/site-funnel.controller';
+import { SiteFunnelService } from './site-funnel/weekly-funnel';
 
 @Module({
   imports: [HomeModule],
-  providers: [GrowthService, GrowthTrafficService],
-  controllers: [GrowthController, GrowthPublicController],
+  providers: [GrowthService, GrowthTrafficService, SiteFunnelService],
+  controllers: [GrowthController, GrowthPublicController, SiteFunnelController],
   exports: [GrowthService, GrowthTrafficService],
 })
 export class GrowthModule {}
