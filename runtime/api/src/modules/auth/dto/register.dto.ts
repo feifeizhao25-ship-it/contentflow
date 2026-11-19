@@ -26,6 +26,13 @@ export class RegisterDto {
   @MaxLength(100)
   tenantName?: string;
 
+  @ApiPropertyOptional({ description: '注册来源题「从哪知道我们」的选项代码（可不填）。只在国内版且 SIGNUP_SOURCE_ENABLED=true 时记录；未知值丢弃' })
+  // 不用 IsIn：未知值不报错，由服务层丢弃，免得旧客户端或改版后的选项让注册失败
+  @IsOptional()
+  @IsString()
+  @MaxLength(32)
+  signupSource?: string;
+
   @ApiProperty({ description: '已阅读并同意《用户协议》《隐私政策》' })
   // 隐式类型转换会把字符串 'false' 变成 true：取原始值，只认布尔 true
   @Transform(({ obj }) => obj.agreedToTerms)

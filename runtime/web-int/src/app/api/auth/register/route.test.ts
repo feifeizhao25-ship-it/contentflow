@@ -2,6 +2,10 @@
 import { NextRequest } from 'next/server';
 import { POST } from './route';
 
+// Upstream CN backend message ("email already registered"), written as escapes so the INT source stays free of CJK.
+const UPSTREAM_ZH_MESSAGE = '\u90ae\u7bb1\u5df2\u88ab\u6ce8\u518c';
+const UPSTREAM_ZH_WORD = '\u90ae\u7bb1';
+
 const fetchMock = jest.fn();
 beforeEach(() => {
   global.fetch = fetchMock;
@@ -34,13 +38,14 @@ it('does not leak upstream Chinese errors or credentials', async () => {
   fetchMock.mockResolvedValue({
     ok: false,
     status: 409,
-    json: async () => ({ error: { message: '邮箱已被注册' }, token: 'secret' }),
+    json: async () => ({ error: { message: UPSTREAM_ZH_MESSAGE }, token: 'secret' }),
   });
   const res = await POST(request());
   expect(res.status).toBe(409);
   const text = await res.text();
   expect(text).toContain('An account with this email already exists.');
-  expect(text).not.toMatch(/邮箱|secret/);
+  expect(text).not.toContain(UPSTREAM_ZH_WORD);
+  expect(text).not.toContain('secret');
 });
 
 it('sets HTTP-only cookie only for a confirmed registration', async () => {

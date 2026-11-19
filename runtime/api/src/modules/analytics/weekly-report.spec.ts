@@ -21,8 +21,23 @@ import { weeklySheets } from './weekly-report';
 import { buildXlsx } from './xlsx';
 
 /**
- * qpdf 不在 PATH 上时，execFileSync 会让 jest worker 直接退出。
- * 未设置 CI 时跳过这些检查并写明原因；CI=true 时照常运行。
+ * 调用外部命令行工具（unzip / pdftotext / qpdf）。工具缺失或执行失败时抛出一条普通的 Error，写明是哪个工具、什么原因。
+ * 直接把 execFileSync 的异常抛给 jest 不行：那个异常对象的 error 属性指回它自己（循环引用），
+ * jest worker 序列化失败，整个文件只报「Converting circular structure to JSON」，看不出真正原因。
+ */
+function runTool(cmd: string, args: string[]): string {
+  try {
+    return execFileSync(cmd, args, { encoding: 'utf8' });
+  } catch (error) {
+    const e = error as NodeJS.ErrnoException & { status?: number | null; stderr?: unknown };
+    const why = e.code === 'ENOENT' ? `${cmd} is not installed (CI installs it in .github/workflows/ci.yml)` : `exit ${e.status ?? '?'}: ${String(e.stderr ?? e.message).slice(0, 500)}`;
+    throw new Error(`${cmd} ${args.join(' ')} failed: ${why}`);
+  }
+}
+
+/**
+ * qpdf 不在 PATH 上时这些检查跑不了。
+ * 未设置 CI 时跳过并写明原因；CI=true 时照常运行（CI 的 API 任务会安装 qpdf 和 poppler-utils）。
  */
 function qpdfInstalled(): boolean {
   const found = spawnSync('qpdf', ['--version'], { stdio: 'ignore' });
@@ -117,9 +132,9 @@ function checkedPdfText(pdf: Buffer): string {
   const file = join(dir, 'report.pdf');
   try {
     writeFileSync(file, pdf);
-    const check = execFileSync('qpdf', ['--check', file], { encoding: 'utf8' });
+    const check = runTool('qpdf', ['--check', file]);
     expect(check).toMatch(/No syntax or stream encoding errors/);
-    return execFileSync('pdftotext', ['-layout', file, '-'], { encoding: 'utf8' });
+    return runTool('pdftotext', ['-layout', file, '-']);
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }

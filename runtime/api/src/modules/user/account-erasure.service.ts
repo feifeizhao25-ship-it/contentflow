@@ -154,6 +154,7 @@ export const TABLE_CLASSIFICATION: Readonly<Record<string, { kind: 'user' | 'ten
   WebhookSubscription: { kind: 'tenant', note: '含 Webhook 签名密钥密文，随工作区删除' },
   ai_quota_reservations: { kind: 'tenant', note: '含生成结果的额度预占，随工作区删除；已入账令牌仍留在 usage_meters' },
   GrowthEvent: { kind: 'user', note: '已登录用户的漏斗事件按 user_id 删除；匿名访客事件不含个人身份。工作区唯一成员注销时再按 tenant_id 删除' },
+  GrowthSignupSource: { kind: 'cascade', note: 'GrowthEvent；只存注册来源枚举代码，不含身份列' },
   GrowthAuditEntry: { kind: 'global', note: '自改进审计，只追加，不含用户个人数据列' },
   GrowthTemplatePageSubmission: { kind: 'global', note: '运营中枢推来的模板页，只追加，无用户列' },
   GrowthPublishReceiveAudit: { kind: 'global', note: '模板页接收口审计，只追加，无用户列' },

@@ -6,6 +6,10 @@ jest.mock('next/navigation', () => ({
   useRouter: () => ({ replace, refresh: jest.fn() }),
 }));
 
+// Upstream CN backend message ("email already registered"), written as escapes so the INT source stays free of CJK.
+const UPSTREAM_ZH_MESSAGE = '\u90ae\u7bb1\u5df2\u88ab\u6ce8\u518c';
+const UPSTREAM_ZH_WORD = '\u90ae\u7bb1';
+
 const fetchMock = jest.fn();
 beforeEach(() => {
   global.fetch = fetchMock;
@@ -25,14 +29,14 @@ it('shows an English alert when registration fails', async () => {
   fetchMock.mockResolvedValue({
     ok: false,
     status: 409,
-    json: async () => ({ message: '邮箱已被注册' }),
+    json: async () => ({ message: UPSTREAM_ZH_MESSAGE }),
   });
   render(<RegisterPage />);
   fill();
   fireEvent.click(screen.getByRole('button', { name: 'Create account' }));
   const alert = await screen.findByRole('alert');
   expect(alert).toHaveTextContent('Registration failed. Please try again.');
-  expect(alert).not.toHaveTextContent('邮箱');
+  expect(alert).not.toHaveTextContent(UPSTREAM_ZH_WORD);
   expect(replace).not.toHaveBeenCalled();
 });
 
