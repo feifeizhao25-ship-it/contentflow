@@ -37,12 +37,6 @@ jobs:
           tags: ${{ env.IMAGE }}
           cache-from: type=gha,scope=web-cn
           cache-to: type=gha,mode=max,scope=web-cn
-      - name: Scan .next/static (file names only)
-        run: |
-          cid=$(docker create "$IMAGE")
-          docker cp "$cid:/app/.next/static" ./_next_static
-          docker rm "$cid" >/dev/null
-          bash .github/scripts/scan-next-static.sh ./_next_static
       - name: Smoke test the container
         run: |
           docker run -d --name web -p 3000:3000 "$IMAGE"
@@ -65,6 +59,15 @@ jobs:
               exit 1
             fi
           done
+      - name: Scan .next/static (file names only)
+        env:
+          # safe-redirect.ts 用 new URL(raw, 'https://placeholder.invalid') 判断跳转是否同源，只作解析基准、从不请求。
+          SCAN_ALLOW_INVALID_HOSTS: placeholder.invalid
+        run: |
+          cid=$(docker create "$IMAGE")
+          docker cp "$cid:/app/.next/static" ./_next_static
+          docker rm "$cid" >/dev/null
+          bash .github/scripts/scan-next-static.sh ./_next_static
       - name: Clean up
         if: always()
         run: docker rm -f web >/dev/null 2>&1 || true
