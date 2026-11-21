@@ -18,17 +18,17 @@ check() {
     printf '%s\n' "$files" | sed "s|^$dir/||"
   fi
 }
-# .invalid 主机名单独处理：列出文件名和主机名（主机名不是机密），白名单里的跳过。
+# .invalid 主机名单独处理（只认 URL 或字符串里的主机名，像 e.invalid 这种属性访问不算）：列出文件名和主机名（主机名不是机密），白名单里的跳过。
 allow=" ${SCAN_ALLOW_INVALID_HOSTS:-} "
 invalid_hits=""
 while IFS= read -r file; do
-  hosts=$(grep -oE '[A-Za-z0-9.-]*[A-Za-z0-9-]\.invalid([^A-Za-z0-9.-]|$)' "$file" | sed -E 's/[^A-Za-z0-9.-]$//' | sort -u)
+  hosts=$(grep -oE '(//|["'"'"'\`@])[A-Za-z0-9-]+(\.[A-Za-z0-9-]+)*\.invalid([^A-Za-z0-9.-]|$)' "$file" | sed -E 's#^(//|.)##; s/[^A-Za-z0-9.-]$//' | sort -u)
   bad=""
   for h in $hosts; do
     case "$allow" in *" $h "*) ;; *) bad="$bad $h" ;; esac
   done
   [ -n "$bad" ] && invalid_hits="$invalid_hits${file#$dir/}:$bad"$'\n'
-done < <(grep -rlE '[A-Za-z0-9-]\.invalid([^A-Za-z0-9-]|$)' "$dir" || true)
+done < <(grep -rlE '(//|["'"'"'\`@])[A-Za-z0-9-]+(\.[A-Za-z0-9-]+)*\.invalid([^A-Za-z0-9.-]|$)' "$dir" || true)
 if [ -n "$invalid_hits" ]; then
   fail=1
   echo "::error::产物里有 .invalid 占位地址（文件名: 主机名）:"
