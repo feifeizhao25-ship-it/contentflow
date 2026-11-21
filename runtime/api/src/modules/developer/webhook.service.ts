@@ -1,8 +1,8 @@
-import { BadRequestException, ForbiddenException, Inject, Injectable, Logger, Optional } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Inject, Injectable, Logger, Optional, ServiceUnavailableException } from '@nestjs/common';
 import { effectiveEntitlements } from '../billing/effective-limits';
 import * as crypto from 'crypto';
 import { PrismaService } from '../../database/prisma.service';
-import { WEBHOOK_EVENTS, WebhookDeliveryDeps, assertPublicWebhookDestination, decryptSecret, deliverWebhook, encryptSecret } from './webhook-delivery';
+import { WEBHOOK_EVENTS, WebhookDeliveryDeps, RetryableWebhookDnsError, assertPublicWebhookDestination, decryptSecret, deliverWebhook, encryptSecret } from './webhook-delivery';
 
 @Injectable()
 export class WebhookService {
@@ -29,7 +29,14 @@ export class WebhookService {
     await this.assertBusiness(tenantId);
     const url = String(body?.url ?? '').trim();
     // SEC-11：创建时解析域名并拒绝非公网地址；投递时 deliverWebhook 还会再查一次（DNS 换绑）。
-    try { await assertPublicWebhookDestination(url, this.delivery.lookup); } catch (e: any) { throw new BadRequestException(e?.message || 'Webhook 地址格式不正确'); }
+    try {
+      await assertPublicWebhookDestination(url, this.delivery.lookup);
+    } catch (e: any) {
+      if (e instanceof RetryableWebhookDnsError) throw new ServiceUnavailableException({
+        statusCode: 503, message: e.message, retryable: true, retry_after_seconds: 5,
+      });
+      throw new BadRequestException(e?.message || 'Webhook 地址格式不正确');
+    }
     const events = [...new Set(body?.events ?? [])].filter((e) => (WEBHOOK_EVENTS as readonly string[]).includes(e));
     if (!events.length) throw new BadRequestException(`至少选择一个事件：${WEBHOOK_EVENTS.join(' / ')}`);
     const secret = 'whsec_' + crypto.randomBytes(24).toString('hex');
