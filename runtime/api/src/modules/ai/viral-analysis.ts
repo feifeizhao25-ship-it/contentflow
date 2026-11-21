@@ -5,8 +5,9 @@
  * 1. 国内 4/4 次分析被 1500 token 上限截断，JSON 解析失败，用户拿到一段半截的 JSON 字符串。
  * 2. 「糖尿病人也能放心吃」「医院同款」「cure fatigue」这类违规宣称拿到 8.5/10，还被做成「可复制模板」。
  *
- * 命中合规规则的文案不调模型，只返回确定性筛查结果（不给分、不给模板、写明命中规则）；
- * 没命中时解析模型输出（容忍 ```json 包裹和截断）。
+ * 命中拦截级规则的文案不调模型，只返回确定性筛查结果（不给分、不给模板、写明命中规则）；
+ * 只命中复核级规则时照常分析，但评分压到 6/10 以下，并标「需人工复核」；
+ * 解析模型输出时容忍 ```json 包裹和截断。
  * 合规检查是关键词筛查，不是法律意见。
  */
 
@@ -86,17 +87,96 @@ export function parseViralAnalysis(raw: string, opts: { completionTokens?: numbe
   }
 }
 
+/** 只命中复核级规则时，评分上限（10 分制）。 */
+export const VIRAL_REVIEW_SCORE_CAP = 6;
+
+const SCORE_KEY = /score|rating|评分|分数|打分|得分/i;
+
+function capNumber(value: number): number {
+  if (!Number.isFinite(value)) return value;
+  // 模型有时用 100 分制
+  if (value > 10 && value <= 100) return Math.min(value, VIRAL_REVIEW_SCORE_CAP * 10);
+  return Math.min(value, VIRAL_REVIEW_SCORE_CAP);
+}
+
+/** 文本里的「8.5/10」「9 / 10」「92/100」也一并压到上限。 */
+function capScoresInText(text: string): string {
+  return text
+    .replace(/(\d+(?:\.\d+)?)(\s*[/／]\s*100)(?!\d)/g, (m, n, tail) => `${Math.min(Number(n), VIRAL_REVIEW_SCORE_CAP * 10)}${tail}`)
+    .replace(/(\d+(?:\.\d+)?)(\s*[/／]\s*10)(?!\d)/g, (m, n, tail) => `${Math.min(Number(n), VIRAL_REVIEW_SCORE_CAP)}${tail}`);
+}
+
+function capScores(value: any, underScoreKey: boolean, seen: { max: number | null }): any {
+  if (typeof value === 'number') {
+    if (!underScoreKey) return value;
+    const capped = capNumber(value);
+    const ten = capped > 10 ? capped / 10 : capped;
+    seen.max = seen.max === null ? ten : Math.max(seen.max, ten);
+    return capped;
+  }
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+    if (underScoreKey && /^\d+(?:\.\d+)?$/.test(trimmed)) return String(capScores(Number(trimmed), true, seen));
+    return capScoresInText(value);
+  }
+  if (Array.isArray(value)) return value.map((item) => capScores(item, underScoreKey, seen));
+  if (value && typeof value === 'object') {
+    const out: Record<string, any> = {};
+    for (const [key, item] of Object.entries(value)) out[key] = capScores(item, underScoreKey || SCORE_KEY.test(key), seen);
+    return out;
+  }
+  return value;
+}
+
+function describeRules(hits: ReadonlyArray<ViralComplianceHit>, english: boolean): string {
+  return hits.map((hit) => `${hit.ruleId}${english ? ` (${hit.matchedTerms.slice(0, 3).join(', ')})` : `（${hit.matchedTerms.slice(0, 3).join('、')}）`}`).join(english ? '; ' : '；');
+}
+
+/** 只命中复核级规则时，加到提示词末尾：评分不超过上限，模板不要照搬命中的表达。 */
+export function viralReviewHint(screen: ViralComplianceScreen | null | undefined, english: boolean): string {
+  const hits = (screen?.hits ?? []).filter((hit) => hit.severity === 'review');
+  if (!hits.length) return '';
+  const rules = describeRules(hits, english);
+  return english
+    ? `\n\nThis copy contains claims that need human review: ${rules}. Any score must be at most ${VIRAL_REVIEW_SCORE_CAP}/10, and the reusable template must not repeat these claims.`
+    : `\n\n这段文案里有需要人工复核的表达：${rules}。评分不超过 ${VIRAL_REVIEW_SCORE_CAP}/10，可复制模板里不要照搬这些表达。`;
+}
+
 /**
- * Model output has no enforced schema: a score/template can hide under arbitrary keys,
- * inside prose or in truncated JSON. Never try to remove it by key/regex alone.
- * For flagged copy, expose only the deterministic screen, not model-authored text.
+ * 拦截级（block）：模型输出没有固定结构，评分或模板可能藏在任意字段、正文或截断文本里，
+ * 所以不调模型、不给分、不给模板，只返回确定性的筛查结果。
+ * 只有复核级（review）：保留分析，但所有评分压到 VIRAL_REVIEW_SCORE_CAP/10 以下，并标明「需人工复核」的规则。
  */
 export function applyViralCompliance(analysis: Record<string, any>, screen: ViralComplianceScreen | null | undefined, english: boolean): Record<string, any> {
   const hits = (screen?.hits ?? []).map((hit) => ({ ruleId: hit.ruleId, severity: hit.severity, reason: hit.reason, matchedTerms: [...hit.matchedTerms] }));
   if (!hits.length) {
     return { ...analysis, compliance: { level: screen?.level ?? 'clear', hits: [], scoreAdjusted: false, templateWithheld: false } };
   }
-  const rules = hits.map((hit) => `${hit.ruleId}${english ? ` (${hit.matchedTerms.slice(0, 3).join(', ')})` : `（${hit.matchedTerms.slice(0, 3).join('、')}）`}`).join(english ? '; ' : '；');
+  const blocking = hits.filter((hit) => hit.severity === 'block');
+  if (!blocking.length) {
+    const seen = { max: null as number | null };
+    const capped = capScores(analysis ?? {}, false, seen);
+    const reviewRuleIds = hits.map((hit) => hit.ruleId);
+    const rules = describeRules(hits, english);
+    return {
+      ...capped,
+      compliance: {
+        level: screen?.level ?? 'risk',
+        hits,
+        needsHumanReview: true,
+        reviewRuleIds,
+        scoreAdjusted: true,
+        scorePolicy: 'capped',
+        scoreCap: VIRAL_REVIEW_SCORE_CAP,
+        scoreScale: 10,
+        templateWithheld: false,
+        notice: english
+          ? `Needs human review: this copy matched review rules ${rules}. Scores are capped at ${VIRAL_REVIEW_SCORE_CAP}/10. Check these claims before reusing the template. This is not legal advice.`
+          : `需人工复核：这段文案命中复核规则 ${rules}。评分最高按 ${VIRAL_REVIEW_SCORE_CAP}/10 计。套用模板前请先核实这些表达。这不是法律意见。`,
+      },
+    };
+  }
+  const rules = describeRules(hits, english);
   return {
     appeal_score: null,
     reusable_template: null,

@@ -11,7 +11,7 @@ import { evaluateDomesticContent } from '../../common/domestic-content-complianc
 import { evaluateInternationalContent } from '../../common/international-content-compliance';
 import { AIService } from './ai.service';
 import { ComplianceService, describeBlockingHits } from './compliance.service';
-import { applyViralCompliance, parseViralAnalysis, VIRAL_MAX_TOKENS } from './viral-analysis';
+import { applyViralCompliance, parseViralAnalysis, VIRAL_MAX_TOKENS, VIRAL_REVIEW_SCORE_CAP, viralReviewHint } from './viral-analysis';
 
 const ids = (r: { hits: Array<{ ruleId: string }> }) => r.hits.map((h) => h.ruleId);
 const hit = (r: { hits: Array<{ ruleId: string; severity: string; matchedTerms: string[] }> }, id: string) => r.hits.find((h) => h.ruleId === id);
@@ -137,20 +137,59 @@ describe('applyViralCompliance', () => {
     expect(out.compliance.notice).toContain('CN-AD-ART17-18');
   });
 
-  it('review-only hits also withhold scores and templates', () => {
+  it('review-only hits keep the analysis, cap every score at 6/10 and flag 需人工复核', () => {
+    const screen = evaluateDomesticContent('这款精华美白祛斑');
+    expect(screen.hits.every((h) => h.severity === 'review')).toBe(true);
+    const out = applyViralCompliance(analysis, screen, false);
+    expect(out['1_标题吸引力评分和技巧'].评分).toBe(VIRAL_REVIEW_SCORE_CAP);
+    expect(out['1_标题吸引力评分和技巧'].技巧).toEqual(['极限词']);
+    expect(out['5_可复制的模板']).toBeDefined();
+    expect(out.compliance).toMatchObject({
+      needsHumanReview: true, scorePolicy: 'capped', scoreCap: 6, scoreScale: 10, templateWithheld: false,
+    });
+    expect(out.compliance.reviewRuleIds).toContain('CN-COSMETIC-ART16');
+    expect(out.compliance.notice).toContain('需人工复核');
+    expect(out.compliance.notice).toContain('CN-COSMETIC-ART16');
+  });
+
+  it('review-only: scores under any key, in strings, in prose and on a 100-point scale are capped', () => {
     const screen = evaluateInternationalContent('Lowest price ever');
-    const out = applyViralCompliance({ headline: { score: '8.5/10' }, reusable_template: 'x' }, screen, true);
-    expect(out.appeal_score).toBeNull();
-    expect(out.reusable_template).toBeNull();
-    expect(out.compliance.notice).toContain('INTL-PRICE-CLAIM');
+    const out = applyViralCompliance({
+      headline: { score: '8.5/10', rating: 9, appeal_score: '9.5' },
+      summary: 'Overall 9/10, hook 92/100, takes 3 minutes',
+      nested: [{ hook_score: 88 }],
+      low: { score: 4 },
+      reusable_template: 'x',
+    }, screen, true);
+    expect(out.headline).toEqual({ score: '6/10', rating: 6, appeal_score: '6' });
+    expect(out.summary).toBe('Overall 6/10, hook 60/100, takes 3 minutes');
+    expect(out.nested[0].hook_score).toBe(60);
+    expect(out.low.score).toBe(4);
+    expect(out.reusable_template).toBe('x');
+    expect(out.compliance.reviewRuleIds).toContain('INTL-PRICE-CLAIM');
+    expect(out.compliance.notice).toMatch(/^Needs human review/);
     expect(out.compliance.notice).not.toMatch(/[\u3400-\u9fff]/);
   });
 
-  it('arbitrary model prose cannot smuggle a score or template into flagged output', () => {
-    const out = applyViralCompliance({ summary: 'Rating 99/100; copy this: {product} cures fatigue', arbitrary: { value: 99 } }, evaluateInternationalContent('cures fatigue'), true);
+  it('a block-level hit still withholds everything even when review hits are present', () => {
+    const screen = evaluateInternationalContent('Lowest price ever and it cures diabetes');
+    expect(screen.hits.some((h) => h.severity === 'block')).toBe(true);
+    expect(screen.hits.some((h) => h.severity === 'review')).toBe(true);
+    const out = applyViralCompliance({ summary: 'Rating 99/100; copy this', arbitrary: { value: 99 } }, screen, true);
     expect(out.summary).toBeUndefined();
     expect(out.arbitrary).toBeUndefined();
     expect(out.appeal_score).toBeNull();
+    expect(out.reusable_template).toBeNull();
+    expect(out.compliance.scorePolicy).toBe('withheld');
+    expect(out.compliance.notice).toContain('INTL-DISEASE-CLAIM');
+  });
+
+  it('viralReviewHint names review rules and the cap, and is empty for clean copy', () => {
+    expect(viralReviewHint(evaluateDomesticContent('周末低糖全麦面包出炉啦'), false)).toBe('');
+    const hint = viralReviewHint(evaluateDomesticContent('双十一绝对低价'), false);
+    expect(hint).toContain('CN-AD-SUPERLATIVE');
+    expect(hint).toContain('6/10');
+    expect(viralReviewHint(evaluateInternationalContent('Lowest price ever'), true)).not.toMatch(/[\u3400-\u9fff]/);
   });
 
   it('clean copy keeps its score and template', () => {
@@ -195,13 +234,35 @@ describe('AIService.analyzeViralContentWithUsage', () => {
     expect(out.analysis.compliance.notice).toContain('这不是法律意见');
   });
 
-  it('international copy with a health claim: no model call, English notice', async () => {
+  it('international copy with a disease claim: no model call, English notice', async () => {
     const { service, generateTextForMarket } = make('global', '{"headline_score": 9, "reusable_template": "x"}');
-    const out = await service.analyzeViralContentWithUsage('This tea cures fatigue and boosts metabolism');
+    const out = await service.analyzeViralContentWithUsage('This tea cures diabetes');
     expect(generateTextForMarket).not.toHaveBeenCalled();
     expect(out.analysis.appeal_score).toBeNull();
-    expect(out.analysis.compliance.hits.map((h: any) => h.ruleId)).toContain('INTL-HEALTH-BENEFIT');
+    expect(out.analysis.compliance.hits.map((h: any) => h.ruleId)).toContain('INTL-DISEASE-CLAIM');
     expect(out.analysis.compliance.notice).not.toMatch(/[\u3400-\u9fff]/);
+  });
+
+  it('international review-only health claim: model is called with the review hint, score capped', async () => {
+    const { service, generateTextForMarket } = make('global', '{"headline_score": 9, "reusable_template": "x"}');
+    const out = await service.analyzeViralContentWithUsage('This tea cures fatigue and boosts metabolism');
+    expect(generateTextForMarket).toHaveBeenCalledTimes(1);
+    const prompt = generateTextForMarket.mock.calls[0][0].prompt;
+    expect(prompt).toContain('INTL-HEALTH-BENEFIT');
+    expect(prompt).toContain('6/10');
+    expect(out.analysis.headline_score).toBe(6);
+    expect(out.analysis.reusable_template).toBe('x');
+    expect(out.analysis.compliance).toMatchObject({ needsHumanReview: true, scorePolicy: 'capped' });
+    expect(out.analysis.compliance.reviewRuleIds).toContain('INTL-HEALTH-BENEFIT');
+  });
+
+  it('domestic review-only copy: analysis returned with 需人工复核', async () => {
+    const { service, generateTextForMarket } = make('cn', '{"标题评分": 9.5, "可复制的模板": "{产品}限时价"}');
+    const out = await service.analyzeViralContentWithUsage('双十一绝对低价，错过等一年');
+    expect(generateTextForMarket).toHaveBeenCalledTimes(1);
+    expect(out.analysis.标题评分).toBe(6);
+    expect(out.analysis.compliance.notice).toContain('需人工复核');
+    expect(out.usage.total_tokens).toBe(400);
   });
 
   it('clean copy: no compliance block in the prompt and the score is kept', async () => {
