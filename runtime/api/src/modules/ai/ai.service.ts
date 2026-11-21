@@ -8,6 +8,9 @@ import { BadGatewayException, BadRequestException, HttpException, HttpStatus, In
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../database/prisma.service';
 import { parseGeneratedTitles } from './title-parser';
+import { applyViralCompliance, parseViralAnalysis, VIRAL_MAX_TOKENS, viralLengthHint, viralReviewHint } from './viral-analysis';
+import { evaluateDomesticContent } from '../../common/domestic-content-compliance';
+import { evaluateInternationalContent } from '../../common/international-content-compliance';
 import { estimateImageCost, estimateTextCost } from './model-pricing';
 import { aigcProviderCode } from '../../common/ai-content-label';
 import { chinaDayStart } from '../../common/china-period';
@@ -642,9 +645,21 @@ Write in English only. At the very end, output 3 English prompts for AI image ge
   }
 
   async analyzeViralContentWithUsage(content: string): Promise<{ analysis: any } & Omit<AIResponse, 'content'>> {
+    const english = isGlobalMarket();
+    const screen = english ? evaluateInternationalContent(String(content ?? '')) : evaluateDomesticContent(String(content ?? ''));
+    // 先对要分析的文案跑一遍合规筛查（不调模型）。
+    if (screen.hits.some((hit) => hit.severity === 'block')) {
+      // 命中拦截级规则时不调模型：模型写出的任何评分或「可复制」写法都可能藏在任意字段或截断文本里，只返回确定性的筛查结果。
+      // 只命中复核级规则时照常分析，评分在 applyViralCompliance 里压到上限。
+      return {
+        analysis: applyViralCompliance({}, screen, english),
+        model: 'compliance-screen', provider: 'local', latency_ms: 0, cost_amount: 0,
+        usage: { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 },
+      };
+    }
     const result = await this.generateTextForMarket({
       userText: content,
-      prompt: isGlobalMarket()
+      prompt: (english
         ? `Analyse what makes the following content go viral:
 
 ${content}
@@ -664,15 +679,14 @@ ${content}
 2. 开头钩子分析
 3. 内容结构特点
 4. 情绪触发点
-5. 可复制的模板`,
-      maxTokens: 1500,
+5. 可复制的模板`) + viralReviewHint(screen, english) + viralLengthHint(english),
+      // 原来 1500，真实测试 4/4 次被截断。预留额度 AI_HOLD_TOKENS.viral=4000，仍够。
+      maxTokens: VIRAL_MAX_TOKENS,
     });
 
-    try {
-      return { analysis: JSON.parse(result.content), model: result.model, provider: result.provider, latency_ms: result.latency_ms, cost_amount: result.cost_amount, usage: result.usage };
-    } catch {
-      return { analysis: { raw_analysis: result.content }, model: result.model, provider: result.provider, latency_ms: result.latency_ms, cost_amount: result.cost_amount, usage: result.usage };
-    }
+    const parsed = parseViralAnalysis(result.content, { completionTokens: result.usage?.completion_tokens, maxTokens: VIRAL_MAX_TOKENS, english });
+    const analysis = applyViralCompliance(parsed.analysis, screen, english);
+    return { analysis, model: result.model, provider: result.provider, latency_ms: result.latency_ms, cost_amount: result.cost_amount, usage: result.usage };
   }
 
   async assertTenantDailyBudget(tenantId: string): Promise<void> {
