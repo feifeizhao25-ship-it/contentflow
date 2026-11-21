@@ -7,6 +7,23 @@ import type { TargetMarket } from '../../common/target-market';
 
 export interface ComplianceOptions { conservative?: boolean; targetMarket?: TargetMarket | null; commercial?: boolean }
 
+type NamedHit = { ruleId: string; severity: 'block' | 'review'; reason: string; matchedTerms: string[] };
+
+/**
+ * 被拦时把命中的规则写进提示里。2026-11-21 真实测试：内容包被拦只回「请根据命中规则修改」，用户看不到是哪条规则、哪个词。
+ * 只列 block 级（真正拦住的），最多 3 条，每条最多 3 个词。
+ */
+export function describeBlockingHits(hits: readonly NamedHit[], english: boolean): string {
+  const blocking = hits.filter((hit) => hit.severity === 'block').slice(0, 3);
+  if (!blocking.length) return '';
+  const quote = (terms: string[]) => terms.slice(0, 3).map((t) => (english ? `"${t}"` : `“${t}”`)).join(english ? ', ' : '、');
+  return blocking
+    .map((hit) => english
+      ? `${hit.ruleId} (${hit.reason.replace(/\.$/, '')}; matched ${quote(hit.matchedTerms)})`
+      : `${hit.ruleId}（${hit.reason}；命中：${quote(hit.matchedTerms)}）`)
+    .join(english ? '; ' : '；');
+}
+
 @Injectable()
 export class ComplianceService {
   constructor(@Optional() private readonly config?: ConfigService) {}
@@ -66,7 +83,7 @@ export class ComplianceService {
       if (!intl.passed) {
         throw new BadRequestException({
           code: 'CONTENT_COMPLIANCE_BLOCKED',
-          message: 'The generated content did not pass the pre-publish compliance check. Please edit the topic or text and try again. This is not legal advice.',
+          message: `The generated content did not pass the pre-publish compliance check. Rules matched: ${describeBlockingHits(intl.hits, true)}. Please edit the topic or text and try again. This is not legal advice.`,
           ruleSetVersion: intl.ruleSetVersion,
           level: intl.level,
           disclaimer: intl.disclaimer,
@@ -79,7 +96,7 @@ export class ComplianceService {
     if (!result.passed) {
       throw new BadRequestException({
         code: 'CONTENT_COMPLIANCE_BLOCKED',
-        message: '内容未通过发布前合规检查，请根据命中规则修改后重试。这不是法律意见。',
+        message: `AI 生成的内容未通过发布前合规检查。命中规则：${describeBlockingHits(result.hits, false)}。请换个说法或调整主题后重试。这不是法律意见。`,
         ruleSetVersion: result.ruleSetVersion,
         level: result.level,
         disclaimer: result.disclaimer,

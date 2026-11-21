@@ -31,7 +31,7 @@
  *    confirmed that it has signed the Code of Practice.
  *  - FTC Disclosures 101 for Social Media Influencers (PDF). The FTC webpage for that guide returns 404; do not cite it.
  */
-export const INTERNATIONAL_RULESET_VERSION = 'intl-content-2026.11.06';
+export const INTERNATIONAL_RULESET_VERSION = 'intl-content-2026.11.21';
 
 /** Reference only. Do not describe ContentFlow as a signatory of the EU Code of Practice. */
 export const AI_TRANSPARENCY_NOTE =
@@ -83,6 +83,8 @@ interface IntlRule {
   sourceUrl: string;
   patterns: RegExp[];
   humanOverrideAllowed: boolean;
+  /** When the source page was last opened. Defaults to RETRIEVED. */
+  retrievedAt?: string;
 }
 
 const RETRIEVED = '2026-10-31';
@@ -103,6 +105,10 @@ const FTC_255_0 = 'https://www.ecfr.gov/current/title-16/chapter-I/subchapter-B/
 const AI_ACT_50 = 'https://eur-lex.europa.eu/eli/reg/2024/1689/oj';
 const AI_ACT_FAQ = 'https://digital-strategy.ec.europa.eu/en/faqs/transparency-obligations-under-article-50-ai-act';
 const RETRIEVED_2 = '2026-11-01';
+// Added 2026-11-21 after the real DeepSeek UI test let these through as "clear". Both pages were opened that day.
+const FDA_COSMETIC_OR_DRUG = 'https://www.fda.gov/cosmetics/cosmetics-laws-regulations/it-cosmetic-drug-or-both-or-it-soap';
+const FTC_PRICING = 'https://www.ecfr.gov/current/title-16/chapter-I/subchapter-B/part-233';
+const RETRIEVED_3 = '2026-11-21';
 
 const DISEASE =
   '(?:anxiety|depression|diabet\\w*|cancer\\w*|tumou?rs?|covid\\S*|hypertension|high blood pressure|arthritis|alzheimer\\w*|adhd|insomnia|infections?|asthma|heart disease|ibs|eczema|psoriasis)';
@@ -158,6 +164,49 @@ const RULES: IntlRule[] = [
       /\b(?:guaranteed|guarantees?)\b/i,
       /\b100\s?%\s+(?:\w+\s+){0,2}(?:proof|safe|effective|guaranteed|natural|results?|compliant|secure)\b/i,
       /\b(?:works|lasts?|safe)\s+(?:every time|forever|for life)\b/i,
+    ],
+    humanOverrideAllowed: true,
+  },
+  {
+    ruleId: 'INTL-PERMANENT-COSMETIC',
+    retrievedAt: RETRIEVED_3,
+    severity: 'review',
+    reason: 'Claims a beauty product permanently erases or removes wrinkles, spots or cellulite. Claims to change the structure of the skin can make a cosmetic a drug, and "forever" needs evidence.',
+    source: 'FDA, "Is It a Cosmetic, a Drug, or Both?" (intended use set by claims); FTC Policy Statement Regarding Advertising Substantiation',
+    sourceUrl: FDA_COSMETIC_OR_DRUG,
+    patterns: [
+      /\b(?:erases?|erasing|removes?|removing|eliminates?|eliminating|gets? rid of|reverses?|banish(?:es)?)\s+(?:your\s+|all\s+|the\s+)?(?:\w+\s+){0,2}?(?:wrinkles?|fine lines|dark spots|age spots|sun spots|pigmentation|cellulite|stretch marks|acne scars)\b[^.!?\n]{0,30}\b(?:forever|permanently|for good|for life)\b/i,
+      /\b(?:permanently|forever)\s+(?:erases?|removes?|eliminates?|gets? rid of)\s+(?:\w+\s+){0,2}?(?:wrinkles?|fine lines|dark spots|age spots|cellulite|stretch marks)\b/i,
+    ],
+    humanOverrideAllowed: true,
+  },
+  {
+    ruleId: 'INTL-HEALTH-BENEFIT',
+    retrievedAt: RETRIEVED_3,
+    severity: 'review',
+    reason: 'Makes a health benefit claim (for example "cures fatigue" or "boosts metabolism"). Health claims need competent and reliable scientific evidence before they are published.',
+    source: 'FTC Health Products Compliance Guidance (Dec 2022); UK CAP Code section 12 (health-related products)',
+    sourceUrl: FTC_HEALTH,
+    patterns: [
+      /\b(?:cures?|cured|curing|fix(?:es)?|eliminates?|ends?)\s+(?:your\s+)?(?:fatigue|tiredness|exhaustion|brain fog|bloating|stress|inflammation)\b/i,
+      /\b(?:boosts?|boosting|speeds? up|revs? up|supercharges?)\s+(?:your\s+)?(?:metabolism|immune system|immunity|testosterone|fat burning)\b/i,
+      /\b(?:burns?|melts?)\s+(?:away\s+)?(?:belly\s+)?fat\b/i,
+      /\bdetox(?:es|ifies)?\s+your\s+(?:body|liver|blood)\b/i,
+    ],
+    humanOverrideAllowed: true,
+  },
+  {
+    ruleId: 'INTL-PRICE-CLAIM',
+    retrievedAt: RETRIEVED_3,
+    severity: 'review',
+    reason: 'Claims the lowest price ever or anywhere. Price comparisons and "lowest price" claims must be true and provable at the time you post.',
+    source: 'FTC Guides Against Deceptive Pricing, 16 CFR Part 233; UK CAP Code section 3 (price claims)',
+    sourceUrl: FTC_PRICING,
+    patterns: [
+      /\blowest prices?\s+(?:ever|anywhere|online|guaranteed|in (?:the )?(?:world|town|market))\b/i,
+      /\b(?:all[- ]time|record)\s+low(?:est)? prices?\b/i,
+      /\bcheapest\s+(?:ever|anywhere|online|in the world)\b/i,
+      /\bnever (?:been )?(?:this )?cheaper\b/i,
     ],
     humanOverrideAllowed: true,
   },
@@ -401,7 +450,7 @@ export function evaluateInternationalContent(
         reason: rule.reason,
         source: rule.source,
         sourceUrl: rule.sourceUrl,
-        sourceRetrievedAt: RETRIEVED,
+        sourceRetrievedAt: rule.retrievedAt ?? RETRIEVED,
         matchedTerms: [...new Set(matched)],
         humanOverrideAllowed: rule.humanOverrideAllowed,
       });

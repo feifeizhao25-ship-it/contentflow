@@ -140,7 +140,7 @@ describe('market-aware disclosure check', () => {
   });
 
   it('the rule set version moved with this change', () => {
-    expect(INTERNATIONAL_RULESET_VERSION).toBe('intl-content-2026.11.06');
+    expect(INTERNATIONAL_RULESET_VERSION).toBe('intl-content-2026.11.21');
   });
 
   it('keeps the honest "not checked" list and names the AI Act deployer duty', () => {

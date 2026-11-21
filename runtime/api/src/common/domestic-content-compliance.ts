@@ -1,4 +1,4 @@
-export const DOMESTIC_RULESET_VERSION = 'cn-content-2026.10.31';
+export const DOMESTIC_RULESET_VERSION = 'cn-content-2026.11.21';
 
 /** 每次检查都带上。关键词命中不是律师意见，也不是“通过即可发布”。 */
 export const COMPLIANCE_DISCLAIMER = '这不是法律意见。未发现风险不等于可以发布，发布前请自行核对。';
@@ -136,7 +136,8 @@ const RULES: readonly GateRule[] = [
     sourceUrl: 'https://sjfg.samr.gov.cn/law/file/pdf/3235243/1663323599406.pdf',
     sourceRetrievedAt: '2026-08-30',
     reason: '疑似包含保证性或结果承诺表述',
-    terms: ['第一品牌', '百分之百', '100%有效', '包过', '稳赚', '绝对有效'],
+    // 2026-11-21 补：真实测试里「100%无糖」漏检（「100%」后不是「有效」）。只收这类绝对化成分承诺。
+    terms: ['第一品牌', '百分之百', '100%有效', '包过', '稳赚', '绝对有效', '100%无糖', '百分百无糖', '100%零糖', '100%纯天然'],
     humanOverrideAllowed: true,
   },
   {
@@ -175,6 +176,25 @@ const RULES: readonly GateRule[] = [
     terms: ['未经授权搬运', '去水印直接用', '冒用商标', '盗用肖像', '复制他人付费课程'],
     humanOverrideAllowed: true,
   },
+  // ---- 2026-11-21 补充（真实 DeepSeek 测试漏检）。条文已于当日对照中国政府网原文核对；关键词筛查不是律师意见。----
+  {
+    gate: 'advertising_law', ruleId: 'CN-AD-ART17-MEDICAL',
+    source: '《中华人民共和国广告法》第十七条（除医疗、药品、医疗器械广告外，不得使用医疗用语或者易使推销的商品与药品、医疗器械相混淆的用语）。状态：待法律顾问确认',
+    sourceUrl: 'https://www.gov.cn/guoqing/2021-10/29/content_5647620.htm',
+    sourceRetrievedAt: '2026-11-21',
+    reason: '疑似用「医院同款」「医用级」等说法，让普通商品与药品、医疗器械相混淆',
+    terms: ['医院同款', '医院专用', '医用级', '药用级', '药店同款'],
+    humanOverrideAllowed: true,
+  },
+  {
+    gate: 'advertising_law', ruleId: 'CN-UNFAIR-ART9-5',
+    source: '《网络反不正当竞争暂行规定》（国家市场监督管理总局令第91号）第九条第（五）项（不得以返现、红包、卡券等方式利诱用户作出指定好评）',
+    sourceUrl: 'https://www.gov.cn/zhengce/202406/content_6959668.htm',
+    sourceRetrievedAt: '2026-11-21',
+    reason: '疑似以返现、红包等方式换取好评',
+    terms: ['好评返现', '晒图返现', '五星好评返', '好评返红包', '好评送红包', '带图好评返'],
+    humanOverrideAllowed: true,
+  },
 ] as const;
 
 // 《互联网广告管理办法》（市场监管总局令第72号）第九条第三款：知识介绍、体验分享、消费测评等形式
@@ -202,12 +222,17 @@ export function checkAdDisclosure(content: string): DomesticComplianceHit | null
   } as DomesticComplianceHit;
 }
 
+/**
+ * 2026-11-21 补：「糖尿病人也能放心吃」这类写法把食品说成适合某种疾病人群，等于暗示疾病相关功能
+ * （《广告法》第十七条、《食品安全法》第七十三条：食品广告不得涉及疾病预防、治疗功能）。
+ */
+const DISEASE_SUITABILITY = /(?:糖尿病|高血压|高血糖|高血脂|三高|痛风)(?:人群|患者|病人|病友|人)?[^。！!\n]{0,6}(?:放心吃|放心喝|放心食用|随便吃|敞开吃|也能吃|也可以吃)/;
 const HEALTH_CLAIM = /(?:吃了|喝了|用了|敷了|贴了)[^。\n]{0,16}(?:血压|血糖|血脂|肿瘤|癌症|糖尿病|高血压)[^。\n]{0,8}(?:稳|降|好|消失|正常)|(?:治好|治愈|治疗好|根治)了?[^。\n]{0,16}(?:病|症|炎|癌|痛|溃疡|结石|糖尿病|高血压)|降血压|降血糖|降血脂|抗癌|防癌|调理三高/;
 
 /** 《广告法》第十七条、第十八条里写明的疾病治疗/预防功能。只做关键词筛查，不代表律师已抽样验收。 */
 function checkHealthClaim(content: string): DomesticComplianceHit | null {
   const text = String(content || '').normalize('NFKC');
-  const matched = text.match(HEALTH_CLAIM);
+  const matched = text.match(HEALTH_CLAIM) ?? text.match(DISEASE_SUITABILITY);
   if (!matched) return null;
   return {
     gate: 'regulated_industry',
@@ -321,13 +346,24 @@ function checkReviewOnly(content: string): DomesticComplianceHit[] {
       reason: '疑似引导到站外联系或交易，发布前请对照目标平台现行规范',
       humanOverrideAllowed: true,
     }),
-    reviewHit(content, ['最好吃', '最好用', '全国最好', '全网第一', '全国第一', '世界第一', '行业第一', '销量第一', '史上最'], {
+    reviewHit(content, ['最好吃', '最好用', '全国最好', '全网第一', '全国第一', '世界第一', '行业第一', '销量第一', '史上最', '绝对低价', '全网最低', '最低价', '价格最低'], {
       gate: 'advertising_law',
       ruleId: 'CN-AD-SUPERLATIVE',
       source: '《中华人民共和国广告法》第九条第（三）项“等用语”（条文只列举「国家级」「最高级」「最佳」；此处的「最好」「第一」类比较性用语是否属于，待广告合规律师审核，所以只提示风险、不直接拦截）',
       sourceUrl: 'https://sjfg.samr.gov.cn/law/file/pdf/3235243/1663323599406.pdf',
       sourceRetrievedAt: '2026-10-31',
       reason: '疑似使用「最好」「第一」类绝对化比较用语，需要有可核验的依据，发布前请核对',
+      humanOverrideAllowed: true,
+    }),
+    // 2026-11-21 补：「美白祛斑」类功效属于特殊化妆品，须经国家药监局注册才能这样宣称。
+    // 「祈斑」是测试反馈里的笔误写法，一并收录，避免同音错字绕过。
+    reviewHit(content, ['美白祛斑', '祛斑美白', '美白淡斑', '祛斑', '淡斑', '美白祈斑'], {
+      gate: 'regulated_industry',
+      ruleId: 'CN-COSMETIC-ART16',
+      source: '《化妆品监督管理条例》（国务院令第727号）第十六条、第十七条（祛斑美白化妆品为特殊化妆品，经国务院药品监督管理部门注册后方可生产、进口）',
+      sourceUrl: 'https://www.gov.cn/zhengce/zhengceku/2020-06/29/content_5522593.htm',
+      sourceRetrievedAt: '2026-11-21',
+      reason: '宣称祛斑美白功效，须有特殊化妆品注册证；没有注册证时不能这样写',
       humanOverrideAllowed: true,
     }),
     reviewHit(content, ['趁灾', '借地震', '借疫情带货', '灾难营销', '蹭灾难'], {
@@ -389,7 +425,7 @@ function checkSyntheticLabel(content: string): DomesticComplianceHit | null {
 }
 
 /** 词表规则之外的专项与提示检查。条数见 DOMESTIC_EXTRA_CHECKS。 */
-export const DOMESTIC_EXTRA_CHECKS = 10;
+export const DOMESTIC_EXTRA_CHECKS = 11;
 
 export const DOMESTIC_NOT_CHECKED: readonly string[] = [
   '各平台（抖音、小红书、快手、视频号等）现行社区规范原文——尚未逐条人工复核',
