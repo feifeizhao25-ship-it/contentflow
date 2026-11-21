@@ -1,0 +1,70 @@
+name: Web Prod Build (PR)
+
+# PR 阶段按 release-images.yml 用的 Dockerfile 构建国内版前端镜像 web-cn（只构建，不推送、不登录镜像仓库），
+# 然后：起容器做冒烟请求；扫描 .next/static 里有没有 .invalid 占位地址或疑似密钥（只报文件名）。
+# runtime/web-cn/Dockerfile 不再接收 Supabase 构建参数（国内版不连境外数据库），所以这里不传任何 secret。
+# 国际版 runtime/web-int 不在这里构建。
+
+on:
+  pull_request:
+    branches: [main, develop]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: web-prod-build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  web-prod-build:
+    name: web-prod-build (contentflow-web-cn)
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    env:
+      IMAGE: contentflow-web-cn:pr-check
+    steps:
+      - uses: actions/checkout@v5
+      - uses: docker/setup-buildx-action@v3
+      - name: Build release image (push disabled)
+        uses: docker/build-push-action@v6
+        with:
+          context: ./runtime/web-cn
+          file: ./runtime/web-cn/Dockerfile
+          push: false
+          load: true
+          tags: ${{ env.IMAGE }}
+          cache-from: type=gha,scope=web-cn
+          cache-to: type=gha,mode=max,scope=web-cn
+      - name: Scan .next/static (file names only)
+        run: |
+          cid=$(docker create "$IMAGE")
+          docker cp "$cid:/app/.next/static" ./_next_static
+          docker rm "$cid" >/dev/null
+          bash .github/scripts/scan-next-static.sh ./_next_static
+      - name: Smoke test the container
+        run: |
+          docker run -d --name web -p 3000:3000 "$IMAGE"
+          ok=0
+          for i in $(seq 1 45); do
+            if curl -fsS -o /dev/null http://127.0.0.1:3000/login; then ok=1; break; fi
+            sleep 2
+          done
+          if [ "$ok" -ne 1 ]; then
+            echo "::error::容器 90 秒内没有就绪"
+            docker logs --tail 80 web || true
+            exit 1
+          fi
+          for path in / /login; do
+            code=$(curl -sS -L -o /dev/null -w '%{http_code}' "http://127.0.0.1:3000$path")
+            echo "$path -> $code"
+            if [ "$code" != "200" ]; then
+              echo "::error::冒烟请求 $path 返回 $code"
+              docker logs --tail 80 web || true
+              exit 1
+            fi
+          done
+      - name: Clean up
+        if: always()
+        run: docker rm -f web >/dev/null 2>&1 || true
