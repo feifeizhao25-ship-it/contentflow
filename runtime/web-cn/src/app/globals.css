@@ -292,3 +292,12 @@ body::before {
   letter-spacing: 0.34em;
   margin-inline-end: -0.34em;
 }
+/* Register submit: opaque indigo + white label. The page sits on a purple gradient;
+   axe has flagged <span>注册</span> for contrast on this taller form (2026-11-22 CI). */
+.ant-btn-primary.cn-register-submit,
+.ant-btn-primary.cn-register-submit > span:not(.anticon):not(.ant-btn-icon):not(.ant-btn-loading-icon) {
+  color: #fff;
+  background-color: #3730a3;
+  opacity: 1;
+}
+
