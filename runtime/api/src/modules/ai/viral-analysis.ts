@@ -44,9 +44,57 @@ function trimToLastFullLine(text: string): string {
   return (cut > 0 ? text.slice(0, cut) : text).trimEnd();
 }
 
+/**
+ * Light repair for model JSON (2026-11-21 test: the clean-copy analysis came back as
+ * {"开头钩子分析":"…"},"内容结构特点":"…"},… — a stray "}" after each string value, so the whole
+ * analysis was shown as raw text). Outside strings: drops a closing bracket that does not match the
+ * open one or that would close the outermost object while more content follows, removes trailing
+ * commas, and closes nothing that was cut off (a truncated answer stays truncated). Returns null when
+ * the repaired text still does not parse.
+ */
+export function repairModelJson(body: string): unknown | null {
+  const text = body.trim();
+  if (!text.startsWith('{') && !text.startsWith('[')) return null;
+  let out = '';
+  const stack: string[] = [];
+  let inString = false;
+  let escaped = false;
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    if (inString) {
+      out += ch;
+      if (escaped) escaped = false;
+      else if (ch === '\\') escaped = true;
+      else if (ch === '"') inString = false;
+      continue;
+    }
+    if (ch === '"') { inString = true; out += ch; continue; }
+    if (ch === '{' || ch === '[') { stack.push(ch === '{' ? '}' : ']'); out += ch; continue; }
+    if (ch === '}' || ch === ']') {
+      const rest = text.slice(i + 1).trim();
+      if (stack[stack.length - 1] !== ch) continue;
+      if (stack.length === 1 && rest && !/^[}\]]*$/.test(rest)) continue;
+      stack.pop();
+      out = out.replace(/,\s*$/, '');
+      out += ch;
+      if (!stack.length) break;
+      continue;
+    }
+    out += ch;
+  }
+  if (stack.length || inString) return null;
+  try {
+    return JSON.parse(out);
+  } catch {
+    return null;
+  }
+}
+
 export interface ParsedViral {
   analysis: Record<string, any>;
   truncated: boolean;
+  /** The model's JSON had stray brackets or trailing commas and was repaired before parsing. */
+  repaired?: boolean;
 }
 
 /**
@@ -69,6 +117,10 @@ export function parseViralAnalysis(raw: string, opts: { completionTokens?: numbe
     if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) return { analysis: parsed, truncated: false };
     return { analysis: { result: parsed }, truncated: false };
   } catch {
+    const repaired = hitCap ? null : repairModelJson(body);
+    if (repaired && typeof repaired === 'object' && !Array.isArray(repaired)) {
+      return { analysis: repaired as Record<string, any>, truncated: false, repaired: true };
+    }
     const truncated = hitCap || !/[}\]]\s*$/.test(body);
     return {
       analysis: {
