@@ -180,3 +180,56 @@ export function developerRows(payload: unknown): Presented {
       : ['No API keys are stored. This page does not create one on its own.'],
   };
 }
+
+function byTypeCounts(ai: Record<string, unknown>): Map<string, { label: string; count: number }> {
+  const out = new Map<string, { label: string; count: number }>();
+  const list = Array.isArray(ai.byType) ? ai.byType : [];
+  for (const item of list) {
+    const row = record(item);
+    const type = text(row.type, text(row.label, 'other'));
+    const count = typeof row.count === 'number' && Number.isFinite(row.count) ? row.count : 0;
+    out.set(type, { label: text(row.label, type), count });
+  }
+  return out;
+}
+
+/**
+ * Signals page (2026-11-22): it used to show four hard-coded "Observed" metrics (72% completion,
+ * 4.8% clicks…). Now it lists stored generation and publishing counts from /analytics/overview only.
+ */
+export function signalRows(payload: unknown): Presented {
+  const body = record(payload);
+  const week = record(body.week);
+  const month = record(body.month);
+  const weekTypes = byTypeCounts(record(week.ai));
+  const monthTypes = byTypeCounts(record(month.ai));
+  const types = [...new Set([...weekTypes.keys(), ...monthTypes.keys()])];
+  const rows: string[][] = types.map((type) => [
+    (weekTypes.get(type) ?? monthTypes.get(type))!.label,
+    storedCount(weekTypes.get(type)?.count ?? 0),
+    storedCount(monthTypes.get(type)?.count ?? 0),
+  ]);
+  rows.push(['Publish tasks', storedCount(record(week.publish).total), storedCount(record(month.publish).total)]);
+  rows.push(['Published', storedCount(record(week.publish).published), storedCount(record(month.publish).published)]);
+  const engagement = record(body.engagement);
+  const notes = [
+    'Every number is a stored record from this workspace. No sample or estimated metrics are shown.',
+    typeof engagement.detail === 'string' && engagement.detail.trim()
+      ? engagement.detail.trim()
+      : 'Views, likes, and follower changes are not shown. They are not estimated.',
+  ];
+  return { headers: ['Record', 'This week', 'This month'], rows, notes };
+}
+
+/**
+ * Packs page (2026-11-22): it used to show three made-up packs ("Product launch · 7 drafts"). Packs are not
+ * stored as their own records yet, so the page shows how many content-pack generations this workspace stored.
+ */
+export function packRows(payload: unknown): Presented {
+  const body = record(payload);
+  const week = byTypeCounts(record(record(body.week).ai)).get('content_pack')?.count ?? 0;
+  const month = byTypeCounts(record(record(body.month).ai)).get('content_pack')?.count ?? 0;
+  const notes = ['Content packs are not saved as separate records yet. Drafts you save from a pack appear in Library.'];
+  if (week === 0 && month === 0) notes.unshift('No content packs were generated in this workspace this month. Nothing here is a sample.');
+  return { headers: ['Record', 'This week', 'This month'], rows: [['Content packs generated', storedCount(week), storedCount(month)]], notes };
+}
