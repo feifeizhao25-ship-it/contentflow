@@ -74,7 +74,7 @@ export function wrap(doc: PDFKit.PDFDocument, line: string, maxWidth: number): s
       // Break an English word at its last space instead of mid-word ("not e / stimated", 2026-11-21 test).
       const space = current.lastIndexOf(' ');
       const tail = space >= 0 ? current.slice(space + 1) : '';
-      if (/^[A-Za-z0-9'’.,;:!?()\-]*$/.test(char) && char !== ' ' && space > 0 && /^[A-Za-z0-9'’\-]+$/.test(tail)) {
+      if (/^[A-Za-z0-9'’.,;:!?()-]*$/.test(char) && char !== ' ' && space > 0 && /^[A-Za-z0-9'’-]+$/.test(tail)) {
         out.push(current.slice(0, space));
         current = tail + char;
         width = measure(doc, current);
