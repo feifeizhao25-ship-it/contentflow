@@ -107,6 +107,41 @@ export function parseHotTopics(result: unknown): { topics: HotTopicRow[]; notice
  * 原来页面拿到结果后只显示一个标题「深度解构报告」，正文一个字都没渲染。
  * 英文键名不上屏（只显示值）；数组、嵌套对象展开成「· 」开头的行。
  */
+/**
+ * 爆款拆解返回的 `compliance` 是英文键的对象。原来按通用规则展开，弹窗里只剩一串没有标签的
+ * 'block'、'withheld'、'true'、'6'、'10'、'capped'（2026-11-21 测试）。这里逐项写成中文说明。
+ */
+const LEVEL_ZH: Record<string, string> = { violation: '命中拦截规则', risk: '需人工复核', clear: '未命中规则' };
+const SEVERITY_ZH: Record<string, string> = { block: '拦截', review: '复核' };
+
+export function describeViralCompliance(compliance: unknown): string[] {
+  if (!compliance || typeof compliance !== 'object') return [];
+  const c = compliance as Record<string, any>;
+  const lines: string[] = [];
+  const level = typeof c.level === 'string' ? c.level : '';
+  lines.push(`筛查结果：${LEVEL_ZH[level] ?? '未知'}`);
+  const hits = Array.isArray(c.hits) ? c.hits : [];
+  for (const hit of hits.slice(0, 20)) {
+    if (!hit || typeof hit !== 'object' || typeof hit.ruleId !== 'string') continue;
+    const terms = Array.isArray(hit.matchedTerms) ? hit.matchedTerms.filter((t: unknown) => typeof t === 'string').slice(0, 5) : [];
+    const reason = typeof hit.reason === 'string' && /[一-鿿]/.test(hit.reason) ? `，${hit.reason}` : '';
+    lines.push(`· 规则 ${hit.ruleId}（${SEVERITY_ZH[hit.severity] ?? '复核'}${reason}）${terms.length ? `，命中：${terms.join('、')}` : ''}`);
+  }
+  if (c.needsHumanReview === true) lines.push('人工复核：需要');
+  if (c.scorePolicy === 'capped') {
+    const cap = Number.isFinite(c.scoreCap) ? c.scoreCap : null;
+    const scale = Number.isFinite(c.scoreScale) ? c.scoreScale : 10;
+    lines.push(cap !== null ? `评分：已封顶，最高 ${cap}/${scale}` : '评分：已封顶');
+  } else if (c.scorePolicy === 'withheld') {
+    lines.push('评分：不提供');
+  } else if (c.scoreAdjusted === false) {
+    lines.push('评分：未调整');
+  }
+  if (c.templateWithheld === true) lines.push('可复制模板：不提供');
+  if (typeof c.notice === 'string' && c.notice.trim() && /[一-鿿]/.test(c.notice)) lines.push(`说明：${c.notice.trim()}`);
+  return lines;
+}
+
 export function flattenViralAnalysis(analysis: unknown): Array<{ heading: string; lines: string[] }> {
   const CJK = /[一-鿿]/;
   const toLines = (value: unknown, depth = 0): string[] => {
@@ -127,9 +162,12 @@ export function flattenViralAnalysis(analysis: unknown): Array<{ heading: string
   if (!analysis || typeof analysis !== 'object') return [];
   const raw = (analysis as any).raw_analysis;
   if (typeof raw === 'string') return raw.trim() ? [{ heading: '', lines: [raw.trim()] }] : [];
-  return Object.entries(analysis as Record<string, unknown>)
+  const { compliance, ...rest } = analysis as Record<string, unknown>;
+  const complianceLines = describeViralCompliance(compliance);
+  const sections = Object.entries(rest)
     .map(([k, v]) => ({ heading: CJK.test(k) ? k : '', lines: toLines(v, 1) }))
     .filter((section) => section.lines.length > 0);
+  return complianceLines.length ? [{ heading: '合规筛查', lines: complianceLines }, ...sections] : sections;
 }
 
 const PLAN_NAMES: Record<string, string> = { free: '免费版', starter: '入门版', pro: '个人版', team: '团队版', enterprise: '商务版' };
