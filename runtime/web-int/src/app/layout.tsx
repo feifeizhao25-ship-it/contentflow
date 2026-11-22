@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import MobileNav from '@/components/layout/MobileNav';
+import HeaderAccount from '@/components/layout/HeaderAccount';
 import { ErrorBoundary } from '@/components/error/ErrorBoundary';
 import './globals.css';
 
@@ -36,7 +37,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
             {links.map(([label, href]) => <Link key={href} href={href}>{label}</Link>)}
           </nav>
           <MobileNav links={links} />
-          <Link href="/login" className="button secondary header-account">Sign in</Link>
+          <HeaderAccount />
         </header>
         <ErrorBoundary>{children}</ErrorBoundary>
         <footer>ContentFlow Global · Human-reviewed AI operations · <Link href="/legal/privacy">Privacy</Link> · <Link href="/legal/terms">Terms</Link></footer>
