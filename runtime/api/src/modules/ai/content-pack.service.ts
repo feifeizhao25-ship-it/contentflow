@@ -12,7 +12,7 @@ import { isGlobalMarket, mt } from '../../common/i18n/market-text';
 import { Optional } from '@nestjs/common';
 import { PrismaService } from '../../database/prisma.service';
 import { disclosureHint, disclosureLabelFor, isCommercialRelationship, resolveCommercialRelationship, resolveTargetMarket, targetMarketPromptLine } from '../../common/target-market';
-import { currentDatePromptLine, dropStaleYearTitles } from './current-date';
+import { currentDatePromptLine, dropStaleYearTitles, fixWeekdayDates, WeekdayFix } from './current-date';
 import { avoidTermsPromptBlock, sanitizeAvoidTerms } from './avoid-terms';
 import { buildPositioning } from './positioning';
 import { GROUNDING_NOTICE_EN, GROUNDING_NOTICE_ZH, groundClaims, materialPromptBlock } from './grounding';
@@ -92,7 +92,9 @@ export class ContentPackService {
             }
             // B22：把「of 2023」这类过期年份标记的标题剔除（今天的日期已经写进提示词，这里是第二道防线）。
             const stale = dropStaleYearTitles(rawTitles);
-            const titles = stale.titles;
+            // 星期和日期对不上（「this Saturday, November 22」而 2026-11-22 是星期天）时改成真实的星期，并在结果里写明改了什么。
+            const weekdayFixes: WeekdayFix[] = [];
+            const titles = stale.titles.map((title) => { const r = fixWeekdayDates(title); weekdayFixes.push(...r.fixed); return r.text; });
             const titleTokens = titleResult?.usage?.total_tokens;
             if (!Number.isSafeInteger(titleTokens) || titleTokens <= 0) {
                 throw new Error('AI provider did not return valid title token usage');
@@ -110,6 +112,7 @@ export class ContentPackService {
             if (typeof script !== 'string' || !script.trim()) {
                 throw new Error('AI provider did not return usable body content');
             }
+            { const r = fixWeekdayDates(script); weekdayFixes.push(...r.fixed); script = r.text; }
             const scriptTokens = scriptData?.usage?.total_tokens;
             if (!Number.isSafeInteger(scriptTokens) || scriptTokens <= 0) {
                 throw new Error('AI provider did not return valid body token usage');
@@ -164,6 +167,7 @@ export class ContentPackService {
                         not_checked: (compliance as any).notChecked,
                     } : undefined,
                     ...(stale.removed.length ? { stale_year_titles_removed: stale.removed } : {}),
+                    ...(weekdayFixes.length ? { weekday_corrections: weekdayFixes } : {}),
                     positioning_used: { persona: positioning.used.persona, persona_name: positioning.used.personaName, top_titles: positioning.used.topTitles, reference_only: true },
                     grounding: {
                         material_supplied: grounding.materialSupplied,
