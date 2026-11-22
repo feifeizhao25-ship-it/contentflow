@@ -252,7 +252,7 @@ export default function RegisterPage() {
                                     {ageItem}
                                     {failureAlert}
                                     <Form.Item>
-                                        <Button type="primary" htmlType="submit" block loading={loading} className="cn-cjk-pair">
+                                        <Button type="primary" htmlType="submit" block loading={loading} className="cn-cjk-pair cn-register-submit">
                                             注册
                                         </Button>
                                     </Form.Item>
@@ -345,7 +345,7 @@ export default function RegisterPage() {
                     {failureAlert}
 
                     <Form.Item>
-                        <Button type="primary" htmlType="submit" block loading={loading} className="cn-cjk-pair">
+                        <Button type="primary" htmlType="submit" block loading={loading} className="cn-cjk-pair cn-register-submit">
                             注册
                         </Button>
                     </Form.Item>
