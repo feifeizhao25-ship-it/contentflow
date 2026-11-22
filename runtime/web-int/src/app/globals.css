@@ -94,6 +94,10 @@ footer { border-top:1px solid var(--line); color:#78908a; padding:30px clamp(20p
   .voice-speak { width:32px; height:32px; }
   .voice-block { flex-direction:row; align-items:flex-start; gap:8px; border:0; border-radius:0; padding:0; }
 }
+/* Header account (2026-11-22): signed-in label + Sign out. */
+.header-account-signed-in{display:inline-flex;align-items:center;gap:10px;white-space:nowrap}
+.header-account-label{font-size:13px;color:var(--muted,#9fb3ab);max-width:220px;overflow:hidden;text-overflow:ellipsis}
+@media(max-width:800px){.header-account-label{display:none}}
 @media(max-width:800px){header.topbar>nav{display:none}.mobile-nav{display:block}.hero,.grid,.grid.two{grid-template-columns:1fr}.shell{padding-top:40px}.topbar{gap:12px}}
 @media(max-width:900px){.persona-strip{grid-template-columns:repeat(2,minmax(0,1fr))}.experience-grid,.week-outcomes{grid-template-columns:1fr}}
 @media(max-width:520px){.persona-strip{grid-template-columns:1fr}.week-title{font-size:clamp(42px,14vw,62px)}.focus-card,.evidence-card{padding:24px}.week-lead{font-size:15px}}
