@@ -108,6 +108,26 @@ describe('ContentPackService token accounting', () => {
     expect(prompt).toContain(new Date().toISOString().slice(0, 10));
   });
 
+  it('2026-11-21: a weekday that does not match its date is corrected in titles and script, and reported', async () => {
+    jest.useFakeTimers({ now: new Date('2026-11-21T14:10:00Z'), advanceTimers: true });
+    try {
+      ai.generateTitlesWithUsage.mockResolvedValue({ titles: ['Tasting Day: Saturday, November 22'], usage: { total_tokens: 10 } });
+      ai.generateTextForMarket.mockResolvedValue({ content: 'Come by this Saturday, November 22.', usage: { total_tokens: 20 } });
+      const result = await service.generatePack('tenant-1', { topic: 'Coffee tasting', platforms: ['xhs'] });
+      expect(result.data.titles).toEqual(['Tasting Day: Sunday, November 22']);
+      expect(result.data.script).toContain('Come by this Sunday, November 22.');
+      expect(result.data.script).not.toContain('Saturday');
+      expect((result.data as any).weekday_corrections).toEqual([
+        { found: 'Saturday, November 22', corrected: 'Sunday, November 22' },
+        { found: 'Saturday, November 22', corrected: 'Sunday, November 22' },
+      ]);
+      const prompt = ai.generateTextForMarket.mock.calls[0][0].prompt as string;
+      expect(prompt).toMatch(/星期六|Saturday, 2026-11-21/);
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
   it('B28: avoidTerms from a previous compliance block are written into both the title and the script prompts', async () => {
     ai.generateTitlesWithUsage.mockResolvedValue({ titles: ['一个标题'], usage: { total_tokens: 10 } });
     ai.generateTextForMarket.mockResolvedValue({ content: '正文', usage: { total_tokens: 20 } });
