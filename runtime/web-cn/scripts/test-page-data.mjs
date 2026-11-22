@@ -241,6 +241,28 @@ await check('热点页：爆款拆解结果真的显示出来（原来只有标�
   assert.match(src('app/(main)/studio/page.tsx'), /searchParams\.get\('topic'\)/);
 });
 
+await check('爆款拆解：合规筛查逐项带中文标签，不再只显示 block / withheld / true / 6 / 10（2026-11-21）', () => {
+  const blocked = flattenViralAnalysis({ appeal_score: null, reusable_template: null, compliance: {
+    level: 'violation', hits: [{ ruleId: 'CN-AD-ART9-3', severity: 'block', reason: '包含绝对化用语', matchedTerms: ['最好', '第一'] }],
+    scoreAdjusted: true, scorePolicy: 'withheld', templateWithheld: true, notice: '这段文案命中合规规则：CN-AD-ART9-3（最好、第一）。不提供吸引力评分或可复制模板。这不是法律意见。' } });
+  assert.equal(blocked.length, 1);
+  assert.equal(blocked[0].heading, '合规筛查');
+  assert.deepEqual(blocked[0].lines.slice(0, 4), ['筛查结果：命中拦截规则', '· 规则 CN-AD-ART9-3（拦截，包含绝对化用语），命中：最好、第一', '评分：不提供', '可复制模板：不提供']);
+  assert.match(blocked[0].lines[4], /^说明：这段文案命中合规规则/);
+  const review = flattenViralAnalysis({ '1_标题吸引力评分和技巧': { '评分': 6 }, compliance: {
+    level: 'risk', hits: [{ ruleId: 'CN-AD-ART17', severity: 'review', reason: '医疗功效暗示', matchedTerms: ['治疗'] }],
+    needsHumanReview: true, reviewRuleIds: ['CN-AD-ART17'], scoreAdjusted: true, scorePolicy: 'capped', scoreCap: 6, scoreScale: 10, templateWithheld: false, notice: '需人工复核：这段文案命中复核规则 CN-AD-ART17（治疗）。评分最高按 6/10 计。这不是法律意见。' } });
+  assert.equal(review[0].heading, '合规筛查');
+  assert.ok(review[0].lines.includes('人工复核：需要'));
+  assert.ok(review[0].lines.includes('评分：已封顶，最高 6/10'));
+  assert.equal(review[1].heading, '1_标题吸引力评分和技巧');
+  for (const bare of ['block', 'withheld', 'true', 'false', 'capped', '6', '10', 'violation', 'risk']) {
+    assert.ok(!review.concat(blocked).some((s) => s.lines.includes(bare) || s.lines.includes(`· ${bare}`)), `bare value ${bare}`);
+  }
+  const clear = flattenViralAnalysis({ hook: '开头好', compliance: { level: 'clear', hits: [], scoreAdjusted: false, templateWithheld: false } });
+  assert.deepEqual(clear[0], { heading: '合规筛查', lines: ['筛查结果：未命中规则', '评分：未调整'] });
+});
+
 await check('内容库：不再有点了必失败的「资产 / 生成复盘 / 复用 / 版本对比 / 回滚」；预览看正文；搜索接到后端', () => {
   const page = src('app/(main)/contents/page.tsx');
   assert.doesNotMatch(page, /\/assets|\/versions|\/compare|\/clone|\/rollback|\/review\/generate|>资产<|生成复盘/);
