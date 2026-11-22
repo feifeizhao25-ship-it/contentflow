@@ -579,6 +579,8 @@ export class AIService {
     keywords?: string[];
     /** 用户提供的品牌/产品资料；具体数据和品牌名只能来自这里。 */
     material?: string;
+    /** International only: extra instruction when the brief matched review-level compliance rules. */
+    complianceHint?: string;
   }): Promise<{ content: string; visualPrompts?: string[]; unverifiedClaims?: string[]; claimsNotice?: string | null; grounding?: Grounding & { notice: string }; model: string; provider: string; latency_ms: number; cost_amount: number | null; usage: AIResponse['usage'] }> {
     // 根据平台构建不同的提示词
     const platformPrompts: Record<string, string> = {
@@ -603,7 +605,7 @@ Requirements:
 
 Do not state specific figures, percentages, prices, ingredients, brand or product names, or medical/performance claims unless they appear in the topic or keywords above; describe benefits in general terms instead.
 
-Write in English only. At the very end, output 3 English prompts for AI image generation (Visual Prompts), one per line, after a line containing ---${materialPromptBlock(params.material, true)}`
+Write in English only. At the very end, output 3 English prompts for AI image generation (Visual Prompts), one per line, after a line containing ---${materialPromptBlock(params.material, true)}${params.complianceHint ?? ''}`
         : `${basePrompt}
 关键词：${params.keywords?.join('、') || params.topic}
 

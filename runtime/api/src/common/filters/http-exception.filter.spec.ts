@@ -174,4 +174,26 @@ describe('国内版：校验消息去重', () => {
     expect(JSON.stringify(body)).not.toMatch(/[\u3400-\u9fff]/);
     expect(body.error.compliance).toBeUndefined();
   });
+
+  it('global API forwards English compliance hits so /create can name the rule and terms (2026-11-22)', () => {
+    process.env.MARKET_REGION = 'global';
+    const json = jest.fn();
+    new HttpExceptionFilter().catch(new BadRequestException({
+      code: 'CONTENT_COMPLIANCE_BLOCKED',
+      stage: 'brief',
+      message: 'This brief was not sent for generation.',
+      disclaimer: 'Automated keyword screen, not legal advice.',
+      level: 'violation',
+      hits: [
+        { ruleId: 'INTL-DISEASE-CLAIM', severity: 'block', reason: 'Claims to cure or treat a disease', matchedTerms: ['cures diabetes'] },
+        { ruleId: 'CN-AD-ART9-3', severity: 'block', reason: '包含绝对化用语', matchedTerms: ['最好'] },
+      ],
+    }), hostFor(json, jest.fn()));
+    const error = json.mock.calls[0][0].error;
+    expect(error.code).toBe('CONTENT_COMPLIANCE_BLOCKED');
+    expect(error.stage).toBe('brief');
+    expect(error.compliance.level).toBe('violation');
+    expect(error.compliance.hits).toEqual([{ ruleId: 'INTL-DISEASE-CLAIM', severity: 'block', reason: 'Claims to cure or treat a disease', matchedTerms: ['cures diabetes'] }]);
+    expect(JSON.stringify(error)).not.toMatch(/[\u3400-\u9fff]/);
+  });
 });

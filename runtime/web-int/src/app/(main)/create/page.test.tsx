@@ -22,3 +22,30 @@ it('puts a mic on the brief and a speaker beside the draft, not inside the draft
   expect(screen.getByTestId('draft-content').textContent).toBe('Complete draft');
   expect(screen.getAllByRole('button', { name: 'Read aloud' }).length).toBeGreaterThan(1);
 });
+
+// 2026-11-22: Global /create runs the same brief precheck and draft post-check as the China viral flow.
+const blockedBody = (stage: string) => ({ success: false, error: { code: 'CONTENT_COMPLIANCE_BLOCKED', stage, message: stage === 'brief' ? 'This brief was not sent for generation. It matched pre-publish compliance rules: INTL-DISEASE-CLAIM.' : 'The generated draft was withheld.', compliance: { level: 'violation', hits: [{ ruleId: 'INTL-DISEASE-CLAIM', severity: 'block', reason: 'Claims to cure or treat a disease', matchedTerms: ['cures diabetes'] }] } } });
+it('shows a blocked brief with the rule and matched terms, and no draft', async () => {
+  fetchMock.mockResolvedValue(response(blockedBody('brief'), 400));
+  render(<CreatePage />); submit();
+  const alert = await screen.findByRole('alert', { name: 'Compliance check' });
+  expect(alert).toHaveTextContent('Brief blocked by the compliance check');
+  expect(alert).toHaveTextContent('INTL-DISEASE-CLAIM');
+  expect(alert).toHaveTextContent('cures diabetes');
+  expect(screen.queryByTestId('draft-content')).not.toBeInTheDocument();
+  expect(screen.getByLabelText('Topic or campaign brief')).toHaveValue('A launch announcement');
+});
+it('shows a withheld draft as a draft-stage block', async () => {
+  fetchMock.mockResolvedValue(response(blockedBody('draft'), 400));
+  render(<CreatePage />); submit();
+  expect(await screen.findByRole('alert', { name: 'Compliance check' })).toHaveTextContent('Draft withheld by the compliance check');
+});
+it('flags a review-level draft as needing human review with the rule list', async () => {
+  fetchMock.mockResolvedValue(response({ data: { content: 'Complete draft', visualPrompts: [], compliance: { level: 'risk', needsHumanReview: true, notice: 'Needs human review: the brief or draft matched review rules INTL-GUARANTEED-RESULT (guaranteed).', hits: [{ ruleId: 'INTL-GUARANTEED-RESULT', severity: 'review', reason: 'Guaranteed outcome', matchedTerms: ['guaranteed'] }] } } }));
+  render(<CreatePage />); submit();
+  await screen.findByText('Complete draft');
+  const panel = screen.getByRole('region', { name: 'Compliance check' });
+  expect(panel).toHaveTextContent('Needs human review');
+  expect(panel).toHaveTextContent('INTL-GUARANTEED-RESULT');
+  expect(panel).toHaveTextContent('guaranteed');
+});
