@@ -52,7 +52,16 @@ function sheetLines(sheets: Sheet[]): string[] {
   return lines;
 }
 
-function wrap(doc: PDFKit.PDFDocument, line: string, maxWidth: number): string[] {
+function measure(doc: PDFKit.PDFDocument, text: string): number {
+  let w = 0;
+  for (const c of text) {
+    const face = faceFor(doc, c.codePointAt(0) ?? 0);
+    if (face) w += doc.font(face).fontSize(FONT_SIZE).widthOfString(c);
+  }
+  return w;
+}
+
+export function wrap(doc: PDFKit.PDFDocument, line: string, maxWidth: number): string[] {
   const out: string[] = [];
   let current = '';
   let width = 0;
@@ -62,9 +71,18 @@ function wrap(doc: PDFKit.PDFDocument, line: string, maxWidth: number): string[]
     if (!face) continue;
     const advance = doc.font(face).fontSize(FONT_SIZE).widthOfString(char);
     if (current && width + advance > maxWidth) {
+      // Break an English word at its last space instead of mid-word ("not e / stimated", 2026-11-21 test).
+      const space = current.lastIndexOf(' ');
+      const tail = space >= 0 ? current.slice(space + 1) : '';
+      if (/^[A-Za-z0-9'’.,;:!?()-]*$/.test(char) && char !== ' ' && space > 0 && /^[A-Za-z0-9'’-]+$/.test(tail)) {
+        out.push(current.slice(0, space));
+        current = tail + char;
+        width = measure(doc, current);
+        continue;
+      }
       out.push(current);
-      current = char;
-      width = advance;
+      current = char === ' ' ? '' : char;
+      width = char === ' ' ? 0 : advance;
     } else {
       current += char;
       width += advance;

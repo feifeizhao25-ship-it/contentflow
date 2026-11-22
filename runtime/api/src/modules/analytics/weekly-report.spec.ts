@@ -111,6 +111,61 @@ describe('weekly xlsx sheets', () => {
   });
 });
 
+describe('weekly report times (2026-11-22)', () => {
+  const base = {
+    windowStart: new Date('2026-11-08T16:00:00Z'),
+    windowEnd: new Date('2026-11-15T16:00:00Z'),
+    publish: { total: 1, published: 1, failed: 0, inProgress: 0, manualPending: 0, manualDone: 0, cancelled: 0 },
+    ai: { generations: 0, byType: [], savedAsContent: 0, approvedOrPublished: 0 },
+    contents: [{ title: 'Launch note', content_type: 'article', status: 'draft', created_at: new Date('2026-11-09T02:00:00Z') }],
+    tasks: [{ platform: 'xhs', status: 'published', scheduled_at: new Date('2026-11-14T15:30:00Z'), created_at: new Date('2026-11-09T02:00:00Z') }],
+    engagementNote: 'none',
+    truncated: false,
+  };
+  const flat = (sheets: ReturnType<typeof weeklySheets>) => JSON.stringify(sheets.map((s) => s.rows));
+
+  it('prints Beijing time, not UTC strings ending in Z', () => {
+    const zh = weeklySheets({ ...base, lang: 'zh' });
+    const text = flat(zh);
+    expect(text).not.toMatch(/\d{2}:\d{2}:\d{2}(?:\.\d+)?Z/);
+    expect(zh[0].rows[1]).toEqual(['统计窗口（北京时间）', '2026-11-09 00:00 – 2026-11-15 23:59']);
+    expect(zh[1].rows[1][3]).toBe('2026-11-09 10:00');
+    expect(zh[2].rows[1][2]).toBe('2026-11-14 23:30');
+    expect(zh[2].rows[0]).toEqual(['平台', '状态', '计划时间（北京时间）', '创建时间（北京时间）']);
+  });
+
+  it('the English report names the offset', () => {
+    const en = weeklySheets({ ...base, lang: 'en' });
+    expect(en[0].rows[1]).toEqual(['Window (Asia/Shanghai, UTC+8)', '2026-11-09 00:00 – 2026-11-15 23:59']);
+    expect(en[1].rows[0][3]).toBe('Created at (UTC+8)');
+    expect(flat(en)).not.toMatch(/T\d{2}:\d{2}:\d{2}/);
+  });
+});
+
+describe('pdf line wrap (2026-11-22)', () => {
+  const pdftotextInstalled = spawnSync('pdftotext', ['-v'], { stdio: 'ignore' }).status === 0;
+  (pdftotextInstalled || process.env.CI ? it : it.skip)('breaks English text at a space, never inside a word ("not e / stimated")', async () => {
+    const pdf = await buildPdf(weeklySheets({
+      lang: 'en',
+      windowStart: new Date('2026-11-15T16:00:00Z'),
+      windowEnd: new Date('2026-11-22T16:00:00Z'),
+      publish: { total: 0, published: 0, failed: 0, inProgress: 0, manualPending: 0, manualDone: 0, cancelled: 0 },
+      ai: { generations: 0, byType: [], savedAsContent: 0, approvedOrPublished: 0 },
+      contents: [], tasks: [], engagementNote: 'none', truncated: false,
+    }));
+    const dir = mkdtempSync(join(tmpdir(), 'weekly-wrap-'));
+    try {
+      writeFileSync(join(dir, 'r.pdf'), pdf);
+      const text = runTool('pdftotext', ['-layout', join(dir, 'r.pdf'), '-']);
+      expect(text).toContain('estimated');
+      expect(text).not.toMatch(/\be\s*\n\s*stimated/);
+      expect(text).toContain('2026-11-16 00:00 – 2026-11-22 23:59');
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+});
+
 const week = {
   lang: 'en' as const,
   windowStart: new Date('2026-11-08T16:00:00Z'),
