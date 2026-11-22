@@ -54,9 +54,9 @@ const COPY = {
     saved: '保存进内容库',
     approved: '已通过或已发布',
     noPublish: '本周没有保存任何发布任务。',
-    contentHeaders: ['标题', '类型', '状态', '创建时间'],
+    contentHeaders: ['标题', '类型', '状态', '创建时间（北京时间）'],
     noContent: '本周没有保存任何内容。这张表是空的，因为工作区里没有这段时间的内容记录。',
-    taskHeaders: ['平台', '状态', '计划时间', '创建时间'],
+    taskHeaders: ['平台', '状态', '计划时间（北京时间）', '创建时间（北京时间）'],
     noTasks: '本周没有保存任何发布任务。这张表是空的，因为工作区里没有这段时间的任务记录。',
     engagementAvailable: '是否有互动数据',
     engagementNo: '没有',
@@ -69,7 +69,7 @@ const COPY = {
     publishing: 'Publishing',
     engagement: 'Engagement',
     title: 'Weekly workspace report',
-    window: 'Window (Asia/Shanghai)',
+    window: 'Window (Asia/Shanghai, UTC+8)',
     basis: 'Every number below is a stored record from this workspace. When nothing was stored, the sheet says so. These are not estimated views, likes, or follower changes.',
     publishTotal: 'Publish tasks',
     published: 'Published',
@@ -82,9 +82,9 @@ const COPY = {
     saved: 'Saved into the library',
     approved: 'Approved or published',
     noPublish: 'No publish tasks were stored this week.',
-    contentHeaders: ['Title', 'Type', 'Status', 'Created at'],
+    contentHeaders: ['Title', 'Type', 'Status', 'Created at (UTC+8)'],
     noContent: 'No content was saved this week. This sheet is empty because the workspace has no content records in this period.',
-    taskHeaders: ['Platform', 'Status', 'Scheduled at', 'Created at'],
+    taskHeaders: ['Platform', 'Status', 'Scheduled at (UTC+8)', 'Created at (UTC+8)'],
     noTasks: 'No publish tasks were stored this week. This sheet is empty because the workspace has no task records in this period.',
     engagementAvailable: 'Engagement data available',
     engagementNo: 'No',
@@ -93,17 +93,33 @@ const COPY = {
   },
 } as const;
 
+/** Beijing time has no daylight saving, so a fixed +8 h offset is exact. */
+const SHANGHAI_OFFSET_MS = 8 * 3600 * 1000;
+
+/**
+ * "2026-11-21 14:10" in Beijing time. The report used to print raw ISO strings ending in "Z"
+ * (UTC) under a header that said Beijing time (2026-11-21 test).
+ */
+export function shanghaiStamp(value: Date): string {
+  return new Date(value.getTime() + SHANGHAI_OFFSET_MS).toISOString().slice(0, 16).replace('T', ' ');
+}
+
 function stamp(value: Date | null, empty: string): string {
   if (!value) return empty;
   const time = value.getTime();
-  return Number.isFinite(time) ? value.toISOString() : empty;
+  return Number.isFinite(time) ? shanghaiStamp(value) : empty;
+}
+
+/** The window end is exclusive (next Monday 00:00); show the last minute inside it. */
+export function windowText(start: Date, end: Date): string {
+  return `${shanghaiStamp(start)} – ${shanghaiStamp(new Date(end.getTime() - 60 * 1000))}`;
 }
 
 export function weeklySheets(data: WeeklyReportData): Sheet[] {
   const text = COPY[data.lang];
   const summary: Cell[][] = [
     [text.title],
-    [text.window, `${data.windowStart.toISOString()} – ${data.windowEnd.toISOString()}`],
+    [text.window, windowText(data.windowStart, data.windowEnd)],
     [text.basis],
     [],
     [text.publishTotal, data.publish.total],
