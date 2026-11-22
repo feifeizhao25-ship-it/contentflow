@@ -29,25 +29,31 @@ function genericChinese(status: number): string {
  */
 const COMPLIANCE_LEVELS = new Set(['violation', 'risk', 'clear']);
 
-/** 只转发合规检查已经写好的中文字段，避免把异常对象里的其它内容带给浏览器。 */
-function compliancePayload(resp: Record<string, any>) {
-  const disclaimer = typeof resp.disclaimer === 'string' && containsCjk(resp.disclaimer) ? resp.disclaimer : undefined;
+/**
+ * 只转发合规检查已经写好的字段，避免把异常对象里的其它内容带给浏览器。
+ * 国内版只收中文字段；国际版只收不含中文的字段（国际规则集的英文说明）。
+ */
+function compliancePayload(resp: Record<string, any>, english = false) {
+  const marketText = (value: unknown): value is string => typeof value === 'string' && (english ? !containsCjk(value) : containsCjk(value));
+  const disclaimer = marketText(resp.disclaimer) ? resp.disclaimer : undefined;
   const level = COMPLIANCE_LEVELS.has(resp.level) ? String(resp.level) : undefined;
   const hits = Array.isArray(resp.hits)
     ? resp.hits.slice(0, 20).flatMap((hit) => {
         if (!hit || typeof hit !== 'object') return [];
-        const reason = typeof hit.reason === 'string' && containsCjk(hit.reason) ? hit.reason.slice(0, 200) : '';
+        const reason = marketText(hit.reason) ? hit.reason.slice(0, 200) : '';
         if (!reason) return [];
         const severity = hit.severity === 'block' || hit.severity === 'review' ? hit.severity : 'review';
         const ruleId = typeof hit.ruleId === 'string' && /^[A-Z0-9-]{3,40}$/.test(hit.ruleId) ? hit.ruleId : '';
         // 命中的原文片段（让用户知道改哪里）；只取短字符串，最多 5 个。
         const matchedTerms = Array.isArray(hit.matchedTerms)
-          ? hit.matchedTerms.filter((t: unknown): t is string => typeof t === 'string' && t.length > 0 && t.length <= 30).slice(0, 5)
+          ? hit.matchedTerms.filter((t: unknown): t is string => typeof t === 'string' && t.length > 0 && t.length <= (english ? 60 : 30)).slice(0, 5)
           : [];
         return [{ ruleId, severity, reason, ...(matchedTerms.length ? { matchedTerms } : {}) }];
       })
     : [];
   if (!disclaimer && !level && !hits.length) return undefined;
+  // 国际版：中文字段被丢掉后只剩 level 时不单独返回，免得界面显示一个没有说明的等级。
+  if (english && !disclaimer && !hits.length) return undefined;
   return { ...(disclaimer ? { disclaimer } : {}), ...(level ? { level } : {}), ...(hits.length ? { hits } : {}) };
 }
 
@@ -73,6 +79,7 @@ export class HttpExceptionFilter implements ExceptionFilter {
     let error = 'Error';
     let details: any;
     let codeOverride: string | undefined;
+    let stage: 'brief' | 'draft' | undefined;
     let compliance: ReturnType<typeof compliancePayload> | undefined;
 
     if (exception instanceof HttpException) {
@@ -87,7 +94,8 @@ export class HttpExceptionFilter implements ExceptionFilter {
         error = resp.error || 'Error';
         details = resp.details;
         if (typeof resp.code === 'string' && /^[A-Z][A-Z0-9_]{2,63}$/.test(resp.code)) codeOverride = resp.code;
-        compliance = compliancePayload(resp);
+        compliance = compliancePayload(resp, process.env.MARKET_REGION === 'global');
+        if (resp.stage === 'brief' || resp.stage === 'draft') stage = resp.stage;
       } else {
         message = exception.message;
       }
@@ -142,6 +150,7 @@ export class HttpExceptionFilter implements ExceptionFilter {
         message,
         details,
         ...(compliance ? { compliance } : {}),
+        ...(stage ? { stage } : {}),
         timestamp: new Date().toISOString(),
         path: request.url,
       },

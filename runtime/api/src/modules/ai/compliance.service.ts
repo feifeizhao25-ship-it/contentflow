@@ -24,6 +24,18 @@ export function describeBlockingHits(hits: readonly NamedHit[], english: boolean
     .join(english ? '; ' : '；');
 }
 
+function publicHit(h: { ruleId: string; severity: 'block' | 'review'; reason: string; matchedTerms: string[]; sourceUrl?: string }): NamedHit & { sourceUrl?: string } {
+  return { ruleId: h.ruleId, severity: h.severity, reason: h.reason, matchedTerms: h.matchedTerms, ...(h.sourceUrl ? { sourceUrl: h.sourceUrl } : {}) };
+}
+
+/** Prompt hint when the brief matched review-level rules: do not repeat or amplify those claims. */
+export function globalReviewHint(hits: ReadonlyArray<NamedHit>): string {
+  const review = hits.filter((h) => h.severity === 'review');
+  if (!review.length) return '';
+  const terms = [...new Set(review.flatMap((h) => h.matchedTerms))].slice(0, 6).map((t) => `"${t}"`).join(', ');
+  return `\n\nCompliance: the brief contains claims that need substantiation (${terms}). Do not repeat, quote, or amplify these claims, and do not present them as facts or as a standard to demand; write around them in general, verifiable terms.`;
+}
+
 @Injectable()
 export class ComplianceService {
   constructor(@Optional() private readonly config?: ConfigService) {}
@@ -71,6 +83,57 @@ export class ComplianceService {
         matchedTerms: h.matchedTerms,
       })),
     });
+  }
+
+  /**
+   * International /create (generate/article): the same two gates the China viral flow uses.
+   * Brief precheck: block-level hits stop before any quota hold or model call; review-level hits go on,
+   * with a prompt hint not to repeat the flagged claims. Draft post-check: block-level hits withhold the
+   * draft; review-level hits return it flagged "needs human review". Keyword screen, not legal advice.
+   */
+  precheckGlobalBrief(...parts: Array<string | undefined | null>): { level: 'risk' | 'clear'; hits: NamedHit[] } {
+    const text = parts.filter((p): p is string => typeof p === 'string' && p.length > 0).join('\n');
+    const r = evaluateInternationalContent(text);
+    if (!r.passed) {
+      throw new BadRequestException({
+        code: 'CONTENT_COMPLIANCE_BLOCKED',
+        stage: 'brief',
+        message: `This brief was not sent for generation. It matched pre-publish compliance rules: ${describeBlockingHits(r.hits, true)}. Edit the brief and try again. This is not legal advice.`,
+        ruleSetVersion: r.ruleSetVersion,
+        level: r.level,
+        disclaimer: r.disclaimer,
+        hits: r.hits.map(publicHit),
+      });
+    }
+    return { level: r.level === 'risk' ? 'risk' : 'clear', hits: r.hits.map(publicHit) };
+  }
+
+  postcheckGlobalDraft(content: string, brief: { hits: NamedHit[] }) {
+    const r = evaluateInternationalContent(content);
+    if (!r.passed) {
+      throw new BadRequestException({
+        code: 'CONTENT_COMPLIANCE_BLOCKED',
+        stage: 'draft',
+        message: `The generated draft was withheld. It matched pre-publish compliance rules: ${describeBlockingHits(r.hits, true)}. Edit the brief and try again. This is not legal advice.`,
+        ruleSetVersion: r.ruleSetVersion,
+        level: r.level,
+        disclaimer: r.disclaimer,
+        hits: r.hits.map(publicHit),
+      });
+    }
+    const reviewHits = [...brief.hits, ...r.hits.map(publicHit)].filter((h) => h.severity === 'review');
+    const seen = new Set<string>();
+    const hits = reviewHits.filter((h) => (seen.has(h.ruleId) ? false : (seen.add(h.ruleId), true)));
+    return {
+      level: hits.length ? ('risk' as const) : ('clear' as const),
+      needsHumanReview: hits.length > 0,
+      ruleSetVersion: r.ruleSetVersion,
+      disclaimer: r.disclaimer,
+      hits,
+      notice: hits.length
+        ? `Needs human review: the brief or draft matched review rules ${hits.map((h) => `${h.ruleId} (${h.matchedTerms.slice(0, 3).join(', ')})`).join('; ')}. Check these claims before using the draft. This is not legal advice.`
+        : 'No rule in this screen matched. That does not mean the draft is cleared to publish; review it yourself. This is not legal advice.',
+    };
   }
 
   /**

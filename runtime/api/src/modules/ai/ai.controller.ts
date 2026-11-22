@@ -8,7 +8,7 @@ import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { AiAllowanceService } from './ai-allowance.service';
 import { AI_HOLD_TOKENS } from './ai-holds';
 import { normalizeIdempotencyKey } from '../system/usage.service';
-import { ComplianceService } from './compliance.service';
+import { ComplianceService, globalReviewHint } from './compliance.service';
 import { ProvenanceService } from '../../common/provenance/provenance.service';
 
 @ApiTags('ai')
@@ -40,6 +40,11 @@ export class AIController {
     const material = typeof body?.material === 'string' ? body.material.slice(0, MATERIAL_MAX_CHARS) : undefined;
     // Refuse prohibited requests before any quota hold (China: 刷单 / 虚假好评 / 虚构证言; global: fake reviews and the international request rules).
     this.compliance.guardRequest(topic, style, material, ...(Array.isArray(keywords) ? keywords.map(String) : [typeof keywords === 'string' ? keywords : undefined]));
+    // International /create: brief precheck before any hold or model call (block stops here).
+    const global = this.compliance.isGlobal();
+    const brief = global
+      ? this.compliance.precheckGlobalBrief(topic, style, material, ...(Array.isArray(keywords) ? keywords.map(String) : [typeof keywords === 'string' ? keywords : undefined]))
+      : null;
     return this.allowance.withReservation({
       tenantId: req.user.tenantId,
       kind: 'article',
@@ -52,14 +57,17 @@ export class AIController {
           platform: platform || 'xhs',
           keywords,
           material,
+          ...(brief ? { complianceHint: globalReviewHint(brief.hits) } : {}),
         });
+        // International: post-check the draft (block withholds it; review flags it for a person).
+        const compliance = brief ? this.compliance.postcheckGlobalDraft(result.content, brief) : undefined;
         // 显式标识（《人工智能生成合成内容标识办法》）：正文本身带「AI 生成」，
         // 复制、保存、分发时不会丢；留存的生成记录里也是带标识的版本。
         const labelled = labelAiGeneratedText(result.content);
         return {
           tokens: result.usage.total_tokens,
           attachContentId: 'text' as const,
-          response: { ...result, content: labelled, aiGenerated: true, aiLabel: aiTextLabel() },
+          response: { ...result, content: labelled, aiGenerated: true, aiLabel: aiTextLabel(), ...(compliance ? { compliance } : {}) },
           generation: {
             userId: req.user.sub,
             generationType: 'article',
