@@ -1,5 +1,6 @@
 import { Injectable, Logger, InternalServerErrorException, HttpException, HttpStatus } from '@nestjs/common';
 import { AIService } from './ai.service';
+import { PROMO_NOTICE_EN, PROMO_NOTICE_ZH, findUnsuppliedPromoClaims, promoPromptLine } from './promo-claims';
 import { quotaExceededException } from '../../common/quota-error';
 import { UsageService, AiQuotaExceededError, AiRequestInProgressError } from '../system/usage.service';
 import { AI_HOLD_TOKENS } from './ai-holds';
@@ -105,8 +106,8 @@ export class ContentPackService {
             // 资料过期时如实告诉用户「合规规则资料需要人工复核」，而不是笼统的「未引用」。
             const freshness = policySources.length ? null : await this.ragPolicyService.freshnessReport?.().catch(() => null);
             const scriptPrompt = isGlobalMarket()
-                ? `Write an in-depth script on the topic "${dto.topic}" with the headline "${titles[0]}". Be logical and use plain language. If the sources below contain compliance requirements, add a pre-publication checklist at the end. Write in English only.${currentDatePromptLine(true)}${targetMarket ? ` ${targetMarketPromptLine(targetMarket, relationship)}` : ''}${this.ragPolicyService.buildContext(policySources)}${positioning.promptBlock}${materialBlock}`
-                : `请根据主题 "${dto.topic}" 和标题 "${titles[0]}" 创作一篇深度脚本。要求：逻辑清晰、使用普通人能理解的表达；如资料包含合规要求，在结尾增加发布前核对清单。${currentDatePromptLine(false)}${this.ragPolicyService.buildContext(policySources)}${positioning.promptBlock}${materialBlock}`;
+                ? `Write an in-depth script on the topic "${dto.topic}" with the headline "${titles[0]}". Be logical and use plain language. If the sources below contain compliance requirements, add a pre-publication checklist at the end. Write in English only.${promoPromptLine(true)}${currentDatePromptLine(true)}${targetMarket ? ` ${targetMarketPromptLine(targetMarket, relationship)}` : ''}${this.ragPolicyService.buildContext(policySources)}${positioning.promptBlock}${materialBlock}`
+                : `请根据主题 "${dto.topic}" 和标题 "${titles[0]}" 创作一篇深度脚本。要求：逻辑清晰、使用普通人能理解的表达；如资料包含合规要求，在结尾增加发布前核对清单。${promoPromptLine(false)}${currentDatePromptLine(false)}${this.ragPolicyService.buildContext(policySources)}${positioning.promptBlock}${materialBlock}`;
             const scriptData = await this.aiService.generateTextForMarket({ prompt: scriptPrompt, route: 'bulk', userText: `${dto.topic} ${titles[0]}` });
             let script = scriptData?.content;
             if (typeof script !== 'string' || !script.trim()) {
@@ -127,6 +128,9 @@ export class ContentPackService {
             // Check the text as it will be published: with the ad label on the first line, in the chosen market's wording rules.
             const compliance = await this.complianceService.checkContent?.(adLabel ? `${adLabel}\n${script}` : script, { conservative, targetMarket, commercial });
             const grounding = groundClaims(script, `${dto.topic} ${titles.join(' ')}`, dto.material);
+            // Promotion / scarcity wording is checked against what the user wrote (topic + material) only: the titles are model output too.
+            const promoUnsupplied = findUnsuppliedPromoClaims(script, `${dto.topic} ${dto.material ?? ''}`);
+            for (const p of promoUnsupplied) if (!grounding.unverified.includes(p)) grounding.unverified.push(p);
 
             // 4. AI 生成内容显式标识（导出文本必须可辨识为 AI 生成）
             script = labelAiGeneratedText(script);
@@ -168,6 +172,7 @@ export class ContentPackService {
                     } : undefined,
                     ...(stale.removed.length ? { stale_year_titles_removed: stale.removed } : {}),
                     ...(weekdayFixes.length ? { weekday_corrections: weekdayFixes } : {}),
+                    ...(promoUnsupplied.length ? { promo_claims: { unsupplied: promoUnsupplied, notice: isGlobalMarket() ? PROMO_NOTICE_EN : PROMO_NOTICE_ZH } } : {}),
                     positioning_used: { persona: positioning.used.persona, persona_name: positioning.used.personaName, top_titles: positioning.used.topTitles, reference_only: true },
                     grounding: {
                         material_supplied: grounding.materialSupplied,

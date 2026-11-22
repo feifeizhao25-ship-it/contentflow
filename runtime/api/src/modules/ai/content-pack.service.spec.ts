@@ -128,6 +128,23 @@ describe('ContentPackService token accounting', () => {
     }
   });
 
+  it('2026-11-22: scarcity wording the user never gave is reported and listed as unverified; the prompt forbids it', async () => {
+    ai.generateTitlesWithUsage.mockResolvedValue({ titles: ['Pumpkin spice cold brew is here'], usage: { total_tokens: 10 } });
+    ai.generateTextForMarket.mockResolvedValue({ content: '我们的南瓜冷萃本周末上新，售完即止。', usage: { total_tokens: 20 } });
+    const result = await service.generatePack('tenant-1', { topic: '咖啡店周末上新南瓜冷萃', platforms: ['xhs'] });
+    expect((result.data as any).promo_claims.unsupplied).toEqual(['售完即止']);
+    expect((result.data as any).grounding.unverified).toContain('售完即止');
+    const prompt = ai.generateTextForMarket.mock.calls[0][0].prompt as string;
+    expect(prompt).toContain('不要自行添加促销');
+  });
+
+  it('2026-11-22: a promotion the user wrote in the topic is not reported', async () => {
+    ai.generateTitlesWithUsage.mockResolvedValue({ titles: ['周末限定'], usage: { total_tokens: 10 } });
+    ai.generateTextForMarket.mockResolvedValue({ content: '本周末第二杯半价。', usage: { total_tokens: 20 } });
+    const result = await service.generatePack('tenant-1', { topic: '周末活动第二杯半价', platforms: ['xhs'] });
+    expect((result.data as any).promo_claims).toBeUndefined();
+  });
+
   it('B28: avoidTerms from a previous compliance block are written into both the title and the script prompts', async () => {
     ai.generateTitlesWithUsage.mockResolvedValue({ titles: ['一个标题'], usage: { total_tokens: 10 } });
     ai.generateTextForMarket.mockResolvedValue({ content: '正文', usage: { total_tokens: 20 } });
