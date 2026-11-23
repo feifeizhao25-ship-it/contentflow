@@ -1,0 +1,12 @@
+[
+  { "id": "w-ok", "tenant_id": "t1", "url": "https://hooks.example.com/a?token=keepout", "status": "active" },
+  { "id": "w-localtest", "tenant_id": "t1", "url": "https://localtest.me/h", "status": "active" },
+  { "id": "w-rebind", "tenant_id": "t2", "url": "https://rebind.example/h", "status": "active" },
+  { "id": "w-v6", "tenant_id": "t2", "url": "https://v6-local.example/h", "status": "paused" },
+  { "id": "w-mapped-literal", "tenant_id": "t3", "url": "https://[::ffff:7f00:1]/h", "status": "active" },
+  { "id": "w-public-literal", "tenant_id": "t3", "url": "https://8.8.8.8/h", "status": "active" },
+  { "id": "w-gone", "tenant_id": "t3", "url": "https://gone.example/h", "status": "active" },
+  { "id": "w-flaky", "tenant_id": "t4", "url": "https://flaky.example/h", "status": "active" },
+  { "id": "w-http", "tenant_id": "t4", "url": "http://hooks.example.com/h", "status": "active" },
+  { "id": "w-bad", "tenant_id": "t4", "url": "not a url", "status": "active" }
+]

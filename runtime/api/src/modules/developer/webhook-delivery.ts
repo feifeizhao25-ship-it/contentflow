@@ -114,17 +114,56 @@ export async function assertPublicWebhookDestination(
 ): Promise<URL> {
   const url = assertPublicHttpsWebhookUrl(raw);
   if (isIpLiteral(url.hostname)) return url;
-  let addresses: Array<{ address: string; family: number }>;
-  try {
-    addresses = await lookup(url.hostname);
-  } catch {
-    throw new Error('Webhook 域名无法解析，请确认是公网可访问的 HTTPS 地址');
-  }
-  if (!addresses?.length) throw new Error('Webhook 域名无法解析，请确认是公网可访问的 HTTPS 地址');
+  const addresses = await resolveWebhookAddresses(url.hostname, lookup);
+  if (!addresses.length) throw new Error('Webhook 域名无法解析：没有 DNS 记录，请确认域名拼写正确');
   if (addresses.some((item) => isBlockedWebhookAddress(item.address))) {
     throw new Error('Webhook 域名解析到本机、内网或保留地址，不能使用');
   }
   return url;
+}
+
+/** 暂时性的 DNS 故障（SERVFAIL / EAI_AGAIN / 超时）。创建接口会返回 503，调用方可稍后重试。 */
+export class RetryableWebhookDnsError extends Error {
+  readonly retryable = true;
+  constructor() {
+    super('Webhook DNS 暂时不可用，已短暂重试；请稍后重试（域名尚未保存）');
+    this.name = 'RetryableWebhookDnsError';
+  }
+}
+
+export function isTransientDnsError(error: any): boolean {
+  return ['SERVFAIL', 'ESERVFAIL', 'EAI_AGAIN', 'EAI_FAIL', 'ETIMEOUT', 'ETIMEDOUT', 'EWEBHOOKDNSTIMEOUT'].includes(String(error?.code || '').toUpperCase());
+}
+
+async function lookupWithTimeout(hostname: string, lookup: NonNullable<WebhookDeliveryDeps['lookup']>) {
+  let timer: ReturnType<typeof setTimeout>;
+  try {
+    return await Promise.race([
+      lookup(hostname),
+      new Promise<never>((_resolve, reject) => {
+        timer = setTimeout(() => reject(Object.assign(new Error('DNS timeout'), { code: 'EWEBHOOKDNSTIMEOUT' })), 1000);
+      }),
+    ]);
+  } finally {
+    clearTimeout(timer!);
+  }
+}
+
+/** 最多两次，每次 1 秒超时，间隔 150ms。NXDOMAIN / ENOTFOUND / ENODATA 不重试；任何非公网 IP 也不会进入重试。 */
+export async function resolveWebhookAddresses(
+  hostname: string,
+  lookup: NonNullable<WebhookDeliveryDeps['lookup']> = lookupPublicAddresses,
+): Promise<Array<{ address: string; family: number }>> {
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      return await lookupWithTimeout(hostname, lookup);
+    } catch (error: any) {
+      if (!isTransientDnsError(error)) throw new Error('Webhook 域名无法解析，请确认域名拼写正确且存在 DNS 记录');
+      if (attempt === 1) throw new RetryableWebhookDnsError();
+      await new Promise<void>((resolve) => setTimeout(resolve, 150));
+    }
+  }
+  throw new RetryableWebhookDnsError();
 }
 
 /** Webhook 签名与投递：HMAC-SHA256，签名头 X-ContentFlow-Signature: sha256=<hex>，事件头 X-ContentFlow-Event。 */
