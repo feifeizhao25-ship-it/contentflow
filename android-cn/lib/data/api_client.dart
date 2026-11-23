@@ -191,8 +191,11 @@ class ApiClient {
     );
   }
 
+  /// 对象存储签名上传尚未接入。素材页不得把本地选图显示成上传成功，也不得改接外部收费存储。
+  bool get assetUploadEnabled => false;
+
   Future<Asset> uploadAsset(String filePath, AssetType type) async {
-    throw UnsupportedError('素材上传将在对象存储签名上传接入后开放');
+    throw UnsupportedError('素材上传尚未开通：目前只能在本机选择图片，不会上传到服务器');
   }
 
   // ============== Analytics ==============

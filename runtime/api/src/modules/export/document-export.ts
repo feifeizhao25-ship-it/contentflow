@@ -8,6 +8,7 @@ import { join } from 'path';
 import { AlignmentType, Document, Header, HeadingLevel, Packer, Paragraph, TableOfContents, TextRun } from 'docx';
 import PDFDocument from 'pdfkit';
 import { breakChineseLines } from './chinese-layout';
+import { domesticExplicitLabelBlock } from '../ai/compliance/rules/domestic-explicit-label';
 
 export interface ExportSection {
   level: 1 | 2 | 3;
@@ -19,6 +20,22 @@ export interface ExportDraft {
   title: string;
   header: string;
   sections: ExportSection[];
+  /** 为 true 时，导出前检查显式标识。缺省 false，避免把人工稿件误判为缺少 AI 标识。 */
+  aiGenerated?: boolean;
+}
+
+export function visibleExportText(draft: ExportDraft): string {
+  return [draft.header, draft.title, ...draft.sections.flatMap((section) => [section.heading, ...section.paragraphs])].join('\n');
+}
+
+/** AI 稿件缺少显式标识时拒绝导出，不生成文件。人工稿件不检查。 */
+export function assertDomesticExportExplicitLabel(draft: ExportDraft): void {
+  const block = domesticExplicitLabelBlock(visibleExportText(draft), draft.aiGenerated === true);
+  if (!block) return;
+  const error = new Error(block.message) as Error & { code?: string; issues?: typeof block.issues };
+  error.code = block.code;
+  error.issues = block.issues;
+  throw error;
 }
 
 const HEADING = {
@@ -35,6 +52,7 @@ function fontFile(name: string): string {
 }
 
 export async function buildDocx(draft: ExportDraft): Promise<Buffer> {
+  assertDomesticExportExplicitLabel(draft);
   const children = [
     new Paragraph({ heading: HeadingLevel.HEADING_1, children: [new TextRun('目录')] }),
     new TableOfContents('目录', { hyperlink: true, headingStyleRange: '1-3' }),
@@ -115,6 +133,12 @@ export function buildSearchablePdf(draft: ExportDraft): Promise<Buffer> {
     }
   }
   return new Promise((resolve, reject) => {
+    try {
+      assertDomesticExportExplicitLabel(draft);
+    } catch (error) {
+      reject(error);
+      return;
+    }
     const doc = new PDFDocument({ size: 'A4', margin: 48 });
     const chunks: Buffer[] = [];
     doc.on('data', (chunk: Buffer) => chunks.push(chunk));

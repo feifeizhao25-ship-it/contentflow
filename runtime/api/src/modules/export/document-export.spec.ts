@@ -4,6 +4,7 @@ import { tmpdir } from 'os';
 import { join } from 'path';
 import { breakChineseLines, lineBreaksFollowClreq } from './chinese-layout';
 import { ExportDraft, buildDocx, buildSearchablePdf } from './document-export';
+import { AI_TEXT_LABEL } from '../../common/ai-content-label';
 
 /**
  * 调用外部命令行工具（unzip / pdftotext / qpdf）。工具缺失或执行失败时抛出一条普通的 Error，写明是哪个工具、什么原因。
@@ -79,6 +80,34 @@ describe('稿件导出', () => {
       expect(text).toContain('核对清单');
       expect(text).toContain('AI生成内容标识');
       expect(text).toContain('国内草稿');
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it('AI 稿件缺少显式标识时不导出', async () => {
+    const unlabeled: ExportDraft = {
+      title: '发布说明',
+      header: '分发侠',
+      aiGenerated: true,
+      sections: [{ level: 1, heading: '核对清单', paragraphs: ['先看用语，然后由人工确认。'] }],
+    };
+    await expect(buildDocx(unlabeled)).rejects.toThrow(/显式标识/);
+    await expect(buildSearchablePdf(unlabeled)).rejects.toThrow(/没有向平台提交/);
+  });
+
+  it('带上显式标识的 AI 稿件可以导出，且标识留在文件里', async () => {
+    const labeled: ExportDraft = {
+      ...DRAFT,
+      aiGenerated: true,
+      sections: [...DRAFT.sections, { level: 2, heading: '标识原文', paragraphs: [AI_TEXT_LABEL] }],
+    };
+    const buffer = await buildDocx(labeled);
+    const dir = mkdtempSync(join(tmpdir(), 'cf-docx-label-'));
+    const file = join(dir, 'labeled.docx');
+    try {
+      writeFileSync(file, buffer);
+      expect(unzipText(file, 'word/document.xml')).toContain('本内容由 AI 生成');
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }

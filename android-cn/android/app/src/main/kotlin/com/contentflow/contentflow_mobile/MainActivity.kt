@@ -141,7 +141,7 @@ class MainActivity : FlutterActivity() {
                     val pending = pendingSpeak
                     pendingSpeak = null
                     if (ttsReady && pending != null) speak(pending.first, pending.second)
-                    else if (!ttsReady) emit("error", "tts")
+                    else if (!ttsReady) emit("error", "speak-failed")
                 }
                 tts?.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
                     override fun onStart(utteranceId: String?) = emit("speak-start", null)
@@ -149,14 +149,23 @@ class MainActivity : FlutterActivity() {
                         if (utteranceId == "contentflow-last") emit("speak-done", null)
                     }
                     @Deprecated("Deprecated in Java")
-                    override fun onError(utteranceId: String?) = emit("error", "tts")
-                    override fun onError(utteranceId: String?, errorCode: Int) = emit("error", "tts")
+                    override fun onError(utteranceId: String?) = emit("error", "speak-failed")
+                    override fun onError(utteranceId: String?, errorCode: Int) = emit("error", "speak-failed")
                 })
             }
             return
         }
         val locale = Locale.forLanguageTag(localeTag)
-        tts?.language = locale
+        val availability = tts?.isLanguageAvailable(locale) ?: TextToSpeech.LANG_NOT_SUPPORTED
+        if (availability == TextToSpeech.LANG_MISSING_DATA || availability == TextToSpeech.LANG_NOT_SUPPORTED) {
+            emit("error", "no-chinese-voice")
+            return
+        }
+        val applied = tts?.setLanguage(locale) ?: TextToSpeech.LANG_NOT_SUPPORTED
+        if (applied == TextToSpeech.LANG_MISSING_DATA || applied == TextToSpeech.LANG_NOT_SUPPORTED) {
+            emit("error", "no-chinese-voice")
+            return
+        }
         val chunks = text.chunked(3000)
         val serial = ++speakSerial
         chunks.forEachIndexed { index, chunk ->

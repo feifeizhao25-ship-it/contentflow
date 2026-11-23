@@ -3,6 +3,7 @@ import '../../core/app_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
+import 'local_image.dart';
 import '../../core/providers.dart';
 import '../../data/models.dart';
 import 'drafts_view.dart';
@@ -40,7 +41,7 @@ class AssetsScreen extends ConsumerWidget {
         ),
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: () => _showUploadDialog(context, ref),
+        onPressed: () => _showUploadDialog(context),
         backgroundColor: Theme.of(context).primaryColor,
         child: const Icon(Icons.add, color: Colors.white),
       ),
@@ -74,7 +75,7 @@ class AssetsScreen extends ConsumerWidget {
             ),
           ),
           IconButton(
-            onPressed: () => _showUploadDialog(context, ref),
+            onPressed: () => _showUploadDialog(context),
             icon: Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
@@ -159,7 +160,7 @@ class AssetsScreen extends ConsumerWidget {
         child: CfEmptyState(
           asset: 'assets/images/cf_empty_assets.webp',
           title: '暂无素材',
-          message: '点击右上角的上传按钮，添加图片、视频或脚本素材。',
+          message: assetEmptyMessage,
         ),
       );
     }
@@ -349,7 +350,7 @@ class AssetsScreen extends ConsumerWidget {
     );
   }
 
-  void _showUploadDialog(BuildContext context, WidgetRef ref) {
+  void _showUploadDialog(BuildContext context) {
     showModalBottomSheet(
       context: context,
       shape: const RoundedRectangleBorder(
@@ -361,10 +362,12 @@ class AssetsScreen extends ConsumerWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             const Text(
-              '上传素材',
+              assetPickTitle,
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 8),
+            const Text(assetPickNotice, style: TextStyle(fontSize: 13, color: Colors.black54)),
+            const SizedBox(height: 12),
             ListTile(
               leading: Container(
                 padding: const EdgeInsets.all(10),
@@ -374,9 +377,9 @@ class AssetsScreen extends ConsumerWidget {
                 ),
                 child: const Icon(Icons.photo_library, color: Colors.green),
               ),
-              title: const Text('从相册选择'),
-              subtitle: const Text('选择图片或视频'),
-              onTap: () => _pickImage(context, ref, ImageSource.gallery),
+              title: const Text(assetGalleryTitle),
+              subtitle: const Text(assetGallerySubtitle),
+              onTap: () => _pickImage(context, ImageSource.gallery),
             ),
             ListTile(
               leading: Container(
@@ -387,9 +390,9 @@ class AssetsScreen extends ConsumerWidget {
                 ),
                 child: const Icon(Icons.camera_alt, color: Colors.red),
               ),
-              title: const Text('拍摄'),
-              subtitle: const Text('使用相机拍摄'),
-              onTap: () => _pickImage(context, ref, ImageSource.camera),
+              title: const Text(assetCameraTitle),
+              subtitle: const Text(assetCameraSubtitle),
+              onTap: () => _pickImage(context, ImageSource.camera),
             ),
             const SizedBox(height: 20),
           ],
@@ -400,7 +403,6 @@ class AssetsScreen extends ConsumerWidget {
 
   Future<void> _pickImage(
     BuildContext context,
-    WidgetRef ref,
     ImageSource source,
   ) async {
     final picker = ImagePicker();
@@ -410,32 +412,18 @@ class AssetsScreen extends ConsumerWidget {
 
       if (image != null) {
         if (!context.mounted) return;
-        // Upload
-        final api = ref.read(apiClientProvider);
-
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('上传中...')));
-
-        AssetType type = source == ImageSource.camera
-            ? AssetType.image
-            : AssetType.image;
-        await api.uploadAsset(image.path, type);
-
-        ref.invalidate(assetsProvider);
-
-        if (context.mounted) {
-          Navigator.pop(context);
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(const SnackBar(content: Text('上传成功')));
-        }
+        final size = await image.length();
+        final check = checkLocalImage(name: image.name.isNotEmpty ? image.name : image.path, sizeBytes: size);
+        if (!context.mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(check.message)));
+        if (!check.ok) return;
+        // 上传尚未开通：不调用 uploadAsset，不刷新列表，也不提示上传成功。
       }
     } catch (e) {
       if (context.mounted) {
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(SnackBar(content: Text(friendlyError(e, fallback: '上传失败，请稍后重试'))));
+        ).showSnackBar(SnackBar(content: Text(friendlyError(e, fallback: '没有选到可用图片，请稍后重试'))));
       }
     }
   }

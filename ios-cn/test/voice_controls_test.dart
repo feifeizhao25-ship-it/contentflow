@@ -22,6 +22,7 @@ class _Scripted implements VoiceTransport {
   final List<String> spoken = [];
   bool emitFinal = true;
   Object? startError;
+  String? speakError;
 
   @override
   Stream<Map<String, dynamic>> get events => _events.stream;
@@ -39,7 +40,14 @@ class _Scripted implements VoiceTransport {
   Future<void> listenStop() async => stops++;
 
   @override
-  Future<void> speak(String text, String locale) async => spoken.add(text);
+  Future<void> speak(String text, String locale) async {
+    spoken.add(text);
+    if (speakError != null) {
+      _events.add({'type': 'error', 'text': speakError});
+    }
+  }
+
+  void emitSpeakError(String code) => _events.add({'type': 'error', 'text': code});
 
   @override
   Future<void> speakStop() async => speakStops++;
@@ -109,6 +117,34 @@ void main() {
     await tester.pump();
     expect(transport.speakStops, 1);
     expect(voice.speaking, isFalse);
+  });
+
+  testWidgets('missing Chinese voice explains it in Chinese instead of only clearing playback', (tester) async {
+    final transport = _Scripted()..speakError = 'no-chinese-voice';
+    final voice = VoiceController(transport: transport);
+    await tester.pumpWidget(MaterialApp(
+      home: Scaffold(body: SpeakButton(text: '口播脚本', copy: voiceCopyZh, voice: voice, controlKey: 'script')),
+    ));
+    await tester.tap(find.byKey(const ValueKey('script')));
+    await tester.pump();
+    expect(find.text(voiceCopyZh.noChineseVoice), findsOneWidget);
+    expect(voice.speaking, isFalse);
+    expect(voice.speakingKey, isNull);
+  });
+
+  testWidgets('a later speak failure shows a Chinese notice', (tester) async {
+    final transport = _Scripted();
+    final voice = VoiceController(transport: transport);
+    await tester.pumpWidget(MaterialApp(
+      home: Scaffold(body: SpeakButton(text: '口播脚本', copy: voiceCopyZh, voice: voice, controlKey: 'script')),
+    ));
+    await tester.tap(find.byKey(const ValueKey('script')));
+    await tester.pump();
+    expect(voice.speaking, isTrue);
+    transport.emitSpeakError('speak-failed');
+    await tester.pump();
+    expect(voice.speaking, isFalse);
+    expect(find.text(voiceCopyZh.speakFailed), findsOneWidget);
   });
 
   testWidgets('a denied microphone explains the permission in Chinese', (tester) async {

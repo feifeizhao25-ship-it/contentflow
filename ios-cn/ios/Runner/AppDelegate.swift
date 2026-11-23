@@ -165,14 +165,22 @@ import UIKit
     if trimmed.isEmpty { return }
     synthesizer.stopSpeaking(at: .immediate)
     synthesizer.delegate = self
-    let voice = AVSpeechSynthesisVoice(language: locale)
+    guard let voice = AVSpeechSynthesisVoice(language: locale) else {
+      emit(type: "error", text: "no-chinese-voice")
+      return
+    }
     var start = trimmed.startIndex
+    var queued = false
     while start < trimmed.endIndex {
       let end = trimmed.index(start, offsetBy: 3000, limitedBy: trimmed.endIndex) ?? trimmed.endIndex
       let utterance = AVSpeechUtterance(string: String(trimmed[start..<end]))
       utterance.voice = voice
-      synthesizer.speak(utterance)
+      if synthesizer.speak(utterance) { queued = true }
       start = end
+    }
+    if !queued {
+      emit(type: "error", text: "speak-failed")
+      return
     }
     emit(type: "speak-start", text: nil)
   }

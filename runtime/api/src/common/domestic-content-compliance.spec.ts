@@ -116,6 +116,19 @@ describe('互联网广告管理办法第九条：种草/测评 + 购物链接须
   it('does not flag plain reviews without any purchase method', () => {
     expect(checkAdDisclosure('这次测评了三款面霜，记录真实使用感受')).toBeNull();
   });
+
+  it('可识别性归第九条，不把第八条写成可识别性', () => {
+    const hit = checkAdDisclosure('真实测评这款面霜，链接在评论区，https://u.jd.com/abc');
+    expect(hit?.source).toContain('第九条');
+    expect(hit?.source).toContain('可识别性');
+    expect(hit?.source).toContain('应当显著标明“广告”');
+    expect(hit?.source).not.toContain('第八条（广告应当具有可识别性）');
+    expect(hit?.source).not.toMatch(/第八条[^。]{0,16}可识别性/);
+    const art8 = evaluateDomesticContent('养生知识页面放了购物链接').hits.find((item) => item.ruleId === 'CN-AD-NET-ART8');
+    expect(art8?.source).toContain('第八条');
+    expect(art8?.source).toContain('养生');
+    expect(art8?.source).not.toContain('可识别性');
+  });
 });
 
 describe('《广告法》第二十四条：教育、培训广告不得保证结果', () => {
