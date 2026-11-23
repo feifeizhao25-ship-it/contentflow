@@ -177,4 +177,19 @@ describe('团队邀请', () => {
     expect(results.filter((item) => item.status === 'fulfilled')).toHaveLength(1);
     expect(store.invites.filter((row) => row.status === 'pending')).toHaveLength(4);
   });
+
+  it('邀请留言会去掉首尾空白后落库，并在创建结果和列表里返回；空白留言记为空', async () => {
+    const store = memory();
+    workspace(store, 't1', 'team');
+    store.users.set('owner', { id: 'owner', tenant_id: 't1', role: 'owner', status: 'active', email: 'o@example.com' });
+    const service = new TeamService(store.prisma, new RecordingTeamInviteMailer());
+    const invite = await service.createInvite('t1', 'owner', { email: 'a@example.com', role: 'editor', message: '  欢迎一起来发布  ' }, now);
+    expect(invite.message).toBe('欢迎一起来发布');
+    expect(store.invites[0].message).toBe('欢迎一起来发布');
+    const listed = await service.listInvites('t1', 'owner', now);
+    expect(listed[0]).toMatchObject({ id: invite.id, message: '欢迎一起来发布' });
+    const blank = await service.createInvite('t1', 'owner', { message: '   ' }, now);
+    expect(blank.message).toBeNull();
+    expect(store.invites[1].message).toBeNull();
+  });
 });

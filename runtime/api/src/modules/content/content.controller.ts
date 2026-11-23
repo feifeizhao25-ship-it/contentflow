@@ -2,7 +2,7 @@ import { Controller, Get, Post, Put, Delete, Body, Param, Query, UseGuards, Requ
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { ContentService } from './content.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
-import { CreateContentDto, ReviewContentDto, SelfConfirmContentDto, UpdateContentDto } from './dto/content.dto';
+import { BatchDeleteContentDto, CreateContentDto, ReviewContentDto, SelfConfirmContentDto, UpdateContentDto } from './dto/content.dto';
 import { REVIEWER_ROLES } from './content.service';
 
 @ApiTags('contents')
@@ -54,10 +54,16 @@ export class ContentController {
     return this.contentService.update(id, req.user.tenantId, req.user.sub, data);
   }
 
+  @Post('batch-delete')
+  @ApiOperation({ summary: '批量删除内容（逐条校验权限，汇总成功与失败数量）' })
+  async deleteMany(@Request() req: any, @Body() data: BatchDeleteContentDto) {
+    return this.contentService.deleteMany(data.ids, req.user.tenantId, { sub: req.user.sub, role: req.user.role });
+  }
+
   @Delete(':id')
   @ApiOperation({ summary: '删除内容' })
   async delete(@Param('id') id: string, @Request() req: any) {
-    return this.contentService.delete(id, req.user.tenantId);
+    return this.contentService.delete(id, req.user.tenantId, { sub: req.user.sub, role: req.user.role });
   }
 
   @Post(':id/submit')
