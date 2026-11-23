@@ -30,10 +30,17 @@ describe('I-05 开发者 API Key 列表', () => {
     expect(JSON.stringify(list)).not.toContain('SECRET-HASH');
   });
   it('创建：带 key_prefix（必填字段），明文只返回一次，哈希不返回', async () => {
-    const out: any = await svc.createKey('t', 'ci');
-    expect(out.secret).toMatch(/^sk_ff_[0-9a-f]{32}$/);
-    expect(prisma.apiKey.create.mock.calls[0][0].data.key_prefix).toBe(out.secret.slice(0, 10));
-    expect(out.key_hash).toBeUndefined();
+    const previous = process.env.DEVELOPER_API_KEYS_ENABLED;
+    process.env.DEVELOPER_API_KEYS_ENABLED = 'true';
+    try {
+      const out: any = await svc.createKey('t', 'ci');
+      expect(out.secret).toMatch(/^sk_ff_[0-9a-f]{32}$/);
+      expect(prisma.apiKey.create.mock.calls[0][0].data.key_prefix).toBe(out.secret.slice(0, 10));
+      expect(out.key_hash).toBeUndefined();
+    } finally {
+      if (previous === undefined) delete process.env.DEVELOPER_API_KEYS_ENABLED;
+      else process.env.DEVELOPER_API_KEYS_ENABLED = previous;
+    }
   });
 });
 

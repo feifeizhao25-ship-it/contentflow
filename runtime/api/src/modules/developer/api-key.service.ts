@@ -1,6 +1,13 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { ForbiddenException, Injectable, UnauthorizedException } from '@nestjs/common';
 import { PrismaService } from '../../database/prisma.service';
 import * as crypto from 'crypto';
+
+/** 只有显式打开时才允许创建开发者 API 密钥。未设置、false、1 都不算打开。 */
+export function developerApiKeysEnabled(env: NodeJS.ProcessEnv = process.env): boolean {
+    return env.DEVELOPER_API_KEYS_ENABLED === 'true';
+}
+
+export const API_KEYS_CLOSED_MESSAGE = '开发者 API 密钥暂未开放，暂时不能创建';
 
 @Injectable()
 export class ApiKeyService {
@@ -8,8 +15,12 @@ export class ApiKeyService {
 
     /**
      * 生成新的 API Key (只返回一次明文)
+     * 默认关闭：页面已标明尚未开放，直接调创建接口也不能绕过。
      */
     async createKey(tenantId: string, name: string, scopes: string[] = ['content:read', 'content:write']) {
+        if (!developerApiKeysEnabled()) {
+            throw new ForbiddenException(API_KEYS_CLOSED_MESSAGE);
+        }
         const rawKey = `sk_ff_${this.generateRandomString(32)}`;
         const hashedKey = this.hashKey(rawKey);
 

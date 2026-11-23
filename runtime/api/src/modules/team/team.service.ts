@@ -62,10 +62,11 @@ export class TeamService {
     return this.createInvite(tenantId, actorId, { email: data.email, role: data.role });
   }
 
-  async createInvite(tenantId: string, actorId: string, input: { email?: string; role?: string }, now = new Date()) {
+  async createInvite(tenantId: string, actorId: string, input: { email?: string; role?: string; message?: string }, now = new Date()) {
     const actor = await this.requireOwner(tenantId, actorId);
     const email = normalizeEmail(input.email);
     const role = normalizeRole(input.role);
+    const message = normalizeMessage(input.message);
     const token = randomBytes(32).toString('base64url');
     const token_hash = hashToken(token);
     const expires_at = new Date(now.getTime() + INVITE_TTL_MS);
@@ -75,7 +76,7 @@ export class TeamService {
       const used = await seatsHeld(tx, tenantId, now);
       if (used + 1 > cap) fail('INVITE_SEAT_FULL', `席位已满（上限 ${cap}）`, `This workspace has no seats left (limit ${cap}).`);
       return tx.teamInvite.create({
-        data: { tenant_id: tenantId, email, role, token_hash, status: 'pending', invited_by: actor.id, expires_at },
+        data: { tenant_id: tenantId, email, role, message, token_hash, status: 'pending', invited_by: actor.id, expires_at },
       });
     });
     if (email) {
@@ -86,7 +87,7 @@ export class TeamService {
         data: { tenant_id: tenantId, user_id: actor.id, action: 'team.invite_created', resource_type: 'team_invite', resource_id: row.id, details: { role, email: email ?? null } },
       });
     } catch { /* 动态写失败不影响邀请 */ }
-    return { id: row.id, email, role, status: 'pending', expiresAt: expires_at.toISOString(), token, delivery: email ? 'recorded' : 'link' };
+    return { id: row.id, email, role, message, status: 'pending', expiresAt: expires_at.toISOString(), token, delivery: email ? 'recorded' : 'link' };
   }
 
   async listInvites(tenantId: string, actorId: string, now = new Date()) {
@@ -99,6 +100,7 @@ export class TeamService {
       id: row.id,
       email: row.email,
       role: row.role,
+      message: row.message ?? null,
       status: row.status === 'pending' && row.expires_at.getTime() <= now.getTime() ? 'expired' : row.status,
       expiresAt: row.expires_at.toISOString(),
       createdAt: row.created_at.toISOString(),
@@ -226,6 +228,13 @@ function normalizeRole(value: string | undefined): InviteRole {
   const role = (value ?? 'viewer').trim();
   if (!(INVITE_ROLES as readonly string[]).includes(role)) throw new BadRequestException('角色只能是管理员、编辑或查看者');
   return role as InviteRole;
+}
+
+function normalizeMessage(value: string | undefined): string | null {
+  const message = (value ?? '').trim();
+  if (!message) return null;
+  if (message.length > 500) throw new BadRequestException('邀请留言不能超过 500 字');
+  return message;
 }
 
 function hashToken(token: string): string {

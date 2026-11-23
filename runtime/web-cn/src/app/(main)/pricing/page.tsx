@@ -17,6 +17,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import registry from '@/lib/entitlements.json';
 import { buildFallbackPlans, comingSoonEntitlements, isComingSoonFeature, TIER_IDS, type EntitlementsRegistry, type TierId } from '@/lib/entitlements';
 import { fetchCurrentUser } from '@/lib/session';
+import { readSignedIn } from '@/lib/public-session';
 import {
     PaymentError,
     checkoutAction,
@@ -203,6 +204,11 @@ function PricingContent() {
         }
         setLoadingPlan(id);
         try {
+            // 未登录先看本站会话探针。没有 cookie 时不去打 /auth/profile，避免公开页出现 401。
+            if (!(await readSignedIn())) {
+                goLogin(id);
+                return;
+            }
             const user = await fetchCurrentUser();
             if (!user) {
                 goLogin(id);
@@ -260,22 +266,30 @@ function PricingContent() {
     useEffect(() => {
         if (resumed.current || !plansLoaded) return;
         resumed.current = true;
-        if (isAlipayReturn(searchParams)) {
-            const pending = takePendingCheckout();
-            const orderNo = searchParams.get('out_trade_no') || undefined;
-            const plan = pending ? displayedPlans.find((item) => item.id === pending.planId) : undefined;
-            setCheckoutPlan({ id: pending?.planId ?? '', name: plan?.name ?? '会员', price: null });
-            if (!pending || (pending.orderNo && orderNo && pending.orderNo !== orderNo)) {
-                // 换了浏览器或会话：不知道买的是哪个套餐，只能请用户稍后看结果
-                setCheckout({ step: 'timeout', orderNo });
+        void (async () => {
+            const signedIn = await readSignedIn();
+            if (isAlipayReturn(searchParams)) {
+                const pending = takePendingCheckout();
+                const orderNo = searchParams.get('out_trade_no') || undefined;
+                const plan = pending ? displayedPlans.find((item) => item.id === pending.planId) : undefined;
+                setCheckoutPlan({ id: pending?.planId ?? '', name: plan?.name ?? '会员', price: null });
+                if (!signedIn || !pending || (pending.orderNo && orderNo && pending.orderNo !== orderNo)) {
+                    // 未登录、换了浏览器或会话：不轮询需要登录的订阅接口
+                    setCheckout({ step: 'timeout', orderNo });
+                    return;
+                }
+                baseline.current = pending.before ?? { plan: '', renewalDate: null };
+                void startWaiting(pending.planId, orderNo);
                 return;
             }
-            baseline.current = pending.before ?? { plan: '', renewalDate: null };
-            void startWaiting(pending.planId, orderNo);
-            return;
-        }
-        const wanted = searchParams.get('plan');
-        if (wanted) void handlePurchase(wanted);
+            const wanted = searchParams.get('plan');
+            if (!wanted) return;
+            if (!signedIn) {
+                goLogin(wanted);
+                return;
+            }
+            void handlePurchase(wanted);
+        })();
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [plansLoaded]);
 

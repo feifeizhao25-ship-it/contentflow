@@ -24,6 +24,7 @@ import { useAppStore } from '@/store/appStore';
 import { useThemeStore } from '@/store/themeStore';
 import { apiClient } from '@/lib/api-client';
 import { planBadge } from '@/lib/page-data';
+import { authedChromeAllowed } from '@/lib/public-session';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import clsx from 'clsx';
@@ -46,9 +47,6 @@ export default function MainLayout({ children }: MainLayoutProps) {
     const [scrolled, setScrolled] = useState(false);
     // 侧栏套餐卡：读真实套餐（原来写死「免费版」）
     const [plan, setPlan] = useState(() => planBadge(null));
-    useEffect(() => {
-        apiClient.get('/billing/subscription', { redirectOn401: false }).then((r) => setPlan(planBadge(r))).catch(() => setPlan(planBadge(null)));
-    }, []);
     const [isMobile, setIsMobile] = useState(false);
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
@@ -68,12 +66,24 @@ export default function MainLayout({ children }: MainLayoutProps) {
         setMobileMenuOpen(false);
     }, [pathname]);
 
-    // 登录身份：initializeAuth 原来没有任何地方调用，store 里的 user 永远是 null，
-    // 设置页「个人资料」的姓名因此为空（注册时明明填了）。进入工作台时从 /auth/profile 读一次。
+    // 登录身份与套餐卡：工作台进入时读 /auth/profile 与 /billing/subscription。
+    // 公开页（如定价）在没有登录 cookie 时只问 /api/auth/session，不打需要登录的接口，避免访客看到 401。
     useEffect(() => {
-        if (!user) void initializeAuth();
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
+        let alive = true;
+        (async () => {
+            const allowed = await authedChromeAllowed(pathname);
+            if (!alive) return;
+            if (!allowed) {
+                setPlan(planBadge(null));
+                return;
+            }
+            apiClient.get('/billing/subscription', { redirectOn401: false })
+                .then((r) => { if (alive) setPlan(planBadge(r)); })
+                .catch(() => { if (alive) setPlan(planBadge(null)); });
+            if (!useAppStore.getState().user) void initializeAuth();
+        })();
+        return () => { alive = false; };
+    }, [pathname, initializeAuth]);
 
     // 处理滚动效果
     useEffect(() => {

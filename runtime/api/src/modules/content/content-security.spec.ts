@@ -176,17 +176,62 @@ describe('contents 接口的越权与绕过', () => {
     expect(res.body.error.message).toMatch(/不存在/);
     expect(prisma.content.findFirst).toHaveBeenCalledWith({
       where: { id: 'c-other', tenant_id: 't-mine' },
-      select: { id: true },
+      select: { id: true, created_by: true },
     });
     expect(prisma.content.update).not.toHaveBeenCalled();
   });
 
-  it('DELETE /contents/:id：本工作区的内容软删除', async () => {
-    prisma.content.findFirst.mockResolvedValue({ id: 'c-1' });
+  it('DELETE /contents/:id：所有者可以软删除本工作区里别人创建的内容', async () => {
+    prisma.content.findFirst.mockResolvedValue({ id: 'c-1', created_by: 'u-owner' });
     const res = await http().delete('/api/v1/contents/c-1');
     expect(res.status).toBe(200);
     expect(prisma.content.update).toHaveBeenCalledWith({
       where: { id: 'c-1' },
+      data: { status: 'deleted' },
+    });
+  });
+
+  it('DELETE /contents/:id：编辑不能删除所有者创建的内容，返回 403 和中文说明，且不改库', async () => {
+    me.role = 'editor';
+    prisma.content.findFirst.mockResolvedValue({ id: 'c-1', created_by: 'u-owner' });
+    const res = await http().delete('/api/v1/contents/c-1');
+    expect(res.status).toBe(403);
+    expect(res.body.error.message).toMatch(/只能删除自己创建的内容/);
+    expect(prisma.content.update).not.toHaveBeenCalled();
+  });
+
+  it('DELETE /contents/:id：编辑可以删除自己创建的内容；管理员可以删除他人内容', async () => {
+    me.role = 'editor';
+    prisma.content.findFirst.mockResolvedValue({ id: 'c-mine', created_by: 'u-me' });
+    const own = await http().delete('/api/v1/contents/c-mine');
+    expect(own.status).toBe(200);
+    me.role = 'admin';
+    prisma.content.findFirst.mockResolvedValue({ id: 'c-theirs', created_by: 'u-owner' });
+    const asAdmin = await http().delete('/api/v1/contents/c-theirs');
+    expect(asAdmin.status).toBe(200);
+    expect(prisma.content.update).toHaveBeenCalledTimes(2);
+  });
+
+  it('POST /contents/batch-delete：逐条校验，越权的不删，并汇总成功与失败数量', async () => {
+    me.role = 'editor';
+    prisma.content.findFirst.mockImplementation(async ({ where }: { where: { id: string } }) => {
+      if (where.id === 'c-own') return { id: 'c-own', created_by: 'u-me' };
+      if (where.id === 'c-owner') return { id: 'c-owner', created_by: 'u-owner' };
+      return null;
+    });
+    const res = await http().post('/api/v1/contents/batch-delete').send({ ids: ['c-owner', 'c-own', 'c-missing'] });
+    expect(res.status).toBe(201);
+    expect(res.body.data).toMatchObject({
+      succeeded: 1,
+      failed: 2,
+      failures: [
+        { id: 'c-owner', message: expect.stringMatching(/只能删除自己创建的内容/) },
+        { id: 'c-missing', message: expect.stringMatching(/不存在/) },
+      ],
+    });
+    expect(prisma.content.update).toHaveBeenCalledTimes(1);
+    expect(prisma.content.update).toHaveBeenCalledWith({
+      where: { id: 'c-own' },
       data: { status: 'deleted' },
     });
   });

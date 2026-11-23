@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { Card, Table, Button, Space, Tag, Input, Select, Modal, Typography, Checkbox, Alert } from 'antd';
 import { message, modal } from '@/lib/antd-app';
 import { useRouter, useSearchParams } from 'next/navigation';
+import Link from 'next/link';
 import Image from 'next/image';
 const { Text } = Typography;
 import {
@@ -24,6 +25,7 @@ import { complianceFromError, parseCompliance, type ComplianceView } from '@/lib
 import { FriendlyApiError } from '@/lib/api-client';
 import { contentReviewState, parseReviewPolicy, reviewNote, validateRejectReason, type ReviewPolicy } from '@/lib/content-review';
 import { PRE_PUBLISH_CHECKLIST } from '@/lib/pre-publish-checklist';
+import { batchDeleteSummary, continueCreatingHref } from '@/lib/content-continue';
 import { SpeakButton, VoiceField, VoiceMicButton, VoiceReadout, appendVoice } from '@/components/voice/VoiceControls';
 
 const { Search } = Input;
@@ -296,6 +298,10 @@ function ContentsContent() {
 
     // 桌面表格：原来 7 列总宽约 1217px，可见区只有约 910px，「操作」列被挤到可视区外。
     // 现在类型与来源合并成一列、标题与时间限宽换行，「操作」固定在右侧，始终可见。
+    const continueCreating = (record: any) => (
+        <Link href={continueCreatingHref(record?.id)} className="inline-flex items-center px-1 text-sm text-indigo-600">在创作页继续</Link>
+    );
+
     const columns: ColumnsType<ContentItem> = [
         {
             title: '封面',
@@ -357,6 +363,7 @@ function ContentsContent() {
             render: (_, record: any) => (
                 <Space size={[4, 0]} wrap>
                     <Button type="link" size="small" icon={<EyeOutlined aria-hidden />} onClick={() => setPreviewFor(record)}>预览</Button>
+                    {continueCreating(record)}
                     {renderReviewActions(record)}
                     <Button type="link" size="small" danger icon={<DeleteOutlined aria-hidden />} onClick={() => handleDelete(record.id)}>删除</Button>
                 </Space>
@@ -378,12 +385,21 @@ function ContentsContent() {
             okButtonProps: { className: 'cn-cjk-pair' },
             cancelButtonProps: { className: 'cn-cjk-pair' },
             onOk: async () => {
-                for (const key of selectedRowKeys) {
-                    await apiClient.delete(`/contents/${String(key)}`);
+                try {
+                    const result: any = await apiClient.post('/contents/batch-delete', {
+                        ids: selectedRowKeys.map(String),
+                    });
+                    const text = batchDeleteSummary(result);
+                    const failed = Number(result?.failed ?? 0);
+                    const succeeded = Number(result?.succeeded ?? 0);
+                    if (failed > 0 && succeeded > 0) message.warning(text);
+                    else if (failed > 0) message.error(text);
+                    else message.success(text);
+                    setSelectedRowKeys([]);
+                    fetchContents();
+                } catch (error: any) {
+                    message.error(safeErrorText(error, '批量删除失败，请稍后重试'));
                 }
-                message.success('批量删除完成');
-                setSelectedRowKeys([]);
-                fetchContents();
             },
         });
     };
@@ -419,6 +435,7 @@ function ContentsContent() {
             </div>
             <div className="mt-3 flex flex-wrap gap-x-1 border-t border-zinc-100 pt-2">
                 <Button type="link" size="small" icon={<EyeOutlined aria-hidden />} onClick={() => setPreviewFor(record)}>预览</Button>
+                {continueCreating(record)}
                 {renderReviewActions(record)}
                 <Button type="link" size="small" danger icon={<DeleteOutlined aria-hidden />} onClick={() => handleDelete(record.id)}>删除</Button>
             </div>
@@ -636,6 +653,7 @@ function ContentsContent() {
                             {previewFor?.body || '这条内容还没有正文'}
                         </div>
                     </VoiceReadout>
+                    <div>{continueCreating(previewFor)}</div>
                 </div>
             </Modal>
         </div>
