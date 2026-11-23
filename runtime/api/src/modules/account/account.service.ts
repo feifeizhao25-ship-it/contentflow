@@ -9,10 +9,14 @@ export const PLATFORM_NAMES: Record<string, string> = {
   kuaishou: '快手',
 };
 import { PrismaService } from '../../database/prisma.service';
+import { TenantService } from '../tenant/tenant.service';
 
 @Injectable()
 export class AccountService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly tenantService: TenantService,
+  ) {}
 
   async findAll(tenantId: string, options?: { platform?: string; status?: string }) {
     const where: any = { tenant_id: tenantId };
@@ -49,9 +53,11 @@ export class AccountService {
    * 在拿到已认证的开放平台应用、并实现回调之前，如实说明未开通。
    * （红线：不接受账号密码、Cookie 或任何模拟登录方式。）
    */
-  async getAuthUrl(platform: string): Promise<never> {
+  async getAuthUrl(platform: string, tenantId?: string): Promise<never> {
     const name = PLATFORM_NAMES[platform];
     if (!name) throw new BadRequestException('不支持的平台');
+    // 套餐的平台账号数已满时先说明上限（403），不让用户走完授权才发现绑不上。
+    if (tenantId) await this.tenantService.assertCanBindAccount(tenantId);
     throw new ServiceUnavailableException(
       `${name}开放平台授权尚未开通：需要已认证的开放平台应用与授权回调，开通前无法绑定账号`,
     );
