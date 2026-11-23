@@ -78,7 +78,7 @@ describe('增长 RAG', () => {
 
   it('引用带出处，租户之间不可见，没有资料就拒绝', async () => {
     const globalSource = source();
-    const tenantA = source({ source_id: 'a', title: '租户A表现', text: '租户A只属于自己的历史', tenant_id: 'tenant-a' });
+    const tenantA = source({ source_id: 'a', title: '租户A表现', text: '租户A只属于自己的历史：小红书发布前已确认', tenant_id: 'tenant-a' });
     const tenantB = source({ source_id: 'b', title: '租户B表现', text: '租户B的私有表现数据', tenant_id: 'tenant-b' });
     const seen = await retrieve('小红书 确认', [globalSource, tenantA, tenantB], { tenantId: 'tenant-a', now });
     expect(seen.refused).toBe(false);
@@ -116,7 +116,7 @@ describe('增长 RAG', () => {
   });
 
   it('回答路径：整段都对不上被引原文时，不保留文号或平台名', async () => {
-    const cited = source({ text: '标准号：GB 45438-2025。', title: '题录' });
+    const cited = source({ text: '标准号：GB 45438-2025。', title: '标识题录' });
     const seen = await retrieve('标识', [cited], { now, draft: '抖音执行令第99号。' });
     expect(seen.refused).toBe(false);
     expect(seen.citations).toHaveLength(1);
@@ -127,7 +127,7 @@ describe('增长 RAG', () => {
   });
 
   it('回答路径：文号紧贴上一句时仍按原文核对，对得上的句子不改写', async () => {
-    const cited = source({ text: '国信办通字〔2025〕2号。', title: '标识办法' });
+    const cited = source({ text: '国信办通字〔2025〕2号。', title: '标识办法文号' });
     const draft = '用户应当主动声明国信办通字〔2025〕2号。本产品不代发国信办通字〔2025〕2号。';
     const seen = await retrieve('文号', [cited], { now, draft });
     expect(seen.answer).toBe(draft);

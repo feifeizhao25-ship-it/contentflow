@@ -3,6 +3,7 @@ import { rerankWithFallback, RerankEnv } from './reranker';
 import { usableSources } from './policy';
 import { checkCitationEntities } from './citation-entities';
 import { Citation, GrowthSource } from './types';
+import { minCoverage, queryCoverage } from './coverage';
 
 function cosine(a: number[], b: number[]): number {
   const length = Math.min(a.length, b.length);
@@ -28,6 +29,8 @@ export interface RetrieveOptions {
   fetchImpl?: typeof fetch;
   /** 候选回答。只在被引原文能对上时才原样返回；对不上的句子不作为已引用内容。 */
   draft?: string;
+  /** 相关度下限，默认读 GROWTH_RAG_MIN_COVERAGE（见 coverage.ts）。0 表示不设下限。 */
+  minCoverage?: number;
 }
 
 export interface RetrieveResult {
@@ -101,8 +104,11 @@ export async function retrieve(query: string, sources: GrowthSource[], options: 
     score: embedded.embedder === 'bge-m3' ? 0 : cosine(queryVector, localHashEmbed(`${source.title}\n${source.text}`)),
   }));
   const reranked = await rerankWithFallback(query, pool.map((source) => source.text), options.env, options.fetchImpl);
+  const floor = options.minCoverage ?? minCoverage();
   const ranked = dense
     .map((item, index) => ({ ...item, score: item.score + (reranked.scores[index] ?? 0) }))
+    // 库外问题不挂来源：问句的检索词这条来源覆盖不到下限，就不算命中（见 coverage.ts）。
+    .filter((item) => floor <= 0 || queryCoverage(query, `${item.source.title}\n${item.source.text}`) >= floor)
     .sort((a, b) => b.score - a.score)
     .slice(0, options.limit ?? 3);
   const combined = ranked.map((item) => ({

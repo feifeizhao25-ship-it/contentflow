@@ -3,6 +3,7 @@ import { join } from 'path';
 import { runFreshnessJob } from './freshness';
 import { loadRegistry, validateSource } from './registry';
 import { GrowthRegistry, GrowthSource } from './types';
+import { localCitations } from './coverage';
 
 export interface RagDecision {
   enabled: boolean;
@@ -55,7 +56,8 @@ export function policyFromDefaultRegistry(env: NodeJS.ProcessEnv = process.env, 
     registry,
     now,
     freshnessRan: freshness?.ran === true && freshness.needsReview.length === 0,
-    evalPassed: env.GROWTH_RAG_EVAL_PASSED === '1' && runFrozenEval(refusalFrozenCases(), () => []),
+    // 冻结拒答题用本地检索真跑一遍（以前传的是恒为空的桩函数，这一项永远通过）。
+    evalPassed: env.GROWTH_RAG_EVAL_PASSED === '1' && runFrozenEval(refusalFrozenCases(), (query) => localCitations(query, registry.sources)),
   });
 }
 
