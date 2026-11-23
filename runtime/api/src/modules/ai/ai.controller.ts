@@ -142,7 +142,12 @@ export class AIController {
         return {
           tokens: result.usage.total_tokens,
           attachContentId: 'text' as const,
-          response: { titles: result.titles, aiGenerated: true, aiLabel: aiTextLabel() },
+          response: {
+            titles: result.titles,
+            ...(result.titleCompliance ? { titleCompliance: result.titleCompliance } : {}),
+            aiGenerated: true,
+            aiLabel: aiTextLabel(),
+          },
           generation: {
             userId: req.user.sub,
             generationType: 'titles',

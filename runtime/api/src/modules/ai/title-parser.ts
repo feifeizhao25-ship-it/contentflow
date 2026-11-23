@@ -70,6 +70,36 @@ function isMetaLine(line: string): boolean {
 }
 
 /**
+ * 「6个小红书爆款标题」这类包装行不是标题。
+ * 「10个技巧」不含「爆款标题」，保留。
+ */
+const TITLE_PACKAGING = /^(?:\d{1,2}|[一二两三四五六七八九十])\s*个.{0,30}爆款标题/;
+
+export function isTitlePackagingLine(line: string): boolean {
+  return TITLE_PACKAGING.test(String(line || '').normalize('NFKC').trim());
+}
+
+const CN_TITLE_COUNT: Record<string, number> = {
+  一: 1, 二: 2, 两: 2, 三: 3, 四: 4, 五: 5, 六: 6, 七: 7, 八: 8, 九: 9, 十: 10,
+};
+
+const TITLE_COUNT_IN_TOPIC = /(\d{1,2}|[一二两三四五六七八九十])\s*个\s*(?:(?:小红书|抖音|快手|视频号|微博|哔哩哔哩|b站|爆款)\s*){0,3}标题/;
+
+/**
+ * 主题里写了「5个标题」或「5个小红书标题」时按这个数生成。
+ * 只接受 1–10（与标题数量接口上限一致）。没写、或写出范围时，沿用调用方传入的数量。
+ */
+export function resolveRequestedTitleCount(topic: string, requested: number): number {
+  const fallback = Number.isInteger(requested) && requested >= 1 && requested <= 10 ? requested : 5;
+  const matched = String(topic || '').normalize('NFKC').match(TITLE_COUNT_IN_TOPIC);
+  if (!matched) return fallback;
+  const raw = matched[1];
+  const count = CN_TITLE_COUNT[raw] ?? Number(raw);
+  if (!Number.isInteger(count) || count < 1 || count > 10) return fallback;
+  return count;
+}
+
+/**
  * 把模型原始输出解析为干净标题数组。
  * @throws Error 当解析后没有任何有效标题时
  */
@@ -79,7 +109,7 @@ export function parseGeneratedTitles(raw: string, count: number): string[] {
 
   for (const rawLine of (raw || '').split(/\r?\n/)) {
     const stripped = cleanTitleLine(rawLine);
-    if (isMetaLine(stripped)) continue;
+    if (isMetaLine(stripped) || isTitlePackagingLine(stripped)) continue;
     if (stripped.length > (/[\u3400-\u9fff]/.test(stripped) ? MAX_TITLE_LENGTH : MAX_TITLE_LENGTH_LATIN)) continue;
     if (seen.has(stripped)) continue;
     seen.add(stripped);

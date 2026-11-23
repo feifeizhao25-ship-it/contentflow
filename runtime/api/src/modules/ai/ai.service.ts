@@ -7,7 +7,8 @@ import { isGlobalMarket, hasCjk } from '../../common/i18n/market-text';
 import { BadGatewayException, BadRequestException, HttpException, HttpStatus, Injectable, Logger, ServiceUnavailableException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../database/prisma.service';
-import { parseGeneratedTitles } from './title-parser';
+import { parseGeneratedTitles, resolveRequestedTitleCount } from './title-parser';
+import { checkGeneratedTitles, type TitleComplianceItem } from './title-compliance';
 import { applyViralCompliance, parseViralAnalysis, VIRAL_MAX_TOKENS, viralLengthHint, viralReviewHint } from './viral-analysis';
 import { evaluateDomesticContent } from '../../common/domestic-content-compliance';
 import { evaluateInternationalContent } from '../../common/international-content-compliance';
@@ -50,6 +51,8 @@ interface AIResponse {
 
 interface TitlesResponse {
   titles: string[];
+  /** 国内版：每个标题的合规结论。国际版不附中文状态。 */
+  titleCompliance?: TitleComplianceItem[];
   usage: AIResponse['usage'];
   model: string;
   provider: AIResponse['provider'];
@@ -742,19 +745,29 @@ ${content}
     count: number = 5,
     extraContext?: string,
   ): Promise<TitlesResponse> {
+    const titleCount = resolveRequestedTitleCount(topic, count);
     const result = await this.generateTextForMarket({
       prompt: isGlobalMarket()
-        ? `Write ${count} catchy headlines for "${topic}" for ${platform}. Each headline must be under 80 characters. English only. One per line, no numbering or commentary.${currentDatePromptLine(true)}${extraContext ?? ''}`
-        : `请为"${topic}"在${platform}平台生成${count}个吸引人的标题，每个标题20字以内，用换行分隔${currentDatePromptLine(false)}${extraContext ?? ''}`,
+        ? `Write ${titleCount} catchy headlines for "${topic}" for ${platform}. Each headline must be under 80 characters. English only. One per line, no numbering or commentary.${currentDatePromptLine(true)}${extraContext ?? ''}`
+        : `请为"${topic}"在${platform}平台生成${titleCount}个吸引人的标题，每个标题20字以内，用换行分隔${currentDatePromptLine(false)}${extraContext ?? ''}`,
       maxTokens: 500,
       route: 'title',
       userText: `${topic} ${platform}`,
     });
 
-    // 结构化解析：剥离「以下是……」等说明性前后缀，
-    // 解析不到有效标题时抛错（fail closed），不把说明文字当标题返回。
-    const titles = parseGeneratedTitles(result.content, count);
-    return { titles, usage: result.usage, model: result.model, provider: result.provider, latency_ms: result.latency_ms, cost_amount: result.cost_amount };
+    // 结构化解析：剥离「以下是……」和「N个…爆款标题」等包装，
+    // 主题里写了 N 个标题时只留 N 条。解析不到有效标题时抛错（fail closed）。
+    const titles = parseGeneratedTitles(result.content, titleCount);
+    const domesticTitles = !isGlobalMarket() && String(this.marketRegion ?? '').trim().toLowerCase() !== 'global';
+    return {
+      titles,
+      ...(domesticTitles ? { titleCompliance: checkGeneratedTitles(titles) } : {}),
+      usage: result.usage,
+      model: result.model,
+      provider: result.provider,
+      latency_ms: result.latency_ms,
+      cost_amount: result.cost_amount,
+    };
   }
 
   // 记录AI生成历史
