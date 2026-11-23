@@ -1,0 +1,91 @@
+{
+  "markets": [
+    {
+      "billing": "yearly",
+      "currency": "CNY",
+      "id": "cn",
+      "plans": [
+        {
+          "custom": null,
+          "features": null,
+          "id": "family",
+          "name": "family",
+          "priceMonthly": null,
+          "priceYearly": null,
+          "quotaStatus": null,
+          "quotas": {
+            "ai_daily_messages": 200,
+            "audio_daily_minutes": -1,
+            "family_members": 3,
+            "reflections_per_day": -1
+          }
+        },
+        {
+          "custom": null,
+          "features": null,
+          "id": "free",
+          "name": "free",
+          "priceMonthly": null,
+          "priceYearly": null,
+          "quotaStatus": null,
+          "quotas": {
+            "ai_daily_messages": 20,
+            "audio_daily_minutes": 30,
+            "family_members": 1,
+            "reflections_per_day": 3
+          }
+        },
+        {
+          "custom": null,
+          "features": null,
+          "id": "plus",
+          "name": "plus",
+          "priceMonthly": null,
+          "priceYearly": null,
+          "quotaStatus": null,
+          "quotas": {
+            "ai_daily_messages": 100,
+            "audio_daily_minutes": -1,
+            "family_members": 1,
+            "reflections_per_day": -1
+          }
+        },
+        {
+          "custom": null,
+          "features": null,
+          "id": "pro",
+          "name": "pro",
+          "priceMonthly": null,
+          "priceYearly": null,
+          "quotaStatus": null,
+          "quotas": {
+            "ai_daily_messages": 200,
+            "audio_daily_minutes": -1,
+            "family_members": 1,
+            "reflections_per_day": -1
+          }
+        }
+      ],
+      "purchasableSkus": [
+        "com.shunshi.content.yearly",
+        "com.shunshi.member.yearly",
+        "content_apple_yearly",
+        "content_yearly",
+        "family_yearly",
+        "jiahe_yearly",
+        "member_apple_yearly",
+        "member_yearly",
+        "shunshi_content_yearly",
+        "shunshi_family_yearly",
+        "shunshi_member_yearly",
+        "shunshi_yangxin_yearly",
+        "shunshi_yiyang_yearly",
+        "yangxin_yearly",
+        "yiyang_yearly"
+      ]
+    }
+  ],
+  "product": "shunshi",
+  "sourceKind": "fixture",
+  "sourceLabel": "Fixture copied from feifeizhao25-ship-it/shunshi backend/app/entitlements_registry.json. Not a live read, and that repo is unchanged. family_members 3 and yearly SKUs are the on-sale set; legacy monthly SKUs stay in the copied registry but are not exported as purchasable."
+}
