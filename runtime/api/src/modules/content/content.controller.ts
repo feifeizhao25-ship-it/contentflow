@@ -2,7 +2,7 @@ import { Controller, Get, Post, Put, Delete, Body, Param, Query, UseGuards, Requ
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { ContentService } from './content.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
-import { CreateContentDto, ReviewContentDto, SelfConfirmContentDto, UpdateContentDto } from './dto/content.dto';
+import { AppendContentAssetsDto, CreateContentDto, ReviewContentDto, SelfConfirmContentDto, UpdateContentDto } from './dto/content.dto';
 import { REVIEWER_ROLES } from './content.service';
 
 @ApiTags('contents')
@@ -34,6 +34,18 @@ export class ContentController {
   @ApiOperation({ summary: '内容的审核记录' })
   async reviewLogs(@Param('id') id: string, @Request() req: any) {
     return this.contentService.reviewLogs(id, req.user.tenantId);
+  }
+
+  @Get(':id/assets')
+  @ApiOperation({ summary: '内容的素材（正文脚本、封面、配图），由内容本身的字段组成' })
+  async listAssets(@Param('id') id: string, @Request() req: any) {
+    return this.contentService.listAssets(id, req.user.tenantId);
+  }
+
+  @Post(':id/assets')
+  @ApiOperation({ summary: '保存素材到内容（只限草稿或已驳回；规则同更新内容）' })
+  async appendAssets(@Param('id') id: string, @Request() req: any, @Body() data: AppendContentAssetsDto) {
+    return this.contentService.appendAssets(id, req.user.tenantId, req.user.sub, data.assets);
   }
 
   @Get(':id')
