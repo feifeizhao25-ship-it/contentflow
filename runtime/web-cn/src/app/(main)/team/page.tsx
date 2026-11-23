@@ -13,8 +13,10 @@ import {
     MailOutlined,
 } from '@ant-design/icons';
 import { useSearchParams } from 'next/navigation';
+import Link from 'next/link';
 import { apiErrorText } from '@/lib/api-error';
 import { formatCnDate } from '@/lib/cn-display';
+import { inviteRequestBody, inviteSeatFull } from '@/lib/team-invite-form';
 
 const ACTIVITY_LABELS: Record<string, string> = {
     'team.member_removed': '移除了成员',
@@ -141,6 +143,7 @@ function TeamContent() {
 
     const [pendingInvites, setPendingInvites] = useState<Array<{ id: string; email?: string | null; role: string; status: string; expiresAt: string }>>([]);
     const [issuedLink, setIssuedLink] = useState('');
+    const [seatFull, setSeatFull] = useState(false);
 
     const fetchInvites = async () => {
         try {
@@ -162,20 +165,36 @@ function TeamContent() {
             const res = await fetch('/api/v1/team/invites', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email: values.email, role: values.role }),
+                body: JSON.stringify(inviteRequestBody(values)),
             });
             const envelope = await res.json();
             const payload = envelope?.data ?? envelope;
             if (envelope?.success && payload?.token) {
                 setIssuedLink(`${window.location.origin}/team/invite?token=${payload.token}`);
+                setSeatFull(false);
+                setInviteModalVisible(false);
                 message.success('邀请已创建。对方接受前不会成为成员。链接只能使用一次。');
                 form.resetFields();
                 fetchInvites();
+            } else if (inviteSeatFull(envelope)) {
+                setSeatFull(true);
+                message.error(apiErrorText(envelope) ?? '席位已满，请升级套餐后再邀请');
             } else {
+                setSeatFull(false);
                 message.error(apiErrorText(envelope) ?? '邀请没有创建');
             }
         } catch (error) {
             message.error('发送邀请失败');
+        }
+    };
+
+    const copyInviteLink = async () => {
+        if (!issuedLink) return;
+        try {
+            await navigator.clipboard.writeText(issuedLink);
+            message.success('邀请链接已复制');
+        } catch {
+            message.error('复制失败，请手动选择链接复制');
         }
     };
 
@@ -277,7 +296,7 @@ function TeamContent() {
                         <Button
                             type="primary"
                             icon={<UserAddOutlined aria-hidden />}
-                            onClick={() => setInviteModalVisible(true)}
+                            onClick={() => { setSeatFull(false); setInviteModalVisible(true); }}
                         >
                             邀请成员
                         </Button>
@@ -286,9 +305,16 @@ function TeamContent() {
                         </span>
                     </div>
                     {issuedLink && (
-                        <p style={{ color: '#3f3f46', marginBottom: 12 }}>
-                            请把这个链接交给对方：{issuedLink}
-                        </p>
+                        <div style={{ marginBottom: 12, display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 8 }}>
+                            <span style={{ color: '#3f3f46' }}>请把这个邀请链接交给对方（只能使用一次）：</span>
+                            <input
+                                readOnly
+                                aria-label="邀请链接"
+                                value={issuedLink}
+                                style={{ flex: '1 1 240px', minWidth: 0, padding: '6px 8px', border: '1px solid #d4d4d8', borderRadius: 8 }}
+                            />
+                            <Button onClick={() => void copyInviteLink()}>复制邀请链接</Button>
+                        </div>
                     )}
                     {pendingInvites.map((invite) => (
                         <div key={invite.id} style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 8 }}>
@@ -413,6 +439,20 @@ function TeamContent() {
                     layout="vertical"
                     onFinish={handleInvite}
                 >
+                    {seatFull && (
+                        <Alert
+                            type="warning"
+                            showIcon
+                            style={{ marginBottom: 16 }}
+                            message="团队席位已满"
+                            description={
+                                <span>
+                                    当前套餐没有剩余席位，升级后可以继续邀请成员。
+                                    <Link href="/pricing" style={{ marginLeft: 8, fontWeight: 700 }}>查看套餐</Link>
+                                </span>
+                            }
+                        />
+                    )}
                     <Form.Item
                         name="email"
                         label="邮箱地址"

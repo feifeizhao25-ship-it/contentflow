@@ -3,6 +3,7 @@ import {
   NotFoundException,
   ForbiddenException,
   BadRequestException,
+  HttpException,
 } from "@nestjs/common";
 import { PrismaService } from "../../database/prisma.service";
 import { labelAiGeneratedText } from "../../common/ai-content-label";
@@ -10,6 +11,26 @@ import { normalizePaging } from "../../common/pagination";
 
 /** 能审核内容的角色。JwtStrategy 每次请求都以数据库里当前的角色为准。 */
 export const REVIEWER_ROLES = ["owner", "admin"];
+
+/** 能删除工作区内任意内容的角色。其他角色只能删除自己创建的内容。 */
+export const CONTENT_DELETE_ANY_ROLES = ["owner", "admin"] as const;
+
+/** 编辑等角色删除他人内容时的提示。 */
+export const DELETE_OTHERS_FORBIDDEN =
+  "只能删除自己创建的内容。所有者或管理员可以删除工作区内任意内容";
+
+export interface ContentActor {
+  sub: string;
+  role: string;
+}
+
+export interface ContentDeleteSummary {
+  succeeded: number;
+  failed: number;
+  failures: Array<{ id: string; message: string }>;
+}
+
+const BATCH_DELETE_LIMIT = 100;
 
 /** 自行确认在内容与审核日志里的固定说明，界面据此显示「所有者自行确认」。 */
 export const SELF_CONFIRM_LABEL = "所有者自行确认（工作区没有其他审核人）";
@@ -164,13 +185,17 @@ export class ContentService {
     });
   }
 
-  async delete(id: string, tenantId: string) {
+  async delete(id: string, tenantId: string, actor: ContentActor) {
     // 只软删除本工作区的内容。别的工作区或不存在都是 404，不把 Prisma 的「找不到行」变成 500。
+    // 所有者、管理员可删工作区内任意内容；编辑等角色只能删自己创建的，越权是 403，不能静默删掉。
     const existing = await this.prisma.content.findFirst({
       where: { id, tenant_id: tenantId },
-      select: { id: true },
+      select: { id: true, created_by: true },
     });
     if (!existing) throw new NotFoundException("内容不存在");
+    if (!canDeleteContent(actor, existing.created_by)) {
+      throw new ForbiddenException(DELETE_OTHERS_FORBIDDEN);
+    }
     try {
       return await this.prisma.content.update({
         where: { id },
@@ -180,6 +205,27 @@ export class ContentService {
       if ((error as { code?: string })?.code === "P2025") throw new NotFoundException("内容不存在");
       throw error;
     }
+  }
+
+  /**
+   * 批量软删除：逐条走与单条相同的归属和权限校验。
+   * 某一条越权或找不到时记入失败，不中断其余条目，也不删除无权删除的内容。
+   */
+  async deleteMany(ids: string[], tenantId: string, actor: ContentActor): Promise<ContentDeleteSummary> {
+    const unique = [...new Set(ids.map((id) => (typeof id === "string" ? id.trim() : "")).filter(Boolean))];
+    if (!unique.length) throw new BadRequestException("请选择要删除的内容");
+    if (unique.length > BATCH_DELETE_LIMIT) throw new BadRequestException("一次最多删除 100 条内容");
+    const summary: ContentDeleteSummary = { succeeded: 0, failed: 0, failures: [] };
+    for (const id of unique) {
+      try {
+        await this.delete(id, tenantId, actor);
+        summary.succeeded += 1;
+      } catch (error) {
+        summary.failed += 1;
+        summary.failures.push({ id, message: exceptionText(error, "删除失败") });
+      }
+    }
+    return summary;
   }
 
   async submitForReview(id: string, tenantId: string, userId?: string) {
@@ -348,4 +394,17 @@ export class ContentService {
       select: { id: true, reviewer_id: true, action: true, comment: true, created_at: true },
     });
   }
+}
+
+function canDeleteContent(actor: ContentActor, createdBy: string | null): boolean {
+  if ((CONTENT_DELETE_ANY_ROLES as readonly string[]).includes(actor.role)) return true;
+  return Boolean(createdBy) && createdBy === actor.sub;
+}
+
+function exceptionText(error: unknown, fallback: string): string {
+  if (!(error instanceof HttpException)) return fallback;
+  const body = error.getResponse();
+  const raw = typeof body === "string" ? body : (body as { message?: unknown }).message;
+  const text = Array.isArray(raw) ? raw.filter((item) => typeof item === "string").join("；") : raw;
+  return typeof text === "string" && /[\u3400-\u9fff]/.test(text) ? text : fallback;
 }

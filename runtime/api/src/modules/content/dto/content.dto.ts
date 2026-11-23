@@ -1,4 +1,4 @@
-import { Equals, IsArray, IsBoolean, IsIn, IsOptional, IsString, MaxLength } from 'class-validator';
+import { ArrayMaxSize, ArrayMinSize, Equals, IsArray, IsBoolean, IsIn, IsOptional, IsString, MaxLength } from 'class-validator';
 
 /**
  * 「创建 / 更新内容」允许客户端给的字段。
@@ -29,6 +29,16 @@ export class CreateContentDto {
   @IsOptional() @IsString() @MaxLength(20) source?: string;
   @IsOptional() @IsString() @MaxLength(100) ai_model?: string;
   @IsOptional() ai_params?: Record<string, unknown>;
+}
+
+/** 批量删除：逐条校验，单条失败不影响其余条目。 */
+export class BatchDeleteContentDto {
+  @IsArray({ message: '请选择要删除的内容' })
+  @ArrayMinSize(1, { message: '请选择要删除的内容' })
+  @ArrayMaxSize(100, { message: '一次最多删除 100 条内容' })
+  @IsString({ each: true, message: '内容编号不正确' })
+  @MaxLength(80, { each: true, message: '内容编号不正确' })
+  ids!: string[];
 }
 
 export class UpdateContentDto {

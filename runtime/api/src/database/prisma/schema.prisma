@@ -110,6 +110,7 @@ model TeamInvite {
   tenant      Tenant    @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
   email       String?
   role        String
+  message     String?
   token_hash  String    @unique
   status      String    @default("pending")
   invited_by  String

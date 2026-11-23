@@ -17,6 +17,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import clsx from 'clsx';
 import { apiErrorText, safeErrorText } from '@/lib/api-error';
 import { platformDisplay } from '@/lib/cn-display';
+import { accountDisplayName, accountInitial } from '@/lib/account-label';
 
 interface PlatformAccount {
     id: string;
@@ -72,7 +73,7 @@ export default function AccountsPage() {
                     id: acc.id,
                     platform: acc.platform,
                     platformName: availablePlatforms.find(p => p.key === acc.platform)?.name || platformDisplay(acc.platform).name,
-                    accountName: acc.account_name,
+                    accountName: accountDisplayName(acc.account_name),
                     followers: acc.follower_count || 0,
                     status: (acc.status as any) || 'active',
                     authType: acc.auth_type || 'OAuth',
@@ -179,10 +180,10 @@ export default function AccountsPage() {
                                                 className="border-2 border-white"
                                                 style={{ backgroundColor: account.color }}
                                             >
-                                                {account.accountName[0]}
+                                                {accountInitial(account.accountName)}
                                             </Avatar>
                                             <div>
-                                                <h3 className="font-bold text-zinc-900 truncate max-w-[120px]">{account.accountName}</h3>
+                                                <h3 className="font-bold text-zinc-900 truncate max-w-[120px]">{accountDisplayName(account.accountName)}</h3>
                                                 <div className="flex items-center gap-2 text-xs text-zinc-500">
                                                     <span>{account.platformName}</span>
                                                     <span className="w-1 h-1 rounded-full bg-zinc-700" />
