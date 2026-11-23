@@ -9,20 +9,38 @@ import 'token_storage.dart';
 /// take longer than the 30 s default used everywhere else.
 const Duration kGenerateTimeout = Duration(seconds: 150);
 
+/// POST /auth/sms/send 成功体（TransformInterceptor 包在 data 里）。
+class SmsCodeTicket {
+  final int expiresInSeconds;
+  final int resendAfterSeconds;
+
+  const SmsCodeTicket({
+    required this.expiresInSeconds,
+    required this.resendAfterSeconds,
+  });
+}
+
 class ApiClient {
   final Dio _dio;
   final TokenStorage _tokenStorage;
 
   /// [baseUrl] is for tests that build a fake client; the app always uses the validated AppConfig value.
-  ApiClient(this._tokenStorage, {String? baseUrl})
-    : _dio = Dio(
-        BaseOptions(
-          baseUrl: baseUrl ?? AppConfig.apiBaseUrl,
-          connectTimeout: const Duration(seconds: 10),
-          receiveTimeout: const Duration(seconds: 30),
-          headers: {'Content-Type': 'application/json', 'X-Client': 'mobile'},
-        ),
-      ) {
+  /// [httpClientAdapter] 同样只给测试替换传输层，应用不传入。
+  ApiClient(
+    this._tokenStorage, {
+    String? baseUrl,
+    HttpClientAdapter? httpClientAdapter,
+  }) : _dio = Dio(
+         BaseOptions(
+           baseUrl: baseUrl ?? AppConfig.apiBaseUrl,
+           connectTimeout: const Duration(seconds: 10),
+           receiveTimeout: const Duration(seconds: 30),
+           headers: {'Content-Type': 'application/json', 'X-Client': 'mobile'},
+         ),
+       ) {
+    if (httpClientAdapter != null) {
+      _dio.httpClientAdapter = httpClientAdapter;
+    }
     _dio.interceptors.add(
       InterceptorsWrapper(
         onRequest: (options, handler) async {
@@ -286,6 +304,54 @@ class ApiClient {
       throw ApiException('登录失败，未返回令牌');
     }
     await persistToken(token);
+  }
+
+  /// 登录验证码。POST /api/v1/auth/sms/send
+  /// 请求体 `{ "phone": "13800138000", "purpose": "login" }`。
+  /// 200 的 data 为 `{ "expiresInSeconds": 300, "resendAfterSeconds": 60 }`。
+  ///
+  /// 未注册的手机号也会返回同样的 200（不泄露是否注册过），调用方仍应进入倒计时。
+  /// 开发环境 SMS_PROVIDER=dev 不发真实短信，验证码固定为 123456；生产环境禁止该实现。
+  /// 这里只提交调用方传入的号码，不内置测试码，也不接触短信供应商。
+  Future<SmsCodeTicket> sendLoginSmsCode({required String phone}) async {
+    final payload = await _handle(
+      () => _dio.post(
+        '/auth/sms/send',
+        data: {'phone': phone, 'purpose': 'login'},
+      ),
+      (data) => data,
+    );
+    final map = _extractMap(payload);
+    return SmsCodeTicket(
+      expiresInSeconds: _positiveSeconds(map['expiresInSeconds'], 300),
+      resendAfterSeconds: _positiveSeconds(map['resendAfterSeconds'], 60),
+    );
+  }
+
+  /// 手机号 + 短信验证码登录。POST /api/v1/auth/login/sms
+  /// 请求体 `{ "phone", "code" }`。成功 data 含 user、token、refreshToken。
+  /// 与邮箱登录相同，只把 access token 写入本机安全存储。
+  Future<void> loginWithSms({
+    required String phone,
+    required String code,
+  }) async {
+    final payload = await _handle(
+      () => _dio.post('/auth/login/sms', data: {'phone': phone, 'code': code}),
+      (data) => data,
+    );
+    final token = _extractToken(payload);
+    if (token == null || token.isEmpty) {
+      throw ApiException('登录失败，未返回令牌');
+    }
+    await persistToken(token);
+  }
+
+  static int _positiveSeconds(dynamic value, int fallback) {
+    final parsed = value is num
+        ? value.toInt()
+        : int.tryParse('${value ?? ''}');
+    if (parsed == null || parsed <= 0) return fallback;
+    return parsed;
   }
 
   String? _extractToken(dynamic payload) {
