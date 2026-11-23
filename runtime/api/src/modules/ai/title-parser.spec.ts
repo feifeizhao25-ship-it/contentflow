@@ -1,4 +1,4 @@
-import { parseGeneratedTitles } from './title-parser';
+import { isTitlePackagingLine, parseGeneratedTitles, resolveRequestedTitleCount } from './title-parser';
 
 describe('parseGeneratedTitles', () => {
   it('strips explanatory prefix lines like "以下是……"', () => {
@@ -57,5 +57,36 @@ describe('parseGeneratedTitles', () => {
 
   it('keeps titles that merely start with digits or a year', () => {
     expect(parseGeneratedTitles('2026年新品清单\n10个技巧', 5)).toEqual(['2026年新品清单', '10个技巧']);
+  });
+
+  it('drops packaging lines like "6个小红书爆款标题" and still keeps real titles', () => {
+    const raw = [
+      '6个小红书爆款标题',
+      '1. 鼻炎根治？',
+      '2. 秋季护理笔记',
+      '3. 温差大怎么护肤',
+      '4. 出门记得围巾',
+      '5. 睡前热牛奶',
+      '6. 多喝水',
+    ].join('\n');
+    expect(parseGeneratedTitles(raw, 5)).toEqual(['鼻炎根治？', '秋季护理笔记', '温差大怎么护肤', '出门记得围巾', '睡前热牛奶']);
+    expect(parseGeneratedTitles(raw, 5).some((title) => title.includes('爆款标题'))).toBe(false);
+    expect(isTitlePackagingLine('10个技巧')).toBe(false);
+  });
+});
+
+describe('resolveRequestedTitleCount', () => {
+  it('uses the N written in the topic, including platform words between 个 and 标题', () => {
+    expect(resolveRequestedTitleCount('请给我5个标题', 6)).toBe(5);
+    expect(resolveRequestedTitleCount('写 5 个小红书标题', 6)).toBe(5);
+    expect(resolveRequestedTitleCount('五个标题', 6)).toBe(5);
+    expect(resolveRequestedTitleCount('5个小红书爆款标题', 6)).toBe(5);
+  });
+
+  it('keeps the caller count when the topic does not ask for a title count, or the number is outside 1-10', () => {
+    expect(resolveRequestedTitleCount('秋天的读书笔记', 6)).toBe(6);
+    expect(resolveRequestedTitleCount('10个技巧', 6)).toBe(6);
+    expect(resolveRequestedTitleCount('请给15个标题', 6)).toBe(6);
+    expect(resolveRequestedTitleCount('0个标题', 6)).toBe(6);
   });
 });

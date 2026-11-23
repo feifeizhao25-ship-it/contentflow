@@ -146,6 +146,7 @@ export class ContentPackService {
                 success: true,
                 data: {
                     titles,
+                    ...(titleResult.titleCompliance ? { title_compliance: titleResult.titleCompliance } : {}),
                     aiGenerated: true,
                     aiLabel: aiTextLabel(),
                     script,

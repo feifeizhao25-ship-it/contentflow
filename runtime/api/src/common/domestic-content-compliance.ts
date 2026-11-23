@@ -1,3 +1,5 @@
+import { candidatePreviewRequested, DOMESTIC_CANDIDATE_RULES, matchCandidateRuleHits } from './domestic-candidate-rules';
+
 export const DOMESTIC_RULESET_VERSION = 'cn-content-2026.11.21';
 
 /** 每次检查都带上。关键词命中不是律师意见，也不是“通过即可发布”。 */
@@ -249,8 +251,13 @@ function checkHealthClaim(content: string): DomesticComplianceHit | null {
 
 const ART25_TERMS = ['保本', '无风险', '保收益'] as const;
 const ART25_YIELD = /年化[^。\n]{0,16}(?:稳赚|保证|保本|无风险|保收益)/;
-/** 「必涨」「闭眼买入」「没有任何风险」是对投资结果的保证性断言，与「保本、无风险」同属第二十五条禁止的承诺。 */
-const ART25_CERTAINTY = /必涨|必赚|一定(?:会)?涨|闭眼(?:买|入|冲)|稳赚不赔|(?:没有|毫无|零|无)任何风险|绝对安全/;
+/**
+ * 「必涨」「闭眼买入」「没有任何风险」是对投资结果的保证性断言，与「保本、无风险」同属第二十五条禁止的承诺。
+ * 「绝对安全」不再放进这条：非投资语境里它是安全性断言，不是收益保证。见 checkAbsoluteSafety。
+ */
+const ART25_CERTAINTY = /必涨|必赚|一定(?:会)?涨|闭眼(?:买|入|冲)|稳赚不赔|(?:没有|毫无|零|无)任何风险/;
+/** 这些词出现时，「绝对安全」仍按投资收益保证理解（例如「本金绝对安全」）。 */
+const INVESTMENT_CONTEXT = /投资|理财|基金|股票|本金|收益|年化|炒股|回报|保本|稳赚|必涨|必赚|存款|证券|期货|净值/;
 
 /**
  * 《广告法》第二十四条第一项（2026-11-13 对照中国政府网现行文本核对）：
@@ -312,7 +319,13 @@ function checkInvestmentGuarantee(content: string): DomesticComplianceHit | null
   const terms = ART25_TERMS.filter((term) => text.includes(term));
   const yieldHit = text.match(ART25_YIELD);
   const certainty = text.match(ART25_CERTAINTY);
-  const matchedTerms = [...terms, ...(yieldHit ? [yieldHit[0].slice(0, 40)] : []), ...(certainty ? [certainty[0]] : [])];
+  const absoluteSafetyInInvestment = text.includes('绝对安全') && INVESTMENT_CONTEXT.test(text);
+  const matchedTerms = [
+    ...terms,
+    ...(yieldHit ? [yieldHit[0].slice(0, 40)] : []),
+    ...(certainty ? [certainty[0]] : []),
+    ...(absoluteSafetyInInvestment ? ['绝对安全'] : []),
+  ];
   if (!matchedTerms.length) return null;
   return {
     gate: 'advertising_law',
@@ -324,6 +337,28 @@ function checkInvestmentGuarantee(content: string): DomesticComplianceHit | null
     matchedTerms,
     severity: 'block',
     humanOverrideAllowed: true,
+  };
+}
+
+/**
+ * 非投资理财语境下的「绝对安全」。
+ * 《广告法》第十六条第一款第（一）项、第十八条第一款第（一）项写明不得对安全性作断言或保证。
+ * 以前这条被 ART25 的正则一并收成「收益保证」。这里改回安全性绝对化保证，严重程度仍是拦截。
+ */
+function checkAbsoluteSafety(content: string): DomesticComplianceHit | null {
+  const text = String(content || '').normalize('NFKC');
+  if (!text.includes('绝对安全') || INVESTMENT_CONTEXT.test(text)) return null;
+  return {
+    gate: 'advertising_law',
+    ruleId: 'CN-AD-SAFETY-ASSERTION',
+    source: '《中华人民共和国广告法》第十六条第一款第（一）项、第十八条第一款第（一）项（医疗、药品、医疗器械广告和保健食品广告不得含有表示功效、安全性的断言或者保证）。原文：https://www.gov.cn/guoqing/2021-10/29/content_5647620.htm 。非上述品类是否同样适用，待法律顾问确认；未确认前仍予拦截，不降为提示。',
+    sourceUrl: 'https://www.gov.cn/guoqing/2021-10/29/content_5647620.htm',
+    sourceRetrievedAt: '2026-11-23',
+    reason: '疑似对安全性作出绝对化保证',
+    matchedTerms: ['绝对安全'],
+    severity: 'block',
+    humanOverrideAllowed: true,
+    label: '待法律顾问确认',
   };
 }
 
@@ -424,8 +459,11 @@ function checkSyntheticLabel(content: string): DomesticComplianceHit | null {
   };
 }
 
-/** 词表规则之外的专项与提示检查。条数见 DOMESTIC_EXTRA_CHECKS。 */
-export const DOMESTIC_EXTRA_CHECKS = 11;
+/**
+ * 词表规则之外的专项与提示检查。条数见 DOMESTIC_EXTRA_CHECKS。
+ * 2026-11-23 增加 checkAbsoluteSafety（非投资语境的「绝对安全」）。候选规则不计入此数。
+ */
+export const DOMESTIC_EXTRA_CHECKS = 12;
 
 export const DOMESTIC_NOT_CHECKED: readonly string[] = [
   '各平台（抖音、小红书、快手、视频号等）现行社区规范原文——尚未逐条人工复核',
@@ -441,8 +479,9 @@ export function countHits(hits: ReadonlyArray<{ severity: 'block' | 'review' }>)
   return { block, review, total: hits.length };
 }
 
-export function evaluateDomesticContent(content: string, options?: { conservative?: boolean }): DomesticComplianceResult {
+export function evaluateDomesticContent(content: string, options?: { conservative?: boolean; candidatePreview?: boolean }): DomesticComplianceResult {
   const normalized = String(content || '').normalize('NFKC').toLowerCase();
+  const preview = candidatePreviewRequested(options);
   const hits: DomesticComplianceHit[] = RULES.flatMap((rule) => {
     const details = rule.structuredTerms ? matchStructuredTerms(content, rule.structuredTerms) : [];
     const matchedTerms = rule.structuredTerms
@@ -461,7 +500,7 @@ export function evaluateDomesticContent(content: string, options?: { conservativ
       humanOverrideAllowed: rule.humanOverrideAllowed,
     }] : [];
   });
-  const extras = [checkAdDisclosure(content), checkEducationResultPromise(content), checkHealthClaim(content), checkHealthPageCommerce(content), checkInvestmentGuarantee(content), checkSyntheticLabel(content), ...checkReviewOnly(content)];
+  const extras = [checkAdDisclosure(content), checkEducationResultPromise(content), checkHealthClaim(content), checkHealthPageCommerce(content), checkInvestmentGuarantee(content), checkAbsoluteSafety(content), checkSyntheticLabel(content), ...checkReviewOnly(content), ...(preview ? matchCandidateRuleHits(content) : [])];
   const order = (gate: DomesticGateId) => DOMESTIC_GATE_ORDER_INTERNAL.indexOf(gate);
   for (const extra of extras) {
     if (!extra) continue;
@@ -478,7 +517,7 @@ export function evaluateDomesticContent(content: string, options?: { conservativ
     ruleSetVersion: DOMESTIC_RULESET_VERSION,
     hits,
     hitCounts: countHits(hits),
-    rulesChecked: RULES.length + DOMESTIC_EXTRA_CHECKS,
+    rulesChecked: RULES.length + DOMESTIC_EXTRA_CHECKS + (preview ? DOMESTIC_CANDIDATE_RULES.length : 0),
     notChecked: [...DOMESTIC_NOT_CHECKED],
   };
 }

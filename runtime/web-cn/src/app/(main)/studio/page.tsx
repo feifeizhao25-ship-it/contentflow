@@ -19,6 +19,7 @@ import { TodayCard } from '@/components/home/TodayCard';
 import { ComplianceReviewNotice } from '@/components/compliance/ComplianceReviewNotice';
 import { ComplianceResultView } from '@/components/compliance/ComplianceResultView';
 import { parseCompliance, type ComplianceView } from '@/lib/compliance-view';
+import { cleanDisplayedTitles, requestedTitleCount, titleStatusLabel, type TitleStatusText } from '@/lib/title-compliance';
 import { isManualPlatform, PUBLISH_CHANNEL_NOTICE } from '@/lib/manual-publish';
 import { describeAiAllowance, generatedCoverUrl, parseAccountList, type AiAllowanceView } from '@/lib/page-data';
 import { SpeakButton, VoiceField, VoiceMicButton, VoiceReadout, appendVoice } from '@/components/voice/VoiceControls';
@@ -45,6 +46,7 @@ function StudioContent() {
   const [style, setStyle] = useState<'professional' | 'humorous' | 'xhs_influencer' | 'cinematic' | 'storytelling'>('professional');
   const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>(['xhs']);
   const [titles, setTitles] = useState<string[]>([]);
+  const [titleStatuses, setTitleStatuses] = useState<TitleStatusText[]>([]);
   const [selectedTitle, setSelectedTitle] = useState('');
   const [script, setScript] = useState('');
   const [coverUrl, setCoverUrl] = useState('');
@@ -71,6 +73,28 @@ function StudioContent() {
   }, []);
 
   const derivedPrompt = useMemo(() => visualPrompts[0] || topic, [visualPrompts, topic]);
+
+  // 每个标题单独过合规检查。生成结果里的「鼻炎根治？」不能未经检查就展示。
+  useEffect(() => {
+    if (!titles.length) {
+      setTitleStatuses([]);
+      return;
+    }
+    let cancelled = false;
+    setTitleStatuses(titles.map(() => '检查中'));
+    Promise.all(titles.map(async (title) => {
+      try {
+        return titleStatusLabel(parseCompliance(await apiClient.post('/ai/compliance/check', { text: title })));
+      } catch {
+        return '未能检查' as const;
+      }
+    })).then((labels) => {
+      if (!cancelled) setTitleStatuses(labels);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [titles]);
 
   useEffect(() => {
     const fetchAccounts = async () => {
@@ -178,9 +202,10 @@ function StudioContent() {
       const titleRes: any = await apiClient.post('/ai/generate/titles', {
         topic,
         platform: selectedPlatforms[0] || 'xhs',
-        count: 6,
+        count: requestedTitleCount(topic, 6),
       });
-      const nextTitles = titleRes?.data?.titles || titleRes?.titles || [];
+      const rawTitles = titleRes?.data?.titles || titleRes?.titles || [];
+      const nextTitles = cleanDisplayedTitles(Array.isArray(rawTitles) ? rawTitles : [], topic, 6);
       if (!Array.isArray(nextTitles) || !nextTitles.length || nextTitles.some((t: unknown) => typeof t !== 'string' || !t.trim())) {
         throw new Error('正文已生成，但没有收到有效标题；正文已保留，请手动填写标题或稍后重试');
       }
@@ -487,17 +512,26 @@ function StudioContent() {
               <div>
                 <div className="text-xs text-zinc-500 mb-2">标题推荐</div>
                 <div className="flex flex-col gap-2 md:flex-row md:flex-wrap">
-                  {titles.length > 0 ? titles.map((t, idx) => (
+                  {titles.length > 0 ? titles.map((t, idx) => {
+                    const status = titleStatuses[idx] || '检查中';
+                    const statusClass = status === '违规' || status === '未能检查'
+                      ? 'bg-red-100 text-red-700'
+                      : status === '需复核'
+                        ? 'bg-amber-100 text-amber-800'
+                        : 'bg-zinc-200 text-zinc-700';
+                    return (
                     <VoiceReadout key={idx} speak={<SpeakButton text={t} />}>
                       <Tag
                         style={{ whiteSpace: 'normal', overflowWrap: 'anywhere', maxWidth: '100%' }}
                         className={clsx('cursor-pointer', selectedTitle === t ? 'bg-emerald-50 border-emerald-300 text-emerald-700' : 'bg-zinc-100')}
                         onClick={() => setSelectedTitle(t)}
                       >
-                        {t}
+                        <span>{t}</span>
+                        <span data-testid="title-compliance-status" className={clsx('ml-2 inline-block rounded px-1.5 py-0.5 text-[11px] font-medium', statusClass)}>{status}</span>
                       </Tag>
                     </VoiceReadout>
-                  )) : <span className="text-xs text-zinc-800">生成后显示</span>}
+                    );
+                  }) : <span className="text-xs text-zinc-800">生成后显示</span>}
                 </div>
               </div>
               <div className="max-md:rounded-2xl max-md:border max-md:border-zinc-200 max-md:bg-zinc-50 max-md:p-3">
