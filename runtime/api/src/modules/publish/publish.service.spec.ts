@@ -1,4 +1,4 @@
-import { BadRequestException, HttpException, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, HttpException, NotFoundException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { PrismaService } from '../../database/prisma.service';
 import { PublishQueueService } from '../../queue/publish-queue.service';
@@ -24,11 +24,13 @@ describe('PublishService', () => {
   const tenant = {
     checkQuota: jest.fn(),
     incrementUsage: jest.fn(),
+    accountAllowance: jest.fn(),
   };
   const adapterRegistry = { get: jest.fn() };
 
   beforeEach(async () => {
     jest.clearAllMocks();
+    tenant.accountAllowance.mockResolvedValue({ limit: -1, used: 0, allowedIds: null });
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         PublishService,
@@ -104,6 +106,26 @@ describe('PublishService', () => {
     prisma.publishTask.create.mockResolvedValue({ id: 'task_1' });
     await service.createTask('tenant_1', 'user_1', { contentId: 'content_1', platformAccountIds: ['account_1'], publishType: 'scheduled', scheduledAt });
     expect(queue.addPublishTask).toHaveBeenCalledWith(expect.objectContaining({ taskId: 'task_1', scheduledAt }), expect.any(Number));
+  });
+
+  it('rejects accounts beyond the plan limit after an expiry or downgrade (403, nothing queued)', async () => {
+    prisma.content.findFirst.mockResolvedValue({ id: 'content_1', status: 'approved', title: '标题', body: '普通正文' });
+    tenant.checkQuota.mockResolvedValue(true);
+    tenant.accountAllowance.mockResolvedValue({ limit: 1, used: 3, allowedIds: new Set(['account_first']) });
+    prisma.platformAccount.findFirst.mockImplementation(({ where }: any) => Promise.resolve({ id: where.id, status: 'active', platform: 'custom-live' }));
+    adapterRegistry.get.mockReturnValue({ isLive: true });
+    const error = await service.createTask('tenant_1', 'user_1', {
+      contentId: 'content_1', platformAccountIds: ['account_late'], publishType: 'immediate',
+    }).catch((caught) => caught);
+    expect(error).toBeInstanceOf(ForbiddenException);
+    expect(error.message).toContain('当前套餐最多可用 1 个平台账号，已绑定 3 个');
+    expect(prisma.publishTask.create).not.toHaveBeenCalled();
+    expect(queue.addPublishTask).not.toHaveBeenCalled();
+
+    prisma.publishTask.create.mockResolvedValue({ id: 'task_ok' });
+    await expect(service.createTask('tenant_1', 'user_1', {
+      contentId: 'content_1', platformAccountIds: ['account_first'], publishType: 'immediate',
+    })).resolves.toHaveLength(1);
   });
 
   it('rejects content that does not belong to the tenant', async () => {

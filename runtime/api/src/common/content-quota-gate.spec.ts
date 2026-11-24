@@ -82,6 +82,8 @@ function prismaForQuota() {
     },
     platformAccount: {
       findFirst: jest.fn(async () => ({ id: 'a1', status: 'active', platform: 'custom-live' })),
+      count: jest.fn(async () => 1),
+      findMany: jest.fn(async () => [{ id: 'a1' }]),
     },
     platformContent: {
       upsert: jest.fn(async ({ create }: { create: { platform: string } }) => ({ id: `pc-${create.platform}`, ...create })),

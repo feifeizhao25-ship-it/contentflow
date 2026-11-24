@@ -30,7 +30,7 @@ export class AccountController {
 
   @Get(':platform/auth-url')
   @ApiOperation({ summary: '获取授权链接' })
-  async getAuthUrl(@Param('platform') platform: string) {
-    return this.accountService.getAuthUrl(platform);
+  async getAuthUrl(@Param('platform') platform: string, @Request() req: any) {
+    return this.accountService.getAuthUrl(platform, req.user?.tenantId);
   }
 }

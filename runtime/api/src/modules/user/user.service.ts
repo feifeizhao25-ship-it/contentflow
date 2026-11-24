@@ -1,5 +1,5 @@
 import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
-import { currentUsageStats } from '../tenant/tenant.service';
+import { COUNTED_ACCOUNT_WHERE, currentUsageStats } from '../tenant/tenant.service';
 import { PrismaService } from '../../database/prisma.service';
 import { publicEmail } from '../auth/phone-account';
 
@@ -68,6 +68,8 @@ export class UserService {
     // 「本月发布」按北京时间自然月展示：跨月后显示 0，而不是上个月（甚至注册以来）的累计。
     if (user?.tenant) {
       const usage = currentUsageStats(user.tenant.usage_stats);
+      // 账号绑定数以库里未删除的平台账号为准（usage_stats.accounts_count 从未累加，恒为 0）
+      usage.accounts_count = await this.prisma.platformAccount.count({ where: { tenant_id: user.tenant.id, ...COUNTED_ACCOUNT_WHERE } });
       delete usage.ai_calls_this_month; // 从未被累加的旧字段；AI 用量以 /billing/subscription 为准
       return { ...user, tenant: { ...user.tenant, usage_stats: usage } };
     }
