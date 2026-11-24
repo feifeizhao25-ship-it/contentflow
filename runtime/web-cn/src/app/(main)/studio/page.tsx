@@ -159,8 +159,9 @@ function StudioContent() {
           if (coverAsset?.url) {
             setCoverUrl(coverAsset.url);
           }
-        } catch {
-          // ignore assets
+        } catch (e) {
+          // 素材读不到时正文和封面已按内容本身预填，但要让用户知道（原来静默吞掉）
+          message.warning({ content: `素材没有读取成功（${safeErrorText(e, '请稍后重试')}），已用内容里保存的正文和封面。`, key: 'assets-load', duration: 5 });
         }
       } catch (e) {
         console.warn('Failed to load template content', e);
@@ -309,7 +310,8 @@ function StudioContent() {
         }
         await apiClient.post(`/contents/${contentId}/assets`, { assets });
       } catch (e) {
-        console.warn('Failed to append assets', e);
+        // 素材没存上不影响内容本身已保存，但要让用户看到（原来只打 console.warn）
+        message.warning({ content: `内容已保存，但脚本和封面素材没有存上（${safeErrorText(e, '请稍后重试')}），可在内容库打开后重新保存。`, key: 'assets-save', duration: 6 });
       }
 
       const contentStatus = contentRes?.data?.status || contentRes?.content?.status || contentRes?.status;

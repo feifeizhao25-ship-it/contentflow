@@ -69,3 +69,13 @@ export class SelfConfirmContentDto {
 
   @IsOptional() @IsString() @MaxLength(500) note?: string;
 }
+
+/**
+ * 创作页保存素材：`POST /contents/:id/assets`。每项 `{ type, url, label?, meta? }`，逐项校验在服务层
+ * （项里的 meta 是自由结构，交给 ValidationPipe 的 whitelist 会被整项拒掉）。
+ */
+export class AppendContentAssetsDto {
+  @IsArray({ message: '素材必须是列表' })
+  @ArrayMaxSize(20, { message: '一次最多保存 20 个素材' })
+  assets!: unknown[];
+}
