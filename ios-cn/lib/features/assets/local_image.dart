@@ -6,7 +6,7 @@ const Set<String> localImageExtensions = {'jpg', 'jpeg', 'png', 'webp', 'gif'};
 const String assetPickTitle = '选择本地图片';
 const String assetPickNotice = '目前只能从本机选择图片。不能选择视频。上传尚未开通，文件不会传到服务器，也不会显示上传成功。';
 const String assetGalleryTitle = '从相册选择图片';
-const String assetGallerySubtitle = '仅 JPG、JPEG、PNG、WEBP、GIF，单张不超过 10MB';
+const String assetGallerySubtitle = '仅常见静态图片，单张不超过 10MB';
 const String assetCameraTitle = '拍摄图片';
 const String assetCameraSubtitle = '只拍图片。上传尚未开通';
 const String assetEmptyMessage = '素材上传尚未开通。可以查看已有图片、视频或脚本；从本机选图只会做格式和大小检查，不会上传。';
@@ -31,7 +31,7 @@ LocalImageCheck checkLocalImage({required String name, required int sizeBytes}) 
   if (!localImageExtensions.contains(ext)) {
     return const LocalImageCheck(
       ok: false,
-      message: '只支持 JPG、JPEG、PNG、WEBP、GIF 图片。视频不能选，这一张没有上传。',
+      message: '只支持常见静态图片。视频不能选，这一张没有上传。',
     );
   }
   if (sizeBytes <= 0) {

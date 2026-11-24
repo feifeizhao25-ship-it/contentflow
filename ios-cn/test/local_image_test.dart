@@ -31,7 +31,7 @@ void main() {
   });
 
   test('upload stays closed and does not pretend success', () {
-    final client = ApiClient(TokenStorage(store: _MemoryStore()));
+    final client = ApiClient(TokenStorage(store: _MemoryStore()), baseUrl: 'https://example.com/api/v1');
     expect(client.assetUploadEnabled, isFalse);
     expect(
       client.uploadAsset('/tmp/a.png', AssetType.image),
