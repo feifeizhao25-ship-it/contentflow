@@ -82,6 +82,47 @@ describe('/users/me 的「账号绑定」用量', () => {
     };
     const me: any = await new UserService(prisma as any).findById("u");
     expect(me.tenant.usage_stats.accounts_count).toBe(2);
+    expect(me.tenant.plan_expired).toBe(false);
     expect(count).toHaveBeenCalledWith({ where: { tenant_id: 't', status: { not: 'deleted' } } });
+  });
+
+  it('未到期的个人版仍展示购买时的账号上限', async () => {
+    const prisma = {
+      user: { findUnique: jest.fn(async () => ({
+        id: 'u',
+        tenant: {
+          id: 't', plan: 'pro', plan_expires_at: '2099-01-01T00:00:00Z',
+          limits: { max_accounts: 10, max_publishes_monthly: 200 },
+          usage_stats: { accounts_count: 0 },
+        },
+      })) },
+      platformAccount: { count: jest.fn(async () => 3) },
+    };
+    const me: any = await new UserService(prisma as any).findById('u');
+    expect(me.tenant.plan_expired).toBe(false);
+    expect(me.tenant.plan).toBe('pro');
+    expect(me.tenant.limits.max_accounts).toBe(10);
+    expect(me.tenant.limits.max_publishes_monthly).toBe(200);
+    expect(me.tenant.usage_stats.accounts_count).toBe(3);
+  });
+
+  it('个人版到期后展示免费版生效上限，不再把已绑定 3 个显示成 3/10', async () => {
+    const prisma = {
+      user: { findUnique: jest.fn(async () => ({
+        id: 'u',
+        tenant: {
+          id: 't', plan: 'pro', plan_expires_at: '2026-11-01T00:00:00Z',
+          limits: { max_accounts: 10, max_publishes_monthly: 200 },
+          usage_stats: { accounts_count: 0 },
+        },
+      })) },
+      platformAccount: { count: jest.fn(async () => 3) },
+    };
+    const me: any = await new UserService(prisma as any).findById('u');
+    expect(me.tenant.plan).toBe('pro');
+    expect(me.tenant.plan_expired).toBe(true);
+    expect(me.tenant.usage_stats.accounts_count).toBe(3);
+    expect(me.tenant.limits.max_accounts).toBe(1);
+    expect(me.tenant.limits.max_publishes_monthly).toBe(200);
   });
 });

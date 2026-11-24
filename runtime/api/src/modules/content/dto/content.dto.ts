@@ -1,4 +1,5 @@
-import { ArrayMaxSize, ArrayMinSize, Equals, IsArray, IsBoolean, IsIn, IsOptional, IsString, MaxLength } from 'class-validator';
+import { Type } from 'class-transformer';
+import { ArrayMaxSize, ArrayMinSize, Equals, IsArray, IsBoolean, IsIn, IsOptional, IsString, MaxLength, ValidateNested } from 'class-validator';
 
 /**
  * 「创建 / 更新内容」允许客户端给的字段。
@@ -70,12 +71,56 @@ export class SelfConfirmContentDto {
   @IsOptional() @IsString() @MaxLength(500) note?: string;
 }
 
+const CONTENT_ASSET_TYPE_VALUES = ['script', 'cover', 'image', 'video'] as const;
+
 /**
- * 创作页保存素材：`POST /contents/:id/assets`。每项 `{ type, url, label?, meta? }`，逐项校验在服务层
- * （项里的 meta 是自由结构，交给 ValidationPipe 的 whitelist 会被整项拒掉）。
+ * 脚本素材里的正文。必须单独成类并标上 `@Type`：
+ * 全局 ValidationPipe 开了 `transform` + `enableImplicitConversion`。
+ * `assets` 若只标成 `unknown[]`，反射类型是 Array，管道会把每一项对象变成空数组，
+ * 随后服务层判定格式不对并返回 400。嵌套字段标了装饰器之后，whitelist 才会留下它们。
+ */
+export class ContentAssetMetaDto {
+  @IsOptional()
+  @IsString()
+  @MaxLength(200_000)
+  content?: string;
+}
+
+/**
+ * 创作页保存的一条素材。只接受这些字段，多余字段由 forbidNonWhitelisted 拒绝。
+ * 嵌套校验不要写中文提示：管道会把属性路径加在提示前面（assets.0.…），
+ * 国内界面就会带上英文路径。不合规的类型和地址仍由服务层用中文说明。
+ */
+export class ContentAssetItemDto {
+  @IsString()
+  @IsIn(CONTENT_ASSET_TYPE_VALUES)
+  type!: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  url?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  label?: string;
+
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => ContentAssetMetaDto)
+  meta?: ContentAssetMetaDto;
+}
+
+/**
+ * 创作页保存素材：`POST /contents/:id/assets`。
+ * 项内的正文、地址、名称在这里过白名单，避免被 ValidationPipe 剥掉；
+ * 地址是否为 http(s)、脚本是否有正文，仍由服务层按条说明。
  */
 export class AppendContentAssetsDto {
   @IsArray({ message: '素材必须是列表' })
   @ArrayMaxSize(20, { message: '一次最多保存 20 个素材' })
-  assets!: unknown[];
+  @ValidateNested({ each: true })
+  @Type(() => ContentAssetItemDto)
+  assets!: ContentAssetItemDto[];
 }

@@ -17,6 +17,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import clsx from 'clsx';
 import { apiErrorText, safeErrorText } from '@/lib/api-error';
 import { platformDisplay } from '@/lib/cn-display';
+import { describeBoundAccounts } from '@/lib/page-data';
 import { accountDisplayName, accountInitial } from '@/lib/account-label';
 
 interface PlatformAccount {
@@ -46,6 +47,7 @@ export default function AccountsPage() {
     const [loading, setLoading] = useState<string | null>(null);
     const [authorizing, setAuthorizing] = useState<string | null>(null);
     const [accountLimit, setAccountLimit] = useState<number | null>(null);
+    const [planExpired, setPlanExpired] = useState(false);
 
     useEffect(() => {
         fetchAccounts();
@@ -55,6 +57,7 @@ export default function AccountsPage() {
             .then((envelope) => {
                 const limit = Number(envelope?.data?.limits?.max_accounts);
                 if (Number.isFinite(limit)) setAccountLimit(limit);
+                setPlanExpired(envelope?.data?.expired === true);
             })
             .catch(() => undefined);
     }, []);
@@ -131,6 +134,8 @@ export default function AccountsPage() {
         }
     };
 
+    const accountQuota = describeBoundAccounts(accounts.length, accountLimit, planExpired);
+
     return (
         <div className="p-6 md:p-12 max-w-7xl mx-auto space-y-12">
             {/* Header */}
@@ -143,11 +148,12 @@ export default function AccountsPage() {
                     <h1 className="text-3xl font-bold text-zinc-900 mb-2">账号管理</h1>
                     <p className="text-zinc-500">管理您的社交平台账号授权与状态</p>
                 </div>
-                <div className="flex gap-4">
+                <div className="flex flex-col items-start gap-2">
                     <div className="glass-card px-4 py-2 rounded-xl flex items-center gap-3 border border-zinc-200 bg-white/50">
-                        <span className="text-zinc-500 text-sm">已绑定</span>
-                        <span className="text-xl font-bold text-zinc-900">{accounts.length} / {accountLimit == null ? '—' : accountLimit === -1 ? '不限' : accountLimit}</span>
+                        <span className="text-zinc-500 text-sm">{accountQuota.label}</span>
+                        <span className="text-xl font-bold text-zinc-900">{accountQuota.value}</span>
                     </div>
+                    {accountQuota.notice ? <p className="max-w-sm text-sm text-amber-800">{accountQuota.notice}</p> : null}
                 </div>
             </motion.div>
 

@@ -14,7 +14,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { parseContentList, mapPublishTasks, parseHotTopics, describePlan, parseAnalyticsOverview, describeAiAllowance, generatedCoverUrl, flattenViralAnalysis, planBadge, contentCoverUrl, parseAccountList } from '../src/lib/page-data.ts';
+import { parseContentList, mapPublishTasks, parseHotTopics, describePlan, describeBoundAccounts, parseAnalyticsOverview, describeAiAllowance, generatedCoverUrl, flattenViralAnalysis, planBadge, contentCoverUrl, parseAccountList } from '../src/lib/page-data.ts';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const src = (rel) => fs.readFileSync(path.join(ROOT, 'src', rel), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/[^\n]*/g, '$1');
@@ -104,10 +104,14 @@ await check('套餐与用量：用真实的工作区限额与用量，日期来�
     usage_stats: { accounts_count: 2, publishes_this_month: 41, storage_used_mb: 512, ai_calls_this_month: 17 },
   }, { monthlyQuota: 2500000, usedQuota: 1234 });
   assert.equal(plan.name, '个人版');
+  assert.equal(plan.statusText, '使用中');
+  assert.equal(plan.accountNotice, '');
   assert.match(plan.renewText, /2026年12月31日/);
+  assert.doesNotMatch(plan.renewText, /已到期/);
   assert.deepEqual(plan.usage.map((u) => [u.title, u.current, u.limit]), [
     ['账号绑定', 2, 5], ['本月发布', 41, 300], ['存储空间', 0.5, 10], ['本月 AI 令牌', 1234, 2500000],
   ]);
+  assert.equal(plan.usage[0].text, undefined);
   // 从未累加的 ai_calls_this_month 不再上屏
   assert.equal('aiCallsThisMonth' in plan, false);
 });
@@ -129,6 +133,38 @@ await check('商务版未确认额度：页面不展示令牌或平台账号数�
   assert.doesNotMatch(allowance.summary, /4000|40000000/);
 });
 
+await check('套餐到期：账号用量显示已到期和生效上限，不再显示使用中 3/10', () => {
+  const plan = describePlan({
+    plan: 'pro',
+    plan_expires_at: '2026-11-01T00:00:00.000Z',
+    limits: { max_accounts: 10, max_publishes_monthly: 200, max_storage_gb: 5 },
+    usage_stats: { accounts_count: 3, publishes_this_month: 4, storage_used_mb: 100 },
+  }, { expired: true, limits: { max_accounts: 1 }, monthlyQuota: 50000, usedQuota: 10 });
+  assert.equal(plan.name, '个人版');
+  assert.equal(plan.statusText, '已到期');
+  assert.match(plan.renewText, /已于 2026年11月1日 到期/);
+  assert.doesNotMatch(plan.renewText, /当前套餐有效期至/);
+  const accounts = plan.usage.find((item) => item.title === '账号绑定');
+  assert.deepEqual([accounts.current, accounts.limit, accounts.text], [3, 1, '已到期 3/1']);
+  assert.match(plan.accountNotice, /生效上限 1 个/);
+  assert.match(plan.accountNotice, /已绑定 3 个/);
+  assert.doesNotMatch(JSON.stringify(plan.usage.find((item) => item.title === '账号绑定')), /10/);
+  const fromProfile = describePlan({
+    plan: 'pro', plan_expired: true, plan_expires_at: '2026-11-01T00:00:00.000Z',
+    limits: { max_accounts: 1, max_publishes_monthly: 200 },
+    usage_stats: { accounts_count: 3, publishes_this_month: 0 },
+  });
+  assert.equal(fromProfile.usage.find((item) => item.title === '账号绑定').text, '已到期 3/1');
+  const active = describeBoundAccounts(3, 10, false);
+  assert.equal(active.label, '已绑定');
+  assert.equal(active.value, '3 / 10');
+  assert.equal(active.notice, '');
+  const expired = describeBoundAccounts(3, 1, true);
+  assert.equal(expired.label, '已到期');
+  assert.equal(expired.value, '3/1');
+  assert.match(expired.notice, /生效上限 1 个/);
+});
+
 await check('套餐与用量：免费版没有到期日，如实写「无账单」；缺数据时不编数字', () => {
   const plan = describePlan({ plan: 'free', plan_expires_at: null, limits: null, usage_stats: null });
   assert.equal(plan.name, '免费版');
@@ -141,6 +177,12 @@ await check('设置页：不再写死账单日期与用量，不再有点了没�
   assert.doesNotMatch(page, /2024年1月31日/);
   assert.doesNotMatch(page, /current:\s*450|current:\s*0\.2/);
   assert.doesNotMatch(page, /更新团队信息/);
+  assert.match(page, /planView\?\.statusText/);
+  assert.match(page, /planView\?\.accountNotice/);
+  assert.match(page, /item\.text/);
+  const accounts = src('app/(main)/accounts/page.tsx');
+  assert.match(accounts, /describeBoundAccounts\(/);
+  assert.match(accounts, /envelope\?\.data\?\.expired/);
 });
 
 await check('内容库页面：不再对已解包的结果判断 .success', () => {
