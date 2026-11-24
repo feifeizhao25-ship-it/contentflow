@@ -7,6 +7,7 @@ import { PrismaService } from '../../database/prisma.service';
 import type { PublishJobData } from '../../queue/publish-queue.service';
 import { aiTextLabel, buildAiMediaMetadata, labelAiGeneratedText } from '../../common/ai-content-label';
 import { evaluateDomesticContent } from '../../common/domestic-content-compliance';
+import { domesticExplicitLabelBlock } from '../ai/compliance/rules/domestic-explicit-label';
 
 interface DispatchResult { state?: string; remotePostId?: string; remotePostUrl?: string; failureReason?: string }
 
@@ -48,8 +49,16 @@ export class PublishProcessor {
     }
 
     const content = task.content as any;
+    const isAi = content?.source === 'ai';
+    const storedBody = typeof task.platform_content?.body === 'string' && task.platform_content.body.trim() ? task.platform_content.body : '';
+    const sourceBody = storedBody || content?.body;
+    const outgoingBody = isAi && sourceBody ? labelAiGeneratedText(sourceBody) : sourceBody;
     try {
       this.assertDispatchable(content);
+      if (this.config.get<string>('MARKET_REGION') !== 'global') {
+        const labelBlock = domesticExplicitLabelBlock(outgoingBody, Boolean(isAi));
+        if (labelBlock) throw new DispatchRefused(labelBlock.message, labelBlock.code);
+      }
     } catch (error) {
       const refused = error as DispatchRefused;
       await this.prisma.publishTask.update({
@@ -69,10 +78,6 @@ export class PublishProcessor {
       return null;
     }
 
-    const isAi = content.source === 'ai';
-    // 多账号任务在创建时已按平台改写并写入 platform_content。发出时用这份，避免把同一稿发给多个目的地。
-    const storedBody = typeof task.platform_content?.body === 'string' && task.platform_content.body.trim() ? task.platform_content.body : '';
-    const sourceBody = storedBody || content.body;
     const payload = JSON.stringify({
       schemaVersion: 1, idempotencyKey: `contentflow:${task.id}`, taskId: task.id,
       tenantId: task.tenant_id, marketRegion: this.config.get<string>('MARKET_REGION'),
@@ -80,7 +85,7 @@ export class PublishProcessor {
       content: {
         id: content.id, title: content.title,
         // AI 生成内容：显式标识随正文一起发出，不能在分发这一步丢掉（幂等，不重复叠加）。
-        body: isAi && sourceBody ? labelAiGeneratedText(sourceBody) : sourceBody,
+        body: outgoingBody,
         bodyHtml: isAi && content.body_html && !String(content.body_html).includes(aiTextLabel())
           ? `<p>${aiTextLabel()}</p>${content.body_html}` : content.body_html,
         coverUrl: content.cover_url, mediaUrls: content.media_urls, tags: content.tags,

@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useId, useState, type ReactNode } from 'react';
-import { CN_TTS_ROUTES, joinVoiceText, resolveSpeechSource, voiceLabelsZh } from '@/lib/voice-speech';
+import { CN_TTS_ROUTES, hasChineseVoice, joinVoiceText, micRestrictionMessage, prepareSpeechText, resolveSpeechSource, voiceLabelsZh } from '@/lib/voice-speech';
 
 /**
  * 网页自己的语音控件，不照搬手机卡片。
@@ -97,10 +97,21 @@ export function VoiceReadout({ children, speak }: { children: ReactNode; speak: 
   );
 }
 
+function speechRecognitionCtor(): (new () => Recognition) | undefined {
+  if (typeof window === 'undefined') return undefined;
+  const host = window as unknown as { SpeechRecognition?: new () => Recognition; webkitSpeechRecognition?: new () => Recognition };
+  return host.SpeechRecognition || host.webkitSpeechRecognition;
+}
+
 export function VoiceMicButton({ onFinal }: { onFinal: (text: string) => void }) {
   const [listening, setListening] = useState(false);
   const [note, setNote] = useState('');
-  const label = listening ? voiceLabelsZh.listening : voiceLabelsZh.mic;
+  const [blocked, setBlocked] = useState('');
+  const label = blocked ? voiceLabelsZh.mic : listening ? voiceLabelsZh.listening : voiceLabelsZh.mic;
+
+  useEffect(() => {
+    if (!speechRecognitionCtor()) setBlocked(voiceLabelsZh.micUnsupported);
+  }, []);
 
   function stop() {
     recognition?.stop();
@@ -109,13 +120,12 @@ export function VoiceMicButton({ onFinal }: { onFinal: (text: string) => void })
   }
 
   function start() {
+    if (blocked) return;
     setNote('');
-    const Ctor = typeof window !== 'undefined'
-      ? (window as unknown as { SpeechRecognition?: new () => Recognition; webkitSpeechRecognition?: new () => Recognition }).SpeechRecognition
-        || (window as unknown as { webkitSpeechRecognition?: new () => Recognition }).webkitSpeechRecognition
-      : undefined;
+    const Ctor = speechRecognitionCtor();
     if (!Ctor) {
-      setNote(voiceLabelsZh.unsupported);
+      setBlocked(voiceLabelsZh.micUnsupported);
+      setNote(voiceLabelsZh.micUnsupported);
       return;
     }
     stopSpeech();
@@ -128,7 +138,13 @@ export function VoiceMicButton({ onFinal }: { onFinal: (text: string) => void })
       if (text.trim()) onFinal(text);
     };
     rec.onerror = (event) => {
-      setNote(event.error === 'not-allowed' ? voiceLabelsZh.denied : voiceLabelsZh.unsupported);
+      const restricted = micRestrictionMessage(event.error);
+      if (restricted) {
+        setBlocked(restricted);
+        setNote(restricted);
+      } else {
+        setNote(voiceLabelsZh.unsupported);
+      }
       setListening(false);
     };
     rec.onend = () => setListening(false);
@@ -137,17 +153,19 @@ export function VoiceMicButton({ onFinal }: { onFinal: (text: string) => void })
       rec.start();
       setListening(true);
     } catch {
-      setNote(voiceLabelsZh.unsupported);
+      setBlocked(voiceLabelsZh.micUnsupported);
+      setNote(voiceLabelsZh.micUnsupported);
       setListening(false);
     }
   }
 
+  const status = blocked || note;
   return (
     <div className="flex flex-col items-end gap-1">
-      <button type="button" className={buttonClass(listening, 'mic')} aria-pressed={listening} aria-label={label} onClick={() => (listening ? stop() : start())}>
+      <button type="button" className={buttonClass(listening, 'mic')} aria-pressed={listening} aria-label={label} aria-disabled={Boolean(blocked)} disabled={Boolean(blocked)} onClick={() => (listening ? stop() : start())}>
         <MicIcon />
       </button>
-      {note ? <p role="status" className="max-w-48 text-right text-xs text-red-600">{note}</p> : null}
+      {status ? <p role="status" className="max-w-64 text-right text-xs text-red-600">{status}</p> : null}
     </div>
   );
 }
@@ -167,10 +185,24 @@ type Recognition = {
   stop: () => void;
 };
 
+function loadVoices(synth: SpeechSynthesis): Promise<SpeechSynthesisVoice[]> {
+  const current = synth.getVoices();
+  if (current.length) return Promise.resolve(current);
+  return new Promise((resolve) => {
+    const finish = () => {
+      synth.removeEventListener('voiceschanged', finish);
+      resolve(synth.getVoices());
+    };
+    synth.addEventListener('voiceschanged', finish);
+    window.setTimeout(finish, 400);
+  });
+}
+
 export function SpeakButton({ text }: { text: string }) {
   const id = useId();
   const playing = useSpeechActive(id);
   const [note, setNote] = useState('');
+  const spoken = prepareSpeechText(text);
   const label = playing ? voiceLabelsZh.stop : voiceLabelsZh.speak;
   const empty = !text.trim();
 
@@ -181,8 +213,12 @@ export function SpeakButton({ text }: { text: string }) {
     }
     setNote('');
     stopSpeech();
+    if (!spoken) {
+      setNote(voiceLabelsZh.nothingToRead);
+      return;
+    }
     const plan = await resolveSpeechSource({
-      text,
+      text: spoken,
       language: 'zh-CN',
       routes: CN_TTS_ROUTES,
       fetchImpl: (url, init) => fetch(url, init),
@@ -203,16 +239,24 @@ export function SpeakButton({ text }: { text: string }) {
       return;
     }
     if (plan.source === 'browser' && typeof window !== 'undefined' && window.speechSynthesis) {
-      const utterance = new SpeechSynthesisUtterance(text.trim());
+      const synth = window.speechSynthesis;
+      const voices = await loadVoices(synth);
+      if (!hasChineseVoice(voices)) {
+        setNote(voiceLabelsZh.noChineseVoice);
+        return;
+      }
+      const utterance = new SpeechSynthesisUtterance(spoken);
       utterance.lang = 'zh-CN';
+      const chinese = voices.find((voice) => hasChineseVoice([voice]));
+      if (chinese) utterance.voice = chinese;
       utterance.onend = () => stopSpeech();
       utterance.onerror = () => {
         stopSpeech();
         setNote(voiceLabelsZh.unsupported);
       };
       setActive(id);
-      window.speechSynthesis.cancel();
-      window.speechSynthesis.speak(utterance);
+      synth.cancel();
+      synth.speak(utterance);
       return;
     }
     setNote(voiceLabelsZh.unsupported);
@@ -223,7 +267,7 @@ export function SpeakButton({ text }: { text: string }) {
       <button type="button" className={buttonClass(playing, 'speak')} aria-pressed={playing} aria-label={label} disabled={empty} onClick={() => void toggle()}>
         <SpeakerIcon stop={playing} />
       </button>
-      {note ? <p role="status" className="max-w-48 text-right text-xs text-red-600">{note}</p> : null}
+      {note ? <p role="status" className="max-w-64 text-right text-xs text-red-600">{note}</p> : null}
     </div>
   );
 }

@@ -103,6 +103,18 @@ describe('PublishProcessor（国内版）', () => {
     expect(sentPayload().content.body.split(AI_TEXT_LABEL).length - 1).toBe(1);
   });
 
+  it('国内 AI 正文没有可检查的显式标识时不分发', async () => {
+    prisma.publishTask.findFirst.mockResolvedValue({
+      ...baseTask(),
+      content: { ...baseTask().content, source: 'ai', body: '' },
+    });
+    const fetchSpy = okFetch();
+    await expect(processor().dispatch(job)).rejects.toThrow(/显式标识/);
+    expect(fetchSpy).not.toHaveBeenCalled();
+    expect(lastUpdate().data).toMatchObject({ status: 'failed', error_code: 'AIGC_EXPLICIT_LABEL_REQUIRED' });
+    expect(lastUpdate().data.error_message).toContain('没有向平台提交');
+  });
+
   it('人工创作的内容：不加标识，aiGenerated 为 false', async () => {
     okFetch();
     await processor().dispatch(job);

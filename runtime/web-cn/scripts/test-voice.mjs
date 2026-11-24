@@ -15,7 +15,7 @@ import { fileURLToPath } from 'node:url';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const read = (rel) => fs.readFileSync(path.join(root, rel), 'utf8');
-const { joinVoiceText, resolveSpeechSource, CN_TTS_ROUTES } = await import('../src/lib/voice-speech.ts');
+const { joinVoiceText, resolveSpeechSource, CN_TTS_ROUTES, prepareSpeechText, stripExplicitAiLabel, hasChineseVoice, micRestrictionMessage, voiceLabelsZh } = await import('../src/lib/voice-speech.ts');
 
 let failures = 0;
 async function check(name, fn) {
@@ -117,6 +117,52 @@ await check('内容库：桌面仍是表格，窄屏卡片上才朗读正文', (
 await check('排期和日历不是 AI 正文，不放语音按钮', () => {
   assert.doesNotMatch(read('src/app/(main)/schedule/page.tsx'), /VoiceMicButton|SpeakButton|voice-speech/);
   assert.doesNotMatch(read('src/app/(main)/calendar/page.tsx'), /VoiceMicButton|SpeakButton|voice-speech/);
+});
+
+await check('朗读前去掉显式标识和 Markdown，不改调用方原文', () => {
+  const original = '【本内容由 AI 生成】\n# 标题\n**加粗** 和 [链接文字](https://example.com/a) `代码`';
+  assert.equal(prepareSpeechText(original), '标题\n加粗 和 链接文字 代码');
+  assert.equal(original.startsWith('【本内容由 AI 生成】'), true);
+  assert.equal(prepareSpeechText('正文\n【本内容由 AI 生成】'), '正文');
+  assert.equal(stripExplicitAiLabel('请保留【本内容由 AI 生成】这几个字'), '请保留【本内容由 AI 生成】这几个字');
+  assert.equal(prepareSpeechText('【本内容由 AI 生成】'), '');
+  const studio = read('src/app/(main)/studio/page.tsx');
+  const contents = read('src/app/(main)/contents/page.tsx');
+  assert.match(studio, /SpeakButton text=\{script\}/);
+  assert.match(contents, /SpeakButton text=\{String\(record\.body\)\}/);
+  assert.doesNotMatch(studio, /prepareSpeechText|stripExplicitAiLabel/);
+  assert.match(read('src/components/voice/VoiceControls.tsx'), /prepareSpeechText\(text\)/);
+});
+
+await check('没有中文语音时给出中文说明', () => {
+  assert.equal(hasChineseVoice([]), false);
+  assert.equal(hasChineseVoice([{ lang: 'en-US', name: 'Samantha' }]), false);
+  assert.equal(hasChineseVoice([{ lang: 'zh-CN', name: 'Tingting' }]), true);
+  assert.equal(hasChineseVoice([{ lang: 'zh_CN' }]), true);
+  assert.equal(hasChineseVoice([{ lang: 'cmn-Hans-CN' }]), true);
+  assert.match(voiceLabelsZh.noChineseVoice, /中文语音/);
+  assert.match(read('src/components/voice/VoiceControls.tsx'), /noChineseVoice/);
+});
+
+await check('麦克风在不支持或国内网络错误时停用并说明', () => {
+  assert.match(micRestrictionMessage('unsupported'), /麦克风已停用/);
+  assert.match(micRestrictionMessage('network'), /没有改用其他付费语音服务/);
+  assert.match(micRestrictionMessage('service-not-allowed'), /麦克风已停用/);
+  assert.match(micRestrictionMessage('not-allowed'), /麦克风/);
+  assert.equal(micRestrictionMessage('no-speech'), null);
+  assert.match(read('src/components/voice/VoiceControls.tsx'), /micRestrictionMessage/);
+  assert.match(read('src/components/voice/VoiceControls.tsx'), /disabled=\{Boolean\(blocked\)\}/);
+});
+
+await check('热点拆解和流量三明治的 AI 产出可以朗读', () => {
+  const hot = read('src/app/(main)/hot/page.tsx');
+  const sandwich = read('src/app/(main)/traffic-sandwich/page.tsx');
+  assert.match(hot, /SpeakButton/);
+  assert.match(hot, /VoiceMicButton/);
+  assert.match(hot, /AI_TEXT_LABEL/);
+  assert.match(hot, /拆解结果已复制（含「AI 生成」标识）/);
+  assert.match(sandwich, /SpeakButton/);
+  assert.match(sandwich, /VoiceMicButton/);
 });
 
 if (failures) {

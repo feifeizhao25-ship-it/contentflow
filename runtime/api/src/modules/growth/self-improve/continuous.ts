@@ -38,7 +38,10 @@ export interface GoldenSource {
   title: string;
   issuer: string;
   url: string;
-  retrieved_at: string;
+  retrieved_at?: string;
+  /** local：答案来自本地模板，没有读取 url。缺省按已读取的外部出处处理。 */
+  read?: 'local' | 'fetched';
+  note?: string;
 }
 export interface GoldenCase {
   id: string;
@@ -103,6 +106,11 @@ export function validateCase(c: GoldenCase): string[] {
     if (!c.must_include?.length) p.push('answer_case_without_must_include');
     if (!c.sources?.length) p.push('answer_case_without_sources');
     for (const s of c.sources ?? []) {
+      if (s.read === 'local') {
+        if (s.url) p.push('local_source_must_not_carry_url');
+        for (const k of ['title', 'issuer'] as const) if (!s[k]) p.push(`source_missing:${k}`);
+        continue;
+      }
       let u: URL | null = null;
       try {
         u = new URL(s.url);
@@ -130,6 +138,22 @@ export function validateAll(cases: GoldenCase[]) {
     if (pr.length) invalid[c.id ?? '?'] = pr;
   }
   return { n: cases.length, invalid, duplicate_ids: dup, ok: !Object.keys(invalid).length && !dup.length };
+}
+
+const MISLINKED_LABELING_URL_MARK = 'c_1743654684782215';
+
+/** 13 条技能答题的第一条出处必须是本地模板，不能再挂未读取的标识办法网址。复核状态保持待审核。 */
+export function localSkillGoldenProblems(cases: GoldenCase[]): string[] {
+  const problems: string[] = [];
+  const answers = cases.filter((c) => c.channel === 'skill' && c.expect === 'answer');
+  if (answers.length !== 13) problems.push(`skill_answer_count:${answers.length}`);
+  for (const c of answers) {
+    const first = c.sources?.[0];
+    if (first?.read !== 'local' || first.url) problems.push(`${c.id}:source_not_local`);
+    if (JSON.stringify(c.sources ?? []).includes(MISLINKED_LABELING_URL_MARK)) problems.push(`${c.id}:mislinked_labeling_url`);
+    if (c.review_status !== '待审核' || c.reviewer) problems.push(`${c.id}:review_mutated`);
+  }
+  return problems;
 }
 
 /** 覆盖：每个技能至少 minCases 题。 */
@@ -303,7 +327,7 @@ export function staleScan(cases: GoldenCase[], staged: StagedEntry[], opts: Stal
     dated(c.id, c.valid_until, c.review_status, c.added_at);
     if (c.expect === 'answer') {
       if (!c.sources?.length) push('no_source', c.id);
-      else if (c.sources.some((s) => { const r = isoDay(s.retrieved_at); return r !== null && today - r > (opts.sourceDays ?? 365) * DAY; })) push('golden_source_old', c.id);
+      else if (c.sources.some((s) => { if (s.read === 'local') return false; const r = isoDay(s.retrieved_at); return r !== null && today - r > (opts.sourceDays ?? 365) * DAY; })) push('golden_source_old', c.id);
     }
   }
   for (const e of staged) {

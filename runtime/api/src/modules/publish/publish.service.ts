@@ -8,6 +8,7 @@ import { evaluateDomesticContent } from '../../common/domestic-content-complianc
 import { evaluateInternationalContent } from '../../common/international-content-compliance';
 import { isRealNameRequiredForPublish } from '../auth/real-name/real-name.verifier';
 import { labelAiGeneratedText, aiTextLabel, aigcProviderCode } from '../../common/ai-content-label';
+import { domesticExplicitLabelBlock } from '../ai/compliance/rules/domestic-explicit-label';
 import { MANUAL_DONE, MANUAL_PENDING, MANUAL_PLATFORMS, isManualPlatform, normalizeManualPostUrl } from './manual-publish';
 import { PUBLISH_LOG_MAX_ROWS, PublishTaskFilter, channelUnavailableReason, publishTaskWhere, publishTasksToCsv } from './publish-log';
 import { adaptBodyForPlatform } from '../ai/platform-adaptation';
@@ -274,6 +275,14 @@ export class PublishService {
       return { platform, snapshot };
     });
     const region = this.config.get<string>('MARKET_REGION', 'cn') === 'global' ? 'global' as const : 'cn' as const;
+    if (region === 'cn') {
+      for (const item of snapshots) {
+        const labelBlock = domesticExplicitLabelBlock(item.snapshot, aiGenerated);
+        if (labelBlock) {
+          throw new BadRequestException({ code: labelBlock.code, message: labelBlock.message, issues: labelBlock.issues });
+        }
+      }
+    }
     const blocked = bulkPublishBlockReason(
       snapshots.map((item) => ({ key: item.platform, body: item.snapshot })),
       true,
@@ -316,13 +325,20 @@ export class PublishService {
     if (!isManualPlatform(platform)) throw new BadRequestException('该任务不是人工确认发布任务');
     const aiGenerated = task.content?.source === 'ai';
     const rawBody = task.platform_content?.body ?? task.content?.body ?? '';
+    const body = aiGenerated ? labelAiGeneratedText(rawBody) : rawBody;
+    if (this.config.get<string>('MARKET_REGION', 'cn') !== 'global') {
+      const labelBlock = domesticExplicitLabelBlock(body, aiGenerated);
+      if (labelBlock) {
+        throw new BadRequestException({ code: labelBlock.code, message: labelBlock.message, issues: labelBlock.issues });
+      }
+    }
     return {
       platform,
       platformName: MANUAL_PLATFORMS[platform].name,
       guide: MANUAL_PLATFORMS[platform].guide,
       title: task.platform_content?.title ?? task.content?.title ?? '',
       // AI 生成的内容：复制出去的文案必须带「AI 生成」显式标识，不能弱化
-      body: aiGenerated ? labelAiGeneratedText(rawBody) : rawBody,
+      body,
       coverUrl: task.platform_content?.cover_url ?? task.content?.cover_url ?? null,
       aiGenerated,
       aiLabel: aiGenerated ? aiTextLabel() : null,

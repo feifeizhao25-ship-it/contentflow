@@ -11,6 +11,8 @@ class VoiceCopy {
   final String stop;
   final String micDenied;
   final String unavailable;
+  final String noChineseVoice;
+  final String speakFailed;
   final String locale;
 
   const VoiceCopy({
@@ -20,6 +22,8 @@ class VoiceCopy {
     required this.stop,
     required this.micDenied,
     required this.unavailable,
+    required this.noChineseVoice,
+    required this.speakFailed,
     required this.locale,
   });
 }
@@ -31,6 +35,8 @@ const voiceCopyZh = VoiceCopy(
   stop: '停止朗读',
   micDenied: '需要麦克风和语音识别权限，请在系统设置里允许后重试',
   unavailable: '这台设备暂时不能使用语音',
+  noChineseVoice: '这台设备没有可用的中文语音，暂时不能朗读。',
+  speakFailed: '朗读没有完成。请稍后再试，本次没有改用其他语音服务。',
   locale: 'zh-CN',
 );
 
@@ -91,17 +97,27 @@ class VoiceController extends ChangeNotifier {
   bool speaking = false;
   String? speakingKey;
   String? lastError;
+  int feedbackSerial = 0;
+  String? feedbackKey;
+  String? feedbackCode;
   StreamSubscription<Map<String, dynamic>>? _sub;
   void Function(String text, bool isFinal)? _onText;
 
   Future<void> _ensure() async {
     _sub ??= transport.events.listen(_onEvent, onError: (_) {
-      listening = false;
-      speaking = false;
-      speakingKey = null;
-      lastError = 'unavailable';
-      notifyListeners();
+      _fail(speakingKey, 'speak-failed');
     });
+  }
+
+  void _fail(String? key, String code) {
+    listening = false;
+    speaking = false;
+    speakingKey = null;
+    lastError = code;
+    feedbackKey = key;
+    feedbackCode = code;
+    feedbackSerial++;
+    notifyListeners();
   }
 
   void _onEvent(Map<String, dynamic> event) {
@@ -125,11 +141,7 @@ class VoiceController extends ChangeNotifier {
         speakingKey = null;
         notifyListeners();
       case 'error':
-        listening = false;
-        speaking = false;
-        speakingKey = null;
-        lastError = text.isEmpty ? 'unavailable' : text;
-        notifyListeners();
+        _fail(speakingKey, text.isEmpty ? 'speak-failed' : text);
     }
   }
 
@@ -185,11 +197,9 @@ class VoiceController extends ChangeNotifier {
     try {
       await transport.speak(trimmed, locale);
     } on PlatformException catch (error) {
-      speaking = false;
-      speakingKey = null;
-      lastError = error.code;
-      notifyListeners();
-      throw VoiceException(error.code);
+      _fail(key, error.code.isEmpty ? 'speak-failed' : error.code);
+    } catch (_) {
+      _fail(key, 'speak-failed');
     }
   }
 
@@ -203,10 +213,24 @@ class VoiceController extends ChangeNotifier {
 /// Shared device session. Tests pass their own [VoiceController] into the buttons.
 final VoiceController deviceVoice = VoiceController();
 
-String _messageFor(VoiceException error, VoiceCopy copy) {
-  if (error.code == 'permission') return copy.micDenied;
-  return copy.unavailable;
+String voiceMessageFor(String code, VoiceCopy copy) {
+  switch (code) {
+    case 'permission':
+      return copy.micDenied;
+    case 'no-chinese-voice':
+    case 'lang-missing':
+    case 'lang-not-supported':
+      return copy.noChineseVoice;
+    case 'tts':
+    case 'speak-failed':
+    case 'speak-error':
+      return copy.speakFailed;
+    default:
+      return copy.unavailable;
+  }
 }
+
+String _messageFor(VoiceException error, VoiceCopy copy) => voiceMessageFor(error.code, copy);
 
 /// Round mic at the trailing edge of a compose field. 56px so a thumb can hit it.
 class VoiceMicButton extends StatefulWidget {
@@ -331,6 +355,7 @@ class SpeakButton extends StatefulWidget {
 
 class _SpeakButtonState extends State<SpeakButton> {
   VoiceController get _voice => widget.voice ?? deviceVoice;
+  int _seenFeedback = 0;
 
   @override
   void initState() {
@@ -354,7 +379,19 @@ class _SpeakButtonState extends State<SpeakButton> {
   }
 
   void _rebuild() {
-    if (mounted) setState(() {});
+    if (!mounted) return;
+    final serial = _voice.feedbackSerial;
+    String? message;
+    if (serial != _seenFeedback) {
+      _seenFeedback = serial;
+      if (_voice.feedbackKey == widget.controlKey) {
+        message = voiceMessageFor(_voice.feedbackCode ?? '', widget.copy);
+      }
+    }
+    setState(() {});
+    if (message != null && message.isNotEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+    }
   }
 
   bool get _playing => _voice.speaking && _voice.speakingKey == widget.controlKey;

@@ -30,6 +30,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { apiClient } from '@/lib/api-client';
+import { SpeakButton, VoiceField, VoiceMicButton, appendVoice } from '@/components/voice/VoiceControls';
 import { useRouter } from 'next/navigation';
 
 const { Title, Text, Paragraph } = Typography;
@@ -146,13 +147,15 @@ export default function TrafficSandwichPage() {
                             >
                                 <div className="space-y-4">
                                     <Title level={3} className="font-serif">先告诉 AI，您想推广什么？</Title>
-                                    <TextArea
-                                        placeholder="例如：一款极简主义风格的智能台灯，适合熬夜工作的文字工作者..."
-                                        autoSize={{ minRows: 4, maxRows: 6 }}
-                                        value={topic}
-                                        onChange={(e) => setTopic(e.target.value)}
-                                        className="rounded-2xl p-6 text-lg border-zinc-200 focus:border-emerald-500 hover:border-zinc-300 transition-all bg-zinc-50/30"
-                                    />
+                                    <VoiceField mic={<VoiceMicButton onFinal={(spoken) => setTopic((current) => appendVoice(current, spoken))} />}>
+                                        <TextArea
+                                            placeholder="例如：一款极简主义风格的智能台灯，适合熬夜工作的文字工作者..."
+                                            autoSize={{ minRows: 4, maxRows: 6 }}
+                                            value={topic}
+                                            onChange={(e) => setTopic(e.target.value)}
+                                            className="rounded-2xl p-6 text-lg border-zinc-200 focus:border-emerald-500 hover:border-zinc-300 transition-all bg-zinc-50/30"
+                                        />
+                                    </VoiceField>
                                 </div>
 
                                 <div className="space-y-4">
@@ -206,12 +209,15 @@ export default function TrafficSandwichPage() {
                                                     <Text type="secondary" className="text-xs">前 3 秒要让人愿意看下去，不保证一定被推荐</Text>
                                                 </div>
                                             </div>
-                                            <TextArea
-                                                rows={3}
-                                                value={hook}
-                                                onChange={(e) => setHook(e.target.value)}
-                                                className="bg-zinc-50 border-none rounded-xl focus:ring-2 focus:ring-amber-200"
-                                            />
+                                            <VoiceField mic={<VoiceMicButton onFinal={(spoken) => setHook((current) => appendVoice(current, spoken))} />}>
+                                                <TextArea
+                                                    rows={3}
+                                                    value={hook}
+                                                    onChange={(e) => setHook(e.target.value)}
+                                                    className="bg-zinc-50 border-none rounded-xl focus:ring-2 focus:ring-amber-200"
+                                                />
+                                            </VoiceField>
+                                            <div className="mt-2 flex justify-end"><SpeakButton text={hook} /></div>
                                         </Card>
                                     </div>
 
@@ -231,12 +237,15 @@ export default function TrafficSandwichPage() {
                                                     <Text type="secondary" className="text-xs">把产品或知识讲清楚，方便读者自己判断</Text>
                                                 </div>
                                             </div>
-                                            <TextArea
-                                                rows={6}
-                                                value={coreContent}
-                                                onChange={(e) => setCoreContent(e.target.value)}
-                                                className="bg-zinc-50 border-none rounded-xl focus:ring-2 focus:ring-emerald-200"
-                                            />
+                                            <VoiceField mic={<VoiceMicButton onFinal={(spoken) => setCoreContent((current) => appendVoice(current, spoken))} />}>
+                                                <TextArea
+                                                    rows={6}
+                                                    value={coreContent}
+                                                    onChange={(e) => setCoreContent(e.target.value)}
+                                                    className="bg-zinc-50 border-none rounded-xl focus:ring-2 focus:ring-emerald-200"
+                                                />
+                                            </VoiceField>
+                                            <div className="mt-2 flex justify-end"><SpeakButton text={coreContent} /></div>
                                         </Card>
                                     </div>
 
@@ -256,12 +265,15 @@ export default function TrafficSandwichPage() {
                                                     <Text type="secondary" className="text-xs">结尾写明希望读者做的下一步，例如收藏或查看详情</Text>
                                                 </div>
                                             </div>
-                                            <TextArea
-                                                rows={3}
-                                                value={cta}
-                                                onChange={(e) => setCta(e.target.value)}
-                                                className="bg-zinc-50 border-none rounded-xl focus:ring-2 focus:ring-blue-200"
-                                            />
+                                            <VoiceField mic={<VoiceMicButton onFinal={(spoken) => setCta((current) => appendVoice(current, spoken))} />}>
+                                                <TextArea
+                                                    rows={3}
+                                                    value={cta}
+                                                    onChange={(e) => setCta(e.target.value)}
+                                                    className="bg-zinc-50 border-none rounded-xl focus:ring-2 focus:ring-blue-200"
+                                                />
+                                            </VoiceField>
+                                            <div className="mt-2 flex justify-end"><SpeakButton text={cta} /></div>
                                         </Card>
                                     </div>
 
@@ -295,10 +307,12 @@ export default function TrafficSandwichPage() {
                                                         {suggestions.hooks.map((h, i) => (
                                                             <div
                                                                 key={i}
-                                                                onClick={() => setHook(h)}
-                                                                className="p-3 rounded-xl bg-white/5 border border-white/10 text-xs cursor-pointer hover:bg-white/10 hover:border-white/20 transition-all"
+                                                                className="flex items-start gap-2 p-3 rounded-xl bg-white/5 border border-white/10 text-xs"
                                                             >
-                                                                {h}
+                                                                <button type="button" onClick={() => setHook(h)} className="min-w-0 flex-1 cursor-pointer text-left text-white hover:text-emerald-100">
+                                                                    {h}
+                                                                </button>
+                                                                <SpeakButton text={h} />
                                                             </div>
                                                         ))}
                                                     </div>
@@ -312,10 +326,12 @@ export default function TrafficSandwichPage() {
                                                         {suggestions.ctas.map((c, i) => (
                                                             <div
                                                                 key={i}
-                                                                onClick={() => setCta(c)}
-                                                                className="p-3 rounded-xl bg-white/5 border border-white/10 text-xs cursor-pointer hover:bg-white/10 hover:border-white/20 transition-all"
+                                                                className="flex items-start gap-2 p-3 rounded-xl bg-white/5 border border-white/10 text-xs"
                                                             >
-                                                                {c}
+                                                                <button type="button" onClick={() => setCta(c)} className="min-w-0 flex-1 cursor-pointer text-left text-white hover:text-emerald-100">
+                                                                    {c}
+                                                                </button>
+                                                                <SpeakButton text={c} />
                                                             </div>
                                                         ))}
                                                     </div>
@@ -366,16 +382,31 @@ export default function TrafficSandwichPage() {
                                             </div>
                                             <div className="space-y-4">
                                                 <div className="p-4 bg-zinc-50 rounded-xl border-l-4 border-amber-400">
-                                                    <Text type="secondary" className="text-xs">开头</Text>
-                                                    <Paragraph className="mt-1 mb-0">{hook}</Paragraph>
+                                                    <div className="flex items-start justify-between gap-2">
+                                                        <div className="min-w-0">
+                                                            <Text type="secondary" className="text-xs">开头</Text>
+                                                            <Paragraph className="mt-1 mb-0">{hook}</Paragraph>
+                                                        </div>
+                                                        <SpeakButton text={hook} />
+                                                    </div>
                                                 </div>
                                                 <div className="p-4 bg-zinc-50 rounded-xl border-l-4 border-emerald-400">
-                                                    <Text type="secondary" className="text-xs">正文</Text>
-                                                    <Paragraph className="mt-1 mb-0 line-clamp-2">{coreContent}</Paragraph>
+                                                    <div className="flex items-start justify-between gap-2">
+                                                        <div className="min-w-0">
+                                                            <Text type="secondary" className="text-xs">正文</Text>
+                                                            <Paragraph className="mt-1 mb-0 line-clamp-2">{coreContent}</Paragraph>
+                                                        </div>
+                                                        <SpeakButton text={coreContent} />
+                                                    </div>
                                                 </div>
                                                 <div className="p-4 bg-zinc-50 rounded-xl border-l-4 border-blue-400">
-                                                    <Text type="secondary" className="text-xs">下一步</Text>
-                                                    <Paragraph className="mt-1 mb-0">{cta}</Paragraph>
+                                                    <div className="flex items-start justify-between gap-2">
+                                                        <div className="min-w-0">
+                                                            <Text type="secondary" className="text-xs">下一步</Text>
+                                                            <Paragraph className="mt-1 mb-0">{cta}</Paragraph>
+                                                        </div>
+                                                        <SpeakButton text={cta} />
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>

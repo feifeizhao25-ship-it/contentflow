@@ -1,8 +1,8 @@
-import { mkdtempSync, mkdirSync, readFileSync, readdirSync, writeFileSync, existsSync } from 'fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, writeFileSync } from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
 import { configFromEnv } from './config';
-import { CONTINUOUS_CRON, GOLDEN_FILE, STAGED_FILE, GoldenCase, defaultAnswer, loadGolden, loadStaged, renderMonthlyMd, runContinuous, runContinuousIfEnabled, runGolden, scoreCase, staleScan, stageRadar, validateCase } from './continuous';
+import { CONTINUOUS_CRON, GOLDEN_FILE, STAGED_FILE, GoldenCase, defaultAnswer, loadGolden, loadStaged, localSkillGoldenProblems, renderMonthlyMd, runContinuous, runContinuousIfEnabled, runGolden, scoreCase, staleScan, stageRadar, validateCase } from './continuous';
 import { nextRun } from './schedule';
 import { TRAFFIC_SKILLS } from '../skills/catalog';
 
@@ -51,9 +51,21 @@ describe('金标准问答', () => {
   it('校验：无出处 / 非 https / 英文题 / 无 reviewer 的“已审核”都被拒', () => {
     const base = cases.find((x) => x.id === 'cf-g-001')!;
     expect(validateCase({ ...base, sources: [] })).toContain('answer_case_without_sources');
-    expect(validateCase({ ...base, sources: [{ ...base.sources![0], url: 'http://example.com/x' }] })).toContain('source_url_not_https');
+    expect(validateCase({ ...base, sources: [{ title: 't', issuer: 'i', url: 'http://example.com/x', retrieved_at: '2026-10-31' }] })).toContain('source_url_not_https');
+    expect(validateCase({ ...base, sources: [{ title: '本地模板', issuer: '分发侠技能库', url: 'https://example.com/not-read', read: 'local' }] })).toContain('local_source_must_not_carry_url');
     expect(validateCase({ ...base, lang: 'en' }).join()).toContain('lang_mismatch');
     expect(validateCase({ ...base, review_status: '已审核' })).toContain('reviewed_without_reviewer');
+  });
+
+  it('13 条技能金标的第一条出处是本地模板，不再挂未读取的标识办法网址', () => {
+    expect(localSkillGoldenProblems(cases)).toEqual([]);
+    const render = readFileSync(join(__dirname, '../skills/render.ts'), 'utf8');
+    expect(render).not.toContain('c_1743654684782215');
+    expect(render).not.toContain('fetch(');
+    for (const item of cases.filter((c) => c.channel === 'skill' && c.expect === 'answer')) {
+      expect(item.review_status).toBe('待审核');
+      expect(item.reviewer).toBeUndefined();
+    }
   });
 
   it('过期的题不运行也不算通过，交给过期报告', () => {

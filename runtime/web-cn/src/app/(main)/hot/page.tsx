@@ -10,6 +10,7 @@ import { flattenViralAnalysis, parseHotTopics } from '@/lib/page-data';
 import { formatCnDate, formatHeat, platformDisplay } from '@/lib/cn-display';
 import { AI_TEXT_LABEL } from '@/lib/ai-content-label';
 import { safeErrorText } from '@/lib/api-error';
+import { SpeakButton, VoiceField, VoiceMicButton, VoiceReadout, appendVoice } from '@/components/voice/VoiceControls';
 import { useRouter } from 'next/navigation';
 import clsx from 'clsx';
 
@@ -126,7 +127,9 @@ export default function HotPage() {
             <Modal title={null} open={showAnalyzer} footer={null} onCancel={() => { setShowAnalyzer(false); setAnalysisResult(null); setAnalysisError(''); }} width="min(800px, calc(100vw - 24px))" centered>
                 <div className="p-4 space-y-6">
                     <Title level={3}>AI 爆款内容拆解</Title>
-                    <TextArea rows={6} value={analysisInput} onChange={e => setAnalysisInput(e.target.value)} placeholder="粘贴爆款内容原文..." className="rounded-2xl border-zinc-200 bg-zinc-50 p-4 focus:bg-white transition-all text-lg" />
+                    <VoiceField mic={<VoiceMicButton onFinal={(spoken) => setAnalysisInput((current) => appendVoice(current, spoken))} />}>
+                        <TextArea rows={6} value={analysisInput} onChange={e => setAnalysisInput(e.target.value)} placeholder="粘贴爆款内容原文..." className="rounded-2xl border-zinc-200 bg-zinc-50 p-4 focus:bg-white transition-all text-lg" />
+                    </VoiceField>
                     {analysisError && <Alert type="error" showIcon message="这次没有拆解成功" description={analysisError} />}
                     <Button type="primary" block size="large" onClick={handleAnalyze} loading={isAnalyzing} icon={<ThunderboltFilled aria-hidden />} className="h-16 rounded-2xl bg-indigo-600 font-bold text-lg">一键拆解</Button>
                     <AnimatePresence>
@@ -135,29 +138,35 @@ export default function HotPage() {
                                 <Title level={4}><RiseOutlined aria-hidden /> 拆解结果</Title>
                                 <p className="text-xs text-zinc-500">{AI_TEXT_LABEL}以下分析由 AI 根据你粘贴的内容生成，仅供参考，不代表平台的推荐规则。</p>
                                 <Divider />
-                                {flattenViralAnalysis(analysisResult).length === 0 ? (
-                                    <p className="text-sm text-zinc-500">模型没有返回可显示的分析，请换一段内容再试。</p>
-                                ) : (
-                                    <div className="space-y-4 text-sm leading-7 text-zinc-700">
-                                        {flattenViralAnalysis(analysisResult).map((section, i) => (
-                                            <div key={i}>
-                                                {section.heading && <div className="font-bold text-zinc-900">{section.heading}</div>}
-                                                {section.lines.map((line, j) => <p key={j} className="m-0 whitespace-pre-wrap break-words">{line}</p>)}
+                                {(() => {
+                                    const analysisCopyText = [AI_TEXT_LABEL, ...flattenViralAnalysis(analysisResult).flatMap((sec) => [sec.heading, ...sec.lines].filter(Boolean))].join('\n');
+                                    return (
+                                        <VoiceReadout speak={<SpeakButton text={analysisCopyText} />}>
+                                            {flattenViralAnalysis(analysisResult).length === 0 ? (
+                                                <p className="text-sm text-zinc-500">模型没有返回可显示的分析，请换一段内容再试。</p>
+                                            ) : (
+                                                <div className="space-y-4 text-sm leading-7 text-zinc-700">
+                                                    {flattenViralAnalysis(analysisResult).map((section, i) => (
+                                                        <div key={i}>
+                                                            {section.heading && <div className="font-bold text-zinc-900">{section.heading}</div>}
+                                                            {section.lines.map((line, j) => <p key={j} className="m-0 whitespace-pre-wrap break-words">{line}</p>)}
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            )}
+                                            <div className="mt-6 flex gap-4">
+                                                <Button
+                                                    onClick={() => {
+                                                        navigator.clipboard.writeText(analysisCopyText).then(() => message.success('拆解结果已复制（含「AI 生成」标识）')).catch(() => message.error('复制失败，请手动选择文字复制'));
+                                                    }}
+                                                    className="h-12 px-8 rounded-xl"
+                                                >
+                                                    复制拆解结果
+                                                </Button>
                                             </div>
-                                        ))}
-                                    </div>
-                                )}
-                                <div className="mt-6 flex gap-4">
-                                    <Button
-                                        onClick={() => {
-                                            const text = [AI_TEXT_LABEL, ...flattenViralAnalysis(analysisResult).flatMap((sec) => [sec.heading, ...sec.lines].filter(Boolean))].join('\n');
-                                            navigator.clipboard.writeText(text).then(() => message.success('拆解结果已复制（含「AI 生成」标识）')).catch(() => message.error('复制失败，请手动选择文字复制'));
-                                        }}
-                                        className="h-12 px-8 rounded-xl"
-                                    >
-                                        复制拆解结果
-                                    </Button>
-                                </div>
+                                        </VoiceReadout>
+                                    );
+                                })()}
                             </motion.div>
                         )}
                     </AnimatePresence>
