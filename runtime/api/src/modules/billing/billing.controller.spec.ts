@@ -67,8 +67,27 @@ describe('BillingController', () => {
       user: { tenantId: 'tenant-1' },
     });
     expect(result.plan).toBe('free');
+    expect(result.expired).toBe(true);
     expect(result.monthlyQuota).toBe(50000);
     expect(result.limits.max_ai_tokens_monthly).toBe(50000);
+    expect(result.limits.max_accounts).toBe(1);
+  });
+
+  it('keeps the purchased account cap out of the expired subscription display', async () => {
+    const prisma = {
+      tenant: { findUnique: jest.fn().mockResolvedValue({
+        plan: 'pro',
+        plan_expires_at: new Date('2026-11-01T00:00:00Z'),
+        limits: { max_accounts: 10, max_ai_tokens_monthly: 2500000 },
+      }) },
+      usageMeter: { findFirst: jest.fn().mockResolvedValue(null) },
+    };
+    const result = await new BillingController(prisma as any, {} as any).getSubscription({
+      user: { tenantId: 'tenant-1' },
+    });
+    expect(result.expired).toBe(true);
+    expect(result.plan).toBe('free');
+    expect(result.limits.max_accounts).toBe(1);
   });
 
   it('marks Business quota unconfirmed without changing the free fallback', async () => {

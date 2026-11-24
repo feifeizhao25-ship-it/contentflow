@@ -128,8 +128,6 @@ const read = (p) => (fs.existsSync(p) ? fs.readFileSync(p, 'utf8') : null);
 // 修好一条要删掉一条（多余的条目同样会让检查失败，避免表越攒越长）。
 
 const KNOWN_UNIMPLEMENTED = {
-  'GET /contents/:id/assets': '内容素材清单：后端未实现，页面按无素材处理',
-  'POST /contents/:id/assets': '内容素材清单：后端未实现，工作室保存时忽略失败',
 };
 
 // 只有真正挂到 AppModule 上的控制器才算「后端有这个路由」。

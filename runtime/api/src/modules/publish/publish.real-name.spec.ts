@@ -21,7 +21,7 @@ describe('发布前实名认证开关', () => {
     publishTask: { create: jest.fn() },
   };
   const queue = { addPublishTask: jest.fn() };
-  const tenant = { checkQuota: jest.fn(), incrementUsage: jest.fn() };
+  const tenant = { checkQuota: jest.fn(), incrementUsage: jest.fn(), accountAllowance: async () => ({ limit: -1, used: 0, allowedIds: null }) };
   const registry = { get: jest.fn() };
   const input = { contentId: 'c1', platformAccountIds: ['a1'], publishType: 'immediate' as const };
 

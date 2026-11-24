@@ -48,6 +48,64 @@ const UPDATABLE_FIELDS = [
   "category",
 ] as const;
 
+/** 素材类型。创作页目前只存 script（正文脚本）和 cover（封面）；image / video 进配图列表。 */
+export const CONTENT_ASSET_TYPES = ["script", "cover", "image", "video"] as const;
+export type ContentAssetType = (typeof CONTENT_ASSET_TYPES)[number];
+export interface ContentAsset {
+  type: ContentAssetType;
+  url: string;
+  label: string;
+  meta?: { content?: string };
+}
+const ASSET_LABELS: Record<ContentAssetType, string> = {
+  script: "正文脚本",
+  cover: "封面图",
+  image: "配图",
+  video: "视频",
+};
+const MAX_ASSET_URL = 500; // 与 cover_url 的长度上限一致
+const MAX_SCRIPT = 200_000; // 与 body 的长度上限一致
+
+function isHttpUrl(value: string): boolean {
+  return /^https?:\/\//i.test(value) || value.startsWith("/");
+}
+
+/**
+ * 校验并规整创作页传来的素材。不合法时抛 400，说明是第几项、哪里不对。
+ * 素材不单独建表：脚本就是正文 body，封面就是 cover_url，配图 / 视频进 media_urls，
+ * 这样内容库、审核、发布看到的都是同一份数据。
+ */
+export function normalizeAssets(raw: unknown[]): ContentAsset[] {
+  return raw.map((item, index) => {
+    const n = index + 1;
+    if (!item || typeof item !== "object" || Array.isArray(item)) {
+      throw new BadRequestException(`第 ${n} 个素材格式不对`);
+    }
+    const { type, url, meta } = item as { type?: unknown; url?: unknown; meta?: unknown };
+    if (typeof type !== "string" || !(CONTENT_ASSET_TYPES as readonly string[]).includes(type)) {
+      throw new BadRequestException(`第 ${n} 个素材类型不支持，只能是 ${CONTENT_ASSET_TYPES.join(" / ")}`);
+    }
+    const kind = type as ContentAssetType;
+    const link = typeof url === "string" ? url.trim() : "";
+    if (kind === "script") {
+      const content = meta && typeof meta === "object" ? (meta as { content?: unknown }).content : undefined;
+      if (typeof content !== "string") throw new BadRequestException(`第 ${n} 个素材（正文脚本）缺少内容`);
+      if (content.length > MAX_SCRIPT) throw new BadRequestException(`第 ${n} 个素材（正文脚本）太长`);
+      return { type: kind, url: "", label: ASSET_LABELS[kind], meta: { content } };
+    }
+    if (!link || link.length > MAX_ASSET_URL || !isHttpUrl(link)) {
+      throw new BadRequestException(`第 ${n} 个素材（${ASSET_LABELS[kind]}）的地址不对`);
+    }
+    return { type: kind, url: link, label: ASSET_LABELS[kind] };
+  });
+}
+
+const VIDEO_URL = /\.(mp4|mov|webm|m3u8)(\?|#|$)/i;
+
+function mediaList(value: unknown): string[] {
+  return Array.isArray(value) ? value.filter((v): v is string => typeof v === "string" && v.trim() !== "") : [];
+}
+
 @Injectable()
 export class ContentService {
   constructor(private readonly prisma: PrismaService) {}
@@ -108,6 +166,52 @@ export class ContentService {
     }
 
     return content;
+  }
+
+  /** 内容的素材视图：正文脚本、封面、配图（来自 body、cover_url、media_urls）。 */
+  async listAssets(id: string, tenantId: string): Promise<{ assets: ContentAsset[] }> {
+    const content: any = await this.findById(id, tenantId);
+    if (content.status === "deleted") throw new NotFoundException("内容不存在");
+    const assets: ContentAsset[] = [];
+    if (typeof content.body === "string" && content.body.trim()) {
+      assets.push({ type: "script", url: "", label: ASSET_LABELS.script, meta: { content: content.body } });
+    }
+    if (typeof content.cover_url === "string" && content.cover_url.trim()) {
+      assets.push({ type: "cover", url: content.cover_url, label: ASSET_LABELS.cover });
+    }
+    for (const url of mediaList(content.media_urls)) {
+      if (url === content.cover_url) continue;
+      const type: ContentAssetType = VIDEO_URL.test(url) ? "video" : "image";
+      assets.push({ type, url, label: ASSET_LABELS[type] });
+    }
+    return { assets };
+  }
+
+  /**
+   * 保存素材：脚本写进正文，封面写进 cover_url，配图 / 视频追加到 media_urls（去重）。
+   * 走 update()，所以「只有草稿或已驳回能改」「AI 内容保留 AI 生成标识」「只写白名单字段」照样生效。
+   */
+  async appendAssets(id: string, tenantId: string, userId: string, raw: unknown[]) {
+    const assets = normalizeAssets(Array.isArray(raw) ? raw : []);
+    const content: any = await this.findById(id, tenantId);
+    if (content.status === "deleted") throw new NotFoundException("内容不存在");
+    const patch: Record<string, unknown> = {};
+    const media = mediaList(content.media_urls);
+    for (const asset of assets) {
+      if (asset.type === "script") {
+        if (asset.meta?.content !== content.body) patch.body = asset.meta?.content;
+      } else if (asset.type === "cover") {
+        if (asset.url !== content.cover_url) patch.cover_url = asset.url;
+        if (!media.includes(asset.url)) media.push(asset.url);
+      } else if (!media.includes(asset.url)) {
+        media.push(asset.url);
+      }
+    }
+    if (media.length !== mediaList(content.media_urls).length) patch.media_urls = media;
+    if (Object.keys(patch).length > 0) {
+      await this.update(id, tenantId, userId, patch);
+    }
+    return this.listAssets(id, tenantId);
   }
 
   async create(

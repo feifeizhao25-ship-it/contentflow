@@ -175,7 +175,38 @@ const PLAN_NAMES: Record<string, string> = { free: '免费版', starter: '入门
 export interface PlanView {
   name: string;
   renewText: string;
-  usage: Array<{ title: string; current: number; limit: number; unit: string }>;
+  /** 套餐状态：未到期是「使用中」，到期回落后是「已到期」。 */
+  statusText: string;
+  /** 到期后说明生效的平台账号上限；未到期为空，不改原有文案。 */
+  accountNotice: string;
+  usage: Array<{ title: string; current: number; limit: number; unit: string; text?: string }>;
+}
+
+export interface BoundAccountView {
+  label: string;
+  value: string;
+  notice: string;
+}
+
+/**
+ * 账号管理页的「已绑定 N / 上限」。
+ * 套餐到期后上限是当前生效值（免费版 1 个），不能再显示购买时的 10 个。
+ */
+export function describeBoundAccounts(count: number, limit: number | null, expired: boolean): BoundAccountView {
+  if (limit == null || !Number.isFinite(limit)) {
+    return {
+      label: expired ? '已到期' : '已绑定',
+      value: '—',
+      notice: expired ? '套餐已到期，正在读取生效的平台账号上限。' : '',
+    };
+  }
+  if (limit === -1) return { label: expired ? '已到期' : '已绑定', value: `${count} / 不限`, notice: '' };
+  if (!expired) return { label: '已绑定', value: `${count} / ${limit}`, notice: '' };
+  return {
+    label: '已到期',
+    value: `${count}/${limit}`,
+    notice: `套餐已到期，平台账号上限已按免费版生效。当前已绑定 ${count} 个，生效上限 ${limit} 个。超出的账号不能再发布，请先解绑不用的账号，或重新开通。`,
+  };
 }
 
 /**
@@ -187,9 +218,16 @@ export function describePlan(tenant: any, subscription?: any): PlanView {
   const plan = String(tenant?.plan ?? 'free');
   const quotaUnconfirmed = subscription?.quotaStatus === 'unconfirmed' || subscription?.aiTokens?.quotaStatus === 'unconfirmed';
   const expires = tenant?.plan_expires_at ? dayjs(tenant.plan_expires_at) : null;
-  const renewText = (plan === 'free' || !expires || !expires.isValid()
-    ? '免费版长期有效，不会产生账单'
-    : `当前套餐有效期至 ${expires.format('YYYY年M月D日')}`)
+  const expired = subscription?.expired === true
+    || tenant?.plan_expired === true
+    || (!!expires && expires.isValid() && expires.valueOf() <= Date.now());
+  const renewText = (expired
+    ? (expires && expires.isValid()
+      ? `套餐已于 ${expires.format('YYYY年M月D日')} 到期，平台账号上限已按免费版生效。`
+      : '套餐已到期，平台账号上限已按免费版生效。')
+    : (plan === 'free' || !expires || !expires.isValid()
+      ? '免费版长期有效，不会产生账单'
+      : `当前套餐有效期至 ${expires.format('YYYY年M月D日')}`))
     + (quotaUnconfirmed ? '。商务版的 AI 令牌额度与平台账号上限待确认，页面不展示未确认数字。' : '');
   const limits = tenant?.limits && typeof tenant.limits === 'object' ? tenant.limits : null;
   const used = tenant?.usage_stats && typeof tenant.usage_stats === 'object' ? tenant.usage_stats : null;
@@ -199,14 +237,25 @@ export function describePlan(tenant: any, subscription?: any): PlanView {
     if (Number.isFinite(c) && Number.isFinite(l) && l > 0) usage.push({ title, current: Math.round((c / scale) * 100) / 100, limit: l, unit });
   };
   if (limits && used) {
-    if (!quotaUnconfirmed) add('账号绑定', used.accounts_count, limits.max_accounts, '个');
+    if (!quotaUnconfirmed) {
+      const accountLimit = expired
+        ? (Number.isFinite(Number(subscription?.limits?.max_accounts)) ? subscription.limits.max_accounts : limits.max_accounts)
+        : limits.max_accounts;
+      add('账号绑定', used.accounts_count, accountLimit, '个');
+      const account = usage.find((item) => item.title === '账号绑定');
+      if (expired && account) account.text = `已到期 ${account.current}/${account.limit}`;
+    }
     add('本月发布', used.publishes_this_month, limits.max_publishes_monthly, '次');
     add('存储空间', used.storage_used_mb, limits.max_storage_gb, 'GB', 1024);
   }
   if (subscription && typeof subscription === 'object' && !quotaUnconfirmed) {
     add('本月 AI 令牌', subscription.usedQuota, subscription.monthlyQuota, '个');
   }
-  return { name: PLAN_NAMES[plan] ?? plan, renewText, usage };
+  const account = usage.find((item) => item.title === '账号绑定');
+  const accountNotice = expired && account
+    ? `套餐已到期，平台账号上限已按免费版生效。当前已绑定 ${account.current} 个，生效上限 ${account.limit} 个。超出的账号不能再发布，请先解绑不用的账号，或重新开通。`
+    : '';
+  return { name: PLAN_NAMES[plan] ?? plan, renewText, statusText: expired ? '已到期' : '使用中', accountNotice, usage };
 }
 
 /** 不把空响应或不可显示的地址当作封面生成成功。 */

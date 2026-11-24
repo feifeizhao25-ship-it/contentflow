@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException, BadRequestException, ForbiddenException, HttpException, InternalServerErrorException, Logger, Optional } from '@nestjs/common';
 import { PrismaService } from '../../database/prisma.service';
 import { PublishQueueService } from '../../queue/publish-queue.service';
-import { TenantService } from '../tenant/tenant.service';
+import { TenantService, accountLimitMessage } from '../tenant/tenant.service';
 import { AdapterRegistry } from './adapters/adapter.registry';
 import { ConfigService } from '@nestjs/config';
 import { evaluateDomesticContent } from '../../common/domestic-content-compliance';
@@ -89,6 +89,13 @@ export class PublishService {
     // 一次发到 N 个账号计 N 条；按北京时间自然月计数（见 TenantService.currentUsageStats）。
     const canPublish = await this.tenantService.checkQuota(tenantId, 'publish', accountIds.length);
     if (!canPublish) throw quotaExceededException(PUBLISH_MONTHLY_QUOTA_MESSAGE);
+
+    // 平台账号数按套餐限制（主人 2026-11-23 定）：套餐到期或降档后，超出上限的账号不能再新建发布任务。
+    const allowance = await this.tenantService.accountAllowance(tenantId);
+    if (allowance.allowedIds) {
+      const over = accountIds.filter((id) => !allowance.allowedIds!.has(id));
+      if (over.length) throw new ForbiddenException(`${accountLimitMessage(allowance.limit, allowance.used)}超出名额的账号这次不能发布。`);
+    }
 
     // 在写入任何任务前一次性验证所有账号与真实适配器能力，避免批量部分成功。
     const accounts = await Promise.all(

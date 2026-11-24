@@ -363,10 +363,11 @@ export default function SettingsPage() {
                                     <h2 style={{ margin: 0 }}>{planView?.name ?? (tenant?.plan === 'pro' ? '个人版' : '免费版')}</h2>
                                     <p style={{ color: '#6b7280' }}>{planView ? planView.renewText : '正在读取套餐信息…'}</p>
                                 </div>
-                                <Tag color="blue" style={{ padding: '4px 12px', fontSize: 14 }}>使用中</Tag>
+                                <Tag color={planView?.statusText === '已到期' ? 'orange' : 'blue'} style={{ padding: '4px 12px', fontSize: 14 }}>{planView?.statusText ?? '使用中'}</Tag>
                             </div>
                         </Card>
                         <Card title="资源使用情况">
+                            {planView?.accountNotice ? <Alert type="warning" showIcon style={{ marginBottom: 12 }} message={planView.accountNotice} /> : null}
                             {planView && planView.usage.length > 0 ? (
                                 <List
                                     itemLayout="horizontal"
@@ -376,7 +377,7 @@ export default function SettingsPage() {
                                             <div style={{ width: '100%' }}>
                                                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
                                                     <span>{item.title}</span>
-                                                    <span>{item.current} / {item.limit} {item.unit}</span>
+                                                    <span>{item.text ?? `${item.current} / ${item.limit} ${item.unit}`}</span>
                                                 </div>
                                                 <Progress percent={Math.min(100, (item.current / item.limit) * 100)} showInfo={false} strokeColor="#6366f1" />
                                             </div>

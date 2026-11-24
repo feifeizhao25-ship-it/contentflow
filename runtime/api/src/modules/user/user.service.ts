@@ -1,5 +1,6 @@
 import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
-import { currentUsageStats } from '../tenant/tenant.service';
+import { effectiveEntitlements } from '../billing/effective-limits';
+import { COUNTED_ACCOUNT_WHERE, currentUsageStats } from '../tenant/tenant.service';
 import { PrismaService } from '../../database/prisma.service';
 import { publicEmail } from '../auth/phone-account';
 
@@ -68,8 +69,22 @@ export class UserService {
     // 「本月发布」按北京时间自然月展示：跨月后显示 0，而不是上个月（甚至注册以来）的累计。
     if (user?.tenant) {
       const usage = currentUsageStats(user.tenant.usage_stats);
+      // 账号绑定数以库里未删除的平台账号为准（usage_stats.accounts_count 从未累加，恒为 0）
+      usage.accounts_count = await this.prisma.platformAccount.count({ where: { tenant_id: user.tenant.id, ...COUNTED_ACCOUNT_WHERE } });
       delete usage.ai_calls_this_month; // 从未被累加的旧字段；AI 用量以 /billing/subscription 为准
-      return { ...user, tenant: { ...user.tenant, usage_stats: usage } };
+      // 到期后展示生效上限。库里仍留着购买时的 max_accounts（例如个人版 10），
+      // 不改这一行的话，设置页会继续显示「3/10」。价格和未到期套餐的限额不动。
+      const entitlements = effectiveEntitlements(user.tenant);
+      const storedLimits = user.tenant.limits && typeof user.tenant.limits === 'object' && !Array.isArray(user.tenant.limits)
+        ? user.tenant.limits as Record<string, unknown>
+        : null;
+      const limits = entitlements.expired
+        ? { ...(storedLimits ?? {}), max_accounts: entitlements.limits.max_accounts }
+        : user.tenant.limits;
+      return {
+        ...user,
+        tenant: { ...user.tenant, limits, usage_stats: usage, plan_expired: entitlements.expired },
+      };
     }
     return user;
   }
