@@ -7,7 +7,7 @@ const LAST_UPDATED = '2026-10-31';
 
 export default function Page() {
   return (
-    <main className="shell">
+    <main className="shell legal-copy">
       <div className="eyebrow">Legal</div>
       <h1>Terms of Service</h1>
       <p>Last updated: {LAST_UPDATED}</p>
