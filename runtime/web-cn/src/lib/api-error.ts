@@ -8,7 +8,7 @@
  * 统一从这里取：先认含中文的文字；没有中文时按错误码对照表取中文；仍没有就由调用方用兜底。
  */
 
-import { ERROR_CATALOG, fallbackMessage } from '../../../api/src/common/error-catalog';
+import { ERROR_CATALOG, fallbackMessage } from './error-catalog';
 
 const CJK = /[㐀-鿿]/;
 

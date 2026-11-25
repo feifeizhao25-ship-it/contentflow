@@ -1,7 +1,14 @@
-import { ERROR_CATALOG } from '../../../../../api/src/common/error-catalog';
+import { ERROR_CATALOG as apiCatalog } from '../../../../../api/src/common/error-catalog';
+import { ERROR_CATALOG } from '@/lib/error-catalog';
 import { describeGenerationFailure } from './generation-error';
 
 describe('create page error copy', () => {
+  it('uses the same English sentences as the API catalog', () => {
+    for (const key of Object.keys(apiCatalog) as Array<keyof typeof apiCatalog>) {
+      expect(ERROR_CATALOG[key].en).toBe(apiCatalog[key].en);
+    }
+  });
+
   it('does not use the outage sentence for a compliance block or a refused request', () => {
     const compliance = describeGenerationFailure(400, { error: { code: 'CONTENT_COMPLIANCE_BLOCKED', message: 'Blocked by the compliance check.', stage: 'brief' } });
     const refused = describeGenerationFailure(400, { error: { code: 'REQUEST_NOT_ALLOWED', message: '不能处理这个请求' } });
