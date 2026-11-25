@@ -128,7 +128,7 @@ function PricingContent() {
         id: plan.id,
         name: plan.name,
         price: isYearly ? plan.priceYearlyCny : plan.priceMonthlyCny,
-        description: plan.custom ? '按团队规模与服务范围报价' : '价格与权益由服务端统一管理',
+        description: plan.custom ? '按团队规模与服务范围报价' : plan.id === 'team' ? '给小团队一起改稿、一起发' : plan.id === 'free' ? '先试用，额度用完再看要不要升级' : '给一个人日常发内容',
         features: (Array.isArray(plan.features) ? plan.features.map(String) : []) as string[],
         comingSoon: comingSoonFor(String(plan.id)),
         icon: plan.id === 'enterprise' ? <CrownFilled aria-hidden /> : plan.id === 'team' ? <SafetyCertificateOutlined aria-hidden /> : plan.id === 'pro' ? <ThunderboltFilled aria-hidden /> : <RocketFilled aria-hidden />,
