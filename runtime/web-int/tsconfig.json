@@ -25,6 +25,9 @@
     "paths": {
       "@/*": [
         "./src/*"
+      ],
+      "dev-login-entry": [
+        "./src/dev-login/absent.ts"
       ]
     }
   },
@@ -32,6 +35,7 @@
     "next-env.d.ts",
     "src/app/**/*.ts",
     "src/app/**/*.tsx",
+    "src/dev-login/**/*.ts",
     "src/middleware.ts",
     ".next/types/**/*.ts",
     ".next/dev/types/**/*.ts"
