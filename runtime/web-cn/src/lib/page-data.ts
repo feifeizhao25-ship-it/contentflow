@@ -175,6 +175,8 @@ const PLAN_NAMES: Record<string, string> = { free: '免费版', starter: '入门
 export interface PlanView {
   name: string;
   renewText: string;
+  /** 到期用户去续费；未到期去看各档权益。 */
+  renewAction: string;
   /** 套餐状态：未到期是「使用中」，到期回落后是「已到期」。 */
   statusText: string;
   /** 到期后说明生效的平台账号上限；未到期为空，不改原有文案。 */
@@ -214,22 +216,35 @@ export function describeBoundAccounts(count: number, limit: number | null, expir
  * `subscription` 是 GET /billing/subscription 的结果：AI 令牌按月记在 usage_meters，
  * 原来这里读的 usage_stats.ai_calls_this_month 从来没人累加，永远显示「本月 AI 调用 0 次」。
  */
+function quotaCaps(tenantLimits: any, subscription: any): any {
+  const sub = subscription?.limits;
+  if (sub && typeof sub === 'object' && !Array.isArray(sub)) {
+    const hasCap = ['max_accounts', 'max_publishes_monthly', 'max_storage_gb', 'max_ai_tokens_monthly', 'max_members']
+      .some((key) => Number.isFinite(Number(sub[key])));
+    // 订阅接口已经是生效额度。有它时不再回退到用户信息里可能过期的购买快照。
+    if (hasCap) return sub;
+  }
+  return tenantLimits;
+}
+
 export function describePlan(tenant: any, subscription?: any): PlanView {
-  const plan = String(tenant?.plan ?? 'free');
+  const plan = String(subscription?.plan ?? tenant?.plan ?? 'free');
+  const purchased = String(subscription?.purchasedPlan ?? tenant?.purchased_plan ?? plan);
   const quotaUnconfirmed = subscription?.quotaStatus === 'unconfirmed' || subscription?.aiTokens?.quotaStatus === 'unconfirmed';
   const expires = tenant?.plan_expires_at ? dayjs(tenant.plan_expires_at) : null;
   const expired = subscription?.expired === true
     || tenant?.plan_expired === true
     || (!!expires && expires.isValid() && expires.valueOf() <= Date.now());
+  const expiredLead = expires && expires.isValid()
+    ? `套餐已于 ${expires.format('YYYY年M月D日')} 到期。到期当时起，账号数、每月发布、AI 令牌和存储都按免费版额度。`
+    : '套餐已到期。到期当时起，账号数、每月发布、AI 令牌和存储都按免费版额度。';
   const renewText = (expired
-    ? (expires && expires.isValid()
-      ? `套餐已于 ${expires.format('YYYY年M月D日')} 到期，平台账号上限已按免费版生效。`
-      : '套餐已到期，平台账号上限已按免费版生效。')
+    ? expiredLead
     : (plan === 'free' || !expires || !expires.isValid()
       ? '免费版长期有效，不会产生账单'
       : `当前套餐有效期至 ${expires.format('YYYY年M月D日')}`))
     + (quotaUnconfirmed ? '。商务版的 AI 令牌额度与平台账号上限待确认，页面不展示未确认数字。' : '');
-  const limits = tenant?.limits && typeof tenant.limits === 'object' ? tenant.limits : null;
+  const limits = quotaCaps(tenant?.limits && typeof tenant.limits === 'object' ? tenant.limits : null, subscription);
   const used = tenant?.usage_stats && typeof tenant.usage_stats === 'object' ? tenant.usage_stats : null;
   const usage: PlanView['usage'] = [];
   const add = (title: string, current: unknown, limit: unknown, unit: string, scale = 1) => {
@@ -238,10 +253,7 @@ export function describePlan(tenant: any, subscription?: any): PlanView {
   };
   if (limits && used) {
     if (!quotaUnconfirmed) {
-      const accountLimit = expired
-        ? (Number.isFinite(Number(subscription?.limits?.max_accounts)) ? subscription.limits.max_accounts : limits.max_accounts)
-        : limits.max_accounts;
-      add('账号绑定', used.accounts_count, accountLimit, '个');
+      add('账号绑定', used.accounts_count, limits.max_accounts, '个');
       const account = usage.find((item) => item.title === '账号绑定');
       if (expired && account) account.text = `已到期 ${account.current}/${account.limit}`;
     }
@@ -255,7 +267,15 @@ export function describePlan(tenant: any, subscription?: any): PlanView {
   const accountNotice = expired && account
     ? `套餐已到期，平台账号上限已按免费版生效。当前已绑定 ${account.current} 个，生效上限 ${account.limit} 个。超出的账号不能再发布，请先解绑不用的账号，或重新开通。`
     : '';
-  return { name: PLAN_NAMES[plan] ?? plan, renewText, statusText: expired ? '已到期' : '使用中', accountNotice, usage };
+  const displayPlan = expired && purchased !== plan && PLAN_NAMES[purchased] ? purchased : plan;
+  return {
+    name: PLAN_NAMES[displayPlan] ?? displayPlan,
+    renewText,
+    renewAction: expired ? '续费 / 重新开通' : '升级版本',
+    statusText: expired ? '已到期' : '使用中',
+    accountNotice,
+    usage,
+  };
 }
 
 /** 不把空响应或不可显示的地址当作封面生成成功。 */

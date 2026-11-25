@@ -189,7 +189,7 @@ export class BillingController {
 
     // 套餐已过期则按 free 处理，避免过期租户继续享有付费权限
     const expiresAt = (tenant as any)?.plan_expires_at ?? null;
-    const { plan, expired, limits } = effectiveEntitlements(tenant);
+    const { plan, purchasedPlan, expired, limits } = effectiveEntitlements(tenant);
     // 与 AI 接口的额度闸同一算法（UsageService.checkQuota → aiTokenAllowance）
     const aiTokens = aiTokenAllowance(limits, meter as any);
     // 国内商务版的令牌/平台账号额度尚未经负责人确认。内部仍保留有限上限，避免变成不限；
@@ -200,6 +200,7 @@ export class BillingController {
 
     return {
       plan,
+      purchasedPlan,
       quotaStatus,
       monthlyQuota: aiTokens.limit,
       usedQuota: aiTokens.used,

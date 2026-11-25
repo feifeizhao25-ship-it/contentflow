@@ -422,6 +422,7 @@ function PricingContent() {
                     ))}
 
                 </div>
+                <p className="mb-4 text-xs text-zinc-700">套餐到期的当时起，账号数、每月发布条数、AI 令牌和存储按免费版额度。设置页和订阅接口使用同一组数字，不会一边显示付费额度、一边按免费额度拦截。</p>
                 <p className="mb-20 text-xs text-zinc-700">每张卡底部一行「路线图（即将上线）」列出尚未开通的卖点（如平台授权、团队审批、操作审计），开通前不影响当前价格。</p>
 
                 <Modal

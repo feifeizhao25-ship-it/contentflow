@@ -41,6 +41,8 @@ describe('international workspace records', () => {
     expect(teamRows([{ name: 'Ada', email: 'ada@example.com', role: 'owner' }]).rows[0][2]).toBe('owner');
     expect(voiceRows([{ name: 'Plain spoken', description: 'Short sentences.', is_system: false }]).rows[0][2]).toBe('Workspace voice');
     expect(accountRows([{ platform: 'linkedin', account_name: 'Ada', status: 'active', follower_count: 0 }]).rows[0][3]).toBe('0');
+    expect(accountRows([{ platform: 'youtube', account_name: 'Mia', status: 'active', within_plan: false, follower_count: 1 }]).rows[0][2]).toBe('Paused – over plan limit');
+    expect(accountRows([{ platform: 'youtube', account_name: 'Mia', status: 'active', within_plan: true, follower_count: 1 }]).rows[0][2]).toBe('active');
   });
 
   it('leaves a missing analytics count as not returned instead of zero', () => {

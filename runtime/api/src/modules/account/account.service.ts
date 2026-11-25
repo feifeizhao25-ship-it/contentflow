@@ -23,10 +23,17 @@ export class AccountService {
     if (options?.platform) where.platform = options.platform;
     if (options?.status) where.status = options.status;
 
-    return this.prisma.platformAccount.findMany({
+    const rows = await this.prisma.platformAccount.findMany({
       where,
       orderBy: { created_at: 'desc' },
     });
+    // 到期或降档后，超出当前生效名额的账号仍留在列表里，但标成不能再发布。
+    const allowance = await this.tenantService.accountAllowance(tenantId);
+    const allowed = allowance.allowedIds;
+    return rows.map((row: { id: string }) => ({
+      ...row,
+      within_plan: allowed == null || allowed.has(row.id),
+    }));
   }
 
   async findById(id: string, tenantId: string) {

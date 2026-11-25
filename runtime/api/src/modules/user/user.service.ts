@@ -74,16 +74,19 @@ export class UserService {
       delete usage.ai_calls_this_month; // 从未被累加的旧字段；AI 用量以 /billing/subscription 为准
       // 到期后展示生效上限。库里仍留着购买时的 max_accounts（例如个人版 10），
       // 不改这一行的话，设置页会继续显示「3/10」。价格和未到期套餐的限额不动。
+      // 档位、五项上限与 /billing/subscription 共用 effectiveEntitlements。
+      // 到期后不再只改账号数、却把发布条数和存储留在购买时的付费上限上。
       const entitlements = effectiveEntitlements(user.tenant);
-      const storedLimits = user.tenant.limits && typeof user.tenant.limits === 'object' && !Array.isArray(user.tenant.limits)
-        ? user.tenant.limits as Record<string, unknown>
-        : null;
-      const limits = entitlements.expired
-        ? { ...(storedLimits ?? {}), max_accounts: entitlements.limits.max_accounts }
-        : user.tenant.limits;
       return {
         ...user,
-        tenant: { ...user.tenant, limits, usage_stats: usage, plan_expired: entitlements.expired },
+        tenant: {
+          ...user.tenant,
+          plan: entitlements.plan,
+          purchased_plan: entitlements.purchasedPlan,
+          limits: entitlements.limits,
+          usage_stats: usage,
+          plan_expired: entitlements.expired,
+        },
       };
     }
     return user;

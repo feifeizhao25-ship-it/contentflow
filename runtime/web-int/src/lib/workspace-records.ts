@@ -109,7 +109,8 @@ export function accountRows(payload: unknown): Presented {
   const rows = listFrom(payload, ['accounts']).map((item) => {
     const row = record(item);
     const followers = typeof row.follower_count === 'number' && Number.isFinite(row.follower_count) ? String(row.follower_count) : 'Not stored';
-    return [text(row.platform, 'Unknown platform'), text(row.account_name, 'Unnamed account'), text(row.status, 'Unknown status'), followers];
+    const status = row.within_plan === false ? 'Paused – over plan limit' : text(row.status, 'Unknown status');
+    return [text(row.platform, 'Unknown platform'), text(row.account_name, 'Unnamed account'), status, followers];
   });
   return {
     headers: ['Platform id', 'Account', 'Status', 'Stored follower count'],
