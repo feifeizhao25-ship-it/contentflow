@@ -35,13 +35,7 @@ import { formatCnDate } from '@/lib/cn-display';
 const { Search } = Input;
 const { Title, Text, Paragraph } = Typography;
 
-const EXTERNAL_RESOURCES = [
-    { name: 'Unsplash', description: '全球知名的超高质量无版权图片库', url: 'https://unsplash.com', tags: ['图片', '高清', '摄影'], icon: <PictureOutlined aria-hidden /> },
-    { name: 'Pexels', description: '优秀的免费高清视频与图片共享社区', url: 'https://www.pexels.com', tags: ['图片', '视频', 'CC0'], icon: <VideoCameraOutlined aria-hidden /> },
-    { name: 'Pixabay', description: '不仅有图文视频，还有矢量图和音乐素材', url: 'https://pixabay.com', tags: ['文案', '音乐', '插画'], icon: <GlobalOutlined aria-hidden /> },
-    { name: 'Mixkit', description: '由 Envato 提供的免费视频片段、音乐和模版', url: 'https://mixkit.co', tags: ['视频模板', '音效', '转场'], icon: <VideoCameraOutlined aria-hidden /> },
-    { name: 'Awesome Stock Resources', description: 'GitHub 上最全的开源素材聚合项目', url: 'https://github.com/neutraltone/awesome-stock-resources', tags: ['GitHub', '聚合', '开源'], icon: <GithubOutlined aria-hidden /> },
-];
+const EXTERNAL_RESOURCES: Array<{ name: string; description: string; url: string; tags: string[]; icon: React.ReactNode }> = [];
 
 // 格式化文件大小
 function formatFileSize(bytes: number): string {
@@ -385,11 +379,12 @@ export default function MaterialsPage() {
                             className="border-zinc-200"
                         >
                             <Paragraph className="text-zinc-500 text-sm">
-                                除了 AI 生成，您还可以从以下知名的开源/免费资源站寻找灵感。
+                                素材推荐还没接入。这里不列出境外图库，也不代替你去那些网站找图。
                             </Paragraph>
                             <List
                                 itemLayout="horizontal"
                                 dataSource={EXTERNAL_RESOURCES}
+                                locale={{ emptyText: '没有可推荐的图库' }}
                                 renderItem={(item) => (
                                     <List.Item
                                         actions={[

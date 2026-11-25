@@ -17,7 +17,7 @@ export class MaterialsService {
     void tenantId;
     void data;
     throw new BadRequestException(
-      '素材上传通道尚未配置，请先接入对象存储签名上传后再试',
+      '暂时不能上传文件。可以先把图片或视频链接写进正文。',
     );
   }
 }

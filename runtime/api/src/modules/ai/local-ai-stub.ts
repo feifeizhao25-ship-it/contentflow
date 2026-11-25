@@ -37,14 +37,15 @@ export function localStubCompletion(prompt: string): LocalStubCompletion {
       usage: { prompt_tokens: 20, completion_tokens: 30, total_tokens: 50 },
     };
   }
+  const prompts = /[\u3400-\u9fff]/.test(prompt)
+    ? [`${topic}，室内，自然光`, `${topic}的近景，暖色`, `${topic}的俯拍构图`]
+    : ['a quiet reading desk', 'a paper notebook', 'warm afternoon light'];
   return {
     content: [
       `本地联调正文：${topic}`,
       '这段文字由本地文本桩生成，不是模型输出，也不会发到任何平台。',
       '---',
-      'a quiet reading desk',
-      'a paper notebook',
-      'warm afternoon light',
+      ...prompts,
     ].join('\n'),
     usage: { prompt_tokens: 40, completion_tokens: 80, total_tokens: 120 },
   };
