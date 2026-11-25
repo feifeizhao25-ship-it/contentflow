@@ -1,5 +1,5 @@
 /**
- * 分1 / 流2：同一个用户，/users/me 与 /billing/subscription 的档位、五项额度、是否到期必须一致。
+ * 分1 / 流2 / 共1：同一个用户，/users/me 与 /billing/subscription 的档位、五项额度、是否到期、到期时间必须一致。
  * 数据是测试桩，没有支付，也没有模型密钥。
  */
 import { BillingController } from './billing.controller';
@@ -20,6 +20,12 @@ function prismaFor(tenant: Record<string, unknown>) {
     platformAccount: { count: jest.fn(async () => 3) },
     usageMeter: { findFirst: jest.fn(async () => ({ ai_tokens: 10 })) },
   };
+}
+
+function sameExpiry(me: { plan_expires_at?: string | null }, sub: { renewalDate?: string | null }) {
+  const raw = me.plan_expires_at;
+  const expected = raw ? new Date(raw).toISOString() : null;
+  expect(sub.renewalDate).toBe(expected);
 }
 
 async function both(region: 'cn' | 'global', tenant: Record<string, unknown>) {
@@ -49,6 +55,7 @@ describe('同一用户的权益只来自 effectiveEntitlements', () => {
     expect(me.purchased_plan).toBe('pro');
     expect(me.plan_expired).toBe(sub.expired);
     expect(me.plan_expired).toBe(true);
+    sameExpiry(me, sub);
     for (const key of QUOTA_KEYS) {
       expect(me.limits[key]).toBe(sub.limits[key]);
     }
@@ -71,6 +78,7 @@ describe('同一用户的权益只来自 effectiveEntitlements', () => {
     expect(sub.plan).toBe('free');
     expect(me.plan_expired).toBe(true);
     expect(sub.expired).toBe(true);
+    sameExpiry(me, sub);
     for (const key of QUOTA_KEYS) expect(me.limits[key]).toBe(sub.limits[key]);
     expect(sub.limits.max_accounts).toBe(3);
     expect(sub.limits.max_publishes_monthly).toBe(10);
@@ -86,6 +94,8 @@ describe('同一用户的权益只来自 effectiveEntitlements', () => {
     expect(me.plan).toBe('pro');
     expect(sub.plan).toBe('pro');
     expect(me.plan_expired).toBe(false);
+    expect(sub.expired).toBe(false);
+    sameExpiry(me, sub);
     for (const key of QUOTA_KEYS) expect(me.limits[key]).toBe(sub.limits[key]);
     expect(sub.limits.max_publishes_monthly).toBe(200);
   });
