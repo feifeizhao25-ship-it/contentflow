@@ -21,9 +21,37 @@ function topicFromPrompt(prompt: string): string {
   return '本地联调选题';
 }
 
+function scriptStub(prompt: string, topic: string): LocalStubCompletion | null {
+  if (!/分镜|storyboard|"scenes"|Output JSON/i.test(prompt)) return null;
+  const english = !/[\u3400-\u9fff]/.test(prompt);
+  const englishTopic = /Topic:\s*([^\n]{1,80})/i.exec(prompt)?.[1]?.trim();
+  if (english && englishTopic) topic = englishTopic;
+  const body = english
+    ? {
+        title: `Example: ${topic}`,
+        scenes: [
+          { visual: `Example opening shot about ${topic}`, subtitle: 'Example storyboard, not a model', time: 6 },
+          { visual: 'Second example shot', subtitle: 'Local stub only. Nothing is published.', time: 6 },
+        ],
+      }
+    : {
+        title: `示例：${topic}`,
+        scenes: [
+          { visual: `${topic}的示例画面`, subtitle: '这是示例分镜，不是模型输出', time: 6 },
+          { visual: '第二个示例镜头', subtitle: '本地文本桩，不会发到平台', time: 6 },
+        ],
+      };
+  return {
+    content: JSON.stringify(body),
+    usage: { prompt_tokens: 20, completion_tokens: 40, total_tokens: 60 },
+  };
+}
+
 /** 按提示词形态返回标题解析器和正文展示都能直接用的文本。 */
 export function localStubCompletion(prompt: string): LocalStubCompletion {
   const topic = topicFromPrompt(prompt);
+  const script = scriptStub(prompt, topic);
+  if (script) return script;
   if (/吸引人的标题/.test(prompt)) {
     const short = topic.replace(/\s+/g, '').slice(0, 12) || '本地选题';
     return {
