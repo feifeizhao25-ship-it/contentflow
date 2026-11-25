@@ -45,7 +45,7 @@ export default async function PricingPage() {
     <main className="shell">
       <div className="eyebrow">Pricing</div>
       <h1>Plans that scale with your distribution.</h1>
-      <p>Every plan publishes through official platform APIs. Upgrade when you need more accounts or volume.</p>
+      <p>No plan publishes through an official platform API yet. Drafts, compliance checks, and manual export are available. Connecting a platform API is not turned on. Upgrade when you need more accounts or volume.</p>
       <div className="grid">
         {displayPlans.map((plan) => (
           <article className="card" key={plan.id}>
