@@ -139,8 +139,9 @@ await check('没有中文语音时给出中文说明', () => {
   assert.equal(hasChineseVoice([{ lang: 'zh-CN', name: 'Tingting' }]), true);
   assert.equal(hasChineseVoice([{ lang: 'zh_CN' }]), true);
   assert.equal(hasChineseVoice([{ lang: 'cmn-Hans-CN' }]), true);
-  assert.match(voiceLabelsZh.noChineseVoice, /中文语音/);
-  assert.match(read('src/components/voice/VoiceControls.tsx'), /noChineseVoice/);
+  assert.match(voiceLabelsZh.notOpened, /朗读服务未开通/);
+  assert.match(read('src/components/voice/VoiceControls.tsx'), /notOpened/);
+  assert.doesNotMatch(read('src/components/voice/VoiceControls.tsx'), /noChineseVoice/);
 });
 
 await check('麦克风在不支持或国内网络错误时停用并说明', () => {
