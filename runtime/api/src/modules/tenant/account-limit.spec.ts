@@ -106,7 +106,9 @@ describe('/users/me 的「账号绑定」用量', () => {
     expect(me.tenant.usage_stats.accounts_count).toBe(3);
   });
 
-  it('个人版到期后展示免费版生效上限，不再把已绑定 3 个显示成 3/10', async () => {
+  it('个人版到期后展示免费版生效上限，不再把已绑定 3 个显示成 3/10，发布和存储也降到免费档', async () => {
+    const previous = process.env.MARKET_REGION;
+    process.env.MARKET_REGION = 'cn';
     const prisma = {
       user: { findUnique: jest.fn(async () => ({
         id: 'u',
@@ -119,10 +121,16 @@ describe('/users/me 的「账号绑定」用量', () => {
       platformAccount: { count: jest.fn(async () => 3) },
     };
     const me: any = await new UserService(prisma as any).findById('u');
-    expect(me.tenant.plan).toBe('pro');
+    expect(me.tenant.plan).toBe('free');
+    expect(me.tenant.purchased_plan).toBe('pro');
     expect(me.tenant.plan_expired).toBe(true);
     expect(me.tenant.usage_stats.accounts_count).toBe(3);
     expect(me.tenant.limits.max_accounts).toBe(1);
-    expect(me.tenant.limits.max_publishes_monthly).toBe(200);
+    expect(me.tenant.limits.max_members).toBe(1);
+    expect(me.tenant.limits.max_publishes_monthly).toBe(5);
+    expect(me.tenant.limits.max_ai_tokens_monthly).toBe(50000);
+    expect(me.tenant.limits.max_storage_gb).toBe(1);
+    if (previous === undefined) delete process.env.MARKET_REGION;
+    else process.env.MARKET_REGION = previous;
   });
 });

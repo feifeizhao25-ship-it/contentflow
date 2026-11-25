@@ -357,7 +357,7 @@ export default function SettingsPage() {
             children: (
                 <div style={{ padding: '24px 0' }}>
                     <Space direction="vertical" style={{ width: '100%' }} size="large">
-                        <Card title="当前版本" extra={<Link href="/pricing"><Button type="primary">升级版本</Button></Link>}>
+                        <Card title="当前版本" extra={<Link href="/pricing"><Button type="primary">{planView?.renewAction ?? '升级版本'}</Button></Link>}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                 <div>
                                     <h2 style={{ margin: 0 }}>{planView?.name ?? (tenant?.plan === 'pro' ? '个人版' : '免费版')}</h2>

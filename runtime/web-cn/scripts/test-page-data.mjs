@@ -148,7 +148,28 @@ await check('套餐到期：账号用量显示已到期和生效上限，不再�
   assert.deepEqual([accounts.current, accounts.limit, accounts.text], [3, 1, '已到期 3/1']);
   assert.match(plan.accountNotice, /生效上限 1 个/);
   assert.match(plan.accountNotice, /已绑定 3 个/);
+  assert.equal(plan.renewAction, '续费 / 重新开通');
+  assert.match(plan.renewText, /AI 令牌和存储都按免费版额度/);
   assert.doesNotMatch(JSON.stringify(plan.usage.find((item) => item.title === '账号绑定')), /10/);
+  const aligned = describePlan({
+    plan: 'pro',
+    purchased_plan: 'pro',
+    plan_expires_at: '2026-11-01T00:00:00.000Z',
+    limits: { max_accounts: 10, max_publishes_monthly: 200, max_storage_gb: 5 },
+    usage_stats: { accounts_count: 3, publishes_this_month: 1, storage_used_mb: 0 },
+  }, {
+    plan: 'free',
+    purchasedPlan: 'pro',
+    expired: true,
+    limits: { max_accounts: 1, max_publishes_monthly: 5, max_storage_gb: 1, max_ai_tokens_monthly: 50000 },
+    monthlyQuota: 50000,
+    usedQuota: 0,
+  });
+  assert.equal(aligned.name, '个人版');
+  assert.deepEqual(aligned.usage.map((item) => [item.title, item.limit]), [
+    ['账号绑定', 1], ['本月发布', 5], ['存储空间', 1], ['本月 AI 令牌', 50000],
+  ]);
+  assert.doesNotMatch(JSON.stringify(aligned.usage), /200|5 GB|10/);
   const fromProfile = describePlan({
     plan: 'pro', plan_expired: true, plan_expires_at: '2026-11-01T00:00:00.000Z',
     limits: { max_accounts: 1, max_publishes_monthly: 200 },
