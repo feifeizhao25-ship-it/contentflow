@@ -33,11 +33,12 @@ export default function WorkspacePage() {
           <Link className="button secondary" href="/settings">Settings</Link>
         </div>
       </section>
-      <section><div className="eyebrow">Example workflow</div><h2>Your workspace adapts to what needs attention.</h2>
+      <section><div className="eyebrow">Illustrative example, not your data</div><h2>A workflow sketch, not a performance report.</h2>
+        <p>These cards show the kind of step a person might take. They are not measurements, and they do not change with who is signed in.</p>
         <div className="grid">
-          <article className="card"><h3>US launch review</h3><p>Three claims need source verification before LinkedIn approval.</p></article>
-          <article className="card"><h3>UK tone adaptation</h3><p>Replace sales-heavy phrasing with a proof-led editorial angle.</p></article>
-          <article className="card"><h3>APAC timing signal</h3><p>Short-form completion rate is strongest in the evening window.</p></article>
+          <article className="card"><h3>Check a claim</h3><p>Example only: a draft may need a source before someone approves it. This is not a live count.</p></article>
+          <article className="card"><h3>Adjust the tone</h3><p>Example only: sales-heavy phrasing can be rewritten before review. This is not your draft.</p></article>
+          <article className="card"><h3>No timing score</h3><p>This product does not estimate when a post will perform. There is no evening-window statistic here.</p></article>
         </div>
       </section>
     </main>
