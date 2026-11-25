@@ -125,11 +125,36 @@ export function engagementUnavailable(lang: OverviewLang) {
  * 统计窗口：整周（北京时间周一 0 点到下周一 0 点）、整月（1 日 0 点到下月 1 日 0 点）。
  * 发布任务按计划发布时间算，所以本周晚些时候排好的任务也计入「本周」。
  */
-export function overviewWindows(now: Date | number = Date.now()) {
+/** 国际版按 UTC 周一 0 点切周，不按北京时间。 */
+export function utcWeekStart(now: Date | number = Date.now()): Date {
+  const date = new Date(now);
+  const dayStart = Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate());
+  const weekday = new Date(dayStart).getUTCDay();
+  const sinceMonday = (weekday + 6) % 7;
+  return new Date(dayStart - sinceMonday * 86400 * 1000);
+}
+
+export function utcMonthStart(now: Date | number = Date.now()): Date {
+  const date = new Date(now);
+  return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), 1));
+}
+
+export function overviewWindows(now: Date | number = Date.now(), region: 'cn' | 'global' = 'cn') {
+  if (region === 'global') {
+    const weekStart = utcWeekStart(now);
+    const monthStart = utcMonthStart(now);
+    const nextMonth = new Date(Date.UTC(monthStart.getUTCFullYear(), monthStart.getUTCMonth() + 1, 1));
+    return {
+      timezone: 'UTC' as const,
+      week: { start: weekStart, end: new Date(weekStart.getTime() + 7 * 86400 * 1000) },
+      month: { start: monthStart, end: nextMonth },
+    };
+  }
   const weekStart = chinaWeekStart(now);
   const monthStart = chinaMonthStart(now);
   const nextMonth = chinaMonthStart(new Date(monthStart.getTime() + 32 * 86400 * 1000));
   return {
+    timezone: 'Asia/Shanghai' as const,
     week: { start: weekStart, end: new Date(weekStart.getTime() + 7 * 86400 * 1000) },
     month: { start: monthStart, end: nextMonth },
   };

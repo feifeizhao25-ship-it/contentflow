@@ -29,7 +29,7 @@ describe('international workspace records', () => {
     expect(library.notes).toEqual([]);
 
     const keys = developerRows([{ name: 'CI', key_prefix: 'sk_ff_abc', key_hash: 'secret-hash', secret: 'sk_ff_full', created_at: '2026-11-01T00:00:00Z' }]);
-    expect(keys.rows[0]).toEqual(['CI', 'sk_ff_abc', '2026-11-01T00:00:00.000Z']);
+    expect(keys.rows[0]).toEqual(['CI', 'sk_ff_abc', 'Nov 1, 2026, 12:00 AM UTC']);
     expect(JSON.stringify(keys)).not.toContain('secret-hash');
     expect(JSON.stringify(keys)).not.toContain('sk_ff_full');
 

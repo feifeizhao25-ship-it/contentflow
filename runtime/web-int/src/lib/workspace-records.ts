@@ -19,7 +19,8 @@ function text(value: unknown, fallback = ''): string {
 function when(value: unknown): string {
   if (typeof value !== 'string' || !value.trim()) return 'Not set';
   const time = Date.parse(value);
-  return Number.isFinite(time) ? new Date(time).toISOString() : value.trim();
+  if (!Number.isFinite(time)) return value.trim();
+  return new Intl.DateTimeFormat('en-US', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'UTC' }).format(time) + ' UTC';
 }
 
 export function listFrom(payload: unknown, keys: string[]): unknown[] {
