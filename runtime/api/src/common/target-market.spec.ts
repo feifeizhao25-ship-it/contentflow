@@ -2,7 +2,7 @@ import { ACCEPTED_TARGET_MARKETS, GENERIC_MARKET, TARGET_MARKETS, disclosureHint
 
 describe('target market option', () => {
   it('only offers markets that have a sourced hint (Singapore, not "SEA")', () => {
-    expect([...TARGET_MARKETS]).toEqual(['US', 'UK', 'IN', 'SG']);
+    expect([...TARGET_MARKETS]).toEqual(['US', 'UK', 'EU', 'AU', 'CA', 'IN', 'SG']);
     expect(resolveTargetMarket('sg')).toBe('SG');
     expect(resolveTargetMarket('SEA')).toBeNull();
     expect(resolveTargetMarket('')).toBeNull();
@@ -17,7 +17,7 @@ describe('target market option', () => {
     expect(h.sources.length).toBeGreaterThan(0);
     for (const s of h.sources) {
       expect(s.url).toMatch(/^https:\/\//);
-      expect(['2026-10-31', '2026-11-06']).toContain(s.retrievedAt);
+      expect(['2026-10-31', '2026-11-01', '2026-11-06', '2026-11-25']).toContain(s.retrievedAt);
     }
     expect(/[\u3400-\u9fff]/.test(JSON.stringify(h))).toBe(false);
   });
@@ -33,7 +33,7 @@ describe('target market option', () => {
 
   // 复测 B15：其他国家的创作者没有可选项。
   it('B15: "OTHER" is an accepted market for creators outside US/UK/IN/SG, in any letter case', () => {
-    expect([...ACCEPTED_TARGET_MARKETS]).toEqual(['US', 'UK', 'IN', 'SG', 'OTHER']);
+    expect([...ACCEPTED_TARGET_MARKETS]).toEqual(['US', 'UK', 'EU', 'AU', 'CA', 'IN', 'SG', 'OTHER']);
     expect(resolveTargetMarket('other')).toBe(GENERIC_MARKET);
     expect(resolveTargetMarket(' Other ')).toBe('OTHER');
     expect(resolveTargetMarket('DE')).toBeNull();

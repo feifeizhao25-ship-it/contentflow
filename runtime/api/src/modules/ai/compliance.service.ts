@@ -47,8 +47,24 @@ export class ComplianceService {
   }
 
   async checkContent(content: string, options?: ComplianceOptions) {
-    if (this.isGlobal()) return evaluateInternationalContent(content, options);
-    return evaluateDomesticContent(content, options);
+    if (!this.isGlobal()) return evaluateDomesticContent(content, options);
+    const output = evaluateInternationalContent(content, options);
+    const request = evaluateInternationalRequest(content);
+    if (!request.blocked) return output;
+    const hits = [...request.hits, ...output.hits.filter((hit) => !request.hits.some((item) => item.ruleId === hit.ruleId))];
+    const blocked = hits.some((hit) => hit.severity === 'block');
+    const review = hits.some((hit) => hit.severity === 'review');
+    return {
+      ...output,
+      passed: !blocked && !review,
+      level: blocked ? 'violation' as const : review ? 'risk' as const : 'clear' as const,
+      hits,
+      hitCounts: {
+        block: hits.filter((hit) => hit.severity === 'block').length,
+        review: hits.filter((hit) => hit.severity === 'review').length,
+        total: hits.length,
+      },
+    };
   }
 
   /**
@@ -65,7 +81,7 @@ export class ComplianceService {
         code: 'REQUEST_NOT_ALLOWED',
         message: 'We cannot help with this request. Fake reviews or testimonials, bought followers or likes, hiding the AI label, and synthetic endorsements by real people are unfair or deceptive practices. This is not legal advice.',
         ruleSetVersion: r.ruleSetVersion,
-        hits: r.hits.map((h) => ({ ruleId: h.ruleId, reason: h.reason, source: h.source, sourceUrl: h.sourceUrl })),
+        hits: r.hits.map((h) => ({ ruleId: h.ruleId, severity: h.severity, reason: h.reason, source: h.source, sourceUrl: h.sourceUrl })),
       });
     }
     const domestic = evaluateDomesticRequest(text);
@@ -94,7 +110,7 @@ export class ComplianceService {
   precheckGlobalBrief(...parts: Array<string | undefined | null>): { level: 'risk' | 'clear'; hits: NamedHit[] } {
     const text = parts.filter((p): p is string => typeof p === 'string' && p.length > 0).join('\n');
     const r = evaluateInternationalContent(text);
-    if (!r.passed) {
+    if (r.level === 'violation') {
       throw new BadRequestException({
         code: 'CONTENT_COMPLIANCE_BLOCKED',
         stage: 'brief',
@@ -110,7 +126,7 @@ export class ComplianceService {
 
   postcheckGlobalDraft(content: string, brief: { hits: NamedHit[] }) {
     const r = evaluateInternationalContent(content);
-    if (!r.passed) {
+    if (r.level === 'violation') {
       throw new BadRequestException({
         code: 'CONTENT_COMPLIANCE_BLOCKED',
         stage: 'draft',
@@ -143,7 +159,7 @@ export class ComplianceService {
   async scrubOutput(content: string, options?: ComplianceOptions): Promise<string> {
     if (this.isGlobal()) {
       const intl = evaluateInternationalContent(content, options);
-      if (!intl.passed) {
+      if (intl.level === 'violation') {
         throw new BadRequestException({
           code: 'CONTENT_COMPLIANCE_BLOCKED',
           message: `The generated content did not pass the pre-publish compliance check. Rules matched: ${describeBlockingHits(intl.hits, true)}. Please edit the topic or text and try again. This is not legal advice.`,

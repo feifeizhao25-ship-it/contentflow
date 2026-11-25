@@ -40,7 +40,7 @@ function compliancePayload(resp: Record<string, any>, english = false) {
   const hits = Array.isArray(resp.hits)
     ? resp.hits.slice(0, 20).flatMap((hit) => {
         if (!hit || typeof hit !== 'object') return [];
-        const reason = marketText(hit.reason) ? hit.reason.slice(0, 200) : '';
+        const reason = marketText(hit.reason) ? hit.reason : '';
         if (!reason) return [];
         const severity = hit.severity === 'block' || hit.severity === 'review' ? hit.severity : 'review';
         const ruleId = typeof hit.ruleId === 'string' && /^[A-Z0-9-]{3,40}$/.test(hit.ruleId) ? hit.ruleId : '';

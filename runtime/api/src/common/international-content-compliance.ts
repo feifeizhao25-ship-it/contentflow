@@ -335,6 +335,27 @@ const MARKET_LABELS: Partial<Record<TargetMarket, MarketLabelRule>> = {
     source: 'ASCI Influencer Guidelines (permitted label list)',
     sourceUrl: 'https://www.ascionline.in/social/wp-content/uploads/2025/04/ASCI-Influencer-Guidelines.pdf',
   },
+  EU: {
+    accept: new RegExp(`${LEAD}(?:ad|advertisement|paid partnership)${TAIL}|#ad\\b|\\badvertisement\\b|paid partnership`, 'i'),
+    weak: /#sp\b|#spon\b/i,
+    acceptedText: '"Ad", "Advertisement" or "Paid partnership"',
+    source: 'Directive 2005/29/EC on unfair commercial practices',
+    sourceUrl: 'https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:32005L0029',
+  },
+  AU: {
+    accept: new RegExp(`${LEAD}(?:ad|advertisement|paid partnership)${TAIL}|#ad\\b|\\badvertisement\\b|paid partnership`, 'i'),
+    weak: /#sp\b|#spon\b/i,
+    acceptedText: '"Ad", "Advertisement" or "Paid partnership"',
+    source: 'ACCC, Social media promotions',
+    sourceUrl: 'https://www.accc.gov.au/business/advertising-promoting-your-business/social-media-promotions',
+  },
+  CA: {
+    accept: new RegExp(`${LEAD}(?:ad|advertisement|paid partnership)${TAIL}|#ad\\b|\\badvertisement\\b|paid partnership`, 'i'),
+    weak: /#sp\b|#spon\b/i,
+    acceptedText: '"Ad", "Advertisement" or "Paid partnership"',
+    source: 'Competition Bureau, Influencer marketing',
+    sourceUrl: 'https://competition-bureau.canada.ca/en/deceptive-marketing-practices/types-deceptive-marketing-practices/influencer-marketing',
+  },
   SG: {
     accept: /(?:#(?:adv|sp|sponsored|endorsed)\b|this post (?:was|is) sponsored by|this post includes affiliate links)/i,
     weak: /(?:\bgifted\b|#?\w*ambassador\b|#collab\b)/i,
@@ -460,7 +481,7 @@ export function evaluateInternationalContent(
   const blocked = hits.some((h) => h.severity === 'block');
   const review = hits.some((h) => h.severity === 'review');
   return {
-    passed: !blocked,
+    passed: !blocked && !review,
     level: blocked ? 'violation' : review ? 'risk' : 'clear',
     disclaimer: INTERNATIONAL_DISCLAIMER,
     mode: options?.conservative ? 'conservative' : 'normal',
