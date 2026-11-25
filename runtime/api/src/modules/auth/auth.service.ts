@@ -1,7 +1,7 @@
 import { CN_PLANS, PLANS } from '../billing/plans.constant';
 import { recordSignupEvent } from '../growth/signup-source/signup-source';
 import { randomUUID } from 'node:crypto';
-import { BadRequestException, Injectable, UnauthorizedException, ConflictException, Logger } from '@nestjs/common';
+import { BadRequestException, Injectable, UnauthorizedException, ConflictException, Logger, ServiceUnavailableException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import * as bcrypt from 'bcryptjs';
@@ -98,6 +98,13 @@ export class AuthService {
   /** 注册 / 登录用的验证码（未登录）。 */
   async sendPublicSmsCode(rawPhone: string, purpose: 'register' | 'login', clientIp?: string) {
     const phone = this.mobile(rawPhone);
+    if (!this.smsCodes.canSend()) {
+      throw new ServiceUnavailableException({
+        message: '短信服务未配置，暂时无法发送验证码',
+        code: 'NOT_CONFIGURED',
+        error: 'NOT_CONFIGURED',
+      });
+    }
     const existing = await this.findActiveByPhone(phone);
     if (purpose === 'register' && existing) throw new ConflictException('该手机号已注册，请直接登录');
     if (purpose === 'login' && !existing) {

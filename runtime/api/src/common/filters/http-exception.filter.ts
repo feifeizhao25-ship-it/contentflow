@@ -7,26 +7,23 @@ import {
   Logger,
 } from '@nestjs/common';
 import { Request, Response } from 'express';
+import { classifyPublicError, fallbackMessage } from '../error-catalog';
 
 const CJK = /[\u3400-\u9fff]/;
 const containsCjk = (value: unknown): boolean =>
   CJK.test(typeof value === 'string' ? value : JSON.stringify(value ?? ''));
 
-function genericChinese(status: number): string {
-  if (status === HttpStatus.UNAUTHORIZED) return '请先登录，或登录已失效，请重新登录';
-  if (status === HttpStatus.FORBIDDEN) return '当前账号无权执行该操作';
-  if (status === HttpStatus.NOT_FOUND) return '请求的内容不存在';
-  if (status === HttpStatus.CONFLICT) return '操作与已有数据冲突，请刷新后重试';
-  if (status === HttpStatus.TOO_MANY_REQUESTS) return '操作太频繁，请稍后再试';
-  if (status >= HttpStatus.INTERNAL_SERVER_ERROR) return '服务暂时出错，请稍后重试';
-  return '请求参数不正确，请检查后重试';
+/**
+ * 已经是本市场语言的句子原样保留（同一句只留一次）。
+ * 一条都没有时，用错误码对照表里的那一句，不再把没登录、没配置、合规拦截和服务故障说成同一句。
+ */
+function visibleMessage(message: string | string[], status: number, code: string | undefined, english: boolean): string | string[] {
+  const items = (Array.isArray(message) ? message : [message]).filter((item): item is string => typeof item === 'string');
+  const kept = [...new Set(items.filter((item) => (english ? item.trim().length > 0 && !containsCjk(item) : containsCjk(item))))];
+  if (kept.length) return Array.isArray(message) ? kept : kept[0];
+  return fallbackMessage(classifyPublicError(status, code, items.join('\n')), english);
 }
 
-/**
- * 只保留含中文的消息；一条都没有就用该状态码对应的通用中文提示。
- * 同一句只留一次：一个字段挂两个校验（如 @IsBoolean + @Equals(true)）都失败时，
- * 原来把「请先阅读并同意用户协议和隐私政策」返回两遍，界面上用「；」连成一行重复显示。
- */
 const COMPLIANCE_LEVELS = new Set(['violation', 'risk', 'clear']);
 
 /**
@@ -55,14 +52,6 @@ function compliancePayload(resp: Record<string, any>, english = false) {
   // 国际版：中文字段被丢掉后只剩 level 时不单独返回，免得界面显示一个没有说明的等级。
   if (english && !disclaimer && !hits.length) return undefined;
   return { ...(disclaimer ? { disclaimer } : {}), ...(level ? { level } : {}), ...(hits.length ? { hits } : {}) };
-}
-
-function chineseOnly(message: string | string[], status: number): string | string[] {
-  if (Array.isArray(message)) {
-    const kept = [...new Set(message.filter((item) => typeof item === 'string' && containsCjk(item)))];
-    return kept.length ? kept : genericChinese(status);
-  }
-  return containsCjk(message) ? message : genericChinese(status);
 }
 
 @Catch()
@@ -115,28 +104,10 @@ export class HttpExceptionFilter implements ExceptionFilter {
     }
 
     const globalMarket = process.env.MARKET_REGION === 'global';
-    if (globalMarket && containsCjk(message)) {
-      message = status === HttpStatus.UNAUTHORIZED
-        ? 'Authentication is required or the credentials are invalid'
-        : status === HttpStatus.FORBIDDEN
-          ? 'This operation is not permitted'
-          : status === HttpStatus.NOT_FOUND
-            ? 'The requested resource was not found'
-            : status === HttpStatus.CONFLICT
-              ? 'The request conflicts with existing data'
-              : status >= HttpStatus.INTERNAL_SERVER_ERROR
-                ? 'Internal server error'
-                : 'The request could not be processed';
-    }
+    message = visibleMessage(message, status, codeOverride, globalMarket);
     if (globalMarket && containsCjk(details)) details = undefined;
     if (globalMarket && compliance && containsCjk(compliance)) compliance = undefined;
-    if (!globalMarket) {
-      // 国内版：界面只允许中文。框架自带的英文（Unauthorized、Cannot GET /x、
-      // "email must be an email"、Internal server error）一律换成对应的中文；
-      // 业务代码写的中文原样保留。异常原文只进下面的日志，不进响应。
-      message = chineseOnly(message, status);
-      if (details !== undefined && !containsCjk(details)) details = undefined;
-    }
+    if (!globalMarket && details !== undefined && !containsCjk(details)) details = undefined;
     const sanitizedMessage = Array.isArray(message) ? message.join('; ') : message;
     const safeStack = exception instanceof Error && !(globalMarket && containsCjk(exception.stack))
       ? exception.stack

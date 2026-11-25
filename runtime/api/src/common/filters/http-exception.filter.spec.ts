@@ -1,5 +1,6 @@
-import { BadRequestException, ForbiddenException, HttpException, HttpStatus, NotFoundException, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, HttpException, HttpStatus, NotFoundException, ServiceUnavailableException, UnauthorizedException } from '@nestjs/common';
 import { HttpExceptionFilter } from './http-exception.filter';
+import { ERROR_CATALOG } from '../error-catalog';
 
 function hostFor(json: jest.Mock, status: jest.Mock) {
   return {
@@ -25,7 +26,7 @@ describe('HttpExceptionFilter language isolation', () => {
     const body = json.mock.calls[0][0];
     expect(status).toHaveBeenCalledWith(HttpStatus.BAD_REQUEST);
     expect(JSON.stringify(body)).not.toMatch(/[\u3400-\u9fff]/);
-    expect(body.error.message).toBe('The request could not be processed');
+    expect(body.error.message).toBe('Some of the information is not valid. Check it and submit again.');
   });
 
   it('uses an English authentication fallback for the global API', () => {
@@ -195,6 +196,30 @@ describe('国内版：校验消息去重', () => {
     expect(error.compliance.level).toBe('violation');
     expect(error.compliance.hits).toEqual([{ ruleId: 'INTL-DISEASE-CLAIM', severity: 'block', reason: 'Claims to cure or treat a disease', matchedTerms: ['cures diabetes'] }]);
     expect(JSON.stringify(error)).not.toMatch(/[\u3400-\u9fff]/);
+  });
+
+  it('缺配置、未登录、无权限、额度、合规拦截和服务故障各用对照表里的一句', () => {
+    const cases: Array<[unknown, 'cn' | 'global', string]> = [
+      [new ServiceUnavailableException({ message: 'SMS provider missing', code: 'NOT_CONFIGURED' }), 'cn', ERROR_CATALOG.NOT_CONFIGURED.zh],
+      [new UnauthorizedException('Unauthorized'), 'cn', ERROR_CATALOG.AUTHENTICATION_REQUIRED.zh],
+      [new ForbiddenException('Forbidden'), 'cn', ERROR_CATALOG.NOT_PERMITTED.zh],
+      [new HttpException({ message: '额度已用完', code: 'QUOTA_EXHAUSTED' }, 429), 'global', ERROR_CATALOG.QUOTA_EXHAUSTED.en],
+      [new BadRequestException({ message: '不能处理', code: 'REQUEST_NOT_ALLOWED' }), 'global', ERROR_CATALOG.REQUEST_NOT_ALLOWED.en],
+      [new BadRequestException({ message: '合规拦截', code: 'CONTENT_COMPLIANCE_BLOCKED' }), 'global', ERROR_CATALOG.CONTENT_COMPLIANCE_BLOCKED.en],
+      [new ServiceUnavailableException('上游故障'), 'global', ERROR_CATALOG.SERVICE_UNAVAILABLE.en],
+    ];
+    const seen = new Set<string>();
+    for (const [exception, region, expected] of cases) {
+      process.env.MARKET_REGION = region;
+      const json = jest.fn();
+      new HttpExceptionFilter().catch(exception as any, hostFor(json, jest.fn()));
+      const message = json.mock.calls[0][0].error.message;
+      expect(message).toBe(expected);
+      expect(seen.has(message)).toBe(false);
+      seen.add(message);
+    }
+    expect(ERROR_CATALOG.SERVICE_UNAVAILABLE.en).not.toBe(ERROR_CATALOG.CONTENT_COMPLIANCE_BLOCKED.en);
+    expect(ERROR_CATALOG.SERVICE_UNAVAILABLE.zh).not.toBe(ERROR_CATALOG.RATE_LIMITED.zh);
   });
 
   it('does not cut an English compliance reason in the middle of a word', () => {

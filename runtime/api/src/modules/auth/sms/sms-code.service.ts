@@ -88,6 +88,13 @@ export class SmsCodeService {
   private get maxAttempts() { return this.num('SMS_MAX_VERIFY_ATTEMPTS', 5); }
   private get production() { return this.config.get('NODE_ENV') === 'production'; }
 
+  /** 网关和哈希密钥都就绪才能发短信。未就绪时登录用途也不能假装发送成功。 */
+  canSend(): boolean {
+    if (this.gateway.name === 'not-configured') return false;
+    if (this.production && this.gateway.fixedCodeForTesting) return false;
+    return smsHmacSecret(this.config) !== null;
+  }
+
   private secret(): string {
     const value = smsHmacSecret(this.config);
     if (!value) throw new ServiceUnavailableException('短信服务未配置，暂时无法发送验证码');

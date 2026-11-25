@@ -157,6 +157,17 @@ describe('手机号 + 短信验证码（接口层）', () => {
       expect(res.status).toBe(503);
       expect(res.body.success).toBe(false);
       expect(res.body.error.message).toContain('短信服务未配置');
+      expect(res.body.error.code).toBe('NOT_CONFIGURED');
+    });
+
+    it('短信服务没配置：登录用途也是 503，不能返回成功', async () => {
+      await boot(new NotConfiguredSmsGateway());
+      const res = await sendCode(PHONE, 'login');
+      expect(res.status).toBe(503);
+      expect(res.body.success).toBe(false);
+      expect(res.body.error.message).toContain('短信服务未配置');
+      expect(res.body.error.code).toBe('NOT_CONFIGURED');
+      expect(sent).toHaveLength(0);
     });
 
     it('一分钟内再发：429 并提示等待秒数', async () => {
