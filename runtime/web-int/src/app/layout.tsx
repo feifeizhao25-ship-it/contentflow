@@ -3,6 +3,7 @@ import Link from 'next/link';
 import MobileNav from '@/components/layout/MobileNav';
 import HeaderAccount from '@/components/layout/HeaderAccount';
 import { ErrorBoundary } from '@/components/error/ErrorBoundary';
+import { CookieBanner, CookieSettingsLink } from '@/components/cookie/CookieBanner';
 import './globals.css';
 
 export const metadata: Metadata = {
@@ -40,7 +41,8 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
           <HeaderAccount />
         </header>
         <ErrorBoundary>{children}</ErrorBoundary>
-        <footer>ContentFlow Global · Human-reviewed AI operations · <Link href="/legal/privacy">Privacy</Link> · <Link href="/legal/terms">Terms</Link></footer>
+        <CookieBanner />
+        <footer>ContentFlow Global · Human-reviewed AI operations · <Link href="/legal/privacy">Privacy</Link> · <Link href="/legal/terms">Terms</Link> · <CookieSettingsLink /></footer>
       </body>
     </html>
   );

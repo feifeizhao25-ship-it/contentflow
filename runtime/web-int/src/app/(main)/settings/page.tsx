@@ -1,10 +1,12 @@
 'use client';
 
+import { AccountControls } from '@/components/account/AccountControls';
 import { RecordPage } from '@/components/workspace/RecordPage';
 import { profileRows } from '@/lib/workspace-records';
 
 export default function SettingsPage() {
   return (
+    <>
     <RecordPage
       eyebrow="Account"
       title="The profile stored for the signed-in person."
@@ -12,5 +14,7 @@ export default function SettingsPage() {
       path="/api/v1/users/me"
       present={profileRows}
     />
+      <AccountControls />
+    </>
   );
 }
