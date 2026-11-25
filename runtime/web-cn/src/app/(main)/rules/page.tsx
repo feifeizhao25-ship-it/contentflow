@@ -69,9 +69,9 @@ export default function RulesPage() {
                 </p>
             ) : all.length === 0 ? (
                 <div className="glass-card p-10 mt-8 text-center" data-testid="rules-empty-review">
-                    <p className="text-lg font-bold">规则库正在审核中</p>
+                    <p className="text-lg font-bold">规则资料尚未经人工审核</p>
                     <p className="mt-3 text-sm text-zinc-500 leading-6">
-                        新整理的规则条目要先经过人工核对原文，通过后才会在这里出现。审核期间，请以各平台和监管部门的官方公告为准。
+                        这些条目由程序收集，还没有具名审核人核对原文，所以这里先不把它们当成已经可以引用的规则。请以各平台和监管部门的官方公告为准。
                     </p>
                 </div>
             ) : (

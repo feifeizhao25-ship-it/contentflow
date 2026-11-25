@@ -59,6 +59,16 @@ describe('合规资料人工复核流程（reviewed_by / reviewed_at）', () => 
     expect(report.notice).toContain('生成仍然可用');
     expect(report.userNotice).toContain('更保守');
     expect(report.sources[0]).toMatchObject({ state: 'stale', checkedBy: 'retrieval' });
+    expect(report.notice).toContain('超过');
+  });
+
+  it('未人工审核且未超过 30 天时，不把原因说成超过 30 天', async () => {
+    await write({ review_status: '待审核', published: false, retrieved_at: '2026-10-01T00:00:00Z' });
+    const report = await service().freshnessReport(now);
+    expect(report.sources[0].state).toBe('unreviewed');
+    expect(report.notice).toContain('尚未经人工审核');
+    expect(report.notice).not.toContain('超过 30 天');
+    expect(report.notice).toContain('生成仍然可用');
   });
 
   it('有复核人和复核日期：按复核日期计算时效，重新可用', async () => {

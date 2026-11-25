@@ -4,6 +4,7 @@ import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RagPolicyService } from './rag-policy.service';
 import { ComplianceService } from './compliance.service';
 import { AI_TRANSPARENCY_NOTE, INTERNATIONAL_RULESET_VERSION } from '../../common/international-content-compliance';
+import { DOMESTIC_RULESET_VERSION } from '../../common/domestic-content-compliance';
 
 /**
  * 合规规则资料的时效状态。资料超过时效（默认 30 天）未经人工复核时，
@@ -47,7 +48,16 @@ export class ComplianceSourcesController {
       notice: report.notice,
       userNotice: report.userNotice,
       maxAgeDays: report.maxAgeDays,
-      sources: report.sources.map((s) => ({ name: s.name, lastCheckedAt: s.lastCheckedAt, checkedBy: s.checkedBy, state: s.state })),
+      ruleSetVersion: DOMESTIC_RULESET_VERSION,
+      sources: report.sources.map((s) => ({
+        name: s.name,
+        lastCheckedAt: s.lastCheckedAt,
+        checkedBy: s.checkedBy,
+        state: s.state,
+        sourceUrl: s.sourceUrl,
+        publishedAt: s.publishedAt,
+        daysSinceCheck: s.daysSinceCheck,
+      })),
     };
   }
 }
