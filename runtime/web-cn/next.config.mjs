@@ -1,4 +1,11 @@
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { withSentryConfig } from '@sentry/nextjs/config';
+import { devLoginEntry } from './dev-login-build.mjs';
+
+const appRoot = path.dirname(fileURLToPath(import.meta.url));
+const devLoginRelative = devLoginEntry(process.env.NODE_ENV);
+const devLoginFile = path.resolve(appRoot, devLoginRelative);
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
@@ -6,7 +13,10 @@ const nextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
   allowedDevOrigins: ['127.0.0.1'],
-  turbopack: { root: process.cwd() },
+  turbopack: {
+    root: process.cwd(),
+    resolveAlias: { 'dev-login-entry': devLoginRelative },
+  },
   images: {
     remotePatterns: [
       { protocol: 'https', hostname: 'v1.siliconflow.cn' },
@@ -16,6 +26,7 @@ const nextConfig = {
   // 请求就不带 Authorization 直接到后端，所有登录后的接口 401（见该文件头部说明）。
   // /api/health 由 src/app/api/health/route.ts 处理。
   webpack(config) {
+    config.resolve.alias = { ...config.resolve.alias, 'dev-login-entry': devLoginFile };
     if (process.env.NEXT_DISABLE_WEBPACK_CACHE === '1') config.cache = false;
     return config;
   },
