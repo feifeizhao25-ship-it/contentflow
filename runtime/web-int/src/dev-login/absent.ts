@@ -4,3 +4,6 @@ import { NextRequest, NextResponse } from 'next/server';
 export function POST(_request: NextRequest) {
   return new NextResponse(null, { status: 404 });
 }
+export function GET(request: NextRequest) {
+  return POST(request);
+}

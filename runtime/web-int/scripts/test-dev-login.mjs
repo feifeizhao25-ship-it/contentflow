@@ -6,7 +6,7 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import { devLoginEntry } from '../dev-login-build.mjs';
-import { POST as absent } from '../src/dev-login/absent.ts';
+import { GET as absentGet, POST as absent } from '../src/dev-login/absent.ts';
 import { POST as devLogin, DEV_LOGIN_MARKER } from '../src/dev-login/handler.ts';
 
 const marker = 'contentflow-dev-login-channel-v1';
@@ -21,6 +21,7 @@ assert.equal(fs.readFileSync('next.config.mjs', 'utf8').includes('devLoginEntry'
 
 const empty = await absent();
 assert.equal(empty.status, 404);
+assert.equal((await absentGet()).status, 404);
 
 function request(headers, body) {
   return {
