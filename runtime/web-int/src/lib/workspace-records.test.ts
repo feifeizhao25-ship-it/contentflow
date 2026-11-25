@@ -17,9 +17,9 @@ describe('international workspace records', () => {
     expect(contentRows({ contents: [] }).rows).toEqual([]);
     expect(publishRows({ tasks: [] }).rows).toEqual([]);
     expect(calendarRows({ tasks: [{ scheduled_at: null, status: 'queued' }] }).notes.join(' ')).toMatch(/No tasks have a scheduled time/);
-    expect(accountRows([]).notes.join(' ')).toMatch(/none are stored/);
+    expect(accountRows([]).notes.join(' ')).toMatch(/No platform accounts are connected/);
     expect(materialRows([]).notes.join(' ')).toMatch(/does not pretend/);
-    expect(analyticsRows({ week: { publish: { total: 0, published: 0, failed: 0 }, ai: { generations: 0, savedAsContent: 0, approvedOrPublished: 0 } }, engagement: { detail: 'No engagement numbers are shown.' } }).notes.join(' ')).toMatch(/stored count/);
+    expect(analyticsRows({ week: { publish: { total: 0, published: 0, failed: 0 }, ai: { generations: 0, savedAsContent: 0, approvedOrPublished: 0 } }, engagement: { detail: 'No engagement numbers are shown.' } }).notes.join(' ')).toMatch(/no records/);
     expect(JSON.stringify(analyticsRows({}))).not.toMatch(/8\.5%|893/);
   });
 
@@ -51,7 +51,8 @@ describe('international workspace records', () => {
 
   it('calendar ignores tasks that were never scheduled', () => {
     const view = publishRows({ tasks: [{ content: { title: 'Now' }, platform_content: { platform: 'youtube' }, status: 'queued', scheduled_at: '2026-11-12T15:00:00Z' }] });
-    expect(view.rows[0][1]).toBe('youtube');
+    expect(view.rows[0][1]).toBe('YouTube');
+    expect(view.rows[0][2]).toBe('Queued');
     const calendar = calendarRows({ tasks: [{ content: { title: 'Now' }, status: 'queued', scheduled_at: null }, { content: { title: 'Later' }, platform_account: { platform: 'instagram' }, status: 'queued', scheduled_at: '2026-11-12T15:00:00Z' }] });
     expect(calendar.rows.map((row) => row[0])).toEqual(['Later']);
   });
