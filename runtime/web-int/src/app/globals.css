@@ -32,7 +32,9 @@ textarea { min-height:160px; resize:vertical; }
 footer { border-top:1px solid var(--line); color:#78908a; padding:30px clamp(20px,5vw,72px); font-size:13px; }
 .record-scroll { overflow-x:auto; max-width:100%; }
 .record-table { width:100%; border-collapse:collapse; }
-.record-table th, .record-table td { text-align:left; padding:10px 8px; border-bottom:1px solid var(--line); vertical-align:top; overflow-wrap:anywhere; }
+.record-scroll { overflow-x:auto; }
+.record-table th, .record-table td { text-align:left; padding:10px 8px; border-bottom:1px solid var(--line); vertical-align:top; overflow-wrap:normal; word-break:normal; }
+.legal-copy, .legal-copy a { overflow-wrap:anywhere; }
 .record-table th { color:var(--ink); font-size:12px; letter-spacing:.04em; text-transform:uppercase; }
 .mobile-nav { display:none; }
 .menu-toggle { display:inline-flex; flex-direction:column; justify-content:center; gap:5px; min-width:44px; min-height:44px; padding:10px; background:transparent; border:1px solid var(--line); border-radius:12px; cursor:pointer; }
