@@ -16,6 +16,29 @@ function text(value: unknown, fallback = ''): string {
   return fallback;
 }
 
+function platformName(value: string): string {
+  const names: Record<string, string> = {
+    linkedin: 'LinkedIn', x: 'X', youtube: 'YouTube', instagram: 'Instagram',
+    tiktok: 'TikTok', threads: 'Threads', facebook: 'Facebook',
+  };
+  return names[value.toLowerCase()] || (value === 'Not set' ? value : value);
+}
+
+function statusName(value: string): string {
+  const names: Record<string, string> = {
+    manual_pending: 'Waiting for you to post',
+    manual_done: 'Posted by you',
+    queued: 'Queued',
+    pending: 'Waiting',
+    published: 'Published',
+    failed: 'Failed',
+    draft: 'Draft',
+    article: 'Article',
+    owner: 'Owner',
+  };
+  return names[value] || value;
+}
+
 function when(value: unknown): string {
   if (typeof value !== 'string' || !value.trim()) return 'Not set';
   const time = Date.parse(value);
@@ -53,9 +76,9 @@ export function publishRows(payload: unknown): Presented {
     return [text(content.title, 'Untitled'), platform, text(row.status, 'Unknown status'), when(row.scheduled_at)];
   });
   return {
-    headers: ['Draft', 'Platform id', 'Status', 'Scheduled at'],
-    rows,
-    notes: rows.length ? ['Platform ids are the values stored on the task.'] : ['No publish tasks are stored. Nothing here is a forecast.'],
+    headers: ['Draft', 'Platform', 'Status', 'Scheduled at'],
+    rows: rows.map((row) => [row[0], platformName(row[1]), statusName(row[2]), row[3]]),
+    notes: rows.length ? [] : ['No publish tasks yet. This list is not a forecast.'],
   };
 }
 
@@ -109,14 +132,14 @@ export function accountRows(payload: unknown): Presented {
   const rows = listFrom(payload, ['accounts']).map((item) => {
     const row = record(item);
     const followers = typeof row.follower_count === 'number' && Number.isFinite(row.follower_count) ? String(row.follower_count) : 'Not stored';
-    return [text(row.platform, 'Unknown platform'), text(row.account_name, 'Unnamed account'), text(row.status, 'Unknown status'), followers];
+    return [platformName(text(row.platform, 'Unknown platform')), text(row.account_name, 'Unnamed account'), statusName(text(row.status, 'Unknown status')), followers];
   });
   return {
-    headers: ['Platform id', 'Account', 'Status', 'Stored follower count'],
+    headers: ['Platform', 'Account', 'Status', 'Followers saved here'],
     rows,
     notes: rows.length
-      ? ['Follower counts are the numbers saved on the account. They are not a reach estimate.']
-      : ['No platform accounts are connected. This list is empty because none are stored.'],
+      ? ['These follower numbers were saved on the account. They are not a reach estimate.']
+      : ['No platform accounts are connected.'],
   };
 }
 
