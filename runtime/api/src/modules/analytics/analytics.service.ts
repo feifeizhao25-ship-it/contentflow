@@ -71,7 +71,7 @@ export class AnalyticsService {
    * 只读自有数据；平台互动数据在接通授权前不提供（engagement.available=false）。
    */
   async getOverview(tenantId: string, now: Date | number = Date.now(), lang: OverviewLang = 'zh') {
-    const windows = overviewWindows(now);
+    const windows = overviewWindows(now, process.env.MARKET_REGION === 'global' ? 'global' : 'cn');
     const taskWindow = (range: { start: Date; end: Date }) => ({
       tenant_id: tenantId,
       OR: [
@@ -129,7 +129,7 @@ export class AnalyticsService {
     ]);
 
     return {
-      timezone: 'Asia/Shanghai',
+      timezone: windows.timezone,
       generatedAt: new Date(now).toISOString(),
       week: { start: windows.week.start.toISOString(), publish: weekPublish, ai: weekAi },
       month: { start: windows.month.start.toISOString(), publish: monthPublish, ai: monthAi },
@@ -147,7 +147,7 @@ export class AnalyticsService {
    * 套餐里的「导出格式」仍是未执行的权益，所以这里只按登录和工作区隔离，不另加套餐门槛。
    */
   private async weeklySheetsFor(tenantId: string, now: Date | number, lang: OverviewLang) {
-    const windows = overviewWindows(now);
+    const windows = overviewWindows(now, process.env.MARKET_REGION === 'global' ? 'global' : 'cn');
     const overview = await this.getOverview(tenantId, now, lang);
     const taskWindow = {
       tenant_id: tenantId,

@@ -130,4 +130,15 @@ describe('统计窗口', () => {
     const dec = overviewWindows(new Date('2026-12-20T00:00:00Z'));
     expect(dec.month.end.toISOString()).toBe('2026-12-31T16:00:00.000Z');
   });
+
+  it('国际版周起点是 UTC 周一 0 点，不是北京时间周一', () => {
+    const { overviewWindows } = jest.requireActual('./own-data-overview');
+    // 2026-11-25T02:16:39Z 是周三。北京时间本周一是 11-23 00:00（UTC 11-22 16:00）。
+    // UTC 本周一是 2026-11-23T00:00:00.000Z。
+    const global = overviewWindows(new Date('2026-11-25T02:16:39Z'), 'global');
+    const domestic = overviewWindows(new Date('2026-11-25T02:16:39Z'), 'cn');
+    expect(domestic.week.start.toISOString()).toBe('2026-11-22T16:00:00.000Z');
+    expect(global.week.start.toISOString()).toBe('2026-11-23T00:00:00.000Z');
+    expect(global.timezone).toBe('UTC');
+  });
 });
