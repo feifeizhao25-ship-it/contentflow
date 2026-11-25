@@ -3,6 +3,7 @@ import {
   NotFoundException,
   ForbiddenException,
   BadRequestException,
+  UnprocessableEntityException,
   HttpException,
 } from "@nestjs/common";
 import { PrismaService } from "../../database/prisma.service";
@@ -63,6 +64,64 @@ const ASSET_LABELS: Record<ContentAssetType, string> = {
   image: "配图",
   video: "视频",
 };
+const ENGLISH_ASSET_LABELS: Record<ContentAssetType, string> = {
+  script: "Script",
+  cover: "Cover",
+  image: "Image",
+  video: "Video",
+};
+const CJK = /[\u3400-\u9fff]/;
+
+function globalEdition(): boolean {
+  return process.env.MARKET_REGION === "global";
+}
+
+function assetLabels(): Record<ContentAssetType, string> {
+  return globalEdition() ? ENGLISH_ASSET_LABELS : ASSET_LABELS;
+}
+
+/** 国际版在写库前拒绝非英文用户文案，返回 422，不落库。 */
+export function assertEnglishDraft(value: unknown, field: string): void {
+  if (!globalEdition() || value == null) return;
+  const texts: string[] = [];
+  if (typeof value === "string") texts.push(value);
+  else if (Array.isArray(value)) {
+    for (const item of value) if (typeof item === "string") texts.push(item);
+  }
+  if (texts.some((text) => CJK.test(text))) {
+    throw new UnprocessableEntityException({
+      statusCode: 422,
+      code: "CONTENT_LANGUAGE",
+      message: `${field} must be English before it is saved. Nothing was written.`,
+    });
+  }
+}
+
+const USER_TEXT_FIELDS = ["title", "summary", "body", "body_html", "category"] as const;
+
+/** 旧的非英文草稿不让整页 502：跳过正文并标明，不删除原记录。 */
+export function presentGlobalContent<T extends Record<string, unknown>>(content: T): T {
+  if (!globalEdition() || !content) return content;
+  const copy = { ...content } as Record<string, unknown>;
+  let skipped = false;
+  for (const field of USER_TEXT_FIELDS) {
+    const value = copy[field];
+    if (typeof value === "string" && CJK.test(value)) {
+      copy[field] = "";
+      skipped = true;
+    }
+  }
+  if (Array.isArray(copy.tags) && copy.tags.some((tag) => typeof tag === "string" && CJK.test(tag))) {
+    copy.tags = [];
+    skipped = true;
+  }
+  if (skipped) {
+    copy.language_skipped = true;
+    copy.language_note = "This draft was skipped because it is not in English. It was not deleted.";
+    if (!copy.title) copy.title = "Skipped non-English draft";
+  }
+  return copy as T;
+}
 const MAX_ASSET_URL = 500; // 与 cover_url 的长度上限一致
 const MAX_SCRIPT = 200_000; // 与 body 的长度上限一致
 
@@ -91,12 +150,12 @@ export function normalizeAssets(raw: unknown[]): ContentAsset[] {
       const content = meta && typeof meta === "object" ? (meta as { content?: unknown }).content : undefined;
       if (typeof content !== "string") throw new BadRequestException(`第 ${n} 个素材（正文脚本）缺少内容`);
       if (content.length > MAX_SCRIPT) throw new BadRequestException(`第 ${n} 个素材（正文脚本）太长`);
-      return { type: kind, url: "", label: ASSET_LABELS[kind], meta: { content } };
+      return { type: kind, url: "", label: assetLabels()[kind], meta: { content } };
     }
     if (!link || link.length > MAX_ASSET_URL || !isHttpUrl(link)) {
-      throw new BadRequestException(`第 ${n} 个素材（${ASSET_LABELS[kind]}）的地址不对`);
+      throw new BadRequestException(`第 ${n} 个素材（${assetLabels()[kind]}）的地址不对`);
     }
-    return { type: kind, url: link, label: ASSET_LABELS[kind] };
+    return { type: kind, url: link, label: assetLabels()[kind] };
   });
 }
 
@@ -146,7 +205,7 @@ export class ContentService {
     ]);
 
     return {
-      contents,
+      contents: contents.map((item: Record<string, unknown>) => presentGlobalContent(item)),
       pagination: {
         total,
         page,
@@ -165,7 +224,7 @@ export class ContentService {
       throw new NotFoundException("内容不存在");
     }
 
-    return content;
+    return presentGlobalContent(content);
   }
 
   /** 内容的素材视图：正文脚本、封面、配图（来自 body、cover_url、media_urls）。 */
@@ -174,15 +233,15 @@ export class ContentService {
     if (content.status === "deleted") throw new NotFoundException("内容不存在");
     const assets: ContentAsset[] = [];
     if (typeof content.body === "string" && content.body.trim()) {
-      assets.push({ type: "script", url: "", label: ASSET_LABELS.script, meta: { content: content.body } });
+      assets.push({ type: "script", url: "", label: assetLabels().script, meta: { content: content.body } });
     }
     if (typeof content.cover_url === "string" && content.cover_url.trim()) {
-      assets.push({ type: "cover", url: content.cover_url, label: ASSET_LABELS.cover });
+      assets.push({ type: "cover", url: content.cover_url, label: assetLabels().cover });
     }
     for (const url of mediaList(content.media_urls)) {
       if (url === content.cover_url) continue;
       const type: ContentAssetType = VIDEO_URL.test(url) ? "video" : "image";
-      assets.push({ type, url, label: ASSET_LABELS[type] });
+      assets.push({ type, url, label: assetLabels()[type] });
     }
     return { assets };
   }
@@ -199,6 +258,7 @@ export class ContentService {
     const media = mediaList(content.media_urls);
     for (const asset of assets) {
       if (asset.type === "script") {
+        assertEnglishDraft(asset.meta?.content, "Script");
         if (asset.meta?.content !== content.body) patch.body = asset.meta?.content;
       } else if (asset.type === "cover") {
         if (asset.url !== content.cover_url) patch.cover_url = asset.url;
@@ -229,6 +289,9 @@ export class ContentService {
       source?: string;
     },
   ) {
+    assertEnglishDraft(data.title, "Title");
+    assertEnglishDraft(data.body, "Body");
+    assertEnglishDraft(data.tags, "Tags");
     const isAi = data.source === "ai";
     // AI 生成内容必须带「AI 生成」显式标识，创建时就写进正文（幂等）。
     const label = (text?: string) =>
@@ -270,6 +333,9 @@ export class ContentService {
     const patch: Record<string, unknown> = {};
     for (const field of UPDATABLE_FIELDS) {
       if (data && data[field] !== undefined) patch[field] = data[field];
+    }
+    for (const field of ["title", "body", "summary", "body_html", "category", "tags"] as const) {
+      if (patch[field] !== undefined) assertEnglishDraft(patch[field], field);
     }
     // AI 生成的内容：编辑不能删掉「AI 生成」显式标识
     if (existing.source === "ai") {

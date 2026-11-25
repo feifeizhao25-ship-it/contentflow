@@ -18,12 +18,34 @@ function topicFromPrompt(prompt: string): string {
   if (titled?.[1]?.trim()) return titled[1].trim();
   const quoted = /为"([^"]{1,80})"/.exec(prompt);
   if (quoted?.[1]?.trim()) return quoted[1].trim();
-  return '本地联调选题';
+  const english = /(?:topic|brief):\s*([^\n]{1,80})/i.exec(prompt);
+  if (english?.[1]?.trim()) return english[1].trim();
+  return process.env.MARKET_REGION === 'global' ? 'a local example topic' : '本地联调选题';
 }
 
-/** 按提示词形态返回标题解析器和正文展示都能直接用的文本。 */
+/** 按提示词形态返回标题解析器和正文展示都能直接用的文本。国际版桩只回英文。 */
 export function localStubCompletion(prompt: string): LocalStubCompletion {
   const topic = topicFromPrompt(prompt);
+  if (process.env.MARKET_REGION === 'global') {
+    const subject = /[\u3400-\u9fff]/.test(topic) ? 'a local example topic' : topic;
+    if (/吸引人的标题|titles?/i.test(prompt)) {
+      return {
+        content: [1, 2, 3, 4, 5].map((n) => `Example title ${n}: ${subject}`).join('\n'),
+        usage: { prompt_tokens: 20, completion_tokens: 30, total_tokens: 50 },
+      };
+    }
+    return {
+      content: [
+        `Example draft: ${subject}`,
+        'This text was written by the local stub, not a model, and it is not published anywhere.',
+        '---',
+        'a quiet reading desk',
+        'a paper notebook',
+        'warm afternoon light',
+      ].join('\n'),
+      usage: { prompt_tokens: 40, completion_tokens: 80, total_tokens: 120 },
+    };
+  }
   if (/吸引人的标题/.test(prompt)) {
     const short = topic.replace(/\s+/g, '').slice(0, 12) || '本地选题';
     return {
