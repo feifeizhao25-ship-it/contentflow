@@ -36,6 +36,8 @@ export interface RagSourceStatus {
   daysSinceCheck: number | null;
   daysLeft: number | null;
   state: 'current' | 'due_soon' | 'stale' | 'invalid' | 'unreviewed';
+  sourceUrl: string | null;
+  publishedAt: string | null;
 }
 
 export interface RagFreshnessReport {
@@ -76,6 +78,39 @@ export function lastCheckedAt(record: Partial<RagPolicySource>, now: number): { 
   const reviewed = Date.parse(String(record.reviewed_at ?? ''));
   if (reviewer && Number.isFinite(reviewed) && reviewed >= retrieved && reviewed <= now) return { at: reviewed, by: 'review' };
   return { at: retrieved, by: 'retrieval' };
+}
+
+/**
+ * 横幅按真实原因写。未人工审核不能写成「超过 N 天未核对」。
+ * 只有 state 为 stale 的资料才提超过 maxAgeDays。
+ */
+export function freshnessNotice(
+  report: { sources: RagSourceStatus[]; maxAgeDays: number; total: number },
+  global = false,
+): string | null {
+  const { sources, maxAgeDays, total } = report;
+  const unreviewed = sources.filter((source) => source.state === 'unreviewed');
+  const stale = sources.filter((source) => source.state === 'stale');
+  const invalid = sources.filter((source) => source.state === 'invalid');
+  if (total > 0 && unreviewed.length + stale.length + invalid.length === 0) return null;
+  if (global) {
+    const reasons: string[] = [];
+    if (unreviewed.length) reasons.push(`${unreviewed.length} source(s) were collected automatically and have no named reviewer`);
+    if (stale.length) reasons.push(`${stale.length} source(s) were last checked more than ${maxAgeDays} days ago`);
+    if (invalid.length) reasons.push(`${invalid.length} source(s) could not be read`);
+    if (!reasons.length) reasons.push('no compliance source is on file');
+    return `Compliance sources need a human review: ${reasons.join('; ')}. AI generation still works, but these sources are not cited, and a person must confirm before publishing.`;
+  }
+  const bits: string[] = [];
+  if (unreviewed.length) {
+    const ages = unreviewed.map((source) => source.daysSinceCheck).filter((age): age is number => age != null);
+    const newest = ages.length ? Math.min(...ages) : null;
+    bits.push(`规则资料尚未经人工审核（${unreviewed.length} 条由程序收集，没有具名审核人${newest != null ? `，最近收集距今 ${newest} 天` : ''}）`);
+  }
+  if (stale.length) bits.push(`${stale.length} 条已超过 ${maxAgeDays} 天未核对`);
+  if (invalid.length) bits.push(`${invalid.length} 条字段无法读取`);
+  if (!bits.length) bits.push('没有找到任何合规规则资料');
+  return `${COMPLIANCE_REVIEW_NOTICE}：${bits.join('；')}。AI 生成仍然可用，但不再引用这些资料，检查改为保守模式，发布前必须人工确认。`;
 }
 
 /** 来源地址可能写在 source_url、url，或 source 字符串 / { url } 里。空的不算可读。 */
@@ -236,8 +271,10 @@ export class RagPolicyService implements OnApplicationBootstrap, OnModuleDestroy
     const maxAgeDays = this.maxAgeDays();
     const sources: RagSourceStatus[] = (await this.readAll()).map(({ name, record }) => {
       const checked = record ? lastCheckedAt(record, now) : null;
+      const sourceUrl = typeof record?.source_url === 'string' ? record.source_url : null;
+      const publishedAt = typeof record?.published_at === 'string' ? record.published_at : null;
       if (!record || sourceFieldErrors(record).length > 0) {
-        return { id: record?.id || name, name: record?.source_name || name, lastCheckedAt: null, checkedBy: 'retrieval' as const, daysSinceCheck: null, daysLeft: null, state: 'invalid' as const };
+        return { id: record?.id || name, name: record?.source_name || name, lastCheckedAt: null, checkedBy: 'retrieval' as const, daysSinceCheck: null, daysLeft: null, state: 'invalid' as const, sourceUrl, publishedAt };
       }
       if (!checked || !this.isWellFormed(record)) {
         return {
@@ -248,12 +285,14 @@ export class RagPolicyService implements OnApplicationBootstrap, OnModuleDestroy
           daysSinceCheck: checked ? Math.floor((now - checked.at) / DAY) : null,
           daysLeft: null,
           state: 'unreviewed' as const,
+          sourceUrl,
+          publishedAt,
         };
       }
       const daysSince = Math.floor((now - checked.at) / DAY);
       const daysLeft = maxAgeDays - daysSince;
       const state = now - checked.at > maxAgeDays * DAY ? 'stale' as const : daysLeft <= REVIEW_REMINDER_DAYS ? 'due_soon' as const : 'current' as const;
-      return { id: record.id, name: record.source_name, lastCheckedAt: new Date(checked.at).toISOString(), checkedBy: checked.by, daysSinceCheck: daysSince, daysLeft, state };
+      return { id: record.id, name: record.source_name, lastCheckedAt: new Date(checked.at).toISOString(), checkedBy: checked.by, daysSinceCheck: daysSince, daysLeft, state, sourceUrl, publishedAt };
     });
     const current = sources.filter((s) => s.state === 'current' || s.state === 'due_soon').length;
     const needsReview = sources.length === 0 || sources.some((s) => s.state === 'stale' || s.state === 'invalid' || s.state === 'unreviewed');
@@ -264,7 +303,7 @@ export class RagPolicyService implements OnApplicationBootstrap, OnModuleDestroy
       needsReview,
       mode: needsReview ? 'conservative' : 'normal',
       generationAvailable: true,
-      notice: needsReview && process.env.MARKET_REGION === 'global' ? `Compliance sources need a human review: platform-rule sources have not been checked for over ${maxAgeDays} days. AI generation still works, but stale sources are no longer cited and checks run in conservative mode. A person must confirm before publishing.` : needsReview ? `${COMPLIANCE_REVIEW_NOTICE}：平台规则资料超过 ${maxAgeDays} 天未核对。AI 生成仍然可用，但不再引用这些过期资料，检查改为保守模式，发布前必须人工确认。` : null,
+      notice: freshnessNotice({ sources, maxAgeDays, total: sources.length }, process.env.MARKET_REGION === 'global'),
       userNotice: needsReview ? (process.env.MARKET_REGION === 'global' ? CONSERVATIVE_USER_NOTICE_EN : CONSERVATIVE_USER_NOTICE) : null,
       sources,
     };
