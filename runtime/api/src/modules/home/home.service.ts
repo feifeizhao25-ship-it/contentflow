@@ -20,7 +20,7 @@ export class HomeService {
       p.content.count({ where: { tenant_id: tenantId, status: 'approved', publish_tasks: { none: {} } } }),
       p.publishTask.count({ where: { tenant_id: tenantId, status: { in: ['published', 'manual_done'] }, created_at: { gte: since } } }),
       p.publishTask.count({ where: { tenant_id: tenantId, status: 'failed', created_at: { gte: since } } }),
-      p.publishTask.count({ where: { tenant_id: tenantId, status: { in: ['pending', 'queued'] }, scheduled_at: { gt: now } } }),
+      p.publishTask.count({ where: { tenant_id: tenantId, status: { in: ['pending', 'queued', 'manual_pending'] }, scheduled_at: { gt: now } } }),
       p.material.count({ where: { tenant_id: tenantId } }),
       p.growthGoal ? p.growthGoal.count({ where: { user_id: userId, status: 'active' } }) : 0,
     ]);

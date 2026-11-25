@@ -22,7 +22,7 @@ export interface TodaySignals {
 }
 
 export interface NextStep {
-  id: 'connect_account' | 'fix_failed' | 'review_content' | 'publish_approved' | 'create_content' | 'set_goal' | 'keep_going';
+  id: 'connect_account' | 'fix_failed' | 'review_content' | 'publish_approved' | 'manual_waiting' | 'create_content' | 'set_goal' | 'keep_going' | 'no_publishes';
   title: string;
   description: string;
   href: string;
@@ -31,7 +31,7 @@ export interface NextStep {
 
 const HREF: Record<Lang, Record<string, string>> = {
   zh: { accounts: '/accounts', publish: '/publish', contents: '/contents', create: '/create', growth: '/growth' },
-  en: { accounts: '/create', publish: '/create', contents: '/create', create: '/create', growth: '/create' },
+  en: { accounts: '/accounts', publish: '/publishing', contents: '/library', create: '/create', growth: '/create' },
 };
 
 const T = {
@@ -40,6 +40,8 @@ const T = {
     fix_failed: (n: number) => [`有 ${n} 条发布失败，先处理`, '打开发布列表看失败原因，修正后可以重试。', `近 7 天有 ${n} 条发布任务失败`],
     review_content: (n: number) => [`有 ${n} 条内容等待审核`, '审核通过后才能发布。', `你有 ${n} 条内容处于待审核`],
     publish_approved: (n: number) => [`有 ${n} 条已通过审核、还没发布`, '选择平台和时间发布。', `你有 ${n} 条内容已通过审核但还没有发布任务`],
+    manual_waiting: (n: number) => [`有 ${n} 条待你手动发出`, '打开排期，复制文案后到平台发布。', `有 ${n} 条手动发布任务还没完成`],
+    no_publishes: ['近 7 天还没有发布', '有内容也不要写成节奏不错。先去发出或写出一条。', '近 7 天发布数是 0'],
     create_content: ['近 7 天还没有新内容，写一条吧', '从一个话题开始，AI 生成的内容会带“AI 生成”标识。', '近 7 天你没有创建新内容'],
     set_goal: ['设一个增长目标', '有目标才能看到进度。', '你还没有进行中的增长目标'],
     keep_going: (n: number) => ['节奏不错，继续保持', `近 7 天已发布 ${n} 条。`, `近 7 天你已发布 ${n} 条，没有待处理事项`],
@@ -49,6 +51,8 @@ const T = {
     fix_failed: (n: number) => [`${n} failed publish${n > 1 ? 'es' : ''} to fix`, 'Open the publish list, read the failure reason, fix it and retry.', `${n} publish task${n > 1 ? 's' : ''} failed in the last 7 days`],
     review_content: (n: number) => [`${n} item${n > 1 ? 's' : ''} waiting for review`, 'Content must be approved before it can be published.', `You have ${n} item${n > 1 ? 's' : ''} in pending review`],
     publish_approved: (n: number) => [`${n} approved item${n > 1 ? 's' : ''} not published yet`, 'Pick a platform and a time to publish.', `You have ${n} approved item${n > 1 ? 's' : ''} with no publish task`],
+    manual_waiting: (n: number) => [`${n} post${n > 1 ? 's are' : ' is'} waiting for you to publish by hand`, 'Open the calendar, copy the text, and post it on the platform.', `${n} manual publish task${n > 1 ? 's are' : ' is'} still waiting`],
+    no_publishes: ['Nothing went out in the last 7 days', 'Zero published posts is not a good rhythm. Write or publish one.', 'Published count for the last 7 days is 0'],
     create_content: ['No new content in the last 7 days. Write one?', 'Start from a topic; AI-generated drafts carry an AI label.', 'You created no content in the last 7 days'],
     set_goal: ['Set a growth goal', 'A goal lets you see progress.', 'You have no active growth goal'],
     keep_going: (n: number) => ['Nice rhythm. Keep going.', `${n} published in the last 7 days.`, `You published ${n} in the last 7 days and nothing is waiting`],
@@ -64,7 +68,9 @@ export function nextStep(s: TodaySignals, lang: Lang, goalsEnabled: boolean): Ne
   if (s.failed_7d > 0) return mk('fix_failed', t.fix_failed(s.failed_7d), h.publish);
   if (s.pending_review > 0) return mk('review_content', t.review_content(s.pending_review), h.contents);
   if (s.approved_unpublished > 0) return mk('publish_approved', t.publish_approved(s.approved_unpublished), h.publish);
+  if (s.scheduled_upcoming > 0) return mk('manual_waiting', t.manual_waiting(s.scheduled_upcoming), h.publish);
   if (s.content_7d === 0) return mk('create_content', t.create_content, h.create);
   if (goalsEnabled && s.active_goals === 0) return mk('set_goal', t.set_goal, h.growth);
+  if (s.published_7d <= 0) return mk('no_publishes', t.no_publishes, h.publish);
   return mk('keep_going', t.keep_going(s.published_7d), h.create);
 }
