@@ -19,6 +19,7 @@ import { apiErrorText, safeErrorText } from '@/lib/api-error';
 import { platformDisplay } from '@/lib/cn-display';
 import { describeBoundAccounts } from '@/lib/page-data';
 import { accountDisplayName, accountInitial } from '@/lib/account-label';
+import { CN_PLATFORM_CATALOG, findCnPlatform, platformCapability } from '@/lib/cn-platform-catalog';
 
 interface PlatformAccount {
     id: string;
@@ -33,14 +34,13 @@ interface PlatformAccount {
     color: string;
 }
 
-const availablePlatforms = [
-    { key: 'douyin', name: '抖音', color: '#000000', icon: platformDisplay('douyin').icon },
-    { key: 'xiaohongshu', name: '小红书', color: '#ff2442', icon: platformDisplay('xiaohongshu').icon },
-    { key: 'weixin', name: '微信视频号', color: '#07c160', icon: platformDisplay('weixin').icon },
-    { key: 'bilibili', name: 'B站', color: '#00a1d6', icon: platformDisplay('bilibili').icon },
-    { key: 'weibo', name: '微博', color: '#ff8200', icon: platformDisplay('weibo').icon },
-    { key: 'kuaishou', name: '快手', color: '#ff6600', icon: platformDisplay('kuaishou').icon },
-];
+const availablePlatforms = CN_PLATFORM_CATALOG.filter((item) => item.bind).map((item) => ({
+    key: item.id,
+    name: item.name,
+    color: item.color,
+    icon: item.icon,
+    capability: platformCapability(item),
+}));
 
 export default function AccountsPage() {
     const [accounts, setAccounts] = useState<PlatformAccount[]>([]);
@@ -75,12 +75,12 @@ export default function AccountsPage() {
                 const mappedAccounts: PlatformAccount[] = data.accounts.map((acc: any) => ({
                     id: acc.id,
                     platform: acc.platform,
-                    platformName: availablePlatforms.find(p => p.key === acc.platform)?.name || platformDisplay(acc.platform).name,
+                    platformName: findCnPlatform(acc.platform)?.name || platformDisplay(acc.platform).name,
                     accountName: accountDisplayName(acc.account_name),
                     followers: acc.follower_count || 0,
                     status: (acc.status as any) || 'active',
                     authType: acc.auth_type || 'OAuth',
-                    color: availablePlatforms.find(p => p.key === acc.platform)?.color || '#9ca3af',
+                    color: findCnPlatform(acc.platform)?.color || '#9ca3af',
                     avatar: acc.avatar_url,
                 }));
                 setAccounts(mappedAccounts);
@@ -264,7 +264,7 @@ export default function AccountsPage() {
                                     >
                                         {platform.icon || platform.name[0]}
                                     </div>
-                                    <span className="text-zinc-700 font-medium group-hover:text-zinc-900 transition-colors">{platform.name}</span>
+                                    <span className="text-zinc-700 font-medium group-hover:text-zinc-900 transition-colors">{platform.name}<span className="ml-2 text-xs text-zinc-500">{platform.capability}，自动发布未开通</span></span>
                                 </div>
                                 {authorizing === platform.key
                                     ? <ReloadOutlined aria-hidden spin className="text-zinc-400" />

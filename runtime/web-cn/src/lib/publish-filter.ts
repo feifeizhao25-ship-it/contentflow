@@ -6,6 +6,7 @@
  * 保证「看到的」和「导出的」是同一批任务。
  */
 import { apiErrorText } from './api-error';
+import { CN_PLATFORM_CATALOG } from './cn-platform-catalog';
 
 export interface PublishFilter {
   keyword: string;
@@ -19,13 +20,10 @@ export interface PublishFilter {
 
 export const EMPTY_PUBLISH_FILTER: PublishFilter = { keyword: '', platforms: [], status: 'all' };
 
-export const PUBLISH_FILTER_PLATFORMS = [
-  { value: 'douyin', label: '🎵 抖音' },
-  { value: 'bilibili', label: '📺 B站' },
-  { value: 'xhs', label: '📕 小红书' },
-  { value: 'weixin', label: '💬 视频号' },
-  { value: 'wechat_mp', label: '📰 公众号' },
-];
+export const PUBLISH_FILTER_PLATFORMS = CN_PLATFORM_CATALOG.filter((item) => item.manual).map((item) => ({
+  value: item.id,
+  label: `${item.icon} ${item.name}`,
+}));
 
 export const PUBLISH_FILTER_STATUSES = [
   { value: 'all', label: '全部状态' },
