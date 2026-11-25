@@ -11,6 +11,9 @@ describe('今天先做什么（I-10）', () => {
     expect(nextStep({ ...base, content_7d: 0 }, 'zh', true).id).toBe('create_content');
     expect(nextStep({ ...base, active_goals: 0 }, 'zh', true).id).toBe('set_goal');
     expect(nextStep(base, 'zh', true).id).toBe('keep_going');
+    expect(nextStep({ ...base, published_7d: 0, scheduled_upcoming: 2 }, 'en', false).title).toBe('2 posts are waiting for you to publish by hand');
+    expect(nextStep({ ...base, published_7d: 0, scheduled_upcoming: 0 }, 'en', false).id).toBe('no_publishes');
+    expect(nextStep({ ...base, accounts: 0 }, 'en', false).href).toBe('/accounts');
   });
 
   it('同样的数据同样的结果；数据一变，建议就变（不再七天零变化）', () => {
