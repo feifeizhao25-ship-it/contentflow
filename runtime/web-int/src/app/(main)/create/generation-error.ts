@@ -1,4 +1,4 @@
-import { ERROR_CATALOG, fallbackMessage } from '../../../../../api/src/common/error-catalog';
+import { ERROR_CATALOG, fallbackMessage } from '@/lib/error-catalog';
 
 export type GenerationFailure =
   | { kind: 'blocked'; stage: 'brief' | 'draft'; message: string }

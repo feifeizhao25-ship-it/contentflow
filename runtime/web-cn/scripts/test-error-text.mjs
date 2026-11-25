@@ -15,6 +15,8 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { NextRequest } from 'next/server.js';
 import { apiErrorText, safeErrorText } from '../src/lib/api-error.ts';
+import { ERROR_CATALOG as pageCatalog } from '../src/lib/error-catalog.ts';
+import { ERROR_CATALOG as apiCatalog } from '../../api/src/common/error-catalog.ts';
 import { apiClient } from '../src/lib/api-client.ts';
 import { AuthError, loginWithPassword, registerWithEmail } from '../src/lib/auth-service.ts';
 
@@ -52,6 +54,7 @@ await check('apiErrorText：没有中文时按错误码对照表取中文，六�
   for (const text of [missing, auth, denied, quota, blocked, outage]) assert.equal(/[㐀-鿿]/.test(text), true);
   assert.equal(new Set([missing, auth, denied, quota, blocked, outage]).size, 6);
   assert.notEqual(blocked, outage);
+  assert.deepEqual(pageCatalog, apiCatalog);
 });
 
 await check('safeErrorText：中文异常原样给，英文原文（Failed to fetch）换成兜底', () => {
