@@ -9,7 +9,7 @@ import { evaluateInternationalContent } from '../../common/international-content
 import { isRealNameRequiredForPublish } from '../auth/real-name/real-name.verifier';
 import { labelAiGeneratedText, aiTextLabel, aigcProviderCode } from '../../common/ai-content-label';
 import { domesticExplicitLabelBlock } from '../ai/compliance/rules/domestic-explicit-label';
-import { MANUAL_DONE, MANUAL_PENDING, MANUAL_PLATFORMS, isManualPlatform, normalizeManualPostUrl } from './manual-publish';
+import { MANUAL_DONE, MANUAL_PENDING, globalPlatformRejection, isManualPlatform, manualPlatformTable, normalizeManualPostUrl } from './manual-publish';
 import { PUBLISH_LOG_MAX_ROWS, PublishTaskFilter, channelUnavailableReason, publishTaskWhere, publishTasksToCsv } from './publish-log';
 import { adaptBodyForPlatform } from '../ai/platform-adaptation';
 import { bulkPublishBlockReason } from './bulk-identical';
@@ -115,6 +115,10 @@ export class PublishService {
     );
 
     const region = this.config.get<string>('MARKET_REGION', 'cn') === 'global' ? 'global' as const : 'cn' as const;
+    if (region === 'global') {
+      const rejected = globalPlatformRejection(accounts.map((account) => account.platform));
+      if (rejected) throw new BadRequestException(rejected);
+    }
     const snapshots = new Map<string, string>();
     if (accounts.length >= 2) {
       const items = accounts.map((account) => {
@@ -265,8 +269,14 @@ export class PublishService {
   async createManualTasks(tenantId: string, userId: string, data: { contentId: string; platforms: string[]; scheduledAt?: Date; riskAcknowledged?: boolean }) {
     const platforms = [...new Set(data.platforms || [])];
     if (!platforms.length) throw new BadRequestException('请至少选择一个平台');
-    const unsupported = platforms.filter((p) => !isManualPlatform(p));
-    if (unsupported.length) throw new BadRequestException('人工确认发布支持小红书、视频号、公众号、抖音、B站、知乎（均为手动发布，非自动发布）');
+    const region = this.config.get<string>('MARKET_REGION', 'cn') === 'global' ? 'global' as const : 'cn' as const;
+    if (region === 'global') {
+      const rejected = globalPlatformRejection(platforms);
+      if (rejected) throw new BadRequestException(rejected);
+    } else {
+      const unsupported = platforms.filter((p) => !isManualPlatform(p, 'cn'));
+      if (unsupported.length) throw new BadRequestException('人工确认发布支持小红书、视频号、公众号、抖音、B站、知乎（均为手动发布，非自动发布）');
+    }
     const scheduledAt = data.scheduledAt ? new Date(data.scheduledAt) : new Date();
     if (Number.isNaN(scheduledAt.getTime())) throw new BadRequestException('计划发布时间格式不正确');
     await this.assertRealNameIfRequired(userId);
@@ -281,7 +291,6 @@ export class PublishService {
       const snapshot = aiGenerated ? labelAiGeneratedText(variant.body) : variant.body;
       return { platform, snapshot };
     });
-    const region = this.config.get<string>('MARKET_REGION', 'cn') === 'global' ? 'global' as const : 'cn' as const;
     if (region === 'cn') {
       for (const item of snapshots) {
         const labelBlock = domesticExplicitLabelBlock(item.snapshot, aiGenerated);
@@ -329,11 +338,13 @@ export class PublishService {
     });
     if (!task) throw new NotFoundException('任务不存在');
     const platform = task.platform_content?.platform ?? '';
-    if (!isManualPlatform(platform)) throw new BadRequestException('该任务不是人工确认发布任务');
+    const kitRegion = this.config.get<string>('MARKET_REGION', 'cn') === 'global' ? 'global' : 'cn';
+    const platformInfo = manualPlatformTable(kitRegion)[platform];
+    if (!platformInfo) throw new BadRequestException(kitRegion === 'global' ? 'This task is not a manual export.' : '该任务不是人工确认发布任务');
     const aiGenerated = task.content?.source === 'ai';
     const rawBody = task.platform_content?.body ?? task.content?.body ?? '';
     const body = aiGenerated ? labelAiGeneratedText(rawBody) : rawBody;
-    if (this.config.get<string>('MARKET_REGION', 'cn') !== 'global') {
+    if (kitRegion !== 'global') {
       const labelBlock = domesticExplicitLabelBlock(body, aiGenerated);
       if (labelBlock) {
         throw new BadRequestException({ code: labelBlock.code, message: labelBlock.message, issues: labelBlock.issues });
@@ -341,8 +352,8 @@ export class PublishService {
     }
     return {
       platform,
-      platformName: MANUAL_PLATFORMS[platform].name,
-      guide: MANUAL_PLATFORMS[platform].guide,
+      platformName: platformInfo.name,
+      guide: platformInfo.guide,
       title: task.platform_content?.title ?? task.content?.title ?? '',
       // AI 生成的内容：复制出去的文案必须带「AI 生成」显式标识，不能弱化
       body,
@@ -365,11 +376,14 @@ export class PublishService {
     });
     if (!task) throw new NotFoundException('任务不存在');
     const platform = task.platform_content?.platform ?? '';
-    if (!isManualPlatform(platform)) throw new BadRequestException('该任务不是人工确认发布任务');
+    const confirmRegion = this.config.get<string>('MARKET_REGION', 'cn') === 'global' ? 'global' : 'cn';
+    if (!isManualPlatform(platform, confirmRegion)) {
+      throw new BadRequestException(confirmRegion === 'global' ? 'This task is not a manual export.' : '该任务不是人工确认发布任务');
+    }
     if (task.status !== MANUAL_PENDING && task.status !== MANUAL_DONE) throw new BadRequestException('当前状态不能标记为已手动发布');
     let url: string | null;
     try {
-      url = normalizeManualPostUrl(platform, postUrl);
+      url = normalizeManualPostUrl(platform, postUrl, confirmRegion);
     } catch (error) {
       throw new BadRequestException(error instanceof Error ? error.message : '作品链接格式不正确');
     }
