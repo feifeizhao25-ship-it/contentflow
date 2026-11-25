@@ -73,7 +73,7 @@ const getCalendarDays = (currentDate: dayjs.Dayjs) => {
     const days = [];
     const startOfMonth = currentDate.startOf('month');
     const endOfMonth = currentDate.endOf('month');
-    const startDay = startOfMonth.day();
+    const startDay = (startOfMonth.day() + 6) % 7;
     const daysInMonth = endOfMonth.date();
 
     for (let i = 0; i < startDay; i++) {
@@ -146,7 +146,7 @@ export default function SchedulePage() {
     const renderMonthView = () => (
         <div className="grid grid-cols-7 gap-px bg-zinc-200 dark:bg-zinc-800 rounded-2xl overflow-hidden border border-zinc-200 dark:border-zinc-800 shadow-sm relative">
             {isLoading && <div className="absolute inset-0 bg-white/50 dark:bg-black/50 z-20 flex items-center justify-center"><LoadingOutlined aria-hidden className="text-3xl text-indigo-500" /></div>}
-            {['日', '一', '二', '三', '四', '五', '六'].map(d => (
+            {['一', '二', '三', '四', '五', '六', '日'].map(d => (
                 <div key={d} className="bg-zinc-50 dark:bg-zinc-900 py-2 text-center text-xs font-bold text-zinc-700 dark:text-zinc-200 sm:py-3">{d}</div>
             ))}
             {calendarDays.map((day, i) => {
@@ -246,8 +246,11 @@ export default function SchedulePage() {
             <header className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
                 <div className="min-w-0">
                     <h1 className="whitespace-nowrap text-2xl font-bold">排期日历</h1>
+                    <p className="mt-1 text-sm text-zinc-500">{currentMonth.format('YYYY年M月')} · 周一起始</p>
                 </div>
                 <div className="flex flex-wrap items-center gap-3">
+                    <Button aria-label="上个月" onClick={() => setCurrentMonth(currentMonth.subtract(1, 'month'))}>上个月</Button>
+                    <Button aria-label="下个月" onClick={() => setCurrentMonth(currentMonth.add(1, 'month'))}>下个月</Button>
                     <Select value={filterPlatform} onChange={setFilterPlatform} style={{ width: 140 }}>
                         <Option value="all">全部平台</Option>
                         {PLATFORMS.map(p => <Option key={p.id} value={p.id}>{p.icon} {p.name}</Option>)}
