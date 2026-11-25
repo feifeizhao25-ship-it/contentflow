@@ -7,6 +7,10 @@ import { NextRequest, NextResponse } from 'next/server';
  */
 export const DEV_LOGIN_MARKER = 'contentflow-dev-login-channel-v1';
 
+export function GET(_request: NextRequest) {
+  return new NextResponse(null, { status: 404 });
+}
+
 export async function POST(request: NextRequest) {
   if (request.headers.get('x-dev-login') !== DEV_LOGIN_MARKER) {
     return new NextResponse(null, { status: 404 });
