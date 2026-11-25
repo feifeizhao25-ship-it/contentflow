@@ -71,6 +71,29 @@ export function classifyPublicError(status: number, code: string | undefined, ra
   return 'VALIDATION_FAILED';
 }
 
+const VALIDATOR_ZH: Array<[RegExp, string]> = [
+  [/must be an email/i, '请输入有效的邮箱地址'],
+  [/should not be empty/i, '这一项不能为空'],
+  [/must be longer than or equal to/i, '这一项的长度不够'],
+  [/must be shorter than or equal to/i, '这一项太长了'],
+  [/must be a boolean/i, '这一项的格式不正确'],
+  [/should not exist/i, '有多余的字段'],
+  [/must be a string/i, '这一项必须是文字'],
+  [/must be a number/i, '这一项必须是数字'],
+];
+
+/** 校验器的英文句子逐条译成中文。有一条译不出就整段放弃，避免英文漏出去。 */
+export function translateValidatorLines(lines: string[]): string[] | null {
+  if (!lines.length) return null;
+  const translated: string[] = [];
+  for (const line of lines) {
+    const hit = VALIDATOR_ZH.find(([pattern]) => pattern.test(line));
+    if (!hit) return null;
+    translated.push(hit[1]);
+  }
+  return [...new Set(translated)];
+}
+
 export function fallbackMessage(code: string, english: boolean): string {
   const resolved = (code in ERROR_CATALOG ? code : CODE_ALIAS[code]) as PublicErrorCode | undefined;
   const row = (resolved && ERROR_CATALOG[resolved]) || ERROR_CATALOG.VALIDATION_FAILED;
