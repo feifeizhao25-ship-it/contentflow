@@ -15,6 +15,8 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { NextRequest } from 'next/server.js';
 import { apiErrorText, safeErrorText } from '../src/lib/api-error.ts';
+import { ERROR_CATALOG as pageCatalog } from '../src/lib/error-catalog.ts';
+import { ERROR_CATALOG as apiCatalog } from '../../api/src/common/error-catalog.ts';
 import { apiClient } from '../src/lib/api-client.ts';
 import { AuthError, loginWithPassword, registerWithEmail } from '../src/lib/auth-service.ts';
 
@@ -40,6 +42,19 @@ await check('apiErrorText：英文一律不给（返回 null，由调用方用�
   assert.equal(apiErrorText(envelope(['password must be longer than or equal to 6 characters'])), null);
   assert.equal(apiErrorText(null), null);
   assert.equal(apiErrorText('Unauthorized'), null);
+});
+
+await check('apiErrorText：没有中文时按错误码对照表取中文，六类文案互不相同', () => {
+  const missing = apiErrorText({ error: { code: 'NOT_CONFIGURED', message: 'not configured' } });
+  const auth = apiErrorText({ error: { code: 'AUTHENTICATION_REQUIRED', message: 'Unauthorized' } });
+  const denied = apiErrorText({ error: { code: 'NOT_PERMITTED', message: 'Forbidden' } });
+  const quota = apiErrorText({ error: { code: 'AI_MONTHLY_QUOTA', message: 'quota exceeded' } });
+  const blocked = apiErrorText({ error: { code: 'CONTENT_COMPLIANCE_BLOCKED', message: 'blocked' } });
+  const outage = apiErrorText({ error: { code: 'SERVICE_UNAVAILABLE', message: 'please try again later' } });
+  for (const text of [missing, auth, denied, quota, blocked, outage]) assert.equal(/[㐀-鿿]/.test(text), true);
+  assert.equal(new Set([missing, auth, denied, quota, blocked, outage]).size, 6);
+  assert.notEqual(blocked, outage);
+  assert.deepEqual(pageCatalog, apiCatalog);
 });
 
 await check('safeErrorText：中文异常原样给，英文原文（Failed to fetch）换成兜底', () => {

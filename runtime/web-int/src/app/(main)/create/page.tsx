@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { TodayCard } from '@/components/home/TodayCard';
 import { readableDraft } from '@/lib/readable-draft';
 import { SpeakButton, VoiceMicButton, appendVoice } from '@/components/voice/VoiceControls';
+import { describeGenerationFailure } from './generation-error';
 
 type Hit = { ruleId: string; severity: string; reason: string; matchedTerms: string[] };
 type Compliance = { level: string; needsHumanReview: boolean; notice: string; hits: Hit[] };
@@ -30,16 +31,12 @@ function HitList({ hits }: { hits: Hit[] }) {
   if (!hits.length) return null;
   return <ul>{hits.map((h) => <li key={h.ruleId}><strong>{h.ruleId}</strong> ({h.severity === 'block' ? 'blocked' : 'needs review'}){h.reason ? `: ${h.reason}` : ''}{h.matchedTerms.length > 0 && <> — matched: {h.matchedTerms.map((t) => `“${t}”`).join(', ')}</>}</li>)}</ul>;
 }
-const failures: Record<number, string> = {
-  401: 'Your session has expired or you are not signed in. Sign in before generating a draft.',
-  403: 'Your account does not have access to this feature. Review your membership or contact support.',
-  429: 'Your generation allowance or request limit has been reached. Review your membership and retry after the limit resets.',
-};
 export default function CreatePage() {
   const [topic, setTopic] = useState('');
   const [market, setMarket] = useState('US');
   const [draft, setDraft] = useState<Draft | null>(null);
   const [error, setError] = useState('');
+  const [errorKind, setErrorKind] = useState('');
   const [signIn, setSignIn] = useState(false);
   const [blocked, setBlocked] = useState<Blocked | null>(null);
   const [loading, setLoading] = useState(false);
@@ -49,7 +46,7 @@ export default function CreatePage() {
     if (inFlight.current || !topic.trim()) return;
     const controller = new AbortController();
     inFlight.current = controller;
-    setLoading(true); setError(''); setSignIn(false); setBlocked(null);
+    setLoading(true); setError(''); setErrorKind(''); setSignIn(false); setBlocked(null);
     const brief = topic.trim(); const selectedMarket = market;
     const timeout = setTimeout(() => controller.abort(), 60000);
     try {
@@ -58,14 +55,15 @@ export default function CreatePage() {
         body: JSON.stringify({ topic: brief, platform: 'linkedin', style: `Professional English for ${selectedMarket}` }),
       });
       const body = await response.json().catch(() => null);
-      if (!response.ok && body?.error?.code === 'CONTENT_COMPLIANCE_BLOCKED') {
-        const stage = body.error.stage === 'draft' ? 'draft' : 'brief';
-        setBlocked({ stage, message: asText(body.error.message, 600), hits: readHits(body.error.compliance?.hits) });
-        return;
-      }
       if (!response.ok) {
-        setSignIn(response.status === 401);
-        throw new Error(failures[response.status] || 'Generation is unavailable right now. Your brief is preserved; please try again later.');
+        const failure = describeGenerationFailure(response.status, body);
+        if (failure.kind === 'blocked') {
+          setBlocked({ stage: failure.stage, message: asText(failure.message, 600), hits: readHits(body?.error?.compliance?.hits) });
+          return;
+        }
+        setSignIn(failure.kind === 'signin');
+        setErrorKind(failure.kind);
+        throw new Error(failure.message);
       }
       const data = body?.data ?? body;
       if (typeof data?.content !== 'string' || !data.content.trim()) {
@@ -74,8 +72,9 @@ export default function CreatePage() {
       setDraft({ content: data.content, prompts: Array.isArray(data.visualPrompts) ? data.visualPrompts.filter((p: unknown): p is string => typeof p === 'string') : [], topic: brief, market: selectedMarket, compliance: readCompliance(data.compliance) });
     } catch (reason) {
       const message = reason instanceof Error ? reason.message : '';
+      const ours = reason instanceof Error && reason.name === 'Error';
       setError(controller.signal.aborted ? 'Generation timed out. Your brief is preserved. Check your usage before retrying; the server may still be processing the request.'
-        : Object.values(failures).includes(message) || message.startsWith('No draft text') || message.startsWith('Generation is unavailable') ? message
+        : ours && message ? message
         : 'We could not complete the connection. Your brief is preserved. Please try again.');
     } finally {
       clearTimeout(timeout); inFlight.current = null; setLoading(false);
@@ -91,10 +90,10 @@ export default function CreatePage() {
       <label>Primary market<select value={market} onChange={e=>setMarket(e.target.value)}><option value="US">United States</option><option value="UK">United Kingdom</option><option value="EU">European Union</option><option value="AU">Australia</option><option value="CA">Canada</option><option value="IN">India</option><option value="SG">Singapore</option></select></label>
       <button className="button" disabled={loading || !topic.trim()} onClick={generate}>{loading ? 'Generating…' : 'Generate review draft'}</button>
       {loading && <p role="status">Waiting for the generation service. Please keep this page open.</p>}
-      {blocked && <div role="alert" aria-label="Compliance check"><p><strong>{blocked.stage === 'draft' ? 'Draft withheld by the compliance check' : 'Brief blocked by the compliance check'}</strong></p>
+      {blocked && <div role="alert" data-reason="compliance" aria-label="Compliance check"><p><strong>{blocked.stage === 'draft' ? 'Draft withheld by the compliance check' : 'Brief blocked by the compliance check'}</strong></p>
         <p>{blocked.message || (blocked.stage === 'draft' ? 'The generated draft matched a blocking rule and was not shown.' : 'The brief matched a blocking rule and was not sent for generation.')}</p>
         <HitList hits={blocked.hits} /><p>Edit the brief and try again. This is an automated keyword screen, not legal advice.</p></div>}
-      {error && <div role="alert"><p>{error}</p>{signIn && <Link className="button" href="/login">Sign in</Link>}</div>}
+      {error && <div role="alert" data-reason={errorKind || 'connection'}><p>{error}</p>{signIn && <Link className="button" href="/login">Sign in</Link>}</div>}
     </section><section className="card" aria-label="Draft output" aria-busy={loading}>
       <span className="status">Human approval required</span><h2>Draft output</h2>
       {draft ? <>
