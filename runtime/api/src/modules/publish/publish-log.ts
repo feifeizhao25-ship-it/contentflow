@@ -18,6 +18,7 @@ export const PUBLISH_PLATFORM_NAMES: Record<string, string> = {
   wechat_mp: '公众号',
   weibo: '微博',
   kuaishou: '快手',
+  zhihu: '知乎',
 };
 
 export const PUBLISH_STATUS_NAMES: Record<string, string> = {
