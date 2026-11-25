@@ -7,11 +7,12 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
-  cleanDisplayedTitles,
-  isTitlePackagingLine,
-  requestedTitleCount,
-  titleStatusLabel,
+    cleanDisplayedTitles,
+    isTitlePackagingLine,
+    requestedTitleCount,
+    titleStatusLabel,
 } from '../src/lib/title-compliance.ts';
+import { complianceColumns } from '../src/lib/compliance-view.ts';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const read = (rel) => fs.readFileSync(path.join(ROOT, 'src', rel), 'utf8');
@@ -58,6 +59,21 @@ check('创作页对每个标题调用合规检查，并在标题旁标出中文�
   assert.match(page, /违规/);
   assert.match(page, /需复核/);
   assert.doesNotMatch(page, /count:\s*6,/);
+});
+
+check('合规结果分成发现的问题、已检查没问题、这一项没有检查', () => {
+  const columns = complianceColumns({
+    passed: true,
+    level: 'clear',
+    disclaimer: '这不是法律意见。',
+    hits: [],
+    notChecked: ['医疗广告所需的诊疗资质，以及「不能替代诊疗」以外的专项审查'],
+    rulesChecked: 21,
+    candidateHits: [{ ruleId: 'CN-CAND-HEALTH-FUNCTION', severity: 'review', reason: '疑似宣称保健功能或量化增高效果' }],
+  });
+  assert.match(columns.found.join('\n'), /候选规则，待审核/);
+  assert.match(columns.checkedSummary, /已检查 21 条规则/);
+  assert.match(columns.missed.join('\n'), /医疗/);
 });
 
 if (failures) {

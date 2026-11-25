@@ -4,6 +4,7 @@ import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { ComplianceService } from './compliance.service';
 import { RagPolicyService } from './rag-policy.service';
 import { disclosureHint, isCommercialRelationship, resolveCommercialRelationship, resolveTargetMarket } from '../../common/target-market';
+import { matchCandidateRuleHits } from '../../common/domestic-candidate-rules';
 
 /**
  * 发布前检查的只读预览。明确违规与风险提示都返回给界面，不在这里放行发布。
@@ -41,6 +42,8 @@ export class ComplianceCheckController {
     }
     // The market and the declared relationship decide which disclosure labels count (and where they must sit).
     const result = await this.compliance.checkContent(text, { conservative, targetMarket: market, commercial: isCommercialRelationship(relationship) });
+    // 候选规则默认不改变 passed，也不拦截生成。界面必须把命中标成「待审核」，不能当成已经检查通过。
+    const candidateHits = isGlobal ? [] : matchCandidateRuleHits(text);
     // 规则命中数与未检查项一并返回：「clear」只代表这批规则没发现，不代表可以发布。
     const rulesChecked = 'rulesChecked' in result ? result.rulesChecked : undefined;
     const notChecked = 'notChecked' in result ? result.notChecked : undefined;
@@ -55,6 +58,14 @@ export class ComplianceCheckController {
       ...(notChecked !== undefined ? { notChecked } : {}),
       ...(hitCounts !== undefined ? { hitCounts } : {}),
       ...(market ? { targetMarket: market, disclosureHint: disclosureHint(market) } : {}),
+      candidateHits: candidateHits.map((hit) => ({
+        ruleId: hit.ruleId,
+        severity: hit.severity,
+        reason: hit.reason,
+        matchedTerms: hit.matchedTerms,
+        label: '候选规则，待审核，不构成已通过',
+        sourceUrl: hit.sourceUrl,
+      })),
       hits: result.hits.map((hit) => ({
         ruleId: hit.ruleId,
         severity: hit.severity,

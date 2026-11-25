@@ -82,6 +82,18 @@ function matchPatientTestimony(text: string): string[] {
   return collect(text, /患者证言|患者亲测|患者反馈|患者推荐|患者说|病友反馈|病友说|病人说/g);
 }
 
+function matchMedicalSubstitute(text: string): string[] {
+  return collect(text, /不用去医院|别去医院|替代医生|替代诊疗|代替看病|包治百病|药到病除/g);
+}
+
+function matchInfantFormula(text: string): string[] {
+  return collect(text, /替代母乳|代替母乳|比母乳好|比母乳更好|婴儿奶粉治疗/g);
+}
+
+function matchFinanceFloor(text: string): string[] {
+  return collect(text, /保底收益|年化保底|保本高收益/g);
+}
+
 function matchAbsoluteClaim(text: string): string[] {
   return uniqueTerms([
     ...matchRankingFirst(text),
@@ -169,6 +181,45 @@ export const DOMESTIC_CANDIDATE_RULES: readonly DomesticCandidateRule[] = [
     sourceRetrievedAt: RETRIEVED,
     reason: '疑似使用绝对化用语或无法核对的夸大承诺',
     match: matchAbsoluteClaim,
+  },
+  {
+    ruleId: 'CN-CAND-MEDICAL-SUBSTITUTE',
+    category: '医疗替代诊疗',
+    gate: 'regulated_industry',
+    review_status: '待审核',
+    reviewer: '',
+    enabled: false,
+    legalBasis: `《中华人民共和国广告法》第十六条（医疗、药品、医疗器械广告不得含有表示功效、安全性的断言或者保证，不得说明治愈率或者有效率，不得利用广告代言人作推荐、证明）。出处：${AD_LAW_URL} ，${RETRIEVED} 对照该页核对。把商品写成可以替代诊疗，是否每句都落入第十六条，须律师确认后才能启用。${PENDING}`,
+    sourceUrl: AD_LAW_URL,
+    sourceRetrievedAt: RETRIEVED,
+    reason: '疑似把商品写成可以替代诊疗或不必就医',
+    match: matchMedicalSubstitute,
+  },
+  {
+    ruleId: 'CN-CAND-INFANT-FORMULA',
+    category: '母婴配方',
+    gate: 'regulated_industry',
+    review_status: '待审核',
+    reviewer: '',
+    enabled: false,
+    legalBasis: `《中华人民共和国广告法》第二十条（婴幼儿奶粉、饮料和其他食品的广告不得声称替代母乳，不得使用哺乳妇女或者婴儿的形象）。出处：${AD_LAW_URL} ，${RETRIEVED} 对照该页核对。普通食品是否适用，须律师确认后才能启用。${PENDING}`,
+    sourceUrl: AD_LAW_URL,
+    sourceRetrievedAt: RETRIEVED,
+    reason: '疑似声称婴幼儿食品可以替代母乳',
+    match: matchInfantFormula,
+  },
+  {
+    ruleId: 'CN-CAND-FINANCE-FLOOR',
+    category: '金融保底',
+    gate: 'regulated_industry',
+    review_status: '待审核',
+    reviewer: '',
+    enabled: false,
+    legalBasis: `《中华人民共和国广告法》第二十五条（招商等有投资回报预期的商品或者服务广告，不得对未来效果、收益或者与其相关的情况作出保证性承诺，明示或者暗示保本、无风险或者保收益）。出处：${AD_LAW_URL} ，${RETRIEVED} 对照该页核对。「保底收益」「年化保底」是否属于该条，须律师确认后才能启用。${PENDING}`,
+    sourceUrl: AD_LAW_URL,
+    sourceRetrievedAt: RETRIEVED,
+    reason: '疑似对投资收益作出保底承诺',
+    match: matchFinanceFloor,
   },
 ];
 

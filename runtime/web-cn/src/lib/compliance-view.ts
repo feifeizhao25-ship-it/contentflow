@@ -11,6 +11,11 @@ export interface ComplianceView {
   disclaimer: string;
   mode?: string;
   hits: ComplianceHitView[];
+  /** 已启用规则里没有跑到的项目。空数组表示接口没给这份清单。 */
+  notChecked: string[];
+  rulesChecked?: number;
+  /** 候选规则命中。待审核，不改变 passed，不能当成已经检查通过。 */
+  candidateHits: ComplianceHitView[];
 }
 
 function asHits(value: unknown): ComplianceHitView[] {
@@ -36,13 +41,38 @@ export function parseCompliance(payload: unknown): ComplianceView | null {
   if (level !== 'violation' && level !== 'risk' && level !== 'clear') return null;
   const disclaimer = typeof (raw as { disclaimer?: unknown }).disclaimer === 'string' ? (raw as { disclaimer: string }).disclaimer : '';
   const hits = asHits((raw as { hits?: unknown }).hits);
+  const notChecked = Array.isArray((raw as { notChecked?: unknown }).notChecked)
+    ? (raw as { notChecked: unknown[] }).notChecked.filter((item): item is string => typeof item === 'string' && item.trim().length > 0)
+    : [];
+  const rulesChecked = Number((raw as { rulesChecked?: unknown }).rulesChecked);
   return {
     passed: level !== 'violation' && (raw as { passed?: unknown }).passed !== false,
     level,
     disclaimer,
     mode: typeof (raw as { mode?: unknown }).mode === 'string' ? (raw as { mode: string }).mode : undefined,
     hits,
+    notChecked,
+    ...(Number.isInteger(rulesChecked) ? { rulesChecked } : {}),
+    candidateHits: asHits((raw as { candidateHits?: unknown }).candidateHits),
   };
+}
+
+export interface ComplianceColumns {
+  found: string[];
+  checkedSummary: string;
+  missed: string[];
+}
+
+/** 三栏：发现的问题、已检查没问题、这一项没有检查。 */
+export function complianceColumns(view: ComplianceView): ComplianceColumns {
+  const found = [
+    ...view.hits.map((hit) => `${hit.severity === 'block' ? '拦截' : '风险'}：${hit.reason}`),
+    ...view.candidateHits.map((hit) => `候选规则，待审核，不构成已通过：${hit.reason}`),
+  ];
+  const checkedSummary = typeof view.rulesChecked === 'number'
+    ? `已检查 ${view.rulesChecked} 条规则。没有命中只说明这批规则没发现，不代表可以发布。`
+    : '已按当前启用的规则检查。没有命中只说明这批规则没发现，不代表可以发布。';
+  return { found, checkedSummary, missed: view.notChecked };
 }
 
 export function complianceFromError(error: unknown): ComplianceView | null {
