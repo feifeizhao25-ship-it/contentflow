@@ -1,0 +1,9 @@
+# 国内响应里允许出现的英文词（不是句子）。国际响应默认不许有汉字。
+# 若将来某条国际文案必须保留汉字（例如干支），把那几个字写在 han-allowed 下面。
+# english-tokens
+AI
+API
+URL
+HTTP
+ID
+# han-allowed

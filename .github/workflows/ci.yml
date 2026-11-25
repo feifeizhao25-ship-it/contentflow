@@ -83,6 +83,9 @@ jobs:
       - name: Unit tests
         run: npm test -- --ci
 
+      - name: 响应语言：国内无成句英文，国际无汉字
+        run: npx jest --ci src/common/response-language.spec.ts --watchman=false
+
   web-cn:
     name: Web CN (Next.js)
     runs-on: ubuntu-latest
@@ -199,6 +202,8 @@ jobs:
       - uses: actions/checkout@v4
       - name: CN/INT language isolation
         run: python3 scripts/verify_language_contracts.py
+      - name: 响应语言：国内无成句英文，国际无汉字
+        run: python3 scripts/verify_response_language.py
       - name: CN app error text, privacy and account deletion entries
         run: python3 scripts/check_cn_app_ux.py
       - name: RAG provenance and freshness gate

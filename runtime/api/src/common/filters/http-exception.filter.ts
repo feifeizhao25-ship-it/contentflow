@@ -7,7 +7,7 @@ import {
   Logger,
 } from '@nestjs/common';
 import { Request, Response } from 'express';
-import { classifyPublicError, fallbackMessage } from '../error-catalog';
+import { classifyPublicError, fallbackMessage, translateValidatorLines } from '../error-catalog';
 
 const CJK = /[\u3400-\u9fff]/;
 const containsCjk = (value: unknown): boolean =>
@@ -21,6 +21,10 @@ function visibleMessage(message: string | string[], status: number, code: string
   const items = (Array.isArray(message) ? message : [message]).filter((item): item is string => typeof item === 'string');
   const kept = [...new Set(items.filter((item) => (english ? item.trim().length > 0 && !containsCjk(item) : containsCjk(item))))];
   if (kept.length) return Array.isArray(message) ? kept : kept[0];
+  if (!english) {
+    const translated = translateValidatorLines(items);
+    if (translated?.length) return translated.length === 1 ? translated[0] : translated;
+  }
   return fallbackMessage(classifyPublicError(status, code, items.join('\n')), english);
 }
 
