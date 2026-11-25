@@ -1,18 +1,22 @@
 /**
- * 国内网页的朗读顺序：先走已经存在的 /api/ai/tts/{openai,azure,elevenlabs}。
- * 这些路由目前返回 501 NOT_AVAILABLE_IN_CN，不向境外发请求。
- * 三条都不可用时，改用浏览器自带的语音合成。麦克风只用浏览器语音识别。
- * 不新增密钥，也不做功能开关，不接入新的付费语音服务。
+ * 国内版朗读不请求 openai、azure、elevenlabs。
+ * 选哪家境内语音服务、要不要付费，见 docs/grok_review_20261124/语音服务草稿.md，默认不接。
+ * 没接时按钮说明「朗读服务未开通」，不再改口说设备没有中文语音。
+ * 麦克风仍只用浏览器语音识别。
  *
  * 送入语音合成的文字会去掉法定 AI 显式标识和常见 Markdown。
  * 界面展示、复制和导出仍使用原文，不在这里改存储内容。
  */
 
-export const CN_TTS_ROUTES = [
+/** 这些地址是境外通道。国内界面即使传入也不会请求。 */
+export const FOREIGN_TTS_BLOCKED = [
   '/api/ai/tts/openai',
   '/api/ai/tts/azure',
   '/api/ai/tts/elevenlabs',
 ] as const;
+
+/** 境内语音未开通。空列表表示不发起任何朗读请求。 */
+export const CN_TTS_ROUTES = [] as const;
 
 export const voiceLabelsZh = {
   mic: '语音输入',
@@ -22,6 +26,7 @@ export const voiceLabelsZh = {
   unsupported: '当前浏览器不能使用语音',
   denied: '需要允许麦克风后才能语音输入',
   noChineseVoice: '这台设备或浏览器没有可用的中文语音，暂时不能朗读。',
+  notOpened: '朗读服务未开通。',
   micUnsupported: '当前浏览器不支持语音识别，麦克风已停用。',
   micNetwork: '当前网络无法使用浏览器语音识别，麦克风已停用。没有改用其他付费语音服务。',
   micServiceBlocked: '浏览器不允许使用语音识别服务，麦克风已停用。',
@@ -113,6 +118,7 @@ export async function resolveSpeechSource(options: {
   const text = prepareSpeechText(options.text);
   if (!text) return { source: 'unavailable' };
   for (const route of options.routes) {
+    if ((FOREIGN_TTS_BLOCKED as readonly string[]).includes(route)) continue;
     try {
       const response = await options.fetchImpl(route, {
         method: 'POST',

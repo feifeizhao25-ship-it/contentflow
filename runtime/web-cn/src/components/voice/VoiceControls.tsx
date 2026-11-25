@@ -222,8 +222,12 @@ export function SpeakButton({ text }: { text: string }) {
       language: 'zh-CN',
       routes: CN_TTS_ROUTES,
       fetchImpl: (url, init) => fetch(url, init),
-      browserAvailable: typeof window !== 'undefined' && typeof window.speechSynthesis !== 'undefined',
+      browserAvailable: false,
     });
+    if (plan.source !== 'tts-route') {
+      setNote(voiceLabelsZh.notOpened);
+      return;
+    }
     if (plan.source === 'tts-route') {
       stopAudio();
       audioUrl = URL.createObjectURL(new Blob([plan.audio], { type: plan.contentType || 'audio/mpeg' }));
