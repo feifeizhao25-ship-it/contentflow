@@ -11,7 +11,7 @@ import { CreateManualPublishDto } from './dto/create-manual-publish.dto';
  * 现在走「人工确认发布」：manual_pending → 复制文案 / 下载封面 → 我已手动发布（manual_done，可回填链接）。
  */
 describe('人工确认发布闭环', () => {
-  function build(content: Record<string, unknown> = {}) {
+  function build(content: Record<string, unknown> = {}, region = 'cn') {
     const store: Record<string, any> = {};
     const pcs: Record<string, any> = {};
     let seq = 0;
@@ -30,7 +30,7 @@ describe('人工确认发布闭环', () => {
     };
     const tenant = { checkQuota: jest.fn().mockResolvedValue(true), incrementUsage: jest.fn() };
     const queue = { addPublishTask: jest.fn() };
-    const config = { get: jest.fn((_k: string, fallback: unknown) => fallback) };
+    const config = { get: jest.fn((key: string, fallback: unknown) => key === 'MARKET_REGION' ? region : fallback) };
     const service = new PublishService(prisma as any, queue as any, tenant as any, { get: jest.fn() } as any, config as any);
     return { service, prisma, tenant, queue, store };
   }
@@ -78,6 +78,10 @@ describe('人工确认发布闭环', () => {
     await expect(a.service.createManualTasks('t', 'u', { contentId: 'c1', platforms: ['weibo'] })).rejects.toThrow('人工确认发布支持');
     await expect(a.service.createManualTasks('t', 'u', { contentId: 'c1', platforms: ['zhihu'] })).resolves.toHaveLength(1);
     await expect(a.service.createManualTasks('t', 'u', { contentId: 'c1', platforms: ['douyin'] })).resolves.toHaveLength(1);
+    const global = build({}, 'global');
+    await expect(global.service.createManualTasks('t', 'u', { contentId: 'c1', platforms: ['douyin', 'xhs'] })).rejects.toThrow(/not available on ContentFlow Global/);
+    expect(global.prisma.publishTask.create).not.toHaveBeenCalled();
+    await expect(global.service.createManualTasks('t', 'u', { contentId: 'c1', platforms: ['youtube'] })).resolves.toHaveLength(1);
     const b = build({ status: 'draft' });
     await expect(b.service.createManualTasks('t', 'u', { contentId: 'c1', platforms: ['xhs'] })).rejects.toThrow('内容未通过审核');
     const c = build();

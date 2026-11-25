@@ -39,6 +39,24 @@ export const MANUAL_PLATFORMS: Record<string, { name: string; hosts: readonly st
   },
 };
 
+/**
+ * 国际版手动导出白名单。官方 API 未接通。具体要不要申请各平台接口，见待主人定。
+ * 国内平台不在此列。
+ */
+export const GLOBAL_MANUAL_PLATFORMS: Record<string, { name: string; hosts: readonly string[]; guide: string }> = {
+  x: { name: 'X', hosts: ['x.com', 'twitter.com'], guide: 'Copy the text and post it yourself on X. Official API publishing is not connected.' },
+  linkedin: { name: 'LinkedIn', hosts: ['linkedin.com'], guide: 'Copy the text and post it yourself on LinkedIn. Official API publishing is not connected.' },
+  instagram: { name: 'Instagram', hosts: ['instagram.com'], guide: 'Copy the text and post it yourself on Instagram. Official API publishing is not connected.' },
+  tiktok: { name: 'TikTok', hosts: ['tiktok.com'], guide: 'Copy the text and post it yourself on TikTok. Official API publishing is not connected.' },
+  youtube: { name: 'YouTube', hosts: ['youtube.com', 'youtu.be'], guide: 'Copy the text and post it yourself on YouTube. Official API publishing is not connected.' },
+  threads: { name: 'Threads', hosts: ['threads.net'], guide: 'Copy the text and post it yourself on Threads. Official API publishing is not connected.' },
+  facebook: { name: 'Facebook', hosts: ['facebook.com'], guide: 'Copy the text and post it yourself on Facebook. Official API publishing is not connected.' },
+};
+
+export function manualPlatformTable(region?: string): Record<string, { name: string; hosts: readonly string[]; guide: string }> {
+  return (region ?? process.env.MARKET_REGION) === 'global' ? GLOBAL_MANUAL_PLATFORMS : MANUAL_PLATFORMS;
+}
+
 /** 2026 年平台规则要求人工确认，企业授权也不能改成代发。 */
 const HUMAN_CONFIRM_ONLY = new Set(['xhs', 'weixin', 'wechat_mp', 'zhihu']);
 
@@ -57,15 +75,24 @@ export function officialAutoPublishAllowed(platform: string): boolean {
 export const MANUAL_PENDING = 'manual_pending';
 export const MANUAL_DONE = 'manual_done';
 
-export function isManualPlatform(platform: string): boolean {
-  return Object.prototype.hasOwnProperty.call(MANUAL_PLATFORMS, platform);
+export function isManualPlatform(platform: string, region?: string): boolean {
+  return Object.prototype.hasOwnProperty.call(manualPlatformTable(region), platform);
+}
+
+export function globalPlatformRejection(platforms: string[]): { code: string; message: string } | null {
+  const blocked = [...new Set(platforms)].filter((platform) => !isManualPlatform(platform, 'global'));
+  if (!blocked.length) return null;
+  return {
+    code: 'PLATFORM_NOT_AVAILABLE',
+    message: `These platforms are not available on ContentFlow Global: ${blocked.join(', ')}. Manual export supports ${Object.keys(GLOBAL_MANUAL_PLATFORMS).join(', ')}. Official API publishing is not connected.`,
+  };
 }
 
 /**
  * 回填的作品链接：只接受 https，且域名属于该平台（含子域名）。
  * 不访问这个链接，只保存。返回规范化后的链接，或抛出中文错误。
  */
-export function normalizeManualPostUrl(platform: string, raw: unknown): string | null {
+export function normalizeManualPostUrl(platform: string, raw: unknown, region?: string): string | null {
   const text = typeof raw === 'string' ? raw.trim() : '';
   if (!text) return null;
   if (text.length > 500) throw new Error('作品链接太长');
@@ -78,9 +105,14 @@ export function normalizeManualPostUrl(platform: string, raw: unknown): string |
   if (url.protocol !== 'https:') throw new Error('作品链接必须以 https:// 开头');
   if (url.username || url.password) throw new Error('作品链接格式不正确');
   const host = url.hostname.toLowerCase();
-  const allowed = MANUAL_PLATFORMS[platform]?.hosts ?? [];
+  const edition = region ?? process.env.MARKET_REGION;
+  const table = manualPlatformTable(edition);
+  const allowed = table[platform]?.hosts ?? [];
+  const name = table[platform]?.name ?? 'that platform';
   if (!allowed.some((h) => host === h || host.endsWith(`.${h}`))) {
-    throw new Error(`请粘贴${MANUAL_PLATFORMS[platform]?.name ?? '该平台'}的作品链接`);
+    throw new Error(edition === 'global'
+      ? `Paste an https link on ${name}.`
+      : `请粘贴${name}的作品链接`);
   }
   url.hash = '';
   return url.toString();
