@@ -1,8 +1,8 @@
 /**
  * 语音控件测试说明
  *
- * 国内网页先请求已有的 /api/ai/tts/openai、azure、elevenlabs。
- * 这些路由现在返回 501，测试确认不会把 501 当成音频，而是改用浏览器朗读。
+ * 国内网页不再请求 /api/ai/tts/openai、azure、elevenlabs。
+ * 没接境内语音时说明「朗读服务未开通」，不说成设备没有中文语音。
  * 麦克风只走浏览器语音识别。日历和排期表不是 AI 正文，不放语音按钮。
  * 窄屏用卡片（max-md / md:hidden），宽屏编辑器把卡片边框收掉（md:border-0）。
  *
@@ -51,8 +51,22 @@ const unavailable = {
 
 console.log('Voice speech tests');
 
-await check('国内朗读按顺序使用三条已有 TTS 路由', async () => {
-  assert.deepEqual([...CN_TTS_ROUTES], ['/api/ai/tts/openai', '/api/ai/tts/azure', '/api/ai/tts/elevenlabs']);
+await check('国内朗读不请求境外 TTS 路由', async () => {
+  assert.deepEqual([...CN_TTS_ROUTES], []);
+  const voice = read('src/components/voice/VoiceControls.tsx');
+  const speech = read('src/lib/voice-speech.ts');
+  assert.match(speech, /朗读服务未开通/);
+  assert.doesNotMatch(voice, /\/api\/ai\/tts\/(openai|azure|elevenlabs)/);
+  const client = fakeFetch({});
+  const plan = await resolveSpeechSource({
+    text: '台灯教程',
+    language: 'zh-CN',
+    routes: ['/api/ai/tts/openai', '/api/ai/tts/azure', '/api/ai/tts/elevenlabs'],
+    fetchImpl: client.fetchImpl,
+    browserAvailable: true,
+  });
+  assert.equal(plan.source, 'browser');
+  assert.deepEqual(client.calls, []);
 });
 
 await check('空文本不请求路由', async () => {
@@ -62,27 +76,12 @@ await check('空文本不请求路由', async () => {
   assert.equal(client.calls.length, 0);
 });
 
-await check('501 继续下一条，拿到音频就用那条路由', async () => {
-  const client = fakeFetch({
-    '/api/ai/tts/openai': unavailable,
-    '/api/ai/tts/azure': audioHit,
-    '/api/ai/tts/elevenlabs': audioHit,
-  });
-  const plan = await resolveSpeechSource({ text: '台灯教程', language: 'zh-CN', routes: CN_TTS_ROUTES, fetchImpl: client.fetchImpl, browserAvailable: true });
+await check('境内路由返回音频才使用，501 不当成音频', async () => {
+  const client = fakeFetch({ '/api/ai/tts/domestic': audioHit });
+  const plan = await resolveSpeechSource({ text: '台灯教程', language: 'zh-CN', routes: ['/api/ai/tts/domestic'], fetchImpl: client.fetchImpl, browserAvailable: false });
   assert.equal(plan.source, 'tts-route');
-  assert.equal(plan.route, '/api/ai/tts/azure');
-  assert.deepEqual(client.calls, ['/api/ai/tts/openai', '/api/ai/tts/azure']);
-});
-
-await check('三条都不可用时改用浏览器，而不是假装有音频', async () => {
-  const client = fakeFetch({
-    '/api/ai/tts/openai': unavailable,
-    '/api/ai/tts/azure': unavailable,
-    '/api/ai/tts/elevenlabs': unavailable,
-  });
-  const plan = await resolveSpeechSource({ text: '台灯教程', language: 'zh-CN', routes: CN_TTS_ROUTES, fetchImpl: client.fetchImpl, browserAvailable: true });
-  assert.equal(plan.source, 'browser');
-  const blocked = await resolveSpeechSource({ text: '台灯教程', language: 'zh-CN', routes: CN_TTS_ROUTES, fetchImpl: client.fetchImpl, browserAvailable: false });
+  assert.equal(plan.route, '/api/ai/tts/domestic');
+  const blocked = await resolveSpeechSource({ text: '台灯教程', language: 'zh-CN', routes: [], fetchImpl: client.fetchImpl, browserAvailable: false });
   assert.equal(blocked.source, 'unavailable');
 });
 
@@ -140,8 +139,9 @@ await check('没有中文语音时给出中文说明', () => {
   assert.equal(hasChineseVoice([{ lang: 'zh-CN', name: 'Tingting' }]), true);
   assert.equal(hasChineseVoice([{ lang: 'zh_CN' }]), true);
   assert.equal(hasChineseVoice([{ lang: 'cmn-Hans-CN' }]), true);
-  assert.match(voiceLabelsZh.noChineseVoice, /中文语音/);
-  assert.match(read('src/components/voice/VoiceControls.tsx'), /noChineseVoice/);
+  assert.match(voiceLabelsZh.notOpened, /朗读服务未开通/);
+  assert.match(read('src/components/voice/VoiceControls.tsx'), /notOpened/);
+  assert.doesNotMatch(read('src/components/voice/VoiceControls.tsx'), /noChineseVoice/);
 });
 
 await check('麦克风在不支持或国内网络错误时停用并说明', () => {

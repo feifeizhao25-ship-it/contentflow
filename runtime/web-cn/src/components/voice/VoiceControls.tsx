@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useId, useState, type ReactNode } from 'react';
-import { CN_TTS_ROUTES, hasChineseVoice, joinVoiceText, micRestrictionMessage, prepareSpeechText, resolveSpeechSource, voiceLabelsZh } from '@/lib/voice-speech';
+import { CN_TTS_ROUTES, joinVoiceText, micRestrictionMessage, prepareSpeechText, resolveSpeechSource, voiceLabelsZh } from '@/lib/voice-speech';
 
 /**
  * 网页自己的语音控件，不照搬手机卡片。
@@ -185,19 +185,6 @@ type Recognition = {
   stop: () => void;
 };
 
-function loadVoices(synth: SpeechSynthesis): Promise<SpeechSynthesisVoice[]> {
-  const current = synth.getVoices();
-  if (current.length) return Promise.resolve(current);
-  return new Promise((resolve) => {
-    const finish = () => {
-      synth.removeEventListener('voiceschanged', finish);
-      resolve(synth.getVoices());
-    };
-    synth.addEventListener('voiceschanged', finish);
-    window.setTimeout(finish, 400);
-  });
-}
-
 export function SpeakButton({ text }: { text: string }) {
   const id = useId();
   const playing = useSpeechActive(id);
@@ -222,8 +209,12 @@ export function SpeakButton({ text }: { text: string }) {
       language: 'zh-CN',
       routes: CN_TTS_ROUTES,
       fetchImpl: (url, init) => fetch(url, init),
-      browserAvailable: typeof window !== 'undefined' && typeof window.speechSynthesis !== 'undefined',
+      browserAvailable: false,
     });
+    if (plan.source !== 'tts-route') {
+      setNote(voiceLabelsZh.notOpened);
+      return;
+    }
     if (plan.source === 'tts-route') {
       stopAudio();
       audioUrl = URL.createObjectURL(new Blob([plan.audio], { type: plan.contentType || 'audio/mpeg' }));
@@ -236,27 +227,6 @@ export function SpeakButton({ text }: { text: string }) {
         stopSpeech();
         setNote(voiceLabelsZh.unsupported);
       }
-      return;
-    }
-    if (plan.source === 'browser' && typeof window !== 'undefined' && window.speechSynthesis) {
-      const synth = window.speechSynthesis;
-      const voices = await loadVoices(synth);
-      if (!hasChineseVoice(voices)) {
-        setNote(voiceLabelsZh.noChineseVoice);
-        return;
-      }
-      const utterance = new SpeechSynthesisUtterance(spoken);
-      utterance.lang = 'zh-CN';
-      const chinese = voices.find((voice) => hasChineseVoice([voice]));
-      if (chinese) utterance.voice = chinese;
-      utterance.onend = () => stopSpeech();
-      utterance.onerror = () => {
-        stopSpeech();
-        setNote(voiceLabelsZh.unsupported);
-      };
-      setActive(id);
-      synth.cancel();
-      synth.speak(utterance);
       return;
     }
     setNote(voiceLabelsZh.unsupported);
