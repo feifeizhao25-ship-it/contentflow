@@ -5,7 +5,7 @@
  * hints, not legal advice, and they only cover the markets listed. "SG" is Singapore only: other
  * Southeast Asian countries are NOT covered and are not offered as an option.
  */
-export const TARGET_MARKETS = ['US', 'UK', 'IN', 'SG'] as const;
+export const TARGET_MARKETS = ['US', 'UK', 'EU', 'AU', 'CA', 'IN', 'SG'] as const;
 /**
  * Any other country: no country-specific rules are built in (none are invented). The hint only carries
  * the general principles in ICPEN's guidelines for digital influencers, and says to check the local regulator.
@@ -69,6 +69,39 @@ const HINTS: Record<TargetMarket, DisclosureHint> = {
     ],
     note: 'The permitted label list is ASCI\'s and is reviewed periodically; check the current guidelines before publishing.',
   },
+  EU: {
+    market: 'EU',
+    marketName: 'European Union',
+    labelExamples: ['Ad', 'Advertisement', 'Paid partnership'],
+    avoid: ['a commercial relationship that is only visible after the reader expands the post'],
+    placement: 'Make the commercial intent identifiable upfront, before the reader engages with the endorsement.',
+    sources: [
+      { name: 'Directive 2005/29/EC on unfair commercial practices', url: 'https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:32005L0029', retrievedAt: '2026-11-25' },
+    ],
+    note: 'General EU principle only. Not every member-state code is built in. This is not legal advice.',
+  },
+  AU: {
+    market: 'AU',
+    marketName: 'Australia',
+    labelExamples: ['Ad', 'Advertisement', 'Paid partnership'],
+    avoid: ['presenting a paid post as an independent opinion'],
+    placement: 'Disclose the commercial relationship clearly where the audience sees the content, not only in a profile.',
+    sources: [
+      { name: 'ACCC, Social media promotions', url: 'https://www.accc.gov.au/business/advertising-promoting-your-business/social-media-promotions', retrievedAt: '2026-11-25' },
+    ],
+    note: 'Australian Consumer Law expects advertising to be identifiable. This is not legal advice.',
+  },
+  CA: {
+    market: 'CA',
+    marketName: 'Canada',
+    labelExamples: ['Ad', 'Advertisement', 'Paid partnership'],
+    avoid: ['an undisclosed material connection'],
+    placement: 'Say that the post is an advertisement where the audience will notice it, not only in a biography.',
+    sources: [
+      { name: 'Competition Bureau, Influencer marketing', url: 'https://competition-bureau.canada.ca/en/deceptive-marketing-practices/types-deceptive-marketing-practices/influencer-marketing', retrievedAt: '2026-11-25' },
+    ],
+    note: 'Competition Act deceptive-marketing principle. This is not legal advice.',
+  },
   SG: {
     market: 'SG',
     marketName: 'Singapore',
@@ -120,6 +153,9 @@ export function isCommercialRelationship(r: CommercialRelationship | null | unde
 const DISCLOSURE_LABELS: Record<TargetMarket, Record<Exclude<CommercialRelationship, 'none'>, string>> = {
   US: { paid: 'Ad', gifted: 'Ad: product received free from the brand', affiliate: 'Ad: affiliate links, I earn a commission', own_brand: 'Ad' },
   UK: { paid: 'Ad', gifted: 'Ad: product gifted by the brand', affiliate: 'Ad: affiliate links', own_brand: 'Ad' },
+  EU: { paid: 'Ad', gifted: 'Ad: product received free', affiliate: 'Ad: affiliate links', own_brand: 'Ad' },
+  AU: { paid: 'Ad', gifted: 'Ad: product received free', affiliate: 'Ad: affiliate links', own_brand: 'Ad' },
+  CA: { paid: 'Ad', gifted: 'Ad: product received free', affiliate: 'Ad: affiliate links', own_brand: 'Ad' },
   IN: { paid: '#Ad', gifted: '#Free gift', affiliate: '#Affiliate', own_brand: '#Ad' },
   SG: { paid: '#adv', gifted: 'This post was sponsored by the brand (free product)', affiliate: 'This post includes affiliate links', own_brand: '#adv' },
   OTHER: { paid: 'Ad: paid partnership', gifted: 'Ad: product received free from the brand', affiliate: 'Ad: affiliate links, I earn a commission', own_brand: 'Ad: my own product' },

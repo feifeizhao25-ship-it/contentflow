@@ -196,4 +196,20 @@ describe('国内版：校验消息去重', () => {
     expect(error.compliance.hits).toEqual([{ ruleId: 'INTL-DISEASE-CLAIM', severity: 'block', reason: 'Claims to cure or treat a disease', matchedTerms: ['cures diabetes'] }]);
     expect(JSON.stringify(error)).not.toMatch(/[\u3400-\u9fff]/);
   });
+
+  it('does not cut an English compliance reason in the middle of a word', () => {
+    process.env.MARKET_REGION = 'global';
+    const reason = 'Providers must mark AI outputs in a machine-readable way, and deployers must disclose deepfakes and AI text on matters of public interest. '.repeat(2).trim();
+    const json = jest.fn();
+    new HttpExceptionFilter().catch(new BadRequestException({
+      message: 'Blocked.',
+      disclaimer: 'This is not legal advice.',
+      level: 'violation',
+      hits: [{ ruleId: 'INTL-AI-LABEL-REMOVAL', severity: 'block', reason }],
+    }), hostFor(json, jest.fn()));
+    const hit = json.mock.calls[0][0].error.compliance.hits[0];
+    expect(hit.reason).toBe(reason);
+    expect(hit.reason.endsWith('disclo')).toBe(false);
+    expect(hit.severity).toBe('block');
+  });
 });

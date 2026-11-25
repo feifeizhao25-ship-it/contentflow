@@ -37,7 +37,7 @@ const failures: Record<number, string> = {
 };
 export default function CreatePage() {
   const [topic, setTopic] = useState('');
-  const [market, setMarket] = useState('United States');
+  const [market, setMarket] = useState('US');
   const [draft, setDraft] = useState<Draft | null>(null);
   const [error, setError] = useState('');
   const [signIn, setSignIn] = useState(false);
@@ -88,7 +88,7 @@ export default function CreatePage() {
         <label>Topic or campaign brief<textarea value={topic} onChange={e=>setTopic(e.target.value)} placeholder="Explain the offer, audience, proof points, and desired action." /></label>
         <VoiceMicButton onFinal={(spoken) => setTopic((current) => appendVoice(current, spoken))} />
       </div>
-      <label>Primary market<select value={market} onChange={e=>setMarket(e.target.value)}><option>United States</option><option>United Kingdom</option><option>Australia</option><option>Singapore</option></select></label>
+      <label>Primary market<select value={market} onChange={e=>setMarket(e.target.value)}><option value="US">United States</option><option value="UK">United Kingdom</option><option value="EU">European Union</option><option value="AU">Australia</option><option value="CA">Canada</option><option value="IN">India</option><option value="SG">Singapore</option></select></label>
       <button className="button" disabled={loading || !topic.trim()} onClick={generate}>{loading ? 'Generating…' : 'Generate review draft'}</button>
       {loading && <p role="status">Waiting for the generation service. Please keep this page open.</p>}
       {blocked && <div role="alert" aria-label="Compliance check"><p><strong>{blocked.stage === 'draft' ? 'Draft withheld by the compliance check' : 'Brief blocked by the compliance check'}</strong></p>
