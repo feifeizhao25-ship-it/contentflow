@@ -112,15 +112,23 @@ check('即将上线的权益会出现在套餐卡上（专业版：视频时长�
     const free = comingSoonEntitlements(registry, 'free').join('|');
     assert.doesNotMatch(free, /去水印|批量导出/, '免费版没有的权益不该列出');
     const team = buildFallbackPlans(registry).find((p) => p.id === 'team');
-    assert.ok(team.comingSoonFeatures.includes('团队协作与审批'));
+    assert.ok(team.comingSoonFeatures.includes('平台官方授权后的自动发布'));
+    assert.ok(!team.comingSoonFeatures.some((feature) => feature.includes('平台账号') || feature === '团队协作与审批'));
+    assert.ok(team.features.includes('团队协作与审批'));
+    assert.ok(team.features.includes('每月1000万AI令牌'));
 });
 
-check('定价页与首页把未执行的权益标「即将上线」', () => {
+check('定价页与首页把未执行的权益标「即将上线」，已执行的账号上限不在路线图里', () => {
+    const note = 'AI 令牌额度、发布条数与平台账号上限待确认，确认前不构成承诺';
     for (const rel of ['src/app/(main)/pricing/page.tsx', 'src/app/page.tsx']) {
         const src = readSrc(rel);
         assert.ok(src.includes('即将上线'), `${rel} 缺「即将上线」标注`);
         assert.ok(/comingSoon/.test(src), `${rel} 未读取注册表里的即将上线权益`);
+        assert.ok(src.includes(note), `${rel} 的商务版说明与套餐接口不一致`);
     }
+    const pricing = readSrc('src/app/(main)/pricing/page.tsx');
+    assert.match(pricing, /联系我们/);
+    assert.doesNotMatch(pricing, /quotaStatus === 'unconfirmed' \? '立即开通'/);
 });
 
 check('团队页：邀请走接受流程，按钮不再标成未接通', () => {

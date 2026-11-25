@@ -132,17 +132,17 @@ function PricingContent() {
         features: (Array.isArray(plan.features) ? plan.features.map(String) : []) as string[],
         comingSoon: comingSoonFor(String(plan.id)),
         icon: plan.id === 'enterprise' ? <CrownFilled aria-hidden /> : plan.id === 'team' ? <SafetyCertificateOutlined aria-hidden /> : plan.id === 'pro' ? <ThunderboltFilled aria-hidden /> : <RocketFilled aria-hidden />,
-        buttonText: plan.id === 'free' ? '免费使用' : plan.custom ? '联系商务顾问' : '立即开通',
+        buttonText: plan.id === 'free' ? '免费使用' : (plan.quotaStatus === 'unconfirmed' || (plan.quotaStatus == null && plan.id === 'enterprise')) ? '联系我们' : plan.custom ? '联系商务顾问' : '立即开通',
         custom: Boolean(plan.custom),
         highlight: plan.id === 'pro',
-        disabled: plan.id === 'free',
+        disabled: plan.id === 'free' || plan.quotaStatus === 'unconfirmed' || (plan.quotaStatus == null && plan.id === 'enterprise'),
         color: plan.id === 'pro' ? 'text-indigo-500' : 'text-zinc-500',
         badge: plan.id === 'pro' ? '推荐' : undefined,
         credits: undefined as string | undefined,
         quotaNote: typeof plan.quotaNote === 'string' && plan.quotaNote.trim()
             ? plan.quotaNote.trim()
             : plan.id === 'enterprise'
-                ? 'AI 令牌额度与平台账号上限待确认，确认前不构成承诺'
+                ? 'AI 令牌额度、发布条数与平台账号上限待确认，确认前不构成承诺'
                 : '',
     }));
 

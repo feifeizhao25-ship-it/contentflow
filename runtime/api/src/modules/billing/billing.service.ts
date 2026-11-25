@@ -51,6 +51,9 @@ export class BillingService {
     if (!plan || plan.id === 'free' || plan.custom) {
       throw new BadRequestException('该套餐不能通过自助订单购买');
     }
+    if (plan.quotaStatus === 'unconfirmed') {
+      throw new BadRequestException('商务版额度尚未确认，不能在线开通。请使用「联系我们」。确认前不构成承诺。');
+    }
     const amount = input.billingCycle === 'yearly' ? plan.priceYearlyCny : plan.priceMonthlyCny;
     if (amount == null || amount <= 0) throw new BadRequestException('套餐价格未配置');
 

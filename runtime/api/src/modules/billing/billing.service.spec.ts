@@ -33,14 +33,14 @@ describe('BillingService', () => {
     expect(order.status).toBe('pending');
   });
 
-  it('creates the public enterprise annual offer with an immutable plan snapshot', async () => {
+  it('does not sell the business plan while its quota is unconfirmed', async () => {
     process.env.BANK_TRANSFER_ACCOUNT_NAME = '测试商户';
     process.env.BANK_TRANSFER_ACCOUNT_NO = 'verified-account';
-    const order = await new BillingService(prisma()).createOrder('tenant-1', {
+    const db = prisma();
+    await expect(new BillingService(db).createOrder('tenant-1', {
       planId: 'enterprise', billingCycle: 'yearly', paymentMethod: 'bank_transfer',
-    }, 'enterprise-123456');
-    expect(order.amount).toBe(19990);
-    expect((order as any).plan_snapshot.monthlyPostQuota).toBe(5000);
+    }, 'enterprise-123456')).rejects.toThrow('不能在线开通');
+    expect(db.paymentOrder.create).not.toHaveBeenCalled();
   });
 
   it('returns the same order for the same idempotency key and request', async () => {
@@ -72,6 +72,14 @@ describe('BillingService', () => {
     await expect(new BillingService(db).createOrder('tenant-1', {
       planId: 'pro', billingCycle: 'monthly', paymentMethod: 'bank_transfer',
     }, 'intent-123456')).rejects.toBeInstanceOf(ServiceUnavailableException);
+    expect(db.paymentOrder.create).not.toHaveBeenCalled();
+  });
+
+  it('rejects the unconfirmed business plan before any order is created', async () => {
+    const db = prisma();
+    await expect(new BillingService(db).createOrder('tenant-1', {
+      planId: 'enterprise', billingCycle: 'monthly', paymentMethod: 'alipay',
+    }, 'intent-enterprise')).rejects.toThrow('不能在线开通');
     expect(db.paymentOrder.create).not.toHaveBeenCalled();
   });
 
