@@ -25,6 +25,9 @@
     "paths": {
       "@/*": [
         "./src/*"
+      ],
+      "dev-login-entry": [
+        "./src/dev-login/absent.ts"
       ]
     }
   },
