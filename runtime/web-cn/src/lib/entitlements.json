@@ -8,9 +8,13 @@
       "priceYearlyCny": 0,
       "custom": false,
       "features": [
-        "1个平台账号",
+        "最多1个平台账号",
         "每月5条发布",
-        "人工智能生成内容标识"
+        "每月5万AI令牌",
+        "存储1GB",
+        "成员1人",
+        "人工智能生成内容标识",
+        "平台官方授权后的自动发布"
       ],
       "quotas": {
         "platformAccounts": 1,
@@ -53,9 +57,13 @@
       "priceYearlyCny": 990,
       "custom": false,
       "features": [
-        "10个平台账号",
+        "最多10个平台账号",
         "每月200条发布",
-        "内容日历与排期"
+        "每月250万AI令牌",
+        "存储5GB",
+        "成员1人",
+        "内容日历与排期",
+        "平台官方授权后的自动发布"
       ],
       "quotas": {
         "platformAccounts": 10,
@@ -99,9 +107,13 @@
       "priceYearlyCny": 4990,
       "custom": false,
       "features": [
-        "30个平台账号",
+        "最多30个平台账号",
+        "每月1000条发布",
+        "每月1000万AI令牌",
+        "存储50GB",
+        "成员5人",
         "团队协作与审批",
-        "每月1000条发布"
+        "平台官方授权后的自动发布"
       ],
       "quotas": {
         "platformAccounts": 30,
@@ -148,7 +160,8 @@
       "features": [
         "发布额度待确认",
         "操作审计",
-        "团队协作与审批"
+        "团队协作与审批",
+        "平台官方授权后的自动发布"
       ],
       "quotas": {
         "platformAccounts": 100,
@@ -192,8 +205,12 @@
   "entitlementStatus": {
     "quotas.platformAccounts": {
       "label": "平台账号数",
-      "status": "coming_soon",
-      "note": "抖音、B 站开放平台授权尚未开通；接通授权时同步加数量校验"
+      "status": "enforced",
+      "enforcedAt": {
+        "file": "src/modules/tenant/tenant.service.ts",
+        "contains": "assertCanBindAccount"
+      },
+      "note": "数量上限已执行。平台官方授权后的自动发布尚未开通，仍写在路线图。绑定算不算「已上线」待主人确认。"
     },
     "quotas.monthlyPosts": {
       "label": "每月发布条数",
@@ -287,10 +304,7 @@
     }
   },
   "comingSoonFeatures": [
-    "1个平台账号",
-    "10个平台账号",
-    "30个平台账号",
-    "团队协作与审批",
+    "平台官方授权后的自动发布",
     "操作审计"
   ]
 }

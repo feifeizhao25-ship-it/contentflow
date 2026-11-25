@@ -62,21 +62,21 @@ export const CN_PLANS: ChinaPlanDefinition[] = [
     memberLimit: 1, storageGb: 1,
     platformLimit: 1, monthlyPostQuota: 5, aiTokenQuota: 50000,
     custom: false,
-    features: ['1个平台账号', '每月5条发布', '人工智能生成内容标识'],
+    features: ['最多1个平台账号', '每月5条发布', '每月5万AI令牌', '存储1GB', '成员1人', '人工智能生成内容标识', '平台官方授权后的自动发布'],
   },
   {
     id: 'pro', name: '个人版', priceMonthlyCny: 99, priceYearlyCny: 990,
     memberLimit: 1, storageGb: 5,
     platformLimit: 10, monthlyPostQuota: 200, aiTokenQuota: 2500000,
     custom: false,
-    features: ['10个平台账号', '每月200条发布', '内容日历与排期'],
+    features: ['最多10个平台账号', '每月200条发布', '每月250万AI令牌', '存储5GB', '成员1人', '内容日历与排期', '平台官方授权后的自动发布'],
   },
   {
     id: 'team', name: '团队版', priceMonthlyCny: 499, priceYearlyCny: 4990,
     memberLimit: 5, storageGb: 50,
     platformLimit: 30, monthlyPostQuota: 1000, aiTokenQuota: 10000000,
     custom: false,
-    features: ['30个平台账号', '团队协作与审批', '每月1000条发布'],
+    features: ['最多30个平台账号', '每月1000条发布', '每月1000万AI令牌', '存储50GB', '成员5人', '团队协作与审批', '平台官方授权后的自动发布'],
   },
   {
     id: 'enterprise', name: '商务版', quotaStatus: 'unconfirmed',
@@ -84,9 +84,12 @@ export const CN_PLANS: ChinaPlanDefinition[] = [
     memberLimit: 20, storageGb: -1,
     platformLimit: 100, monthlyPostQuota: 5000, aiTokenQuota: 40000000,
     custom: false,
-    features: ['发布额度待确认', '操作审计', '团队协作与审批'],
+    features: ['发布额度待确认', '操作审计', '团队协作与审批', '平台官方授权后的自动发布'],
   },
 ];
+
+/** 定价页、落地页、套餐卡共用这一句。额度未确认时不能改字，也不能当成承诺。 */
+export const UNCONFIRMED_QUOTA_NOTE = 'AI 令牌额度、发布条数与平台账号上限待确认，确认前不构成承诺';
 
 export type PublicChinaPlan = Omit<ChinaPlanDefinition, 'aiTokenQuota' | 'platformLimit' | 'monthlyPostQuota'> & {
   aiTokenQuota: number | null;
@@ -104,7 +107,7 @@ export function presentChinaPlan(plan: ChinaPlanDefinition): PublicChinaPlan {
     platformLimit: null,
     monthlyPostQuota: null,
     features: plan.features.map((feature) => (/\d/.test(feature) ? '发布额度待确认' : feature)),
-    quotaNote: 'AI 令牌额度、发布条数与平台账号上限待确认，确认前不构成承诺',
+    quotaNote: UNCONFIRMED_QUOTA_NOTE,
   };
 }
 
