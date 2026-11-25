@@ -18,7 +18,7 @@ import clsx from 'clsx';
 import { apiErrorText, safeErrorText } from '@/lib/api-error';
 import { platformDisplay } from '@/lib/cn-display';
 import { describeBoundAccounts } from '@/lib/page-data';
-import { accountDisplayName, accountInitial } from '@/lib/account-label';
+import { accountConnectionLabel, accountDisplayName, accountInitial, accountRunLabel } from '@/lib/account-label';
 
 interface PlatformAccount {
     id: string;
@@ -29,6 +29,7 @@ interface PlatformAccount {
     followers: number;
     status: 'active' | 'expired' | 'error';
     authType: string;
+    withinPlan?: boolean;
     expiresAt?: string;
     color: string;
 }
@@ -80,6 +81,7 @@ export default function AccountsPage() {
                     followers: acc.follower_count || 0,
                     status: (acc.status as any) || 'active',
                     authType: acc.auth_type || 'OAuth',
+                    withinPlan: typeof acc.within_plan === 'boolean' ? acc.within_plan : undefined,
                     color: availablePlatforms.find(p => p.key === acc.platform)?.color || '#9ca3af',
                     avatar: acc.avatar_url,
                 }));
@@ -193,18 +195,20 @@ export default function AccountsPage() {
                                                 <div className="flex items-center gap-2 text-xs text-zinc-500">
                                                     <span>{account.platformName}</span>
                                                     <span className="w-1 h-1 rounded-full bg-zinc-700" />
-                                                    <span>官方授权</span>
+                                                    <span className="whitespace-nowrap">{accountConnectionLabel(account.authType)}</span>
                                                 </div>
                                             </div>
                                         </div>
                                         <div className={clsx(
-                                            "px-2 py-1 rounded-lg text-xs font-medium flex items-center gap-1.5",
-                                            account.status === 'active' ? "bg-emerald-50 text-emerald-800" : "bg-red-50 text-red-700"
+                                            "whitespace-nowrap px-2 py-1 rounded-lg text-xs font-medium flex items-center gap-1.5",
+                                            account.withinPlan === false || accountRunLabel(account.status, account.authType, account.withinPlan) === '未接通'
+                                              ? "bg-amber-50 text-amber-800"
+                                              : account.status === 'active' ? "bg-emerald-50 text-emerald-800" : "bg-red-50 text-red-700"
                                         )}>
                                             <span className={clsx("w-1.5 h-1.5 rounded-full",
-                                                account.status === 'active' ? "bg-emerald-600" : "bg-red-600"
+                                                account.withinPlan === false ? "bg-amber-600" : account.status === 'active' ? "bg-emerald-600" : "bg-red-600"
                                             )} />
-                                            {account.status === 'active' ? '运行中' : account.status === 'expired' ? '授权已过期' : '异常'}
+                                            {accountRunLabel(account.status, account.authType, account.withinPlan)}
                                         </div>
                                     </div>
 

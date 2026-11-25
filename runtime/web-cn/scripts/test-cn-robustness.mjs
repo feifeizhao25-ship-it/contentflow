@@ -9,7 +9,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { NextRequest } from 'next/server.js';
-import { accountDisplayName, accountInitial } from '../src/lib/account-label.ts';
+import { accountConnectionLabel, accountDisplayName, accountInitial, accountRunLabel } from '../src/lib/account-label.ts';
 import { batchDeleteSummary, continueCreatingHref } from '../src/lib/content-continue.ts';
 import { authedChromeAllowed, isPublicAppPath, readSignedIn, shouldRequestAuthedChrome } from '../src/lib/public-session.ts';
 import { inviteRequestBody, inviteSeatFull } from '../src/lib/team-invite-form.ts';
@@ -27,6 +27,14 @@ async function checkAsync(name, fn) {
 }
 
 console.log('CN robustness tests');
+
+check('占位授权显示未接通，超额才标暂停', () => {
+  assert.equal(accountConnectionLabel('oauth_placeholder_not_live'), '未接通');
+  assert.equal(accountRunLabel('active', 'oauth_placeholder_not_live', true), '未接通');
+  assert.equal(accountRunLabel('active', 'oauth', false), '已暂停（超出套餐名额）');
+  assert.equal(accountRunLabel('active', 'oauth', undefined), '运行中');
+  assert.equal(read('src/app/(main)/accounts/page.tsx').includes('官方授权'), false);
+});
 
 check('邀请表单把留言交给后端，空白留言不传', () => {
   assert.deepEqual(
